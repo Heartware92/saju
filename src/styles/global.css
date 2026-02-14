@@ -1,0 +1,514 @@
+/* Pretendard Variable Font - @import는 최상단에 위치 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendardvariable.css');
+
+/* Tailwind CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* 조선 전통색 */
+  --color-primary: #8B4513;        /* 갈색 (목재) */
+  --color-primary-light: #A0522D;
+  --color-primary-dark: #654321;
+
+  /* 한지/엽전 */
+  --color-secondary: #F5E6D3;      /* 한지색 */
+  --color-accent: #D4A574;         /* 엽전 금색 */
+  --color-accent-dark: #B8860B;
+
+  /* 배경 */
+  --color-background: #FBF8F3;     /* 한지 배경 */
+  --color-surface: #FFFFFF;
+  --color-surface-dark: #F5E6D3;
+
+  /* 텍스트 */
+  --color-text: #2D2D2D;
+  --color-text-secondary: #6B6B6B;
+  --color-text-muted: #999999;
+
+  /* 보더 */
+  --color-border: #D4C5B9;
+  --color-border-light: #E5D9CE;
+
+  /* 상태 색상 */
+  --color-success: #2D8659;
+  --color-warning: #F59E0B;
+  --color-danger: #DC2626;
+  --color-info: #3B82F6;
+
+  /* 오행 색상 */
+  --color-wood: #2D8659;
+  --color-fire: #E63946;
+  --color-earth: #F4A261;
+  --color-metal: #CBD5E1;
+  --color-water: #264653;
+
+  /* 타로 원소 색상 (기존 유지) */
+  --color-tarot-fire: #FF6B6B;
+  --color-tarot-water: #4ECDC4;
+  --color-tarot-air: #95E1D3;
+  --color-tarot-earth: #DDA15E;
+  --color-tarot-spirit: #B19CD9;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* Font */
+  --font-sans: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-serif: 'Noto Serif KR', serif;
+
+  /* Shadows (한지 느낌) */
+  --shadow-sm: 0 1px 3px rgba(139, 69, 19, 0.08);
+  --shadow-md: 0 4px 12px rgba(139, 69, 19, 0.12);
+  --shadow-lg: 0 8px 24px rgba(139, 69, 19, 0.16);
+  --shadow-xl: 0 12px 32px rgba(139, 69, 19, 0.20);
+  --shadow-hanji: 0 4px 12px rgba(139, 69, 19, 0.12);
+  --shadow-hanji-lg: 0 8px 24px rgba(139, 69, 19, 0.16);
+  --shadow-glow: 0 0 20px rgba(212, 165, 116, 0.3);
+
+  /* Z-index */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  line-height: 1.6;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  /* 한지 텍스처 배경 (이미지가 있을 경우) */
+  /* background-image: url('/images/hanji-texture.webp'); */
+  /* background-size: cover; */
+  /* background-attachment: fixed; */
+
+  /* 그라데이션 오버레이 (선택적) */
+  background-image:
+    linear-gradient(to bottom, rgba(251, 248, 243, 0.95) 0%, rgba(251, 248, 243, 1) 100%);
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 링크 */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--color-primary-dark);
+}
+
+a:active {
+  color: var(--color-accent-dark);
+}
+
+/* 버튼 */
+button {
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border: none;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* 폼 요소 */
+input, select, textarea {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  outline: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.2s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.1);
+}
+
+/* 스크롤바 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface-dark);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--color-surface-dark);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent);
+}
+
+/* 애니메이션 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* 애니메이션 클래스 */
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.5s ease-out;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.5s ease-out;
+}
+
+.animate-slideInLeft {
+  animation: slideInLeft 0.5s ease-out;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.5s ease-out;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.3s ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* 유틸리티 클래스 (Tailwind 보완용) */
+.text-center {
+  text-align: center;
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.text-accent {
+  color: var(--color-accent);
+}
+
+.bg-primary {
+  background-color: var(--color-primary);
+}
+
+.bg-secondary {
+  background-color: var(--color-secondary);
+}
+
+.bg-accent {
+  background-color: var(--color-accent);
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.shadow-hanji {
+  box-shadow: var(--shadow-hanji);
+}
+
+.shadow-hanji-lg {
+  box-shadow: var(--shadow-hanji-lg);
+}
+
+.shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+
+/* 한지 카드 스타일 */
+.card-hanji {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-hanji);
+  padding: var(--spacing-lg);
+  transition: all 0.3s ease;
+}
+
+.card-hanji:hover {
+  box-shadow: var(--shadow-hanji-lg);
+  transform: translateY(-2px);
+}
+
+/* 엽전 관련 스타일 */
+.yeopjeon {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: var(--color-accent-dark);
+}
+
+.yeopjeon::before {
+  content: "🪙";
+  font-size: 1.2em;
+}
+
+/* 로딩 스피너 */
+.spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ===================================
+   모바일 퍼스트 최적화
+   =================================== */
+
+/* 모바일 기본 (375px ~ 768px) */
+html, body {
+  font-size: 14px;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* 터치 최적화 */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation; /* 더블탭 줌 방지 */
+}
+
+/* iOS 자동 줌 방지 */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+  font-size: 16px; /* iOS 줌 방지 최소 크기 */
+}
+
+/* 모바일 안전 영역 (노치 대응) */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
+
+/* 부드러운 스크롤 */
+html {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 모바일 카드 간격 조정 */
+.card-hanji {
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+/* 모바일 버튼 최소 크기 (터치 용이성) */
+button,
+.button,
+a.button {
+  min-height: 44px; /* Apple 권장 최소 터치 영역 */
+  min-width: 44px;
+}
+
+/* 데스크톱 (768px 이상) */
+@media (min-width: 768px) {
+  html, body {
+    font-size: 16px;
+  }
+
+  .card-hanji {
+    padding: var(--spacing-lg);
+  }
+}
+
+/* 프린트 스타일 */
+@media print {
+  body {
+    background: white;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* 접근성 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* 포커스 스타일 */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
