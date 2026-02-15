@@ -1,1 +1,2 @@
-export const OPENAI_API_KEY = "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";
+// 환경변수에서 API 키 로드 (Vercel에서 설정)
+export const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || "";
