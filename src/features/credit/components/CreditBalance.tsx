@@ -18,84 +18,55 @@ export const CreditBalance: React.FC<CreditBalanceProps> = ({
   const { balance } = useCreditStore();
   const navigate = useNavigate();
 
-  const sizeStyles = {
-    sm: {
-      container: 'px-3 py-1.5',
-      text: 'text-sm',
-      icon: 'text-base'
-    },
-    md: {
-      container: 'px-4 py-2',
-      text: 'text-base',
-      icon: 'text-lg'
-    },
-    lg: {
-      container: 'px-5 py-3',
-      text: 'text-lg',
-      icon: 'text-xl'
-    }
+  const sizeConfig = {
+    sm: { coin: 20, text: '0.95rem', padding: '0.4rem 0.75rem', gap: '0.4rem' },
+    md: { coin: 24, text: '1rem', padding: '0.5rem 1rem', gap: '0.5rem' },
+    lg: { coin: 32, text: '1.25rem', padding: '0.6rem 1.25rem', gap: '0.6rem' }
   };
 
+  const config = sizeConfig[size];
+
   return (
-    <div className="flex items-center gap-2">
-      {/* 잔액 표시 - 곳간 스타일 */}
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      {/* 잔액 표시 */}
       <div
-        className={`
-          relative flex items-center gap-2
-          bg-gradient-to-br from-secondary via-[#F5E6D3] to-[#EDD5B8]
-          border-2 border-primary/30
-          rounded-lg shadow-hanji
-          ${sizeStyles[size].container}
-          hover:shadow-hanji-lg transition-shadow duration-300
-        `}
         style={{
-          background: 'linear-gradient(135deg, #F5E6D3 0%, #EDD5B8 50%, #F5E6D3 100%)',
-          boxShadow: '0 2px 8px rgba(139, 69, 19, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.5)'
+          display: 'flex',
+          alignItems: 'center',
+          gap: config.gap,
+          padding: config.padding,
+          background: 'linear-gradient(135deg, #F5E6D3 0%, #E8D4B8 100%)',
+          borderRadius: '0.5rem',
+          border: '1.5px solid rgba(139, 69, 19, 0.2)'
         }}
       >
-        {/* 곳간 아이콘 */}
-        <div className="relative">
-          <span className={`${sizeStyles[size].icon} drop-shadow-sm`}>🏛️</span>
-          <span
-            className="absolute -top-1 -right-1 text-[10px]"
-            style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}
-          >
-            🪙
-          </span>
-        </div>
-
-        <div className="flex items-baseline gap-1">
-          <span className={`font-black text-primary ${sizeStyles[size].text}`}
-                style={{ textShadow: '0 1px 2px rgba(139, 69, 19, 0.2)' }}>
-            {balance}
-          </span>
-          <span className={`text-primary/70 font-bold ${sizeStyles[size === 'sm' ? 'sm' : 'md'].text}`}>
-            엽전
-          </span>
-        </div>
+        <img
+          src="/coin.png"
+          alt="엽전"
+          style={{ width: config.coin, height: config.coin }}
+        />
+        <span style={{ fontSize: config.text, fontWeight: '700', color: '#8B4513' }}>
+          {balance}엽전
+        </span>
       </div>
 
-      {/* 충전 버튼 - 곳간 입구 느낌 */}
+      {/* 충전 버튼 */}
       {showAddButton && (
         <button
           onClick={() => navigate('/credit')}
-          className="
-            relative px-3 py-2
-            bg-gradient-to-br from-accent via-[#D4A574] to-accent
-            hover:from-accent-dark hover:via-[#C09560] hover:to-accent-dark
-            text-white font-bold
-            rounded-lg
-            transition-all duration-300
-            shadow-md hover:shadow-lg
-            transform hover:scale-105
-            border border-accent-dark/30
-          "
           style={{
-            textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+            padding: config.padding,
+            fontSize: config.text,
+            fontWeight: '600',
+            color: '#8B4513',
+            background: 'linear-gradient(135deg, #E8D4B8 0%, #DEC5A5 100%)',
+            border: '1.5px solid rgba(139, 69, 19, 0.25)',
+            borderRadius: '0.5rem',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap'
           }}
-          aria-label="엽전 충전"
         >
-          <span className="text-sm whitespace-nowrap">곳간 충전</span>
+          충전하기
         </button>
       )}
     </div>

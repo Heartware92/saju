@@ -40,18 +40,18 @@ export default function Layout({ children }: LayoutProps) {
         }}
       >
         <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo - 전통 느낌 강화 */}
+          <div className="flex items-center justify-between h-24">
+            {/* Logo - 텍스트만 */}
             <Link
               to="/"
               className="flex items-center gap-2 hover:scale-105 transition-transform duration-200"
             >
-              <span className="text-3xl drop-shadow-md">☯</span>
               <span
-                className="text-xl font-black text-primary hidden sm:block"
+                className="text-2xl font-black text-primary"
                 style={{
                   fontFamily: 'var(--font-serif)',
-                  textShadow: '0 2px 4px rgba(139, 69, 19, 0.15)'
+                  textShadow: '0 2px 4px rgba(139, 69, 19, 0.15)',
+                  fontSize: '2rem'
                 }}
               >
                 사주풀이
@@ -59,7 +59,7 @@ export default function Layout({ children }: LayoutProps) {
             </Link>
 
             {/* Navigation */}
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden md:flex items-center gap-2">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
@@ -79,14 +79,14 @@ export default function Layout({ children }: LayoutProps) {
                     boxShadow: '0 2px 8px rgba(139, 69, 19, 0.3)'
                   } : {}}
                 >
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="font-bold">{item.label}</span>
+                  <span className="text-2xl">{item.icon}</span>
+                  <span className="font-bold text-lg">{item.label}</span>
                 </Link>
               ))}
             </nav>
 
             {/* Right Section */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {user ? (
                 <>
                   {/* 크레딧 잔액 - 곳간 */}
@@ -114,30 +114,63 @@ export default function Layout({ children }: LayoutProps) {
                 </>
               ) : (
                 <>
-                  {/* 엽전 충전 (로그인 전) */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate('/credit')}
-                    className="hidden sm:flex font-bold text-accent hover:text-accent-dark"
-                  >
-                    🪙 충전
-                  </Button>
-
-                  {/* 로그인 */}
+                  {/* 로그인 - 심플한 텍스트 버튼 */}
                   <button
                     onClick={() => navigate('/login')}
-                    className="px-4 py-2 text-sm font-bold text-primary hover:bg-secondary/50 rounded-lg transition-colors"
+                    style={{
+                      padding: '0.65rem 1.25rem',
+                      fontSize: '1.05rem',
+                      fontWeight: '600',
+                      color: '#8B4513',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      fontFamily: 'var(--font-serif, inherit)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(139, 69, 19, 0.08)';
+                      e.currentTarget.style.color = '#654321';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = '#8B4513';
+                    }}
                   >
                     로그인
                   </button>
 
-                  {/* 회원가입 */}
+                  {/* 회원가입 - 자연스러운 강조 버튼 */}
                   <button
                     onClick={() => navigate('/signup')}
-                    className="px-4 py-2 text-sm font-bold bg-primary text-white rounded-lg hover:bg-primary-dark transition-all shadow-md hover:shadow-lg"
                     style={{
-                      boxShadow: '0 2px 8px rgba(139, 69, 19, 0.3)'
+                      padding: '0.65rem 1.5rem',
+                      fontSize: '1.05rem',
+                      fontWeight: '700',
+                      color: '#8B4513',
+                      background: 'linear-gradient(135deg, rgba(232, 212, 184, 0.6) 0%, rgba(222, 197, 165, 0.8) 100%)',
+                      border: '1px solid rgba(139, 69, 19, 0.2)',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.25s ease',
+                      boxShadow: '0 1px 3px rgba(139, 69, 19, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.4)',
+                      fontFamily: 'var(--font-serif, inherit)',
+                      backdropFilter: 'blur(4px)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #8B4513 0%, #654321 100%)';
+                      e.currentTarget.style.color = '#FFFBF5';
+                      e.currentTarget.style.borderColor = '#8B4513';
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(139, 69, 19, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(232, 212, 184, 0.6) 0%, rgba(222, 197, 165, 0.8) 100%)';
+                      e.currentTarget.style.color = '#8B4513';
+                      e.currentTarget.style.borderColor = 'rgba(139, 69, 19, 0.2)';
+                      e.currentTarget.style.boxShadow = '0 1px 3px rgba(139, 69, 19, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.4)';
+                      e.currentTarget.style.transform = 'translateY(0)';
                     }}
                   >
                     회원가입
@@ -156,7 +189,7 @@ export default function Layout({ children }: LayoutProps) {
             boxShadow: '0 -2px 8px rgba(139, 69, 19, 0.1)'
           }}
         >
-          <nav className="flex items-center justify-around py-2">
+          <nav className="flex items-center justify-around py-4">
             {navItems.map((item) => (
               <Link
                 key={item.path}
@@ -174,8 +207,8 @@ export default function Layout({ children }: LayoutProps) {
                   textShadow: '0 1px 3px rgba(139, 69, 19, 0.3)'
                 } : {}}
               >
-                <span className="text-2xl drop-shadow-sm">{item.icon}</span>
-                <span className="text-xs font-bold">{item.label}</span>
+                <span className="text-3xl drop-shadow-sm">{item.icon}</span>
+                <span className="text-base font-bold">{item.label}</span>
               </Link>
             ))}
           </nav>

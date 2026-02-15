@@ -11,7 +11,7 @@
 }
 
 .heroIcon {
-  font-size: 80px;
+  font-size: 100px;
   margin-bottom: var(--spacing-md);
   animation: spin 20s linear infinite;
 }
@@ -23,7 +23,7 @@
 
 .heroTitle {
   font-family: var(--font-serif);
-  font-size: 42px;
+  font-size: 56px;
   font-weight: 700;
   color: var(--color-primary);
   margin-bottom: var(--spacing-sm);
@@ -31,7 +31,7 @@
 }
 
 .heroSubtitle {
-  font-size: 18px;
+  font-size: 24px;
   color: var(--color-text-secondary);
   line-height: 1.8;
   word-break: keep-all;
@@ -43,7 +43,7 @@
 }
 
 .sectionTitle {
-  font-size: 20px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--color-text);
   margin-bottom: var(--spacing-lg);
@@ -79,12 +79,12 @@
 }
 
 .categoryIcon {
-  font-size: 36px;
+  font-size: 48px;
   margin-bottom: var(--spacing-sm);
 }
 
 .categoryTitle {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--color-primary-light);
   margin-bottom: var(--spacing-xs);
@@ -93,10 +93,10 @@
 }
 
 .categoryDesc {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--color-text-muted);
   text-align: center;
-  line-height: 1.4;
+  line-height: 1.5;
   word-break: keep-all;
 }
 
@@ -120,7 +120,7 @@
 }
 
 .tarotIcon {
-  font-size: 40px;
+  font-size: 56px;
 }
 
 .tarotText {
@@ -131,14 +131,14 @@
 }
 
 .tarotTitle {
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 700;
   color: #e0b0ff;
   word-break: keep-all;
 }
 
 .tarotDesc {
-  font-size: 14px;
+  font-size: 18px;
   color: #d0d0d0;
   word-break: keep-all;
 }
@@ -200,12 +200,12 @@
 /* 모바일 */
 @media (max-width: 640px) {
   .heroTitle {
-    font-size: 32px;
+    font-size: 40px;
     letter-spacing: 3px;
   }
 
   .heroSubtitle {
-    font-size: 15px;
+    font-size: 20px;
   }
 
   .categoryGrid {
@@ -215,19 +215,19 @@
 
   .categoryCard {
     padding: var(--spacing-md);
-    min-height: 120px;
+    min-height: 140px;
   }
 
   .categoryIcon {
-    font-size: 28px;
+    font-size: 40px;
   }
 
   .categoryTitle {
-    font-size: 14px;
+    font-size: 18px;
   }
 
   .categoryDesc {
-    font-size: 11px;
+    font-size: 15px;
   }
 
   .tarotBanner {
@@ -235,14 +235,14 @@
   }
 
   .tarotIcon {
-    font-size: 32px;
+    font-size: 44px;
   }
 
   .tarotTitle {
-    font-size: 18px;
+    font-size: 24px;
   }
 
   .tarotDesc {
-    font-size: 13px;
+    font-size: 17px;
   }
 }

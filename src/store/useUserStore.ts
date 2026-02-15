@@ -94,7 +94,9 @@ export const useUserStore = create<UserState>()(
         try {
           set({ loading: true, error: null });
 
+          console.log('🔵 회원가입 시도:', email);
           const response = await auth.signUpWithEmail(email, password);
+          console.log('🟢 회원가입 응답:', response);
 
           set({ user: response.user || null, loading: false });
 
@@ -104,7 +106,12 @@ export const useUserStore = create<UserState>()(
             useCreditStore.getState().fetchBalance();
           }, 1000);
         } catch (error: any) {
-          console.error('Signup error:', error);
+          console.error('🔴 Signup error:', error);
+          console.error('🔴 Error details:', {
+            message: error.message,
+            status: error.status,
+            statusText: error.statusText
+          });
           set({
             error: error.message === 'User already registered'
               ? '이미 가입된 이메일입니다'

@@ -36,7 +36,8 @@ export default {
         border: '#D4C5B9',
       },
       fontFamily: {
-        sans: ['Pretendard Variable', '-apple-system', 'sans-serif'],
+        sans: ['Gowun Batang', 'Noto Sans KR', '-apple-system', 'sans-serif'],
+        serif: ['Gowun Batang', 'Noto Serif KR', 'serif'],
       },
       boxShadow: {
         'hanji': '0 4px 12px rgba(139, 69, 19, 0.12)',
