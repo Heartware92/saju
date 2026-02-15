@@ -178,18 +178,6 @@ const GYEOKGUK_DEFINITIONS: GyeokgukDefinition[] = [
 // ============================================
 
 /**
- * 월지 지장간의 십성을 구합니다
- */
-function _getMonthHiddenStemsSipseong(dayGan: string, monthBranch: string): SipseongType[] {
-  const hiddenStems = BRANCH_HIDDEN_STEMS[monthBranch] || [];
-  const tenGodMap = TEN_GODS_MAP[dayGan];
-
-  if (!tenGodMap) return [];
-
-  return hiddenStems.map(stem => tenGodMap[stem] as SipseongType);
-}
-
-/**
  * 월지 정기(본기)의 십성을 구합니다
  */
 function getMonthMainStemSipseong(dayGan: string, monthBranch: string): SipseongType | null {
@@ -200,26 +188,6 @@ function getMonthMainStemSipseong(dayGan: string, monthBranch: string): Sipseong
   if (!tenGodMap) return null;
 
   return tenGodMap[mainStem] as SipseongType;
-}
-
-/**
- * 천간에 특정 십성이 투출했는지 확인합니다
- */
-function _isSipseongInHeavenlyStems(
-  dayGan: string,
-  saju: SajuResult,
-  targetSipseong: SipseongType
-): boolean {
-  const tenGodMap = TEN_GODS_MAP[dayGan];
-  if (!tenGodMap) return false;
-
-  const stems = [
-    saju.pillars.year.gan,
-    saju.pillars.month.gan,
-    saju.pillars.hour.gan
-  ];
-
-  return stems.some(stem => tenGodMap[stem] === targetSipseong);
 }
 
 /**
