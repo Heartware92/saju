@@ -60,9 +60,9 @@ export const MyPage: React.FC = () => {
     navigate('/');
   };
 
-  const tabs: { id: TabType; label: string; icon: string }[] = [
+  const tabs: { id: TabType; label: string; icon: string | JSX.Element }[] = [
     { id: 'profile', label: '프로필', icon: '👤' },
-    { id: 'credits', label: '엽전 관리', icon: '🪙' },
+    { id: 'credits', label: '엽전 관리', icon: <img src="/coin.png" alt="" style={{ width: 20, height: 20 }} /> },
     { id: 'records', label: '분석 기록', icon: '📜' },
     { id: 'orders', label: '구매 내역', icon: '🛒' }
   ];
@@ -92,7 +92,7 @@ export const MyPage: React.FC = () => {
                 }
               `}
             >
-              <span className="text-lg">{tab.icon}</span>
+              <span className="text-lg">{typeof tab.icon === 'string' ? tab.icon : tab.icon}</span>
               <span className="font-medium">{tab.label}</span>
             </button>
           ))}
@@ -168,7 +168,7 @@ const CreditsTab: React.FC<{
         </div>
 
         <div className="text-center py-8">
-          <div className="text-6xl mb-4">🪙</div>
+          <div className="mb-4"><img src="/coin.png" alt="엽전" style={{ width: 64, height: 64, margin: '0 auto' }} /></div>
           <div className="text-4xl font-bold text-accent mb-2">{balance}</div>
           <div className="text-text-secondary">보유 엽전</div>
         </div>
@@ -194,7 +194,7 @@ const CreditsTab: React.FC<{
                 </div>
                 <div className="text-right">
                   <div className={`font-bold ${tx.amount > 0 ? 'text-accent' : 'text-fire'}`}>
-                    {tx.amount > 0 ? '+' : ''}{tx.amount} 🪙
+                    {tx.amount > 0 ? '+' : ''}{tx.amount} 엽전
                   </div>
                   <div className="text-sm text-text-secondary">잔액: {tx.balance_after}</div>
                 </div>
@@ -240,7 +240,7 @@ const RecordsTab: React.FC<{ records: SajuRecord[]; loading: boolean }> = ({ rec
                     {record.is_detailed ? '상세 해석' : '기본 해석'}
                   </div>
                   <div className="text-xs text-text-secondary">
-                    🪙 {record.credit_used}
+                    {record.credit_used} 엽전
                   </div>
                 </div>
               </div>
@@ -311,7 +311,7 @@ const OrdersTab: React.FC<{ orders: Order[]; loading: boolean }> = ({ orders, lo
                 </div>
                 <div className="font-bold text-text">
                   {order.amount.toLocaleString()}원
-                  <span className="text-accent ml-2">🪙 +{order.credit_amount}</span>
+                  <span className="text-accent ml-2">+{order.credit_amount} 엽전</span>
                 </div>
               </div>
             </div>

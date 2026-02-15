@@ -87,7 +87,7 @@ export const CreditRequired: React.FC<CreditRequiredProps> = ({
 }) => {
   return (
     <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-accent/10 border border-accent/30 rounded-full">
-      <span className="text-lg">🪙</span>
+      <img src="/coin.png" alt="엽전" style={{ width: 20, height: 20 }} />
       <span className="font-bold text-accent">{amount} 엽전</span>
       {description && (
         <span className="text-sm text-text-secondary">· {description}</span>

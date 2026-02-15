@@ -157,7 +157,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
           <div className="flex items-center justify-between">
             <span className="text-text-secondary">현재 보유 엽전</span>
             <div className="flex items-center gap-2">
-              <span className="text-2xl">🪙</span>
+              <img src="/coin.png" alt="엽전" style={{ width: 24, height: 24 }} />
               <span className={`text-xl font-bold ${hasEnoughCredit ? 'text-accent' : 'text-fire'}`}>
                 {balance}
               </span>
@@ -220,7 +220,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
             onClick={handleUnlock}
             loading={loading}
           >
-            {hasEnoughCredit ? `🪙 ${config.cost} 엽전 사용하기` : '엽전 충전하러 가기'}
+            {hasEnoughCredit ? `${config.cost} 엽전 사용하기` : '엽전 충전하러 가기'}
           </Button>
         </div>
 
