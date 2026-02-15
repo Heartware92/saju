@@ -10,10 +10,8 @@
 import type { SajuResult } from '../utils/sajuCalculator';
 import type { GyeokgukResult, SipseongType, GanType, JiType } from './types';
 import {
-  STEM_ELEMENT,
   BRANCH_HIDDEN_STEMS,
-  TEN_GODS_MAP,
-  EARTHLY_BRANCHES
+  TEN_GODS_MAP
 } from '../utils/sajuCalculator';
 
 // ============================================
@@ -182,7 +180,7 @@ const GYEOKGUK_DEFINITIONS: GyeokgukDefinition[] = [
 /**
  * 월지 지장간의 십성을 구합니다
  */
-function getMonthHiddenStemsSipseong(dayGan: string, monthBranch: string): SipseongType[] {
+function _getMonthHiddenStemsSipseong(dayGan: string, monthBranch: string): SipseongType[] {
   const hiddenStems = BRANCH_HIDDEN_STEMS[monthBranch] || [];
   const tenGodMap = TEN_GODS_MAP[dayGan];
 
@@ -207,7 +205,7 @@ function getMonthMainStemSipseong(dayGan: string, monthBranch: string): Sipseong
 /**
  * 천간에 특정 십성이 투출했는지 확인합니다
  */
-function isSipseongInHeavenlyStems(
+function _isSipseongInHeavenlyStems(
   dayGan: string,
   saju: SajuResult,
   targetSipseong: SipseongType

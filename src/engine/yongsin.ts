@@ -9,7 +9,7 @@
  */
 
 import type { SajuResult } from '../utils/sajuCalculator';
-import type { OhangType, YongsinAnalysis, YongsinResult, YongsinMethod, JiType } from './types';
+import type { OhangType, YongsinAnalysis, YongsinResult, JiType } from './types';
 import { STEM_ELEMENT, BRANCH_ELEMENT } from '../utils/sajuCalculator';
 
 // ============================================
