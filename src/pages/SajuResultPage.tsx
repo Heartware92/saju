@@ -18,6 +18,7 @@ import { calculateSaju, SajuResult } from '../utils/sajuCalculator';
 import { getCorrectedTimeForSaju } from '../utils/timeCorrection';
 import { getBasicInterpretation, getDetailedInterpretation } from '../services/fortuneService';
 import { PaywallModal, LockedCard } from '../features/saju/components/PaywallModal';
+import { useCreditStore } from '../store/useCreditStore';
 import styles from './SajuResultPage.module.css';
 
 type TabType = 'wonguk' | 'daewoon' | 'analysis';
@@ -48,6 +49,14 @@ export default function SajuResultPage() {
 
   // Paywall 모달
   const [showPaywall, setShowPaywall] = useState(false);
+
+  // 크레딧 스토어
+  const { fetchBalance } = useCreditStore();
+
+  // 크레딧 잔액 로드
+  useEffect(() => {
+    fetchBalance();
+  }, []);
 
   // 사주 계산
   useEffect(() => {
