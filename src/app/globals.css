@@ -1,26 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Primary - 조선 전통색 */
+  --primary: #8B4513;
+  --primary-light: #A0522D;
+  --primary-dark: #654321;
+
+  /* Secondary - 한지/엽전 */
+  --secondary: #F5E6D3;
+  --accent: #D4A574;
+  --accent-dark: #B8860B;
+
+  /* 오행 색상 */
+  --wood: #2D8659;
+  --fire: #E63946;
+  --earth: #F4A261;
+  --metal: #CBD5E1;
+  --water: #264653;
+
+  /* Neutral */
+  --background: #FBF8F3;
+  --foreground: #2D2D2D;
+  --text-secondary: #6B6B6B;
+  --border: #D4C5B9;
 }
 
 @theme inline {
+  /* Colors */
+  --color-primary: var(--primary);
+  --color-primary-light: var(--primary-light);
+  --color-primary-dark: var(--primary-dark);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-accent-dark: var(--accent-dark);
+
+  /* 오행 */
+  --color-wood: var(--wood);
+  --color-fire: var(--fire);
+  --color-earth: var(--earth);
+  --color-metal: var(--metal);
+  --color-water: var(--water);
+
+  /* Neutral */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-text-secondary: var(--text-secondary);
+  --color-border: var(--border);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Fonts */
+  --font-sans: 'Noto Sans KR', -apple-system, sans-serif;
+  --font-serif: 'Gowun Batang', 'Noto Serif KR', serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Gowun Batang', 'Noto Sans KR', -apple-system, sans-serif;
 }
+
+/* 한지 질감 스타일 */
+.hanji-bg {
+  background: linear-gradient(to bottom, #FFFBF5 0%, #F5E6D3 100%);
+}
+
+.hanji-shadow {
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.12);
+}
+
+.hanji-shadow-lg {
+  box-shadow: 0 8px 24px rgba(139, 69, 19, 0.16);
+}
+
+/* 오행 뱃지 */
+.badge-wood { background-color: var(--wood); color: white; }
+.badge-fire { background-color: var(--fire); color: white; }
+.badge-earth { background-color: var(--earth); color: white; }
+.badge-metal { background-color: var(--metal); color: #333; }
+.badge-water { background-color: var(--water); color: white; }
