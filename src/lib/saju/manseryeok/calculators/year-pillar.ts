@@ -13,11 +13,12 @@ import { getSajuYearMonth } from '@/lib/data/jeolip';
 /**
  * 연주 계산
  * @param dateString YYYY-MM-DD 형식
+ * @param timeString HH:mm 형식 (절입일 당일 정확 판단용)
  * @returns 연주 (천간+지지)
  */
-export function calculateYearPillar(dateString: string): Pillar {
-  // 사주력 연도 계산 (입춘 기준)
-  const { year: sajuYear } = getSajuYearMonth(dateString);
+export function calculateYearPillar(dateString: string, timeString?: string): Pillar {
+  // 사주력 연도 계산 (입춘 기준, 시간 포함)
+  const { year: sajuYear } = getSajuYearMonth(dateString, timeString);
 
   // 60갑자 번호 계산
   // 1900년 = 경자년 = 37번

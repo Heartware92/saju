@@ -1,6 +1,4 @@
-/**
- * 입력 폼 컴포넌트
- */
+'use client';
 
 import React, { forwardRef } from 'react';
 
@@ -13,12 +11,10 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, helperText, fullWidth = false, className = '', ...props }, ref) => {
-    const widthStyle = fullWidth ? 'w-full' : '';
-
     return (
-      <div className={`${widthStyle}`}>
+      <div className={fullWidth ? 'w-full' : ''}>
         {label && (
-          <label className="block text-sm font-bold text-primary mb-2">
+          <label className="block text-sm font-semibold text-text-secondary mb-2 tracking-wide uppercase">
             {label}
             {props.required && <span className="text-fire ml-1">*</span>}
           </label>
@@ -27,42 +23,27 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           className={`
-            w-full
-            px-4 py-3
-            bg-white
-            border-2 rounded-lg
-            text-text font-medium
-            placeholder:text-text-secondary/60 placeholder:font-normal
-            transition-all
-            duration-200
-            focus:outline-none
-            focus:ring-2
-            disabled:opacity-50
-            disabled:cursor-not-allowed
-            ${error
-              ? 'border-fire focus:ring-fire/30'
-              : 'border-primary/20 focus:border-primary focus:ring-primary/30 hover:border-primary/40'
-            }
+            w-full px-4 py-3
+            bg-space-mid
+            border border-[var(--border-default)] rounded-xl
+            text-text-primary font-medium
+            placeholder:text-text-tertiary
+            transition-all duration-200
+            focus:outline-none focus:border-cta focus:shadow-[0_0_0_3px_rgba(124,92,252,0.25)]
+            hover:border-[var(--border-strong)]
+            disabled:opacity-40 disabled:cursor-not-allowed
+            ${error ? 'border-error focus:shadow-[0_0_0_3px_rgba(244,63,94,0.25)]' : ''}
             ${className}
           `}
-          style={{
-            boxShadow: error
-              ? '0 2px 4px rgba(230, 57, 70, 0.1)'
-              : '0 2px 4px rgba(139, 69, 19, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8)'
-          }}
           {...props}
         />
 
         {error && (
-          <p className="mt-1.5 text-sm text-fire font-medium" style={{ wordBreak: 'keep-all' }}>
-            {error}
-          </p>
+          <p className="mt-1.5 text-sm text-error font-medium">{error}</p>
         )}
 
         {helperText && !error && (
-          <p className="mt-1.5 text-xs text-text-secondary font-medium" style={{ wordBreak: 'keep-all' }}>
-            {helperText}
-          </p>
+          <p className="mt-1.5 text-xs text-text-tertiary">{helperText}</p>
         )}
       </div>
     );
@@ -71,9 +52,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
 Input.displayName = 'Input';
 
-/**
- * Textarea 컴포넌트
- */
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
@@ -83,12 +61,10 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ label, error, helperText, fullWidth = false, className = '', ...props }, ref) => {
-    const widthStyle = fullWidth ? 'w-full' : '';
-
     return (
-      <div className={`${widthStyle}`}>
+      <div className={fullWidth ? 'w-full' : ''}>
         {label && (
-          <label className="block text-sm font-medium text-text mb-2">
+          <label className="block text-sm font-semibold text-text-secondary mb-2 tracking-wide uppercase">
             {label}
             {props.required && <span className="text-fire ml-1">*</span>}
           </label>
@@ -97,34 +73,28 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         <textarea
           ref={ref}
           className={`
-            w-full
-            px-4 py-2.5
-            bg-white
-            border rounded-lg
-            text-text
-            placeholder:text-text-secondary/50
-            transition-all
-            duration-200
-            focus:outline-none
-            focus:ring-2
-            disabled:opacity-50
-            disabled:cursor-not-allowed
+            w-full px-4 py-3
+            bg-space-mid
+            border border-[var(--border-default)] rounded-xl
+            text-text-primary
+            placeholder:text-text-tertiary
+            transition-all duration-200
+            focus:outline-none focus:border-cta focus:shadow-[0_0_0_3px_rgba(124,92,252,0.25)]
+            hover:border-[var(--border-strong)]
+            disabled:opacity-40 disabled:cursor-not-allowed
             resize-none
-            ${error
-              ? 'border-fire focus:ring-fire/30'
-              : 'border-border focus:border-primary focus:ring-primary/30'
-            }
+            ${error ? 'border-error focus:shadow-[0_0_0_3px_rgba(244,63,94,0.25)]' : ''}
             ${className}
           `}
           {...props}
         />
 
         {error && (
-          <p className="mt-1.5 text-sm text-fire">{error}</p>
+          <p className="mt-1.5 text-sm text-error font-medium">{error}</p>
         )}
 
         {helperText && !error && (
-          <p className="mt-1.5 text-sm text-text-secondary">{helperText}</p>
+          <p className="mt-1.5 text-xs text-text-tertiary">{helperText}</p>
         )}
       </div>
     );

@@ -14,12 +14,12 @@ import { useCreditStore } from '@/store/useCreditStore';
 import { useUserStore } from '@/store/useUserStore';
 
 export type FortuneType =
-  | 'detailed'        // 상세 해석 (2엽전)
-  | 'today'           // 오늘의 운세 (1엽전)
-  | 'love'            // 애정운 (2엽전)
-  | 'wealth'          // 재물운 (2엽전)
-  | 'tarot'           // 타로 (1엽전)
-  | 'hybrid';         // 하이브리드 (3엽전)
+  | 'detailed'        // 상세 해석 (☀️2)
+  | 'today'           // 오늘의 운세 (🌙1)
+  | 'love'            // 애정운 (☀️2)
+  | 'wealth'          // 재물운 (☀️2)
+  | 'tarot'           // 타로 (🌙1)
+  | 'hybrid';         // 하이브리드 (☀️3)
 
 interface PaywallModalProps {
   isOpen: boolean;
@@ -111,12 +111,12 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   type
 }) => {
   const router = useRouter();
-  const { balance, fetchBalance } = useCreditStore();
+  const { sunBalance, fetchBalance } = useCreditStore();
   const { user } = useUserStore();
   const [loading, setLoading] = React.useState(false);
 
   const config = FORTUNE_CONFIG[type];
-  const hasEnoughCredit = balance >= config.cost;
+  const hasEnoughCredit = sunBalance >= config.cost;
   const isLoggedIn = !!user;
 
   // 모달 열릴 때 잔액 새로고침
@@ -130,8 +130,8 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
 
   // 디버깅 로그
   useEffect(() => {
-    console.log('[PaywallModal] 현재 잔액:', balance, '필요:', config.cost, '충분:', hasEnoughCredit);
-  }, [balance, config.cost, hasEnoughCredit]);
+    console.log('[PaywallModal] 현재 해 잔액:', sunBalance, '필요:', config.cost, '충분:', hasEnoughCredit);
+  }, [sunBalance, config.cost, hasEnoughCredit]);
 
   const handleUnlock = async () => {
     console.log('[PaywallModal] 해제 버튼 클릭됨');
@@ -181,17 +181,17 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
 
         {/* 필요 크레딧 */}
         <div className="flex justify-center">
-          <CreditRequired amount={config.cost} description="필요" />
+          <CreditRequired amount={config.cost} creditType="sun" description="필요" />
         </div>
 
         {/* 현재 잔액 */}
-        <div className="card-hanji p-4 rounded-lg">
+        <div className="rounded-lg bg-space-elevated/40 border border-[var(--border-subtle)] p-4">
           <div className="flex items-center justify-between">
-            <span className="text-text-secondary">현재 보유 엽전</span>
-            <div className="flex items-center gap-2">
-              <img src="/coin.png" alt="엽전" style={{ width: 24, height: 24 }} />
-              <span className={`text-xl font-bold ${hasEnoughCredit ? 'text-accent' : 'text-fire'}`}>
-                {balance}
+            <span className="text-text-secondary">현재 보유</span>
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1">
+                <span>☀️</span>
+                <span className={`text-xl font-bold ${hasEnoughCredit ? 'text-sun-core' : 'text-fire'}`}>{sunBalance}</span>
               </span>
             </div>
           </div>
@@ -243,9 +243,9 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
             <div className="flex items-start gap-3">
               <span className="text-2xl">⚠️</span>
               <div>
-                <p className="font-bold text-fire mb-1">엽전이 부족합니다</p>
+                <p className="font-bold text-fire mb-1">해(☀️) 크레딧이 부족합니다</p>
                 <p className="text-sm text-text-secondary">
-                  {config.cost - balance} 엽전이 더 필요합니다. 엽전을 충전하고 상세 해석을 받아보세요.
+                  {config.cost - sunBalance}개가 더 필요합니다. 충전하고 상세 해석을 받아보세요.
                 </p>
               </div>
             </div>
@@ -262,7 +262,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
             닫기
           </Button>
           <Button
-            variant={isLoggedIn && hasEnoughCredit ? 'accent' : 'primary'}
+            variant={isLoggedIn && hasEnoughCredit ? 'sun' : 'primary'}
             fullWidth
             onClick={handleUnlock}
             loading={loading}
@@ -270,18 +270,18 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
             {!isLoggedIn
               ? '로그인하기'
               : hasEnoughCredit
-                ? `${config.cost} 엽전 사용하기`
-                : '엽전 충전하러 가기'}
+                ? `☀️ ${config.cost} 해 사용하기`
+                : '크레딧 충전하러 가기'}
           </Button>
         </div>
 
         {/* 안내 문구 */}
         <p className="text-xs text-text-secondary text-center">
           {!isLoggedIn
-            ? '회원가입 시 보너스 엽전을 드립니다!'
+            ? '회원가입 시 보너스 달(🌙) 크레딧을 드립니다!'
             : hasEnoughCredit
-              ? '엽전을 사용하면 즉시 상세 해석을 받아볼 수 있습니다.'
-              : '첫 구매 시 보너스 엽전을 드립니다!'
+              ? '크레딧을 사용하면 즉시 상세 해석을 받아볼 수 있습니다.'
+              : '첫 구매 시 보너스 크레딧을 드립니다!'
           }
         </p>
       </div>
@@ -320,9 +320,9 @@ export const LockedCard: React.FC<LockedCardProps> = ({ type, onClick }) => {
         <div>
           <h3 className="font-bold text-primary mb-2">{config.title}</h3>
           <p className="text-sm text-text-secondary mb-4">{config.description}</p>
-          <CreditRequired amount={config.cost} />
+          <CreditRequired amount={config.cost} creditType="sun" />
         </div>
-        <Button variant="accent" fullWidth onClick={handleClick}>
+        <Button variant="sun" fullWidth onClick={handleClick}>
           잠금 해제하기
         </Button>
       </div>

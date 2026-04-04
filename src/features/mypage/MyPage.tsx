@@ -23,7 +23,7 @@ type TabType = 'profile' | 'credits' | 'records' | 'orders';
 export const MyPage: React.FC = () => {
   const router = useRouter();
   const { user, logout } = useUserStore();
-  const { balance, transactions, fetchTransactions } = useCreditStore();
+  const { sunBalance, moonBalance, transactions, fetchTransactions } = useCreditStore();
 
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -64,7 +64,7 @@ export const MyPage: React.FC = () => {
 
   const tabs: { id: TabType; label: string; icon: string | React.ReactNode }[] = [
     { id: 'profile', label: '프로필', icon: '👤' },
-    { id: 'credits', label: '엽전 관리', icon: <img src="/coin.png" alt="" style={{ width: 20, height: 20 }} /> },
+    { id: 'credits', label: '크레딧 관리', icon: '☀️' },
     { id: 'records', label: '분석 기록', icon: '📜' },
     { id: 'orders', label: '구매 내역', icon: '🛒' }
   ];
@@ -103,7 +103,7 @@ export const MyPage: React.FC = () => {
         {/* 탭 콘텐츠 */}
         <div className="space-y-6">
           {activeTab === 'profile' && <ProfileTab user={user} onLogout={handleLogout} />}
-          {activeTab === 'credits' && <CreditsTab balance={balance} transactions={transactions} loading={loading} />}
+          {activeTab === 'credits' && <CreditsTab sunBalance={sunBalance} moonBalance={moonBalance} transactions={transactions} loading={loading} />}
           {activeTab === 'records' && <RecordsTab records={sajuRecords} loading={loading} />}
           {activeTab === 'orders' && <OrdersTab orders={orders} loading={loading} />}
         </div>
@@ -134,7 +134,7 @@ const ProfileTab: React.FC<{ user: any; onLogout: () => void }> = ({ user, onLog
         </div>
 
         <div className="flex items-center justify-between py-3">
-          <span className="text-text-secondary">보유 엽전</span>
+          <span className="text-text-secondary">보유 크레딧</span>
           <CreditBalance showAddButton={false} size="sm" />
         </div>
       </div>
@@ -149,13 +149,14 @@ const ProfileTab: React.FC<{ user: any; onLogout: () => void }> = ({ user, onLog
 };
 
 /**
- * 엽전 관리 탭
+ * 크레딧 관리 탭
  */
 const CreditsTab: React.FC<{
-  balance: number;
+  sunBalance: number;
+  moonBalance: number;
   transactions: CreditTransaction[];
   loading: boolean;
-}> = ({ balance, transactions, loading }) => {
+}> = ({ sunBalance, moonBalance, transactions, loading }) => {
   const router = useRouter();
 
   return (
@@ -163,16 +164,23 @@ const CreditsTab: React.FC<{
       {/* 잔액 카드 */}
       <Card>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-primary">엽전 잔액</h2>
-          <Button variant="accent" onClick={() => router.push('/credit')}>
+          <h2 className="text-xl font-bold text-primary">크레딧 잔액</h2>
+          <Button variant="sun" onClick={() => router.push('/credit')}>
             충전하기
           </Button>
         </div>
 
-        <div className="text-center py-8">
-          <div className="mb-4"><img src="/coin.png" alt="엽전" style={{ width: 64, height: 64, margin: '0 auto' }} /></div>
-          <div className="text-4xl font-bold text-accent mb-2">{balance}</div>
-          <div className="text-text-secondary">보유 엽전</div>
+        <div className="flex justify-center gap-8 py-8">
+          <div className="text-center">
+            <div className="text-4xl mb-2">☀️</div>
+            <div className="text-4xl font-bold text-accent mb-2">{sunBalance}</div>
+            <div className="text-text-secondary">해 크레딧</div>
+          </div>
+          <div className="text-center">
+            <div className="text-4xl mb-2">🌙</div>
+            <div className="text-4xl font-bold text-accent mb-2">{moonBalance}</div>
+            <div className="text-text-secondary">달 크레딧</div>
+          </div>
         </div>
       </Card>
 
@@ -196,7 +204,7 @@ const CreditsTab: React.FC<{
                 </div>
                 <div className="text-right">
                   <div className={`font-bold ${tx.amount > 0 ? 'text-accent' : 'text-fire'}`}>
-                    {tx.amount > 0 ? '+' : ''}{tx.amount} 엽전
+                    {tx.amount > 0 ? '+' : ''}{tx.amount} 크레딧
                   </div>
                   <div className="text-sm text-text-secondary">잔액: {tx.balance_after}</div>
                 </div>
@@ -242,7 +250,7 @@ const RecordsTab: React.FC<{ records: SajuRecord[]; loading: boolean }> = ({ rec
                     {record.is_detailed ? '상세 해석' : '기본 해석'}
                   </div>
                   <div className="text-xs text-text-secondary">
-                    {record.credit_used} 엽전
+                    {record.credit_used} 크레딧
                   </div>
                 </div>
               </div>
@@ -313,7 +321,8 @@ const OrdersTab: React.FC<{ orders: Order[]; loading: boolean }> = ({ orders, lo
                 </div>
                 <div className="font-bold text-text">
                   {order.amount.toLocaleString()}원
-                  <span className="text-accent ml-2">+{order.credit_amount} 엽전</span>
+                  {order.sun_credit_amount > 0 && <span className="text-sun-core ml-2">+{order.sun_credit_amount} ☀️</span>}
+                  {order.moon_credit_amount > 0 && <span className="text-moon-core ml-2">+{order.moon_credit_amount} 🌙</span>}
                 </div>
               </div>
             </div>

@@ -15,12 +15,13 @@ import { getGapjaByNumber } from '@/lib/data/gapja';
  */
 export function calculateDayPillar(dateString: string): Pillar {
   // 기준일: 2000-01-01 = 무오일 (55번)
-  const baseDate = new Date('2000-01-01T00:00:00');
-  const targetDate = new Date(dateString + 'T00:00:00');
+  // UTC로 통일하여 역사적 시간대(1954-1960 UTC+8:30 등) 오차 방지
+  const baseDate = new Date('2000-01-01T00:00:00Z');
+  const targetDate = new Date(dateString + 'T00:00:00Z');
 
-  // 경과 일수 계산
+  // 경과 일수 계산 (Math.round로 DST/시간대 부동소수점 오차 방지)
   const diffTime = targetDate.getTime() - baseDate.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
   // 60갑자 번호 계산
   const baseNumber = 55; // 무오
@@ -43,11 +44,11 @@ export function calculateDayPillar(dateString: string): Pillar {
  * 특정 날짜의 60갑자 번호 계산
  */
 export function getDayGapjaNumber(dateString: string): number {
-  const baseDate = new Date('2000-01-01T00:00:00');
-  const targetDate = new Date(dateString + 'T00:00:00');
+  const baseDate = new Date('2000-01-01T00:00:00Z');
+  const targetDate = new Date(dateString + 'T00:00:00Z');
 
   const diffTime = targetDate.getTime() - baseDate.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
   const baseNumber = 55; // 무오
   let gapjaNumber = ((baseNumber - 1 + diffDays) % 60) + 1;
@@ -63,9 +64,9 @@ export function getDayGapjaNumber(dateString: string): number {
  * 두 날짜 사이의 일수 차이 계산
  */
 export function getDaysDifference(date1: string, date2: string): number {
-  const d1 = new Date(date1 + 'T00:00:00');
-  const d2 = new Date(date2 + 'T00:00:00');
+  const d1 = new Date(date1 + 'T00:00:00Z');
+  const d2 = new Date(date2 + 'T00:00:00Z');
 
   const diffTime = d2.getTime() - d1.getTime();
-  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  return Math.round(diffTime / (1000 * 60 * 60 * 24));
 }

@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { CITY_COORDINATES } from '../utils/timeCorrection'
+import { useProfileStore } from '../store/useProfileStore'
+import { useUserStore } from '../store/useUserStore'
+import type { BirthProfile } from '../types/credit'
 import styles from './SajuInputPage.module.css'
 
 type Gender = 'male' | 'female'
@@ -28,6 +31,8 @@ export default function SajuInputPage() {
   const category = SAJU_CATEGORIES[categoryId] || SAJU_CATEGORIES['traditional']
 
   const currentYear = new Date().getFullYear()
+  const { user } = useUserStore()
+  const { profiles, fetchProfiles, addProfile, updateProfile, deleteProfile } = useProfileStore()
 
   const [gender, setGender] = useState<Gender>('male')
   const [calendarType, setCalendarType] = useState<CalendarType>('solar')
@@ -40,6 +45,90 @@ export default function SajuInputPage() {
   const [birthPlace, setBirthPlace] = useState('seoul')
   const [useTrueSolarTime, setUseTrueSolarTime] = useState(true)
   const [targetDate, setTargetDate] = useState('')
+
+  // 프로필 관련
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [editingProfile, setEditingProfile] = useState<BirthProfile | null>(null)
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    memo: '',
+  })
+
+  useEffect(() => {
+    if (user) {
+      fetchProfiles()
+    }
+  }, [user])
+
+  // 프로필 선택 시 폼에 반영
+  const selectProfile = (profile: BirthProfile) => {
+    setSelectedProfileId(profile.id)
+    const [y, m, d] = profile.birth_date.split('-').map(Number)
+    setYear(y)
+    setMonth(m)
+    setDay(d)
+    setGender(profile.gender)
+    setCalendarType(profile.calendar_type)
+    setBirthPlace(profile.birth_place || 'seoul')
+
+    if (profile.birth_time) {
+      const [h, min] = profile.birth_time.split(':').map(Number)
+      setHour(h)
+      setMinute(min)
+      setUnknownTime(false)
+    } else {
+      setUnknownTime(true)
+    }
+  }
+
+  // 프로필 저장
+  const handleSaveProfile = async () => {
+    if (!profileForm.name.trim()) return
+
+    const birthDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    const birthTime = unknownTime ? undefined : `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+
+    if (editingProfile) {
+      await updateProfile(editingProfile.id, {
+        name: profileForm.name.trim(),
+        birth_date: birthDate,
+        birth_time: birthTime,
+        birth_place: birthPlace,
+        gender,
+        calendar_type: calendarType,
+        memo: profileForm.memo || undefined,
+      })
+    } else {
+      const created = await addProfile({
+        name: profileForm.name.trim(),
+        birth_date: birthDate,
+        birth_time: birthTime,
+        birth_place: birthPlace,
+        gender,
+        calendar_type: calendarType,
+        is_primary: profiles.length === 0,
+        memo: profileForm.memo || undefined,
+      })
+      if (created) setSelectedProfileId(created.id)
+    }
+
+    setShowProfileModal(false)
+    setEditingProfile(null)
+    setProfileForm({ name: '', memo: '' })
+  }
+
+  const handleEditProfile = (profile: BirthProfile) => {
+    setEditingProfile(profile)
+    setProfileForm({ name: profile.name, memo: profile.memo || '' })
+    selectProfile(profile)
+    setShowProfileModal(true)
+  }
+
+  const handleDeleteProfile = async (id: string) => {
+    await deleteProfile(id)
+    if (selectedProfileId === id) setSelectedProfileId(null)
+  }
 
   const years = Array.from({ length: 100 }, (_, i) => currentYear - i)
   const months = Array.from({ length: 12 }, (_, i) => i + 1)
@@ -105,6 +194,42 @@ export default function SajuInputPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
+        {/* 저장된 프로필 선택 */}
+        {user && (
+          <div className={styles.profileSection}>
+            <div className={styles.profileLabel}>
+              <span>저장된 프로필</span>
+            </div>
+            <div className={styles.profileList}>
+              {profiles.map((profile) => (
+                <div
+                  key={profile.id}
+                  className={`${styles.profileCard} ${selectedProfileId === profile.id ? styles.selected : ''}`}
+                  onClick={() => selectProfile(profile)}
+                  onDoubleClick={() => handleEditProfile(profile)}
+                  title="더블클릭으로 수정"
+                >
+                  <div className={styles.profileName}>{profile.name}</div>
+                  <div className={styles.profileInfo}>
+                    {profile.birth_date.replace(/-/g, '.')}
+                  </div>
+                </div>
+              ))}
+              <button
+                className={styles.profileNewCard}
+                onClick={() => {
+                  setEditingProfile(null)
+                  setProfileForm({ name: '', memo: '' })
+                  setShowProfileModal(true)
+                }}
+              >
+                <span style={{ fontSize: 20 }}>+</span>
+                <span>추가</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 성별 선택 */}
         <div className={styles.section}>
           <label className={styles.label}>성별</label>
@@ -291,6 +416,73 @@ export default function SajuInputPage() {
           ← 다른 운세 보기
         </button>
       </motion.div>
+
+      {/* 프로필 저장 모달 */}
+      {showProfileModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowProfileModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h2 className={styles.modalTitle}>
+              {editingProfile ? '프로필 수정' : '새 프로필 저장'}
+            </h2>
+
+            <div className={styles.section}>
+              <label className={styles.label}>프로필 이름</label>
+              <input
+                className={styles.profileInput}
+                placeholder="예: 나, 엄마, 친구 민수"
+                value={profileForm.name}
+                onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
+                autoFocus
+              />
+            </div>
+
+            <div className={styles.section}>
+              <label className={styles.label}>메모 (선택)</label>
+              <input
+                className={styles.profileInput}
+                placeholder="메모"
+                value={profileForm.memo}
+                onChange={(e) => setProfileForm(prev => ({ ...prev, memo: e.target.value }))}
+              />
+            </div>
+
+            <p className={styles.hint} style={{ marginBottom: 12 }}>
+              현재 입력된 생년월일/시간/성별/출생지가 프로필로 저장됩니다
+            </p>
+
+            <div className={styles.modalActions}>
+              <button
+                className={styles.modalBtnSecondary}
+                onClick={() => {
+                  setShowProfileModal(false)
+                  setEditingProfile(null)
+                }}
+              >
+                취소
+              </button>
+              {editingProfile && (
+                <button
+                  className={styles.modalBtnDanger}
+                  onClick={() => {
+                    handleDeleteProfile(editingProfile.id)
+                    setShowProfileModal(false)
+                    setEditingProfile(null)
+                  }}
+                >
+                  삭제
+                </button>
+              )}
+              <button
+                className={styles.modalBtnPrimary}
+                onClick={handleSaveProfile}
+                disabled={!profileForm.name.trim()}
+              >
+                {editingProfile ? '수정' : '저장'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

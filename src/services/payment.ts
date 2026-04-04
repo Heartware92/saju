@@ -64,7 +64,8 @@ export const processPayment = async (
       package_id: request.packageId,
       package_name: packageInfo.name,
       amount: request.amount,
-      credit_amount: request.creditAmount,
+      sun_credit_amount: request.creditAmount,
+      moon_credit_amount: 0,
       status: 'pending'
     };
 
@@ -77,7 +78,7 @@ export const processPayment = async (
       storeId: PORTONE_STORE_ID,
       channelKey: PORTONE_CHANNEL_KEY,
       paymentId: paymentId,
-      orderName: `엽전 ${request.creditAmount}개 (${packageInfo.name})`,
+      orderName: `크레딧 ${request.creditAmount}개 (${packageInfo.name})`,
       totalAmount: request.amount,
       currency: 'KRW',
       payMethod: 'CARD',
@@ -115,12 +116,8 @@ export const processPayment = async (
       (response as any)?.method
     );
 
-    // 7. 크레딧 추가
-    await useCreditStore.getState().addCredit(
-      request.creditAmount,
-      request.packageId,
-      order.id
-    );
+    // 7. 크레딧은 서버에서 추가됨 - 잔액만 새로고침
+    await useCreditStore.getState().fetchBalance();
 
     return {
       success: true,

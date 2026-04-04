@@ -1,80 +1,422 @@
-@import url('https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=Pretendard:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
+/* ============================================
+   사주 코스믹 디자인 시스템 (Cosmic Design System)
+   "우주의 기운을 드립니다"
+   ============================================ */
+
 :root {
-  /* Primary - 조선 전통색 */
-  --primary: #8B4513;
-  --primary-light: #A0522D;
-  --primary-dark: #654321;
+  /* === Background (Deep Space) === */
+  --space-void: #06080F;
+  --space-deep: #0B0E1A;
+  --space-mid: #111527;
+  --space-surface: #181D35;
+  --space-elevated: #1F2544;
+  --space-overlay: rgba(6, 8, 15, 0.85);
 
-  /* Secondary - 한지/엽전 */
-  --secondary: #F5E6D3;
-  --accent: #D4A574;
-  --accent-dark: #B8860B;
+  /* === Text (Starlight) === */
+  --text-primary: #EDEEF2;
+  --text-secondary: #9BA1B7;
+  --text-tertiary: #5E6480;
+  --text-inverse: #06080F;
+  --text-hanja: #C8CCE0;
 
-  /* 오행 색상 */
-  --wood: #2D8659;
-  --fire: #E63946;
-  --earth: #F4A261;
-  --metal: #CBD5E1;
-  --water: #264653;
+  /* === Sun (해) - Premium === */
+  --sun-core: #FFD700;
+  --sun-corona: #FFA726;
+  --sun-flare: #FF8F00;
+  --sun-glow: rgba(255, 215, 0, 0.15);
 
-  /* Neutral */
-  --background: #FBF8F3;
-  --foreground: #2D2D2D;
-  --text-secondary: #6B6B6B;
-  --border: #D4C5B9;
+  /* === Moon (달) - Standard === */
+  --moon-core: #E0E7FF;
+  --moon-halo: #A5B4FC;
+  --moon-shadow: #7C8ADB;
+  --moon-glow: rgba(165, 180, 252, 0.12);
+
+  /* === CTA (자미원 紫微垣) === */
+  --cta-primary: #7C5CFC;
+  --cta-primary-hover: #6B4CE0;
+  --cta-primary-active: #5A3DC8;
+  --cta-secondary: #3B82F6;
+  --cta-secondary-hover: #2563EB;
+
+  /* === 오행 성운 (Five Nebulae) === */
+  /* 목(木) - Eagle Nebula */
+  --wood-core: #34D399;
+  --wood-bright: #6EE7B7;
+  --wood-dim: #065F46;
+  --wood-glow: rgba(52, 211, 153, 0.15);
+
+  /* 화(火) - Rosette Nebula */
+  --fire-core: #F43F5E;
+  --fire-bright: #FB7185;
+  --fire-dim: #881337;
+  --fire-glow: rgba(244, 63, 94, 0.15);
+
+  /* 토(土) - Orion Nebula */
+  --earth-core: #F59E0B;
+  --earth-bright: #FCD34D;
+  --earth-dim: #92400E;
+  --earth-glow: rgba(245, 158, 11, 0.15);
+
+  /* 금(金) - Ring Nebula */
+  --metal-core: #CBD5E1;
+  --metal-bright: #E2E8F0;
+  --metal-dim: #64748B;
+  --metal-glow: rgba(203, 213, 225, 0.15);
+
+  /* 수(水) - Horsehead Nebula */
+  --water-core: #3B82F6;
+  --water-bright: #60A5FA;
+  --water-dim: #1E3A5F;
+  --water-glow: rgba(59, 130, 246, 0.15);
+
+  /* === Status === */
+  --status-success: #34D399;
+  --status-warning: #FBBF24;
+  --status-error: #F43F5E;
+  --status-info: #60A5FA;
+
+  /* === Border === */
+  --border-subtle: rgba(155, 161, 183, 0.1);
+  --border-default: rgba(155, 161, 183, 0.2);
+  --border-strong: rgba(155, 161, 183, 0.35);
+  --border-focus: #7C5CFC;
 }
 
 @theme inline {
-  /* Colors */
-  --color-primary: var(--primary);
-  --color-primary-light: var(--primary-light);
-  --color-primary-dark: var(--primary-dark);
-  --color-secondary: var(--secondary);
-  --color-accent: var(--accent);
-  --color-accent-dark: var(--accent-dark);
+  /* Space backgrounds */
+  --color-space-void: var(--space-void);
+  --color-space-deep: var(--space-deep);
+  --color-space-mid: var(--space-mid);
+  --color-space-surface: var(--space-surface);
+  --color-space-elevated: var(--space-elevated);
+
+  /* Text */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-inverse: var(--text-inverse);
+  --color-text-hanja: var(--text-hanja);
+
+  /* Sun */
+  --color-sun-core: var(--sun-core);
+  --color-sun-corona: var(--sun-corona);
+  --color-sun-flare: var(--sun-flare);
+
+  /* Moon */
+  --color-moon-core: var(--moon-core);
+  --color-moon-halo: var(--moon-halo);
+  --color-moon-shadow: var(--moon-shadow);
+
+  /* CTA */
+  --color-cta: var(--cta-primary);
+  --color-cta-hover: var(--cta-primary-hover);
+  --color-cta-active: var(--cta-primary-active);
+  --color-cta-secondary: var(--cta-secondary);
 
   /* 오행 */
-  --color-wood: var(--wood);
-  --color-fire: var(--fire);
-  --color-earth: var(--earth);
-  --color-metal: var(--metal);
-  --color-water: var(--water);
+  --color-wood: var(--wood-core);
+  --color-fire: var(--fire-core);
+  --color-earth: var(--earth-core);
+  --color-metal: var(--metal-core);
+  --color-water: var(--water-core);
 
-  /* Neutral */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-text-secondary: var(--text-secondary);
-  --color-border: var(--border);
+  /* Status */
+  --color-success: var(--status-success);
+  --color-warning: var(--status-warning);
+  --color-error: var(--status-error);
+  --color-info: var(--status-info);
 
   /* Fonts */
-  --font-sans: 'Noto Sans KR', -apple-system, sans-serif;
-  --font-serif: 'Gowun Batang', 'Noto Serif KR', serif;
+  --font-sans: 'Pretendard', -apple-system, 'Noto Sans KR', sans-serif;
+  --font-serif: 'Noto Serif KR', 'Gowun Batang', serif;
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: 'Gowun Batang', 'Noto Sans KR', -apple-system, sans-serif;
+  background: var(--space-deep);
+  color: var(--text-primary);
+  font-family: 'Pretendard', -apple-system, 'Noto Sans KR', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* 한지 질감 스타일 */
-.hanji-bg {
-  background: linear-gradient(to bottom, #FFFBF5 0%, #F5E6D3 100%);
+/* WebView safe area padding */
+@supports (padding: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
-.hanji-shadow {
-  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.12);
+/* ============================================
+   Cosmic Backgrounds
+   ============================================ */
+
+.bg-space {
+  background: radial-gradient(ellipse at 50% 0%, #181D35 0%, #0B0E1A 50%, #06080F 100%);
 }
 
-.hanji-shadow-lg {
-  box-shadow: 0 8px 24px rgba(139, 69, 19, 0.16);
+.bg-milkyway {
+  background: linear-gradient(180deg, #0B0E1A 0%, #1a1040 30%, #0d1f3c 60%, #0B0E1A 100%);
 }
 
-/* 오행 뱃지 */
-.badge-wood { background-color: var(--wood); color: white; }
-.badge-fire { background-color: var(--fire); color: white; }
-.badge-earth { background-color: var(--earth); color: white; }
-.badge-metal { background-color: var(--metal); color: #333; }
-.badge-water { background-color: var(--water); color: white; }
+/* Starfield background */
+.starfield {
+  position: relative;
+  overflow: hidden;
+}
+
+.starfield::before,
+.starfield::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.starfield::before {
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 65%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 50% 10%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 70% 40%, rgba(255,255,255,0.7) 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 75%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 15% 80%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 45% 50%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 60% 85%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 15%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 25% 35%, rgba(255,255,255,0.3) 0%, transparent 100%);
+  animation: twinkle 4s ease-in-out infinite alternate;
+}
+
+.starfield::after {
+  background-image:
+    radial-gradient(1px 1px at 5% 45%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 20% 90%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 40% 30%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 55% 70%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 75% 55%, rgba(255,255,255,0.7) 0%, transparent 100%),
+    radial-gradient(1px 1px at 95% 40%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 35% 15%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 65% 95%, rgba(255,255,255,0.3) 0%, transparent 100%);
+  animation: twinkle 5s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes twinkle {
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* Nebula glow overlay */
+.nebula-glow {
+  position: relative;
+}
+
+.nebula-glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 30% 40%, rgba(124, 92, 252, 0.08) 0%, transparent 60%),
+              radial-gradient(circle at 70% 60%, rgba(59, 130, 246, 0.06) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* ============================================
+   Glass Morphism
+   ============================================ */
+
+.glass {
+  background: rgba(17, 21, 39, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+}
+
+.glass-strong {
+  background: rgba(24, 29, 53, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-default);
+}
+
+.glass-hover {
+  transition: all 0.2s ease;
+}
+
+.glass-hover:hover {
+  background: rgba(31, 37, 68, 0.7);
+  border-color: var(--border-strong);
+}
+
+/* ============================================
+   Glow Effects
+   ============================================ */
+
+.glow-sun {
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3), 0 0 40px rgba(255, 215, 0, 0.1);
+}
+
+.glow-moon {
+  box-shadow: 0 0 15px rgba(165, 180, 252, 0.25), 0 0 30px rgba(165, 180, 252, 0.08);
+}
+
+.glow-cta {
+  box-shadow: 0 4px 15px rgba(124, 92, 252, 0.3);
+}
+
+.glow-cta-lg {
+  box-shadow: 0 6px 25px rgba(124, 92, 252, 0.45);
+}
+
+/* ============================================
+   오행 배지 (Nebula Badges)
+   ============================================ */
+
+.badge-wood {
+  background: var(--wood-glow);
+  color: var(--wood-bright);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.badge-fire {
+  background: var(--fire-glow);
+  color: var(--fire-bright);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.badge-earth {
+  background: var(--earth-glow);
+  color: var(--earth-bright);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-metal {
+  background: var(--metal-glow);
+  color: var(--metal-bright);
+  border: 1px solid rgba(203, 213, 225, 0.3);
+}
+
+.badge-water {
+  background: var(--water-glow);
+  color: var(--water-bright);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* ============================================
+   한자 Typography
+   ============================================ */
+
+.hanja {
+  font-family: 'Noto Serif KR', serif;
+  color: var(--text-hanja);
+}
+
+.hanja-glow {
+  font-family: 'Noto Serif KR', serif;
+  font-weight: 700;
+}
+
+.hanja-wood { color: var(--wood-core); text-shadow: 0 0 8px rgba(52, 211, 153, 0.4); }
+.hanja-fire { color: var(--fire-core); text-shadow: 0 0 8px rgba(244, 63, 94, 0.4); }
+.hanja-earth { color: var(--earth-core); text-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
+.hanja-metal { color: var(--metal-core); text-shadow: 0 0 8px rgba(203, 213, 225, 0.4); }
+.hanja-water { color: var(--water-core); text-shadow: 0 0 8px rgba(59, 130, 246, 0.4); }
+
+/* ============================================
+   Animations
+   ============================================ */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-8px); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+.animate-slideUp { animation: slideUp 0.4s ease-out forwards; }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-orbit { animation: orbit 20s linear infinite; }
+.animate-float { animation: float 3s ease-in-out infinite; }
+
+/* Stagger animations */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+
+/* ============================================
+   Scrollbar
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--space-deep);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--space-elevated);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* ============================================
+   Mobile / WebView Optimizations
+   ============================================ */
+
+/* Prevent overscroll bounce coloring */
+html {
+  background: var(--space-void);
+  overscroll-behavior: none;
+}
+
+/* Touch action for better WebView scrolling */
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Bottom safe area for mobile tab bar */
+.pb-safe {
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+}

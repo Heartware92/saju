@@ -1,10 +1,14 @@
 /**
  * 크레딧 시스템 관련 타입 정의
+ * 해(☀️)/달(🌙) 이중 크레딧 시스템
  */
+
+export type CreditType = 'sun' | 'moon';
 
 export interface CreditTransaction {
   id: string;
   user_id: string;
+  credit_type: CreditType;
   type: 'purchase' | 'consume' | 'bonus' | 'refund';
   amount: number;
   balance_after: number;
@@ -18,8 +22,9 @@ export interface Order {
   user_id: string;
   package_id: string;
   package_name: string;
-  amount: number;
-  credit_amount: number;
+  amount: number;              // 결제 금액 (원)
+  sun_credit_amount: number;   // 지급할 해 크레딧
+  moon_credit_amount: number;  // 지급할 달 크레딧
   status: 'pending' | 'completed' | 'failed' | 'refunded';
   payment_method?: string;
   payment_key?: string;
@@ -30,9 +35,12 @@ export interface Order {
 
 export interface UserCredit {
   user_id: string;
-  balance: number;
-  total_purchased: number;
-  total_consumed: number;
+  sun_balance: number;
+  moon_balance: number;
+  total_sun_purchased: number;
+  total_moon_purchased: number;
+  total_sun_consumed: number;
+  total_moon_consumed: number;
   created_at: string;
   updated_at: string;
 }
@@ -41,11 +49,16 @@ export interface SajuRecord {
   id: string;
   user_id: string;
   birth_date: string;
+  birth_time?: string;
   birth_place?: string;
   gender: 'male' | 'female';
-  result_data: any;  // SajuResult JSON
+  calendar_type: 'solar' | 'lunar';
+  category: string;
+  result_data: Record<string, unknown>;
+  engine_result?: Record<string, unknown>;
   interpretation_basic?: string;
   interpretation_detailed?: string;
+  credit_type?: CreditType;
   credit_used: number;
   is_detailed: boolean;
   created_at: string;
@@ -55,9 +68,51 @@ export interface TarotRecord {
   id: string;
   user_id: string;
   spread_type: string;
-  cards: any;  // JSON
+  cards: Record<string, unknown>;
   question?: string;
   interpretation?: string;
+  credit_type?: CreditType;
   credit_used: number;
   created_at: string;
+}
+
+/**
+ * 사주 프로필 (여러 명의 생년월일 저장)
+ */
+export interface BirthProfile {
+  id: string;
+  user_id: string;
+  name: string;
+  birth_date: string;
+  birth_time?: string;
+  birth_place: string;
+  gender: 'male' | 'female';
+  calendar_type: 'solar' | 'lunar';
+  is_primary: boolean;
+  memo?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * 크레딧 패키지 정의
+ */
+export interface CreditPackage {
+  id: string;
+  name: string;
+  price: number;              // 원
+  sun_amount: number;         // 해 크레딧
+  moon_amount: number;        // 달 크레딧
+  description: string;
+  popular?: boolean;
+}
+
+/**
+ * 서비스별 크레딧 소비 비용
+ */
+export interface ServiceCost {
+  service: string;
+  credit_type: CreditType;
+  amount: number;
+  description: string;
 }

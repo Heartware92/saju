@@ -3,13 +3,13 @@
 ## 프로젝트 개요
 - **목적**: 자평명리학 기반 사주팔자 분석 시스템
 - **기술 스택**: Next.js 16 + TypeScript + Tailwind 4 + Supabase
-- **경로**: `/Users/hjw/Desktop/Real_Project/saju-project/saju-frontend`
+- **경로**: `/Users/hjw/Desktop/Real_Project/saju-project/saju-web`
 
 ## 완료된 작업 (Phase 1: 만세력 계산 엔진)
 
 ### 1. 프로젝트 생성 ✅
 ```bash
-npx create-next-app@latest saju-frontend --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"
+npx create-next-app@latest saju-web --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"
 ```
 
 ### 2. 패키지 설치 ✅
@@ -93,7 +93,8 @@ POST /api/manseryeok/calculate
 ## 테스트 케이스
 ```
 입력: 1992-09-14 13:22, 서울, 남자, 양력
-기대 결과: 壬申(연) 己酉(월) 癸巳(일) 己未(시)
+기대 결과: 壬申(연) 己酉(월) 癸巳(일) 戊午(시)
+# 경도 보정 적용: 13:22 - 32분(서울) = 12:50 → 오시(午時)
 ```
 
 ## 디자인 시스템 (기존 saju-web에서 마이그레이션)

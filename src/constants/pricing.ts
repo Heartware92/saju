@@ -1,17 +1,19 @@
 /**
- * 엽전 크레딧 패키지 정의
- * 조선시대 계급 컨셉: 평민 → 중인 → 양반 → 판서
+ * 크레딧 패키지 정의
+ * 행성 세트: 별 → 지구 → 화성 → 수성 → 금성
+ * 크레딧 단위: 해(☀️) = 프리미엄, 달(🌙) = 스탠다드
  */
 
 export interface CreditPackage {
   id: string;
   name: string;
-  rank: string;          // 한자 표기
+  planet: string;
   icon: string;
   price: number;
-  baseCredit: number;
-  bonusCredit: number;
-  totalCredit: number;
+  sunCredit: number;
+  moonCredit: number;
+  bonusSun: number;
+  bonusMoon: number;
   description: string;
   features: string[];
   popular?: boolean;
@@ -20,55 +22,72 @@ export interface CreditPackage {
 
 export const CREDIT_PACKAGES: readonly CreditPackage[] = [
   {
-    id: 'pyeongmin',
-    name: '평민',
-    rank: '庶民',
-    icon: '🪙',
-    price: 990,
-    baseCredit: 1,
-    bonusCredit: 0,
-    totalCredit: 1,
-    description: '기본 사주 풀이 1회',
-    features: ['만세력 확인', '기본 AI 해석']
+    id: 'star',
+    name: '별 세트',
+    planet: '⭐',
+    icon: '⭐',
+    price: 2000,
+    sunCredit: 1,
+    moonCredit: 2,
+    bonusSun: 0,
+    bonusMoon: 0,
+    description: '가볍게 시작하기',
+    features: ['☀️ 해 1개', '🌙 달 2개'],
   },
   {
-    id: 'jungin',
-    name: '중인',
-    rank: '中人',
-    icon: '🪙🪙',
-    price: 2970,
-    baseCredit: 3,
-    bonusCredit: 1,
-    totalCredit: 4,
-    description: '기본 풀이 3회 + 보너스 1엽전',
-    features: ['만세력 확인', '기본 AI 해석', '+1 보너스 엽전'],
-    popular: true
+    id: 'earth',
+    name: '지구 세트',
+    planet: '🌍',
+    icon: '🌍',
+    price: 5000,
+    sunCredit: 3,
+    moonCredit: 5,
+    bonusSun: 0,
+    bonusMoon: 1,
+    description: '기본 분석 여러 번',
+    features: ['☀️ 해 3개', '🌙 달 5+1개', '보너스 달 1개'],
+    popular: true,
   },
   {
-    id: 'yangban',
-    name: '양반',
-    rank: '兩班',
-    icon: '🪙🪙🪙',
-    price: 4900,
-    baseCredit: 5,
-    bonusCredit: 2,
-    totalCredit: 7,
-    description: '기본 풀이 5회 + 보너스 2엽전',
-    features: ['만세력 확인', '기본 AI 해석', '+2 보너스 엽전']
+    id: 'mars',
+    name: '화성 세트',
+    planet: '🔴',
+    icon: '🔴',
+    price: 10000,
+    sunCredit: 7,
+    moonCredit: 10,
+    bonusSun: 1,
+    bonusMoon: 2,
+    description: '깊이 있는 운세 탐색',
+    features: ['☀️ 해 7+1개', '🌙 달 10+2개', '보너스 해 1 + 달 2'],
   },
   {
-    id: 'panseo',
-    name: '판서',
-    rank: '判書',
-    icon: '💰',
-    price: 9900,
-    baseCredit: 10,
-    bonusCredit: 5,
-    totalCredit: 15,
-    description: '기본 풀이 10회 + 보너스 5엽전',
-    features: ['만세력 확인', '기본 AI 해석', '+5 보너스 엽전', '최고 가성비'],
-    bestValue: true
-  }
+    id: 'mercury',
+    name: '수성 세트',
+    planet: '🪐',
+    icon: '🪐',
+    price: 20000,
+    sunCredit: 15,
+    moonCredit: 20,
+    bonusSun: 3,
+    bonusMoon: 5,
+    description: '온 가족 운세 보기',
+    features: ['☀️ 해 15+3개', '🌙 달 20+5개', '보너스 해 3 + 달 5'],
+    bestValue: true,
+  },
+  {
+    id: 'venus',
+    name: '금성 세트',
+    planet: '✨',
+    icon: '✨',
+    price: 50000,
+    sunCredit: 40,
+    moonCredit: 50,
+    bonusSun: 10,
+    bonusMoon: 15,
+    description: '최대 혜택 프리미엄',
+    features: ['☀️ 해 40+10개', '🌙 달 50+15개', '보너스 해 10 + 달 15'],
+  },
 ] as const;
 
 /**
@@ -76,33 +95,20 @@ export const CREDIT_PACKAGES: readonly CreditPackage[] = [
  */
 export const CREDIT_COST = {
   // 사주 분석
-  basicInterpretation: 0,      // 무료 (만세력 + 간단 AI 요약)
-  detailedInterpretation: 2,   // 상세 해석 (대운/세운 + 신살 + 상세 AI)
-  todayFortune: 1,              // 오늘의 운세
-  loveFortune: 2,               // 애정운 특화 분석
-  wealthFortune: 2,             // 재물운 특화 분석
+  basicInterpretation: { type: 'free' as const, amount: 0 },
+  detailedInterpretation: { type: 'sun' as const, amount: 2 },
+  todayFortune: { type: 'moon' as const, amount: 1 },
+  loveFortune: { type: 'sun' as const, amount: 2 },
+  wealthFortune: { type: 'sun' as const, amount: 2 },
 
-  // 타로 분석
-  tarotReading: 1,              // 타로 단독 리딩
+  // 타로
+  tarotReading: { type: 'moon' as const, amount: 1 },
 
   // 하이브리드
-  hybridReading: 3,             // 사주 × 타로 하이브리드
+  hybridReading: { type: 'sun' as const, amount: 3 },
 
   // 기타
-  pdfDownload: 1                // PDF 다운로드
-} as const;
-
-/**
- * 크레딧 사용 사유 텍스트
- */
-export const CREDIT_USAGE_REASON = {
-  detailedInterpretation: '사주 상세 해석',
-  todayFortune: '오늘의 운세',
-  loveFortune: '애정운 분석',
-  wealthFortune: '재물운 분석',
-  tarotReading: '타로 리딩',
-  hybridReading: '사주 × 타로 하이브리드 분석',
-  pdfDownload: 'PDF 다운로드'
+  pdfDownload: { type: 'moon' as const, amount: 1 },
 } as const;
 
 /**

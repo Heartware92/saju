@@ -53,7 +53,7 @@ export default function SajuResultPage() {
   const [showPaywall, setShowPaywall] = useState(false);
 
   // 크레딧 스토어
-  const { fetchBalance, balance } = useCreditStore();
+  const { fetchBalance, sunBalance, moonBalance } = useCreditStore();
 
   // 크레딧 잔액 로드
   useEffect(() => {
@@ -68,8 +68,8 @@ export default function SajuResultPage() {
 
   // 디버깅: balance 변화 감지
   useEffect(() => {
-    console.log('[SajuResultPage] 현재 잔액:', balance);
-  }, [balance]);
+    console.log('[SajuResultPage] 현재 잔액 - 해:', sunBalance, '달:', moonBalance);
+  }, [sunBalance, moonBalance]);
 
   // LockedCard 클릭 핸들러
   const handleLockedCardClick = () => {
@@ -419,7 +419,7 @@ export default function SajuResultPage() {
               </div>
             ) : (
               <div className={styles.section}>
-                <h2>🔮 상세 AI 풀이 (2엽전)</h2>
+                <h2>🔮 상세 AI 풀이 (☀️ 2)</h2>
                 {detailedLoading ? (
                   <div className={styles.analysisPlaceholder}>
                     <div className={styles.loadingSpinner}></div>

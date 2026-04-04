@@ -4,10 +4,13 @@
 
 import { createClient } from '@supabase/supabase-js';
 import type {
+  CreditType,
   CreditTransaction,
   Order,
+  UserCredit,
   SajuRecord,
-  TarotRecord
+  TarotRecord,
+  BirthProfile
 } from '../types/credit';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -64,41 +67,65 @@ export const auth = {
  */
 
 export const creditDB = {
-  // 사용자 크레딧 잔액 조회
-  getBalance: async (userId: string): Promise<number> => {
+  // 사용자 크레딧 잔액 조회 (해/달 모두)
+  getBalance: async (userId: string): Promise<UserCredit | null> => {
     const { data, error } = await supabase
       .from('user_credits')
-      .select('balance')
+      .select('*')
       .eq('user_id', userId)
-      .maybeSingle();  // single() 대신 maybeSingle() 사용 - 레코드 없어도 에러 안남
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching balance:', error);
-      return 0;
+      return null;
     }
 
-    // 레코드가 없으면 자동 생성 (신규 사용자)
-    if (!data) {
-      await supabase
-        .from('user_credits')
-        .insert({ user_id: userId, balance: 0 });
-      return 0;
-    }
-
-    return data.balance ?? 0;
+    return data;
   },
 
-  // 크레딧 잔액 업데이트
-  updateBalance: async (userId: string, newBalance: number) => {
+  // 크레딧 잔액 업데이트 (특정 타입)
+  updateBalance: async (userId: string, creditType: CreditType, newBalance: number) => {
+    const field = creditType === 'sun' ? 'sun_balance' : 'moon_balance';
     const { error } = await supabase
       .from('user_credits')
-      .update({
-        balance: newBalance,
-        updated_at: new Date().toISOString()
-      })
+      .update({ [field]: newBalance })
       .eq('user_id', userId);
 
     if (error) throw error;
+  },
+
+  // 크레딧 소비 (잔액 확인 + 차감 + 거래 기록)
+  consumeCredit: async (userId: string, creditType: CreditType, amount: number, reason: string): Promise<boolean> => {
+    const userCredit = await creditDB.getBalance(userId);
+    if (!userCredit) return false;
+
+    const currentBalance = creditType === 'sun' ? userCredit.sun_balance : userCredit.moon_balance;
+    if (currentBalance < amount) return false;
+
+    const newBalance = currentBalance - amount;
+    const balanceField = creditType === 'sun' ? 'sun_balance' : 'moon_balance';
+    const consumedField = creditType === 'sun' ? 'total_sun_consumed' : 'total_moon_consumed';
+
+    const { error: updateError } = await supabase
+      .from('user_credits')
+      .update({
+        [balanceField]: newBalance,
+        [consumedField]: (creditType === 'sun' ? userCredit.total_sun_consumed : userCredit.total_moon_consumed) + amount
+      })
+      .eq('user_id', userId);
+
+    if (updateError) throw updateError;
+
+    await creditDB.addTransaction({
+      user_id: userId,
+      credit_type: creditType,
+      type: 'consume',
+      amount: -amount,
+      balance_after: newBalance,
+      reason
+    });
+
+    return true;
   },
 
   // 크레딧 거래 기록 추가
@@ -270,5 +297,58 @@ export const tarotDB = {
       return [];
     }
     return data ?? [];
+  }
+};
+
+/**
+ * 사주 프로필 관련 DB 함수
+ */
+
+export const profileDB = {
+  getProfiles: async (userId: string): Promise<BirthProfile[]> => {
+    const { data, error } = await supabase
+      .from('birth_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .order('is_primary', { ascending: false })
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching profiles:', error);
+      return [];
+    }
+    return data ?? [];
+  },
+
+  createProfile: async (profile: Omit<BirthProfile, 'id' | 'created_at' | 'updated_at'>): Promise<BirthProfile> => {
+    const { data, error } = await supabase
+      .from('birth_profiles')
+      .insert(profile)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  updateProfile: async (id: string, updates: Partial<Omit<BirthProfile, 'id' | 'user_id' | 'created_at' | 'updated_at'>>): Promise<BirthProfile> => {
+    const { data, error } = await supabase
+      .from('birth_profiles')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  deleteProfile: async (id: string): Promise<void> => {
+    const { error } = await supabase
+      .from('birth_profiles')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
   }
 };

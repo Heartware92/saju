@@ -88,9 +88,9 @@ export const getDetailedInterpretation = async (
 ): Promise<FortuneResponse> => {
   try {
     // 크레딧 소비
-    const success = await useCreditStore.getState().consumeCredit(2, '사주 상세 해석');
+    const success = await useCreditStore.getState().consumeCredit('sun', 2, '사주 상세 해석');
     if (!success) {
-      return { success: false, error: '엽전이 부족합니다' };
+      return { success: false, error: '크레딧이 부족합니다' };
     }
 
     const prompt = generateDetailedPrompt(result);
@@ -104,8 +104,11 @@ export const getDetailedInterpretation = async (
         birth_date: new Date(result.solarDate).toISOString(),
         birth_place: undefined,
         gender: result.gender,
+        calendar_type: 'solar',
+        category: 'traditional',
         result_data: result as any,
         interpretation_detailed: content,
+        credit_type: 'sun',
         credit_used: 2,
         is_detailed: true
       });
@@ -125,9 +128,9 @@ export const getTodayFortune = async (
 ): Promise<FortuneResponse> => {
   try {
     // 크레딧 소비
-    const success = await useCreditStore.getState().consumeCredit(1, '오늘의 운세');
+    const success = await useCreditStore.getState().consumeCredit('moon', 1, '오늘의 운세');
     if (!success) {
-      return { success: false, error: '엽전이 부족합니다' };
+      return { success: false, error: '크레딧이 부족합니다' };
     }
 
     const prompt = generateTodayFortunePrompt(result);
@@ -141,8 +144,11 @@ export const getTodayFortune = async (
         birth_date: new Date(result.solarDate).toISOString(),
         birth_place: undefined,
         gender: result.gender,
+        calendar_type: 'solar',
+        category: 'today',
         result_data: result as any,
         interpretation_basic: content,
+        credit_type: 'moon',
         credit_used: 1,
         is_detailed: false
       });
@@ -161,9 +167,9 @@ export const getLoveFortune = async (
   result: SajuResult
 ): Promise<FortuneResponse> => {
   try {
-    const success = await useCreditStore.getState().consumeCredit(2, '애정운 분석');
+    const success = await useCreditStore.getState().consumeCredit('sun', 2, '애정운 분석');
     if (!success) {
-      return { success: false, error: '엽전이 부족합니다' };
+      return { success: false, error: '크레딧이 부족합니다' };
     }
 
     const prompt = generateLoveFortunePrompt(result);
@@ -182,9 +188,9 @@ export const getWealthFortune = async (
   result: SajuResult
 ): Promise<FortuneResponse> => {
   try {
-    const success = await useCreditStore.getState().consumeCredit(2, '재물운 분석');
+    const success = await useCreditStore.getState().consumeCredit('sun', 2, '재물운 분석');
     if (!success) {
-      return { success: false, error: '엽전이 부족합니다' };
+      return { success: false, error: '크레딧이 부족합니다' };
     }
 
     const prompt = generateWealthFortunePrompt(result);
@@ -204,9 +210,9 @@ export const getTarotReading = async (
   question?: string
 ): Promise<FortuneResponse> => {
   try {
-    const success = await useCreditStore.getState().consumeCredit(1, '타로 리딩');
+    const success = await useCreditStore.getState().consumeCredit('moon', 1, '타로 리딩');
     if (!success) {
-      return { success: false, error: '엽전이 부족합니다' };
+      return { success: false, error: '크레딧이 부족합니다' };
     }
 
     const prompt = generateTarotPrompt(card, question);
@@ -227,9 +233,9 @@ export const getHybridReading = async (
   question?: string
 ): Promise<FortuneResponse> => {
   try {
-    const success = await useCreditStore.getState().consumeCredit(3, '사주×타로 하이브리드');
+    const success = await useCreditStore.getState().consumeCredit('sun', 3, '사주×타로 하이브리드');
     if (!success) {
-      return { success: false, error: '엽전이 부족합니다' };
+      return { success: false, error: '크레딧이 부족합니다' };
     }
 
     const prompt = generateHybridPrompt(sajuResult, tarotCard, question);

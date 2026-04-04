@@ -6,82 +6,83 @@
 /* 카테고리 헤더 */
 .categoryHeader {
   text-align: center;
-  margin-bottom: var(--spacing-xl);
-  padding: var(--spacing-lg);
+  margin-bottom: 32px;
+  padding: 24px;
 }
 
 .categoryIcon {
   font-size: 48px;
   display: block;
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: 8px;
 }
 
 .categoryTitle {
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif KR', serif;
   font-size: 28px;
-  color: var(--color-primary);
-  margin-bottom: var(--spacing-xs);
+  color: var(--sun-core);
+  margin-bottom: 4px;
 }
 
 .categoryDesc {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
 .form {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
+  background: var(--space-surface);
+  border: 1px solid var(--space-elevated);
+  border-radius: 12px;
+  padding: 32px;
 }
 
 .section {
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: 24px;
 }
 
 .label {
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-text-secondary);
-  margin-bottom: var(--spacing-sm);
+  color: var(--text-secondary);
+  margin-bottom: 8px;
 }
 
 .labelRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: 8px;
 }
 
 .toggleGroup {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: 8px;
 }
 
 .toggleBtn {
   flex: 1;
-  padding: var(--spacing-md);
-  background: var(--color-surface-light);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
+  padding: 12px;
+  background: var(--space-mid);
+  border: 1px solid var(--space-elevated);
+  border-radius: 8px;
+  color: var(--text-secondary);
   font-size: 15px;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-sm);
+  gap: 8px;
+  cursor: pointer;
 }
 
 .toggleBtn:hover {
-  border-color: var(--color-primary);
+  border-color: var(--cta-primary);
 }
 
 .toggleBtn.active {
-  background: rgba(212, 175, 55, 0.15);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  background: rgba(124, 92, 252, 0.15);
+  border-color: var(--cta-primary);
+  color: var(--text-primary);
 }
 
 .toggleBtn span {
@@ -91,23 +92,24 @@
 .dateRow,
 .timeRow {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: 8px;
 }
 
 .select {
   flex: 1;
-  padding: var(--spacing-md);
-  background: var(--color-surface-light);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text);
+  padding: 12px;
+  background: var(--space-mid);
+  border: 1px solid var(--space-elevated);
+  border-radius: 8px;
+  color: var(--text-primary);
   font-size: 15px;
   cursor: pointer;
   transition: border-color 0.2s;
 }
 
 .select:focus {
-  border-color: var(--color-primary);
+  border-color: var(--cta-primary);
+  outline: none;
 }
 
 .select:disabled {
@@ -118,113 +120,317 @@
 .checkbox {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  color: var(--color-text-secondary);
+  gap: 4px;
+  color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
 }
 
 .checkbox input {
-  accent-color: var(--color-primary);
+  accent-color: var(--cta-primary);
 }
 
 .checkboxFull {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  color: var(--color-text);
+  gap: 8px;
+  color: var(--text-primary);
   cursor: pointer;
 }
 
 .checkboxFull input {
   width: 18px;
   height: 18px;
-  accent-color: var(--color-primary);
+  accent-color: var(--cta-primary);
 }
 
 .hint {
   font-size: 12px;
-  color: var(--color-text-muted);
-  margin-top: var(--spacing-sm);
+  color: var(--text-tertiary);
+  margin-top: 8px;
 }
 
 .submitBtn {
   width: 100%;
-  padding: var(--spacing-md) var(--spacing-lg);
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  padding: 16px 24px;
+  background: linear-gradient(135deg, var(--cta-primary) 0%, var(--cta-primary-active) 100%);
   border: none;
-  border-radius: var(--radius-md);
-  color: #000;
+  border-radius: 8px;
+  color: #fff;
   font-size: 18px;
   font-weight: 700;
   cursor: pointer;
-  margin-top: var(--spacing-lg);
+  margin-top: 24px;
   transition: all 0.3s;
 }
 
 .submitBtn:hover {
-  box-shadow: var(--shadow-glow);
+  box-shadow: 0 0 20px rgba(124, 92, 252, 0.4);
+  transform: translateY(-1px);
 }
 
 /* 뒤로가기 버튼 */
 .backBtn {
   width: 100%;
-  padding: var(--spacing-md);
+  padding: 12px;
   background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
+  border: 1px solid var(--space-elevated);
+  border-radius: 8px;
+  color: var(--text-secondary);
   font-size: 14px;
   cursor: pointer;
-  margin-top: var(--spacing-md);
+  margin-top: 12px;
   transition: all 0.2s;
 }
 
 .backBtn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  border-color: var(--cta-primary);
+  color: var(--cta-primary);
 }
 
 /* 지정일 운세 전용 섹션 */
 .targetDateSection {
-  background: rgba(212, 175, 55, 0.1);
-  padding: var(--spacing-lg);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-primary);
+  background: rgba(124, 92, 252, 0.1);
+  padding: 24px;
+  border-radius: 8px;
+  border: 1px solid var(--cta-primary);
 }
 
 .labelHighlight {
   display: block;
   font-size: 15px;
   font-weight: 600;
-  color: var(--color-primary-light);
-  margin-bottom: var(--spacing-md);
+  color: var(--sun-core);
+  margin-bottom: 12px;
 }
 
 .dateInput {
   width: 100%;
-  padding: var(--spacing-md);
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-primary);
+  padding: 12px;
+  background: var(--space-deep);
+  border: 1px solid var(--space-elevated);
+  border-radius: 8px;
+  color: var(--sun-core);
   font-size: 16px;
   font-weight: 600;
   text-align: center;
 }
 
 .dateInput:focus {
-  border-color: var(--color-primary);
+  border-color: var(--cta-primary);
   outline: none;
+}
+
+/* 프로필 선택 */
+.profileSection {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: rgba(124, 92, 252, 0.06);
+  border: 1px solid var(--space-elevated);
+  border-radius: 12px;
+}
+
+.profileLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.profileLabel span {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.profileAddBtn {
+  font-size: 12px;
+  color: var(--cta-primary);
+  background: none;
+  border: 1px solid var(--cta-primary);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.profileAddBtn:hover {
+  background: rgba(124, 92, 252, 0.15);
+}
+
+.profileList {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.profileCard {
+  flex-shrink: 0;
+  min-width: 100px;
+  padding: 10px 14px;
+  background: var(--space-mid);
+  border: 1px solid var(--space-elevated);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.profileCard:hover {
+  border-color: var(--cta-primary);
+}
+
+.profileCard.selected {
+  background: rgba(124, 92, 252, 0.15);
+  border-color: var(--cta-primary);
+  box-shadow: 0 0 12px rgba(124, 92, 252, 0.15);
+}
+
+.profileName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.profileInfo {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.profileNewCard {
+  flex-shrink: 0;
+  min-width: 80px;
+  padding: 10px 14px;
+  background: none;
+  border: 1px dashed var(--text-tertiary);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.profileNewCard:hover {
+  border-color: var(--cta-primary);
+  color: var(--cta-primary);
+}
+
+/* 프로필 모달 */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 8, 15, 0.8);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal {
+  width: 100%;
+  max-width: 420px;
+  background: var(--space-surface);
+  border: 1px solid var(--space-elevated);
+  border-radius: 16px;
+  padding: 28px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modalTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.modalActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.modalBtn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modalBtnPrimary {
+  composes: modalBtn;
+  background: linear-gradient(135deg, var(--cta-primary), var(--cta-primary-active));
+  border: none;
+  color: #fff;
+}
+
+.modalBtnPrimary:hover {
+  opacity: 0.9;
+}
+
+.modalBtnSecondary {
+  composes: modalBtn;
+  background: none;
+  border: 1px solid var(--space-elevated);
+  color: var(--text-secondary);
+}
+
+.modalBtnSecondary:hover {
+  border-color: var(--cta-primary);
+}
+
+.modalBtnDanger {
+  composes: modalBtn;
+  background: none;
+  border: 1px solid var(--fire-core);
+  color: var(--fire-core);
+}
+
+.modalBtnDanger:hover {
+  background: rgba(244, 63, 94, 0.1);
+}
+
+.profileInput {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--space-mid);
+  border: 1px solid var(--space-elevated);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.profileInput:focus {
+  border-color: var(--cta-primary);
+}
+
+.profileInput::placeholder {
+  color: var(--text-tertiary);
 }
 
 @media (max-width: 480px) {
   .form {
-    padding: var(--spacing-lg);
+    padding: 24px;
   }
 
   .toggleBtn {
-    padding: var(--spacing-sm);
+    padding: 8px;
     font-size: 14px;
   }
 }

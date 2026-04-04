@@ -76,11 +76,11 @@ export function calculateManseryeok(input: UserInput): ManseryeokResult {
     adjustedDate = midnightResult.adjustedDate;
   }
 
-  // 5. 연주 계산
-  const yearPillar = calculateYearPillar(adjustedDate);
+  // 5. 연주 계산 (시간 포함하여 절입 시각 정확 비교)
+  const yearPillar = calculateYearPillar(adjustedDate, adjustedTime);
 
-  // 6. 월주 계산
-  const monthPillar = calculateMonthPillar(adjustedDate, yearPillar.gan);
+  // 6. 월주 계산 (시간 포함하여 절입 시각 정확 비교)
+  const monthPillar = calculateMonthPillar(adjustedDate, yearPillar.gan, adjustedTime);
 
   // 7. 일주 계산
   const dayPillar = calculateDayPillar(adjustedDate);

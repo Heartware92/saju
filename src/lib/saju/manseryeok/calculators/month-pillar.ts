@@ -14,11 +14,12 @@ import { getSajuYearMonth } from '@/lib/data/jeolip';
  * 월주 계산
  * @param dateString YYYY-MM-DD 형식
  * @param yearGan 년간 (연주의 천간)
+ * @param timeString HH:mm 형식 (절입일 당일 정확 판단용)
  * @returns 월주 (천간+지지)
  */
-export function calculateMonthPillar(dateString: string, yearGan: string): Pillar {
-  // 1. 절입일 기준 실제 사주력 월 계산
-  const { month: sajuMonth } = getSajuYearMonth(dateString);
+export function calculateMonthPillar(dateString: string, yearGan: string, timeString?: string): Pillar {
+  // 1. 절입일 기준 실제 사주력 월 계산 (시간 포함)
+  const { month: sajuMonth } = getSajuYearMonth(dateString, timeString);
 
   // 2. 월지 결정 (사주력 월 → 지지)
   const monthJi = MONTH_BRANCH[sajuMonth];
