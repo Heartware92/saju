@@ -18,8 +18,8 @@ const notoSansKR = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
-  title: "사주풀이 - 정통 사주명리학",
-  description: "당신의 타고난 운명을 분석하는 정통 사주명리 서비스",
+  title: "이천점 - 2,000원의 운명 상담",
+  description: "2,000원으로 만나는 사주·타로 운명 상담 서비스",
   icons: {
     icon: '/coin.png',
   },

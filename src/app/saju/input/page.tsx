@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import Layout from '@/components/Layout';
-import SajuProfilePage from '@/pages/SajuProfilePage';
+import SajuInputPage from '@/pages/SajuInputPage';
 
 function LoadingSpinner() {
   return (
@@ -10,11 +10,11 @@ function LoadingSpinner() {
   );
 }
 
-export default function SajuRoute() {
+export default function SajuInputRoute() {
   return (
     <Layout>
       <Suspense fallback={<LoadingSpinner />}>
-        <SajuProfilePage />
+        <SajuInputPage />
       </Suspense>
     </Layout>
   );

@@ -171,7 +171,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
         {/* 헤더 */}
         <div className="text-center">
           <div className="text-6xl mb-4">🔒</div>
-          <h2 className="text-2xl font-bold text-primary mb-2">
+          <h2 className="text-2xl font-bold text-text-primary mb-2">
             {config.title}
           </h2>
           <p className="text-text-secondary">
@@ -191,7 +191,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
             <div className="flex items-center gap-3">
               <span className="flex items-center gap-1">
                 <span>☀️</span>
-                <span className={`text-xl font-bold ${hasEnoughCredit ? 'text-sun-core' : 'text-fire'}`}>{sunBalance}</span>
+                <span className={`text-xl font-bold ${hasEnoughCredit ? 'text-sun-core' : 'text-fire-core'}`}>{sunBalance}</span>
               </span>
             </div>
           </div>
@@ -199,12 +199,12 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
 
         {/* 포함 내용 */}
         <div>
-          <h3 className="font-bold text-text mb-3">포함 내용</h3>
+          <h3 className="font-bold text-text-primary mb-3">포함 내용</h3>
           <ul className="space-y-2">
             {config.features.map((feature, idx) => (
               <li key={idx} className="flex items-start gap-2 text-text-secondary">
                 <svg
-                  className="w-5 h-5 text-accent flex-shrink-0 mt-0.5"
+                  className="w-5 h-5 text-cta flex-shrink-0 mt-0.5"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -224,11 +224,11 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
 
         {/* 로그인 필요 안내 */}
         {!isLoggedIn && (
-          <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
+          <div className="bg-cta/10 border border-cta/30 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <span className="text-2xl">🔐</span>
               <div>
-                <p className="font-bold text-primary mb-1">로그인이 필요합니다</p>
+                <p className="font-bold text-cta mb-1">로그인이 필요합니다</p>
                 <p className="text-sm text-text-secondary">
                   상세 해석을 받으시려면 먼저 로그인해주세요.
                 </p>
@@ -239,11 +239,11 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
 
         {/* 크레딧 부족 시 안내 */}
         {isLoggedIn && !hasEnoughCredit && (
-          <div className="bg-fire/10 border border-fire/30 rounded-lg p-4">
+          <div className="bg-fire-core/10 border border-fire-core/30 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <span className="text-2xl">⚠️</span>
               <div>
-                <p className="font-bold text-fire mb-1">해(☀️) 크레딧이 부족합니다</p>
+                <p className="font-bold text-fire-core mb-1">해(☀️) 크레딧이 부족합니다</p>
                 <p className="text-sm text-text-secondary">
                   {config.cost - sunBalance}개가 더 필요합니다. 충전하고 상세 해석을 받아보세요.
                 </p>
@@ -308,18 +308,17 @@ export const LockedCard: React.FC<LockedCardProps> = ({ type, onClick }) => {
   return (
     <div
       className="
-        card-hanji p-6 rounded-xl
-        hover:shadow-hanji-lg
+        bg-space-surface/60 p-5 rounded-xl
         transition-all
-        border-2 border-dashed border-border
-        hover:border-accent
+        border-2 border-dashed border-[var(--border-subtle)]
+        hover:border-cta/50
       "
     >
       <div className="text-center space-y-4">
-        <div className="text-5xl">🔒</div>
+        <div className="text-4xl">🔒</div>
         <div>
-          <h3 className="font-bold text-primary mb-2">{config.title}</h3>
-          <p className="text-sm text-text-secondary mb-4">{config.description}</p>
+          <h3 className="font-bold text-text-primary text-sm mb-2">{config.title}</h3>
+          <p className="text-xs text-text-secondary mb-4">{config.description}</p>
           <CreditRequired amount={config.cost} creditType="sun" />
         </div>
         <Button variant="sun" fullWidth onClick={handleClick}>

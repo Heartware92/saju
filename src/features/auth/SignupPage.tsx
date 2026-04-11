@@ -70,12 +70,13 @@ export const SignupPage: React.FC = () => {
   const inputClass = "w-full h-12 rounded-lg bg-space-elevated/60 border border-[var(--border-default)] px-4 text-text-primary placeholder-text-tertiary text-sm outline-none transition-all focus:border-cta focus:ring-1 focus:ring-cta/30";
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-space-deep relative overflow-hidden">
+    <div className="app-auth-shell">
+      <div className="app-auth-container flex items-center justify-center px-4 py-12 relative overflow-hidden">
       {/* Background glow effects */}
       <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-cta/5 rounded-full blur-3xl" />
       <div className="absolute bottom-1/3 left-1/4 w-80 h-80 bg-sun-core/5 rounded-full blur-3xl" />
 
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full relative z-10">
         {/* Back button */}
         <button
           onClick={() => showEmailForm ? setShowEmailForm(false) : router.push('/')}
@@ -265,6 +266,7 @@ export const SignupPage: React.FC = () => {
             </Link>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

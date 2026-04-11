@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { fetchSajuAnalysis, generateTarotPrompt, TarotElement } from '../services/api'
-import { OPENAI_API_KEY } from '../constants/secrets'
+import { generateTarotPrompt, TarotElement } from '../services/api'
 import styles from './TarotPage.module.css'
 
 interface TarotCard {
@@ -179,8 +178,18 @@ export default function TarotPage() {
         meaning
       })
 
-      const result = await fetchSajuAnalysis(prompt, OPENAI_API_KEY)
-      setAnalysis(result)
+      const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          maxTokens: 800,
+          systemPrompt: '당신은 30년 경력의 정통 사주명리학 전문가입니다. 동양 철학과 현대 심리학을 결합하여 깊이 있으면서도 따뜻한 상담을 제공합니다. 답변은 한국어로 작성합니다.'
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error)
+      setAnalysis(data.content)
     } catch (error: any) {
       alert(error.message)
     } finally {
@@ -198,7 +207,7 @@ export default function TarotPage() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1>🎴 타로 상담소</h1>
+        <h1>타로 상담</h1>
         {gameState === 'select' && <p>마음을 비우고 카드를 섞어보세요</p>}
         {gameState === 'shuffling' && <p>카드를 섞는 중...</p>}
         {gameState === 'spread' && <p>마음이 끌리는 카드를 선택하세요</p>}
@@ -246,14 +255,14 @@ export default function TarotPage() {
                   className={styles.cardWrapper}
                   initial={{ x: 0, y: 0, rotate: 0, scale: 1 }}
                   animate={gameState === 'spread' ? {
-                    x: (index - 10.5) * 45,
-                    y: Math.sin((index - 10.5) * 0.3) * 30,
-                    rotate: (index - 10.5) * 2.5,
+                    x: (index - 10.5) * 17,
+                    y: Math.sin((index - 10.5) * 0.3) * 20,
+                    rotate: (index - 10.5) * 2,
                     scale: 1
                   } : {
-                    x: (Math.random() - 0.5) * 150,
-                    y: (Math.random() - 0.5) * 80,
-                    rotate: (Math.random() - 0.5) * 40,
+                    x: (Math.random() - 0.5) * 100,
+                    y: (Math.random() - 0.5) * 60,
+                    rotate: (Math.random() - 0.5) * 30,
                     scale: 1
                   }}
                   transition={{ duration: 0.6, delay: index * 0.025 }}

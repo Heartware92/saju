@@ -40,46 +40,45 @@ export const CreditPurchasePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-space-deep py-12 px-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-space-deep px-4 pt-4 pb-8">
         {/* Back */}
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors mb-8 text-sm font-medium"
+          className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors mb-4 text-sm font-medium"
         >
-          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          뒤로 가기
+          뒤로
         </button>
 
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-sun-core via-cta to-moon-halo bg-clip-text text-transparent mb-3">
-            우주 기운 충전소
+        <div className="text-center mb-6">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-sun-core via-cta to-moon-halo bg-clip-text text-transparent mb-2">
+            크레딧 충전
           </h1>
-          <p className="text-text-secondary text-lg mb-6">
+          <p className="text-text-secondary text-sm mb-4">
             행성의 에너지로 운명을 읽어보세요
           </p>
 
           {/* Current balance */}
-          <div className="inline-flex items-center gap-6 px-6 py-3 rounded-2xl bg-space-surface/80 border border-[var(--border-subtle)] backdrop-blur-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">☀️</span>
-              <span className="text-2xl font-bold text-sun-core">{sunBalance}</span>
-              <span className="text-xs text-text-tertiary">해</span>
+          <div className="inline-flex items-center gap-4 px-5 py-2.5 rounded-2xl bg-space-surface/80 border border-[var(--border-subtle)]">
+            <div className="flex items-center gap-1.5">
+              <span className="text-base">☀️</span>
+              <span className="text-lg font-bold text-sun-core">{sunBalance}</span>
+              <span className="text-[10px] text-text-tertiary">해</span>
             </div>
-            <div className="w-px h-6 bg-[var(--border-subtle)]" />
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🌙</span>
-              <span className="text-2xl font-bold text-moon-halo">{moonBalance}</span>
-              <span className="text-xs text-text-tertiary">달</span>
+            <div className="w-px h-5 bg-[var(--border-subtle)]" />
+            <div className="flex items-center gap-1.5">
+              <span className="text-base">🌙</span>
+              <span className="text-lg font-bold text-moon-halo">{moonBalance}</span>
+              <span className="text-[10px] text-text-tertiary">달</span>
             </div>
           </div>
         </div>
 
-        {/* Package grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-12">
+        {/* Package list */}
+        <div className="flex flex-col gap-3 mb-8">
           {CREDIT_PACKAGES.map((pkg) => (
             <PackageCard
               key={pkg.id}
@@ -91,15 +90,14 @@ export const CreditPurchasePage: React.FC = () => {
         </div>
 
         {/* Usage guide */}
-        <div className="max-w-2xl mx-auto mb-12">
+        <div className="mb-6">
           <UsageGuide />
         </div>
 
         {/* FAQ */}
-        <div className="max-w-2xl mx-auto">
+        <div className="mb-4">
           <FAQ />
         </div>
-      </div>
     </div>
   );
 };
@@ -116,70 +114,59 @@ const PackageCard: React.FC<{
 
   return (
     <div className={`
-      relative rounded-2xl p-5 flex flex-col h-full transition-all duration-200
-      border bg-space-surface/60 backdrop-blur-sm
+      relative rounded-2xl p-4 transition-all duration-200
+      border bg-space-surface/60
       ${isHighlighted
         ? 'border-cta shadow-lg shadow-cta/10 ring-1 ring-cta/20'
-        : 'border-[var(--border-subtle)] hover:border-[var(--border-default)]'
+        : 'border-[var(--border-subtle)]'
       }
     `}>
       {/* Badge */}
       {isHighlighted && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r from-cta to-cta-active whitespace-nowrap">
+        <div className="absolute -top-2.5 left-4 px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white bg-gradient-to-r from-cta to-cta-active">
           {pkg.popular ? '인기' : '최고 가성비'}
         </div>
       )}
 
-      {/* Planet icon + name */}
-      <div className="text-center mb-4 pt-2">
-        <div className="text-4xl mb-2">{pkg.planet}</div>
-        <h3 className="text-lg font-bold text-text-primary">{pkg.name}</h3>
-        <p className="text-xs text-text-tertiary mt-1">{pkg.description}</p>
-      </div>
+      <div className="flex items-center gap-3">
+        {/* Planet icon */}
+        <div className="text-3xl shrink-0">{pkg.planet}</div>
 
-      {/* Price */}
-      <div className="text-center mb-4">
-        <div className="text-2xl font-bold text-text-primary">
-          {pkg.price.toLocaleString()}<span className="text-sm font-normal text-text-secondary">원</span>
-        </div>
-      </div>
-
-      {/* Credits breakdown */}
-      <div className="rounded-xl bg-space-elevated/40 p-3 mb-4 space-y-2 text-sm flex-1">
-        <div className="flex justify-between items-center">
-          <span className="text-text-secondary">☀️ 해</span>
-          <span className="font-bold text-sun-core">
-            {pkg.sunCredit}{pkg.bonusSun > 0 && <span className="text-sun-corona"> +{pkg.bonusSun}</span>}
-          </span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="text-text-secondary">🌙 달</span>
-          <span className="font-bold text-moon-halo">
-            {pkg.moonCredit}{pkg.bonusMoon > 0 && <span className="text-moon-shadow"> +{pkg.bonusMoon}</span>}
-          </span>
-        </div>
-        {(pkg.bonusSun > 0 || pkg.bonusMoon > 0) && (
-          <div className="pt-1 border-t border-[var(--border-subtle)] text-xs text-text-tertiary text-center">
-            보너스 포함
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-bold text-text-primary">{pkg.name}</h3>
+          <p className="text-[11px] text-text-tertiary">{pkg.description}</p>
+          <div className="flex items-center gap-3 mt-1 text-xs">
+            <span className="text-sun-core font-semibold">
+              ☀️ {pkg.sunCredit}{pkg.bonusSun > 0 && `+${pkg.bonusSun}`}
+            </span>
+            <span className="text-moon-halo font-semibold">
+              🌙 {pkg.moonCredit}{pkg.bonusMoon > 0 && `+${pkg.bonusMoon}`}
+            </span>
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Purchase button */}
-      <button
-        onClick={() => onPurchase(pkg)}
-        disabled={loading}
-        className={`
-          w-full py-3 rounded-xl font-bold text-sm transition-all
-          ${isHighlighted
-            ? 'bg-gradient-to-r from-cta to-cta-active text-white hover:opacity-90 hover:shadow-lg hover:shadow-cta/20'
-            : 'bg-space-elevated text-text-primary border border-[var(--border-default)] hover:border-cta hover:text-cta'
-          }
-          disabled:opacity-50 disabled:cursor-not-allowed
-        `}
-      >
-        {loading ? '처리중...' : '구매하기'}
-      </button>
+        {/* Price + Buy */}
+        <div className="text-right shrink-0">
+          <div className="text-base font-bold text-text-primary mb-1">
+            {pkg.price.toLocaleString()}<span className="text-[10px] font-normal text-text-tertiary">원</span>
+          </div>
+          <button
+            onClick={() => onPurchase(pkg)}
+            disabled={loading}
+            className={`
+              px-4 py-1.5 rounded-lg font-bold text-xs transition-all
+              ${isHighlighted
+                ? 'bg-gradient-to-r from-cta to-cta-active text-white'
+                : 'bg-space-elevated text-text-primary border border-[var(--border-default)]'
+              }
+              disabled:opacity-50
+            `}
+          >
+            {loading ? '...' : '구매'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -198,16 +185,16 @@ const UsageGuide: React.FC = () => {
   ];
 
   return (
-    <div className="rounded-2xl bg-space-surface/60 border border-[var(--border-subtle)] p-6 backdrop-blur-sm">
-      <h3 className="text-lg font-bold text-text-primary mb-4">해와 달로 할 수 있는 일</h3>
+    <div className="rounded-2xl bg-space-surface/60 border border-[var(--border-subtle)] p-4">
+      <h3 className="text-sm font-bold text-text-primary mb-3">해와 달로 할 수 있는 일</h3>
       <div className="space-y-0">
         {items.map((item, idx) => (
           <div
             key={idx}
             className="flex justify-between items-center py-3 border-b border-[var(--border-subtle)] last:border-0"
           >
-            <span className="text-text-secondary text-sm">{item.name}</span>
-            <span className="font-semibold text-sm text-text-primary">{item.cost}</span>
+            <span className="text-text-secondary text-xs">{item.name}</span>
+            <span className="font-semibold text-xs text-text-primary">{item.cost}</span>
           </div>
         ))}
       </div>
@@ -239,12 +226,12 @@ const FAQ: React.FC = () => {
   ];
 
   return (
-    <div className="rounded-2xl bg-space-surface/60 border border-[var(--border-subtle)] p-6 backdrop-blur-sm">
-      <h3 className="text-lg font-bold text-text-primary mb-4">자주 묻는 질문</h3>
+    <div className="rounded-2xl bg-space-surface/60 border border-[var(--border-subtle)] p-4">
+      <h3 className="text-sm font-bold text-text-primary mb-3">자주 묻는 질문</h3>
       {faqs.map((faq, idx) => (
-        <div key={idx} className={idx < faqs.length - 1 ? 'mb-5' : ''}>
-          <h4 className="text-sm font-semibold text-text-primary mb-1">Q. {faq.q}</h4>
-          <p className="text-sm text-text-secondary leading-relaxed">{faq.a}</p>
+        <div key={idx} className={idx < faqs.length - 1 ? 'mb-4' : ''}>
+          <h4 className="text-xs font-semibold text-text-primary mb-1">Q. {faq.q}</h4>
+          <p className="text-xs text-text-secondary leading-relaxed">{faq.a}</p>
         </div>
       ))}
     </div>

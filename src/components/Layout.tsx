@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { CreditDisplay } from './ui/CreditDisplay';
+import { useCreditStore } from '../store/useCreditStore';
 import { useUserStore } from '../store/useUserStore';
-import { Button } from './ui/Button';
-import { CreditDisplay, SunIcon, MoonIcon } from './ui/CreditDisplay';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,8 +15,7 @@ const navItems = [
   { path: '/', label: '홈', icon: 'home' },
   { path: '/saju', label: '사주', icon: 'pillars' },
   { path: '/tarot', label: '타로', icon: 'card' },
-  { path: '/credit', label: '크레딧', icon: 'credit' },
-  { path: '/mypage', label: '마이페이지', icon: 'user' },
+  { path: '/archive', label: '보관함', icon: 'archive' },
 ];
 
 function NavIcon({ name, active }: { name: string; active: boolean }) {
@@ -51,18 +50,12 @@ function NavIcon({ name, active }: { name: string; active: boolean }) {
           <circle cx="12" cy="12" r="3" fill={active ? color : 'none'} />
         </svg>
       );
-    case 'credit':
-      return (
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-          <circle cx="9" cy="10" r="4" fill={active ? '#FFD700' : 'none'} stroke={active ? '#FFD700' : color} strokeWidth="1.5" />
-          <path d="M19 14.79A7 7 0 1011.21 7 5.5 5.5 0 0019 14.79z" fill={active ? '#A5B4FC' : 'none'} stroke={active ? '#A5B4FC' : color} strokeWidth="1.5" />
-        </svg>
-      );
-    case 'user':
+    case 'archive':
       return (
         <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
+          <rect x="2" y="3" width="20" height="5" rx="1" />
+          <path d="M4 8v11a2 2 0 002 2h12a2 2 0 002-2V8" />
+          <path d="M10 12h4" />
         </svg>
       );
     default:
@@ -73,12 +66,9 @@ function NavIcon({ name, active }: { name: string; active: boolean }) {
 export default function Layout({ children }: LayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useUserStore();
-
-  const handleLogout = async () => {
-    await logout();
-    router.push('/');
-  };
+  const { sunBalance, moonBalance } = useCreditStore();
+  const { user } = useUserStore();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const isActive = (path: string) => {
     if (path === '/') return pathname === '/';
@@ -86,114 +76,122 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-space-deep">
-      {/* Desktop Header */}
-      <header className="sticky top-0 z-40 hidden md:block glass-strong border-b border-[var(--border-subtle)]">
-        <div className="w-full mx-auto px-6 lg:px-8 max-w-7xl">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <span className="text-xl font-bold bg-gradient-to-r from-cta to-purple-400 bg-clip-text text-transparent">
-                천문사주
-              </span>
-            </Link>
+    <div className="app-shell">
+      <div className="app-container">
+        {/* Top Header Bar */}
+        <header className="sticky top-0 z-50 flex items-center justify-between h-12 px-4 bg-[rgba(11,14,26,0.92)] backdrop-blur-xl border-b border-[var(--border-subtle)]">
+          {/* Left: Hamburger */}
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-space-elevated transition-colors"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
 
-            {/* Navigation */}
-            <nav className="flex items-center gap-1">
-              {navItems.slice(0, 3).map((item) => (
+          {/* Center: Credit Display */}
+          <CreditDisplay
+            sunBalance={sunBalance}
+            moonBalance={moonBalance}
+            compact
+            onClick={() => router.push('/credit')}
+          />
+
+          {/* Right: Profile */}
+          <button
+            onClick={() => user ? router.push('/mypage') : router.push('/login')}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-space-elevated transition-colors"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </button>
+        </header>
+
+        {/* Side Menu Overlay */}
+        {menuOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-50 bg-black/50"
+              onClick={() => setMenuOpen(false)}
+            />
+            <div className="fixed top-0 left-0 w-[280px] h-full z-50 bg-space-deep border-r border-[var(--border-subtle)] p-6 shadow-2xl animate-slideInLeft">
+              <div className="flex items-center justify-between mb-8">
+                <span className="text-lg font-bold bg-gradient-to-r from-cta to-purple-400 bg-clip-text text-transparent">
+                  이천점
+                </span>
+                <button
+                  onClick={() => setMenuOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              <nav className="flex flex-col gap-2">
+                {[
+                  { path: '/credit', label: '크레딧 충전', icon: '💎' },
+                  { path: '/mypage', label: '내 정보', icon: '👤' },
+                  { path: '/archive', label: '보관함', icon: '📦' },
+                ].map((item) => (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-text-secondary hover:text-text-primary hover:bg-space-surface transition-colors"
+                  >
+                    <span>{item.icon}</span>
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
+              </nav>
+              <div className="absolute bottom-8 left-6 right-6">
+                <p className="text-xs text-text-tertiary text-center">
+                  &copy; 2026 이천점
+                </p>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Main Content */}
+        <main className="flex-1 w-full overflow-y-auto pb-[calc(64px+env(safe-area-inset-bottom,0px))]">
+          {children}
+        </main>
+
+        {/* Bottom Tab Bar - always visible */}
+        <nav className="app-tab-bar">
+          <div className="flex items-center justify-around h-16">
+            {navItems.map((item) => {
+              const active = isActive(item.path);
+              return (
                 <Link
                   key={item.path}
                   href={item.path}
                   className={`
-                    px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm font-medium
-                    ${isActive(item.path)
-                      ? 'bg-[rgba(124,92,252,0.15)] text-cta'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-space-elevated'
-                    }
+                    flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 min-w-[56px]
+                    ${active ? 'text-cta' : 'text-text-tertiary'}
                   `}
                 >
-                  <NavIcon name={item.icon} active={isActive(item.path)} />
-                  <span>{item.label}</span>
+                  <div className="relative">
+                    <NavIcon name={item.icon} active={active} />
+                    {active && (
+                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cta shadow-[0_0_6px_var(--cta-primary)]" />
+                    )}
+                  </div>
+                  <span className="text-[10px] font-medium">{item.label}</span>
                 </Link>
-              ))}
-            </nav>
-
-            {/* Right */}
-            <div className="flex items-center gap-3">
-              {user ? (
-                <>
-                  <CreditDisplay sunBalance={3} moonBalance={12} compact onClick={() => router.push('/credit')} />
-                  <Button variant="ghost" size="sm" onClick={() => router.push('/mypage')}>
-                    마이페이지
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleLogout}>
-                    로그아웃
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="ghost" size="sm" onClick={() => router.push('/login')}>
-                    로그인
-                  </Button>
-                  <Button variant="primary" size="sm" onClick={() => router.push('/signup')}>
-                    시작하기
-                  </Button>
-                </>
-              )}
-            </div>
+              );
+            })}
           </div>
-        </div>
-      </header>
-
-      {/* Main Content - bottom padding for mobile tab bar */}
-      <main className="flex-1 w-full pb-safe md:pb-0">
-        {children}
-      </main>
-
-      {/* Mobile Bottom Tab Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden glass-strong border-t border-[var(--border-subtle)]"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-      >
-        <div className="flex items-center justify-around h-16">
-          {navItems.map((item) => {
-            const active = isActive(item.path);
-            return (
-              <Link
-                key={item.path}
-                href={item.path}
-                className={`
-                  flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 min-w-[56px]
-                  ${active ? 'text-cta' : 'text-text-tertiary'}
-                `}
-              >
-                <div className="relative">
-                  <NavIcon name={item.icon} active={active} />
-                  {active && (
-                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cta shadow-[0_0_6px_var(--cta-primary)]" />
-                  )}
-                </div>
-                <span className="text-[10px] font-medium">{item.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
-
-      {/* Footer - desktop only */}
-      <footer className="hidden md:block border-t border-[var(--border-subtle)] bg-space-void">
-        <div className="w-full mx-auto px-6 lg:px-8 max-w-7xl py-8">
-          <div className="text-center space-y-2">
-            <p className="text-sm text-text-secondary">
-              &copy; 2026 천문사주 - 우주의 기운을 드립니다
-            </p>
-            <div className="flex items-center justify-center gap-4 text-xs text-text-tertiary">
-              <Link href="/terms" className="hover:text-text-secondary transition-colors">이용약관</Link>
-              <span>·</span>
-              <Link href="/privacy" className="hover:text-text-secondary transition-colors">개인정보처리방침</Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+        </nav>
+      </div>
     </div>
   );
 }

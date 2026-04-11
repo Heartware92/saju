@@ -46,12 +46,13 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-space-deep relative overflow-hidden">
+    <div className="app-auth-shell">
+      <div className="app-auth-container flex items-center justify-center px-4 py-12 relative overflow-hidden">
       {/* Background glow effects */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cta/5 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-moon-halo/5 rounded-full blur-3xl" />
 
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full relative z-10">
         {/* Back button */}
         <button
           onClick={() => router.push('/')}
@@ -66,7 +67,7 @@ export const LoginPage: React.FC = () => {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-text-primary mb-2">로그인</h1>
-            <p className="text-text-secondary text-sm">천문사주에 오신 것을 환영합니다</p>
+            <p className="text-text-secondary text-sm">이천점에 오신 것을 환영합니다</p>
           </div>
 
           {/* Form */}
@@ -177,6 +178,7 @@ export const LoginPage: React.FC = () => {
             </button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

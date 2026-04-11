@@ -26,11 +26,11 @@ import styles from './SajuResultPage.module.css';
 type TabType = 'wonguk' | 'daewoon' | 'analysis';
 
 const ELEMENT_COLORS: Record<string, string> = {
-  '목': '#4CAF50',
-  '화': '#F44336',
-  '토': '#DDA15E',
-  '금': '#9E9E9E',
-  '수': '#2196F3'
+  '목': '#34D399',
+  '화': '#F43F5E',
+  '토': '#F59E0B',
+  '금': '#CBD5E1',
+  '수': '#3B82F6'
 };
 
 export default function SajuResultPage() {
@@ -166,13 +166,15 @@ export default function SajuResultPage() {
     <div className={styles.container}>
       {/* Header */}
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={() => router.push('/saju')}>
+        <button className={styles.backBtn} onClick={() => router.push('/saju/input')}>
           ← 다시 입력
         </button>
-        <h1>사주 분석 결과</h1>
-        <p className={styles.dateInfo}>
-          {result.solarDate} (양력) | {result.lunarDateSimple} (음력)
-        </p>
+        <div className={styles.headerCenter}>
+          <h1>사주 분석 결과</h1>
+          <p className={styles.dateInfo}>
+            {result.solarDate} (양력) | {result.lunarDateSimple} (음력)
+          </p>
+        </div>
       </div>
 
       {/* Tabs */}

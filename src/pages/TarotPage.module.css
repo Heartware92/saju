@@ -1,29 +1,28 @@
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--spacing-lg);
+  width: 100%;
+  padding: 16px;
+  padding-bottom: 24px;
 }
 
 .header {
   text-align: center;
-  margin-bottom: var(--spacing-2xl);
+  margin-bottom: 24px;
 }
 
 .header h1 {
   font-family: var(--font-serif);
-  font-size: 42px;
-  color: var(--color-primary);
-  margin-bottom: var(--spacing-md);
-  text-shadow: 0 0 30px rgba(212, 175, 55, 0.3);
+  font-size: 24px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
 }
 
 .header p {
-  color: var(--color-text-secondary);
-  font-size: 18px;
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 .mainArea {
-  min-height: 600px;
+  min-height: 400px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -32,60 +31,61 @@
 /* 선택 화면 */
 .selectArea {
   text-align: center;
-  padding: var(--spacing-2xl);
+  padding: 24px 16px;
 }
 
 .deckPreview {
   position: relative;
-  width: 160px;
-  height: 240px;
-  margin: 0 auto var(--spacing-xl);
+  width: 120px;
+  height: 180px;
+  margin: 0 auto 20px;
 }
 
 .deckCard {
   position: absolute;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #4A148C 0%, #7B1FA2 50%, #4A148C 100%);
-  border-radius: var(--radius-lg);
-  border: 3px solid var(--color-primary);
+  background: linear-gradient(135deg, rgba(124,92,252,0.4) 0%, rgba(124,92,252,0.2) 50%, rgba(124,92,252,0.4) 100%);
+  border-radius: 12px;
+  border: 2px solid var(--cta-primary);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .deckCount {
-  color: var(--color-text-muted);
-  font-size: 16px;
-  margin-bottom: var(--spacing-xl);
+  color: var(--text-tertiary);
+  font-size: 13px;
+  margin-bottom: 20px;
 }
 
 .shuffleBtn {
-  padding: var(--spacing-lg) var(--spacing-2xl);
-  background: linear-gradient(135deg, var(--color-primary), #b8860b);
+  padding: 14px 32px;
+  background: linear-gradient(135deg, var(--cta-primary), var(--cta-primary-active));
   border: none;
-  border-radius: var(--radius-full);
-  color: #000;
-  font-size: 20px;
+  border-radius: 99px;
+  color: #fff;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: 20px;
   transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(124, 92, 252, 0.3);
 }
 
 .shuffleBtn:hover {
-  box-shadow: var(--shadow-glow), 0 0 40px rgba(212, 175, 55, 0.4);
+  box-shadow: 0 6px 25px rgba(124, 92, 252, 0.45);
   transform: translateY(-2px);
 }
 
 .instruction {
-  color: var(--color-text-muted);
-  font-size: 16px;
+  color: var(--text-tertiary);
+  font-size: 13px;
   line-height: 2;
 }
 
 /* 카드 펼침 */
 .spreadArea {
   width: 100%;
-  height: 500px;
+  height: 350px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -95,7 +95,7 @@
 .cardsContainer {
   position: relative;
   width: 100%;
-  height: 280px;
+  height: 200px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -108,11 +108,11 @@
 }
 
 .cardBack {
-  width: 90px;
-  height: 140px;
-  background: linear-gradient(135deg, #4A148C 0%, #7B1FA2 50%, #4A148C 100%);
-  border-radius: 10px;
-  border: 2px solid var(--color-primary);
+  width: 55px;
+  height: 85px;
+  background: linear-gradient(135deg, rgba(124,92,252,0.5) 0%, rgba(124,92,252,0.25) 50%, rgba(124,92,252,0.5) 100%);
+  border-radius: 8px;
+  border: 1.5px solid var(--cta-primary);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -120,48 +120,49 @@
 }
 
 .cardBackInner {
-  width: 78px;
-  height: 128px;
-  border: 2px solid rgba(212, 175, 55, 0.4);
-  border-radius: 8px;
+  width: 45px;
+  height: 73px;
+  border: 1.5px solid rgba(124, 92, 252, 0.4);
+  border-radius: 6px;
   display: flex;
   justify-content: center;
   align-items: center;
-  color: var(--color-primary);
-  font-size: 32px;
+  color: var(--cta-primary);
+  font-size: 20px;
   font-weight: bold;
-  background: radial-gradient(circle, rgba(212, 175, 55, 0.1) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(124, 92, 252, 0.1) 0%, transparent 70%);
 }
 
 /* 결과 화면 */
 .resultArea {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: var(--spacing-2xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
   width: 100%;
-  align-items: start;
 }
 
 .selectedCardWrapper {
   perspective: 1000px;
-  position: sticky;
-  top: 100px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 .cardFront {
-  width: 260px;
-  height: 400px;
-  border-radius: var(--radius-lg);
-  border: 3px solid var(--color-primary);
+  width: 160px;
+  height: 250px;
+  border-radius: 12px;
+  border: 2px solid var(--cta-primary);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-xl);
+  gap: 8px;
+  padding: 16px;
   position: relative;
-  background: var(--color-surface);
-  box-shadow: var(--shadow-glow), 0 10px 40px rgba(0, 0, 0, 0.3);
+  background: var(--space-surface);
+  box-shadow: 0 4px 15px rgba(124, 92, 252, 0.3), 0 10px 40px rgba(0, 0, 0, 0.3);
 }
 
 .cardFront.reversed {
@@ -170,175 +171,185 @@
 
 .cardElement {
   position: absolute;
-  top: 15px;
-  left: 15px;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
+  top: 12px;
+  left: 12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #000;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .cardSymbol {
-  font-size: 48px;
+  font-size: 32px;
   font-weight: 700;
-  color: var(--color-primary);
-  margin-bottom: var(--spacing-sm);
+  color: var(--cta-primary);
+  margin-bottom: 4px;
 }
 
 .cardName {
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 700;
-  color: var(--color-text);
+  color: var(--text-primary);
   font-family: var(--font-serif);
 }
 
 .cardNameEn {
-  font-size: 14px;
-  color: var(--color-text-muted);
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
 .reversedBadge {
   position: absolute;
-  bottom: 20px;
-  padding: 6px 16px;
-  background: linear-gradient(135deg, #FF6B6B, #ee5a5a);
-  border-radius: var(--radius-full);
-  font-size: 13px;
+  bottom: 14px;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, var(--fire-core), #ee5a5a);
+  border-radius: 99px;
+  font-size: 11px;
   font-weight: 700;
   color: #fff;
-  box-shadow: 0 2px 10px rgba(255, 107, 107, 0.4);
+  box-shadow: 0 2px 10px rgba(244, 63, 94, 0.4);
 }
 
 .resultInfo {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-2xl);
+  width: 100%;
+  background: var(--space-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .resultHeader {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-sm);
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
 }
 
 .resultHeader h2 {
-  font-size: 32px;
-  color: var(--color-primary);
+  font-size: 20px;
+  color: var(--cta-primary);
   font-family: var(--font-serif);
+  word-break: keep-all;
+  line-height: 1.4;
 }
 
 .reversedTag {
-  padding: 6px 14px;
-  background: linear-gradient(135deg, #FF6B6B, #ee5a5a);
-  border-radius: var(--radius-full);
-  font-size: 14px;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, var(--fire-core), #ee5a5a);
+  border-radius: 99px;
+  font-size: 12px;
   font-weight: 600;
   color: #fff;
 }
 
 .resultSubtitle {
-  color: var(--color-text-muted);
-  font-size: 16px;
-  margin-bottom: var(--spacing-lg);
+  color: var(--text-tertiary);
+  font-size: 13px;
+  margin-bottom: 16px;
 }
 
 .elementInfo {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
-  padding: var(--spacing-md);
-  background: var(--color-surface-light);
-  border-radius: var(--radius-md);
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px;
+  background: var(--space-elevated);
+  border-radius: 10px;
+  flex-wrap: wrap;
 }
 
 .elementBadge {
-  padding: 8px 18px;
-  border-radius: var(--radius-full);
-  font-size: 15px;
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 13px;
   font-weight: 600;
   color: #000;
 }
 
 .sajuElement {
-  color: var(--color-text-secondary);
-  font-size: 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
   font-weight: 500;
 }
 
 .elementDesc {
   margin-left: auto;
-  color: var(--color-text-muted);
-  font-size: 14px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  width: 100%;
+  margin-left: 0;
+  margin-top: 4px;
 }
 
 .keywords {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-lg);
+  gap: 6px;
+  margin-bottom: 16px;
 }
 
 .keyword {
-  padding: 8px 18px;
-  background: rgba(212, 175, 55, 0.15);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  border-radius: var(--radius-full);
-  font-size: 15px;
-  color: var(--color-primary);
+  padding: 6px 14px;
+  background: rgba(124, 92, 252, 0.12);
+  border: 1px solid rgba(124, 92, 252, 0.25);
+  border-radius: 99px;
+  font-size: 13px;
+  color: var(--cta-primary);
   font-weight: 500;
 }
 
 .meaning {
-  color: var(--color-text);
-  font-size: 17px;
+  color: var(--text-primary);
+  font-size: 14px;
   line-height: 1.8;
-  margin-bottom: var(--spacing-xl);
-  padding: var(--spacing-lg);
-  background: var(--color-surface-light);
-  border-radius: var(--radius-md);
-  border-left: 4px solid var(--color-primary);
+  margin-bottom: 20px;
+  padding: 14px;
+  background: var(--space-elevated);
+  border-radius: 10px;
+  border-left: 3px solid var(--cta-primary);
+  word-break: keep-all;
 }
 
 .analysisSection {
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: 20px;
 }
 
 .analysisSectionTitle {
-  font-size: 18px;
-  color: var(--color-primary);
-  margin-bottom: var(--spacing-md);
+  font-size: 15px;
+  color: var(--cta-primary);
+  margin-bottom: 10px;
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 6px;
 }
 
 .analysisPlaceholder {
   text-align: center;
-  padding: var(--spacing-2xl);
-  color: var(--color-text-secondary);
-  background: var(--color-surface-light);
-  border-radius: var(--radius-md);
+  padding: 24px;
+  color: var(--text-secondary);
+  background: var(--space-elevated);
+  border-radius: 10px;
 }
 
 .analysisPlaceholder p {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .loadingSpinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid var(--color-border);
-  border-top-color: var(--color-primary);
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-default);
+  border-top-color: var(--cta-primary);
   border-radius: 50%;
-  margin: 0 auto var(--spacing-lg);
+  margin: 0 auto 12px;
   animation: spin 1s linear infinite;
 }
 
@@ -347,195 +358,40 @@
 }
 
 .analysisResult {
-  background: var(--color-surface-light);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-xl);
-  max-height: 500px;
+  background: var(--space-elevated);
+  border-radius: 10px;
+  padding: 16px;
+  max-height: 350px;
   overflow-y: auto;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border-subtle);
 }
 
 .analysisResult pre {
   white-space: pre-wrap;
   word-wrap: break-word;
+  overflow-wrap: break-word;
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.9;
-  color: var(--color-text);
+  color: var(--text-primary);
+  max-width: 100%;
 }
 
 .retryBtn {
   width: 100%;
-  padding: var(--spacing-lg);
-  background: linear-gradient(135deg, var(--color-primary), #b8860b);
+  padding: 14px;
+  background: linear-gradient(135deg, var(--cta-primary), var(--cta-primary-active));
   border: none;
-  border-radius: var(--radius-md);
-  color: #000;
-  font-size: 18px;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(124, 92, 252, 0.3);
 }
 
 .retryBtn:hover {
-  box-shadow: var(--shadow-glow);
+  box-shadow: 0 6px 25px rgba(124, 92, 252, 0.45);
   transform: translateY(-2px);
-}
-
-/* 태블릿 */
-@media (max-width: 1024px) {
-  .resultArea {
-    grid-template-columns: 220px 1fr;
-    gap: var(--spacing-xl);
-  }
-
-  .cardFront {
-    width: 200px;
-    height: 310px;
-  }
-
-  .cardSymbol {
-    font-size: 36px;
-  }
-
-  .cardName {
-    font-size: 22px;
-  }
-}
-
-/* 모바일 */
-@media (max-width: 768px) {
-  .container {
-    padding: var(--spacing-md);
-    overflow-x: hidden;
-  }
-
-  .header h1 {
-    font-size: 28px;
-  }
-
-  .header p {
-    font-size: 14px;
-  }
-
-  .deckPreview {
-    width: 120px;
-    height: 180px;
-  }
-
-  .shuffleBtn {
-    font-size: 16px;
-    padding: var(--spacing-md) var(--spacing-xl);
-  }
-
-  .spreadArea {
-    height: 350px;
-  }
-
-  .cardBack {
-    width: 65px;
-    height: 100px;
-  }
-
-  .cardBackInner {
-    width: 55px;
-    height: 90px;
-    font-size: 24px;
-  }
-
-  .resultArea {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--spacing-lg);
-    width: 100%;
-    max-width: 100%;
-  }
-
-  .selectedCardWrapper {
-    position: static;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-  }
-
-  .cardFront {
-    width: 160px;
-    height: 250px;
-  }
-
-  .cardSymbol {
-    font-size: 32px;
-  }
-
-  .cardName {
-    font-size: 20px;
-  }
-
-  .cardNameEn {
-    font-size: 12px;
-  }
-
-  .resultInfo {
-    width: 100%;
-    max-width: 100%;
-    padding: var(--spacing-lg);
-    box-sizing: border-box;
-    overflow-x: hidden;
-  }
-
-  .resultHeader {
-    flex-wrap: wrap;
-  }
-
-  .resultHeader h2 {
-    font-size: 22px;
-    word-break: keep-all;
-    line-height: 1.4;
-  }
-
-  .elementInfo {
-    flex-wrap: wrap;
-    gap: var(--spacing-sm);
-  }
-
-  .elementDesc {
-    margin-left: 0;
-    width: 100%;
-    font-size: 13px;
-  }
-
-  .keywords {
-    gap: var(--spacing-xs);
-  }
-
-  .keyword {
-    padding: 6px 14px;
-    font-size: 13px;
-    word-break: keep-all;
-  }
-
-  .meaning {
-    font-size: 14px;
-    line-height: 1.8;
-    word-break: keep-all;
-  }
-
-  .analysisResult {
-    max-height: 350px;
-    padding: var(--spacing-md);
-    overflow-x: hidden;
-  }
-
-  .analysisResult pre {
-    font-size: 14px;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    max-width: 100%;
-  }
-
-  .analysisSectionTitle {
-    font-size: 16px;
-  }
 }

@@ -411,9 +411,9 @@ export default function SajuInputPage() {
         {/* 뒤로가기 */}
         <button
           className={styles.backBtn}
-          onClick={() => router.push('/')}
+          onClick={() => router.push('/saju')}
         >
-          ← 다른 운세 보기
+          ← 프로필 목록으로
         </button>
       </motion.div>
 

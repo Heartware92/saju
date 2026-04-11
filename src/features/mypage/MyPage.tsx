@@ -70,32 +70,31 @@ export const MyPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-bg py-12 px-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-space-deep px-4 pt-4 pb-8">
         {/* 헤더 */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-primary mb-2">마이페이지</h1>
-          <p className="text-text-secondary">내 정보와 활동 내역을 확인하세요</p>
+        <div className="mb-5">
+          <h1 className="text-xl font-bold text-text-primary mb-1">내 정보</h1>
+          <p className="text-sm text-text-secondary">내 정보와 활동 내역을 확인하세요</p>
         </div>
 
         {/* 탭 네비게이션 */}
-        <div className="flex gap-2 mb-8 overflow-x-auto">
+        <div className="flex gap-1 mb-5 overflow-x-auto bg-space-surface rounded-xl p-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`
-                flex items-center gap-2 px-4 py-3 rounded-lg
-                whitespace-nowrap transition-all
+                flex items-center gap-1.5 px-3 py-2 rounded-lg
+                whitespace-nowrap transition-all text-xs font-medium
                 ${
                   activeTab === tab.id
-                    ? 'bg-primary text-white shadow-md'
-                    : 'bg-white text-text-secondary hover:bg-secondary'
+                    ? 'bg-cta text-white shadow-md shadow-cta/20'
+                    : 'text-text-tertiary'
                 }
               `}
             >
-              <span className="text-lg">{typeof tab.icon === 'string' ? tab.icon : tab.icon}</span>
-              <span className="font-medium">{tab.label}</span>
+              <span className="text-sm">{typeof tab.icon === 'string' ? tab.icon : tab.icon}</span>
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>
@@ -107,7 +106,6 @@ export const MyPage: React.FC = () => {
           {activeTab === 'records' && <RecordsTab records={sajuRecords} loading={loading} />}
           {activeTab === 'orders' && <OrdersTab orders={orders} loading={loading} />}
         </div>
-      </div>
     </div>
   );
 };
@@ -118,28 +116,28 @@ export const MyPage: React.FC = () => {
 const ProfileTab: React.FC<{ user: any; onLogout: () => void }> = ({ user, onLogout }) => {
   return (
     <Card>
-      <h2 className="text-xl font-bold text-primary mb-6">내 정보</h2>
+      <h2 className="text-lg font-bold text-text-primary mb-5">내 정보</h2>
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between py-3 border-b border-border">
-          <span className="text-text-secondary">이메일</span>
-          <span className="font-medium text-text">{user?.email || '-'}</span>
+      <div className="space-y-0">
+        <div className="flex items-center justify-between py-3 border-b border-[var(--border-subtle)]">
+          <span className="text-text-secondary text-sm">이메일</span>
+          <span className="font-medium text-text-primary text-sm">{user?.email || '-'}</span>
         </div>
 
-        <div className="flex items-center justify-between py-3 border-b border-border">
-          <span className="text-text-secondary">가입일</span>
-          <span className="font-medium text-text">
+        <div className="flex items-center justify-between py-3 border-b border-[var(--border-subtle)]">
+          <span className="text-text-secondary text-sm">가입일</span>
+          <span className="font-medium text-text-primary text-sm">
             {user?.created_at ? new Date(user.created_at).toLocaleDateString('ko-KR') : '-'}
           </span>
         </div>
 
         <div className="flex items-center justify-between py-3">
-          <span className="text-text-secondary">보유 크레딧</span>
+          <span className="text-text-secondary text-sm">보유 크레딧</span>
           <CreditBalance showAddButton={false} size="sm" />
         </div>
       </div>
 
-      <div className="mt-8 pt-6 border-t border-border">
+      <div className="mt-6 pt-5 border-t border-[var(--border-subtle)]">
         <Button variant="outline" fullWidth onClick={onLogout}>
           로그아웃
         </Button>
@@ -160,53 +158,53 @@ const CreditsTab: React.FC<{
   const router = useRouter();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* 잔액 카드 */}
       <Card>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-primary">크레딧 잔액</h2>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-lg font-bold text-text-primary">크레딧 잔액</h2>
           <Button variant="sun" onClick={() => router.push('/credit')}>
             충전하기
           </Button>
         </div>
 
-        <div className="flex justify-center gap-8 py-8">
+        <div className="flex justify-center gap-8 py-6">
           <div className="text-center">
-            <div className="text-4xl mb-2">☀️</div>
-            <div className="text-4xl font-bold text-accent mb-2">{sunBalance}</div>
-            <div className="text-text-secondary">해 크레딧</div>
+            <div className="text-3xl mb-2">☀️</div>
+            <div className="text-3xl font-bold text-sun-core mb-1">{sunBalance}</div>
+            <div className="text-text-secondary text-xs">해 크레딧</div>
           </div>
           <div className="text-center">
-            <div className="text-4xl mb-2">🌙</div>
-            <div className="text-4xl font-bold text-accent mb-2">{moonBalance}</div>
-            <div className="text-text-secondary">달 크레딧</div>
+            <div className="text-3xl mb-2">🌙</div>
+            <div className="text-3xl font-bold text-moon-halo mb-1">{moonBalance}</div>
+            <div className="text-text-secondary text-xs">달 크레딧</div>
           </div>
         </div>
       </Card>
 
       {/* 거래 내역 */}
       <Card>
-        <h2 className="text-xl font-bold text-primary mb-6">거래 내역</h2>
+        <h2 className="text-lg font-bold text-text-primary mb-4">거래 내역</h2>
 
         {loading ? (
-          <div className="text-center py-8 text-text-secondary">로딩 중...</div>
+          <div className="text-center py-6 text-text-secondary text-sm">로딩 중...</div>
         ) : transactions.length === 0 ? (
-          <div className="text-center py-8 text-text-secondary">거래 내역이 없습니다.</div>
+          <div className="text-center py-6 text-text-secondary text-sm">거래 내역이 없습니다.</div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-0">
             {transactions.map((tx) => (
-              <div key={tx.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+              <div key={tx.id} className="flex items-center justify-between py-3 border-b border-[var(--border-subtle)] last:border-0">
                 <div>
-                  <div className="font-medium text-text">{tx.reason}</div>
-                  <div className="text-sm text-text-secondary">
+                  <div className="font-medium text-text-primary text-sm">{tx.reason}</div>
+                  <div className="text-xs text-text-tertiary">
                     {new Date(tx.created_at).toLocaleString('ko-KR')}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className={`font-bold ${tx.amount > 0 ? 'text-accent' : 'text-fire'}`}>
+                  <div className={`font-bold text-sm ${tx.amount > 0 ? 'text-sun-core' : 'text-fire-core'}`}>
                     {tx.amount > 0 ? '+' : ''}{tx.amount} 크레딧
                   </div>
-                  <div className="text-sm text-text-secondary">잔액: {tx.balance_after}</div>
+                  <div className="text-xs text-text-tertiary">잔액: {tx.balance_after}</div>
                 </div>
               </div>
             ))}
@@ -223,38 +221,38 @@ const CreditsTab: React.FC<{
 const RecordsTab: React.FC<{ records: SajuRecord[]; loading: boolean }> = ({ records, loading }) => {
   return (
     <Card>
-      <h2 className="text-xl font-bold text-primary mb-6">사주 분석 기록</h2>
+      <h2 className="text-lg font-bold text-text-primary mb-4">사주 분석 기록</h2>
 
       {loading ? (
-        <div className="text-center py-8 text-text-secondary">로딩 중...</div>
+        <div className="text-center py-6 text-text-secondary text-sm">로딩 중...</div>
       ) : records.length === 0 ? (
-        <div className="text-center py-8 text-text-secondary">
+        <div className="text-center py-6 text-text-secondary text-sm">
           아직 분석 기록이 없습니다.
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {records.map((record) => (
-            <div key={record.id} className="border border-border rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div key={record.id} className="border border-[var(--border-subtle)] rounded-xl p-3.5 hover:border-[var(--border-default)] transition-all">
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <div className="font-bold text-primary">
+                  <div className="font-bold text-text-primary text-sm">
                     {new Date(record.birth_date).toLocaleDateString('ko-KR')}
                   </div>
-                  <div className="text-sm text-text-secondary">
+                  <div className="text-xs text-text-tertiary">
                     {record.gender === 'male' ? '남성' : '여성'}
                     {record.birth_place && ` · ${record.birth_place}`}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-accent font-bold">
+                  <div className="text-xs text-cta font-bold">
                     {record.is_detailed ? '상세 해석' : '기본 해석'}
                   </div>
-                  <div className="text-xs text-text-secondary">
+                  <div className="text-[11px] text-text-tertiary">
                     {record.credit_used} 크레딧
                   </div>
                 </div>
               </div>
-              <div className="text-sm text-text-secondary">
+              <div className="text-xs text-text-tertiary">
                 {new Date(record.created_at).toLocaleString('ko-KR')}
               </div>
             </div>
@@ -282,8 +280,8 @@ const OrdersTab: React.FC<{ orders: Order[]; loading: boolean }> = ({ orders, lo
   const getStatusColor = (status: string) => {
     const colorMap: Record<string, string> = {
       pending: 'text-text-secondary',
-      completed: 'text-accent',
-      failed: 'text-fire',
+      completed: 'text-sun-core',
+      failed: 'text-fire-core',
       refunded: 'text-text-secondary'
     };
     return colorMap[status] || 'text-text';
@@ -291,38 +289,38 @@ const OrdersTab: React.FC<{ orders: Order[]; loading: boolean }> = ({ orders, lo
 
   return (
     <Card>
-      <h2 className="text-xl font-bold text-primary mb-6">구매 내역</h2>
+      <h2 className="text-lg font-bold text-text-primary mb-4">구매 내역</h2>
 
       {loading ? (
-        <div className="text-center py-8 text-text-secondary">로딩 중...</div>
+        <div className="text-center py-6 text-text-secondary text-sm">로딩 중...</div>
       ) : orders.length === 0 ? (
-        <div className="text-center py-8 text-text-secondary">
+        <div className="text-center py-6 text-text-secondary text-sm">
           구매 내역이 없습니다.
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {orders.map((order) => (
-            <div key={order.id} className="border border-border rounded-lg p-4">
-              <div className="flex items-start justify-between mb-3">
+            <div key={order.id} className="border border-[var(--border-subtle)] rounded-xl p-3.5">
+              <div className="flex items-start justify-between mb-2">
                 <div>
-                  <div className="font-bold text-primary mb-1">{order.package_name}</div>
-                  <div className="text-sm text-text-secondary">
+                  <div className="font-bold text-text-primary text-sm mb-0.5">{order.package_name}</div>
+                  <div className="text-xs text-text-tertiary">
                     {new Date(order.created_at).toLocaleString('ko-KR')}
                   </div>
                 </div>
-                <div className={`font-bold ${getStatusColor(order.status)}`}>
+                <div className={`font-bold text-xs ${getStatusColor(order.status)}`}>
                   {getStatusText(order.status)}
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-sm">
-                <div className="text-text-secondary">
+              <div className="flex items-center justify-between text-xs">
+                <div className="text-text-tertiary">
                   {order.payment_method || '결제 수단'}
                 </div>
-                <div className="font-bold text-text">
+                <div className="font-bold text-text-primary">
                   {order.amount.toLocaleString()}원
                   {order.sun_credit_amount > 0 && <span className="text-sun-core ml-2">+{order.sun_credit_amount} ☀️</span>}
-                  {order.moon_credit_amount > 0 && <span className="text-moon-core ml-2">+{order.moon_credit_amount} 🌙</span>}
+                  {order.moon_credit_amount > 0 && <span className="text-moon-halo ml-2">+{order.moon_credit_amount} 🌙</span>}
                 </div>
               </div>
             </div>

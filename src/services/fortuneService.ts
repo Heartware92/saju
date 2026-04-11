@@ -2,14 +2,11 @@
  * 운세 분석 서비스 (크레딧 시스템 통합)
  */
 
-import axios from 'axios';
-import { OPENAI_API_KEY } from '../constants/secrets';
 import { SajuResult } from '../utils/sajuCalculator';
 import { useCreditStore } from '../store/useCreditStore';
 import { sajuDB } from './supabase';
 import { auth } from './supabase';
 import {
-  SYSTEM_PROMPT,
   generateBasicPrompt,
   generateDetailedPrompt,
   generateTodayFortunePrompt,
@@ -20,8 +17,6 @@ import {
 } from '../constants/prompts';
 import type { TarotCardInfo } from './api';
 
-const API_URL = 'https://api.openai.com/v1/chat/completions';
-
 interface FortuneResponse {
   success: boolean;
   content?: string;
@@ -29,37 +24,22 @@ interface FortuneResponse {
 }
 
 /**
- * GPT API 호출 헬퍼
+ * GPT API 호출 헬퍼 (서버 API Route 경유)
  */
 const callGPT = async (userPrompt: string, maxTokens: number = 1000): Promise<string> => {
-  try {
-    const response = await axios.post(
-      API_URL,
-      {
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.7,
-        max_tokens: maxTokens
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${OPENAI_API_KEY}`
-        }
-      }
-    );
+  const response = await fetch('/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: userPrompt, maxTokens }),
+  });
 
-    return response.data.choices[0].message.content;
-  } catch (error: any) {
-    console.error('GPT API Error:', error);
-    if (error.response?.status === 401) {
-      throw new Error('API Key가 유효하지 않습니다.');
-    }
-    throw new Error('분석을 가져오는데 실패했습니다.');
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || '분석을 가져오는데 실패했습니다.');
   }
+
+  return data.content;
 };
 
 /**

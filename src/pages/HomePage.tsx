@@ -4,17 +4,84 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { MoonIcon } from '../components/ui/CreditDisplay';
 
-const SAJU_CATEGORIES = [
-  { id: 'today', title: '오늘의 운세', icon: '☀️', desc: '하루의 기운 미리보기', credit: 'moon', cost: 1 },
-  { id: 'traditional', title: '정통 사주', icon: '✦', desc: '타고난 운명의 별자리', credit: 'sun', cost: 1 },
-  { id: 'love', title: '애정운', icon: '✧', desc: '쌍성이 비추는 인연', credit: 'sun', cost: 1 },
-  { id: 'wealth', title: '재물운', icon: '☄', desc: '혜성이 이끄는 재물', credit: 'sun', cost: 1 },
-  { id: 'newyear', title: '2026 신년운세', icon: '★', desc: '병오년 우주의 흐름', credit: 'moon', cost: 1 },
-  { id: 'tojeong', title: '토정비결', icon: '☽', desc: '별자리에 새긴 비결', credit: 'moon', cost: 1 },
-  { id: 'tomorrow', title: '내일의 운세', icon: '☾', desc: '초승달이 전하는 내일', credit: 'moon', cost: 1 },
-  { id: 'date', title: '지정일 운세', icon: '◎', desc: '그 날의 궤도를 읽다', credit: 'moon', cost: 1 },
+/**
+ * 운세 서비스 목록 (포스텔러/점신/헬로봇 레퍼런스)
+ * - 정통사주, 오늘의 운세, 토정비결, 날짜별 운세 (핵심 4종)
+ * - 애정운, 재물운, 타로 (추가)
+ */
+const MAIN_SERVICES = [
+  {
+    id: 'traditional',
+    title: '정통 사주',
+    icon: '📜',
+    desc: '사주팔자 종합 분석',
+    href: '/saju',
+    gradient: 'from-purple-500/20 to-indigo-500/10',
+    iconBg: 'bg-purple-500/15',
+  },
+  {
+    id: 'today',
+    title: '오늘의 운세',
+    icon: '☀️',
+    desc: '오늘 하루 운세',
+    href: '/saju/input?category=today',
+    gradient: 'from-amber-500/20 to-orange-500/10',
+    iconBg: 'bg-amber-500/15',
+  },
+  {
+    id: 'tojeong',
+    title: '토정비결',
+    icon: '📖',
+    desc: '한 해 길흉화복',
+    href: '/saju/input?category=tojeong',
+    gradient: 'from-emerald-500/20 to-teal-500/10',
+    iconBg: 'bg-emerald-500/15',
+  },
+  {
+    id: 'date-fortune',
+    title: '날짜별 운세',
+    icon: '📅',
+    desc: '연·월·일 운세',
+    href: '/saju/input?category=date',
+    gradient: 'from-blue-500/20 to-cyan-500/10',
+    iconBg: 'bg-blue-500/15',
+  },
+];
+
+const SUB_SERVICES = [
+  {
+    id: 'love',
+    title: '애정운',
+    icon: '💕',
+    href: '/saju/input?category=love',
+    credit: 'sun' as const,
+    cost: 2,
+  },
+  {
+    id: 'wealth',
+    title: '재물운',
+    icon: '💰',
+    href: '/saju/input?category=wealth',
+    credit: 'sun' as const,
+    cost: 2,
+  },
+  {
+    id: 'tarot',
+    title: '타로',
+    icon: '🃏',
+    href: '/tarot',
+    credit: 'moon' as const,
+    cost: 1,
+  },
+  {
+    id: 'newyear',
+    title: '신년운세',
+    icon: '🐍',
+    href: '/saju/input?category=newyear',
+    credit: 'moon' as const,
+    cost: 1,
+  },
 ];
 
 const stagger = {
@@ -23,149 +90,145 @@ const stagger = {
 };
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } },
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' as const } },
 };
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-space-deep">
-      {/* Hero Section */}
+      {/* Hero - 간결하게 */}
       <section className="relative starfield nebula-glow overflow-hidden">
-        <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 pt-20 pb-16 md:pt-32 md:pb-24">
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 pt-14 pb-10">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1, ease: 'easeOut' }}
-            className="mb-6"
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+            className="mb-5"
           >
-            {/* Abstract cosmic symbol */}
-            <div className="relative w-24 h-24 md:w-32 md:h-32 mx-auto">
+            <div className="relative w-20 h-20 mx-auto">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cta/30 to-purple-600/20 animate-pulse-glow" />
               <div className="absolute inset-2 rounded-full bg-gradient-to-br from-cta/20 to-transparent" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-4xl md:text-5xl opacity-80">☯</span>
+                <span className="text-3xl opacity-80">☯</span>
               </div>
-              {/* Orbit ring */}
-              <div className="absolute inset-[-8px] border border-cta/20 rounded-full animate-orbit" style={{ animationDuration: '30s' }} />
+              <div className="absolute inset-[-6px] border border-cta/20 rounded-full animate-orbit" style={{ animationDuration: '30s' }} />
             </div>
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="text-3xl md:text-5xl font-bold text-text-primary mb-4"
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-2xl font-bold text-text-primary mb-2"
             style={{ fontFamily: 'var(--font-serif)' }}
           >
-            우주의 기운을 드립니다
+            이천점
           </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.5 }}
-            className="text-base md:text-lg text-text-secondary max-w-md mb-8"
+            transition={{ duration: 0.6, delay: 0.35 }}
+            className="text-sm text-text-secondary mb-6"
           >
-            별이 새긴 당신의 운명을 읽어드립니다
+            2,000원으로 만나는 운명 상담
           </motion.p>
 
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.7 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
           >
-            <Link href="/saju?category=traditional">
+            <Link href="/saju">
               <Button variant="primary" size="lg">
                 내 사주 보기
               </Button>
             </Link>
           </motion.div>
-
-          {/* Scroll indicator */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.5 }}
-            className="mt-12 animate-float"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M7 10l5 5 5-5" />
-            </svg>
-          </motion.div>
         </div>
       </section>
 
-      {/* Category Grid */}
-      <section className="px-4 md:px-6 lg:px-8 max-w-5xl mx-auto -mt-4 relative z-10">
-        <motion.h2
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="text-lg font-semibold text-text-secondary mb-4 px-1"
-        >
-          운세 서비스
-        </motion.h2>
-
+      {/* 핵심 서비스 - 2x2 큰 카드 */}
+      <section className="px-4 -mt-3 relative z-10">
         <motion.div
           variants={stagger}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-3"
+          className="grid grid-cols-2 gap-3"
         >
-          {SAJU_CATEGORIES.map((cat) => (
-            <motion.div key={cat.id} variants={fadeUp}>
-              <Link href={`/saju?category=${cat.id}`}>
-                <Card hover padding="md" className="h-full group">
-                  <div className="flex flex-col gap-3">
-                    {/* Icon */}
-                    <div className="w-10 h-10 rounded-xl bg-[rgba(124,92,252,0.12)] flex items-center justify-center text-xl group-hover:bg-[rgba(124,92,252,0.2)] transition-colors">
-                      {cat.icon}
-                    </div>
-
-                    {/* Text */}
-                    <div>
-                      <h3 className="text-sm font-semibold text-text-primary mb-0.5">{cat.title}</h3>
-                      <p className="text-xs text-text-tertiary leading-relaxed">{cat.desc}</p>
-                    </div>
-
-                    {/* Credit cost */}
-                    <div className="flex items-center gap-1 mt-auto">
-                      {cat.credit === 'sun' ? (
-                        <span className="text-[10px] text-sun-corona font-medium">☀ {cat.cost}</span>
-                      ) : (
-                        <span className="text-[10px] text-moon-halo font-medium">☾ {cat.cost}</span>
-                      )}
-                    </div>
+          {MAIN_SERVICES.map((svc) => (
+            <motion.div key={svc.id} variants={fadeUp}>
+              <Link href={svc.href}>
+                <div className={`
+                  relative rounded-2xl p-4 h-[120px]
+                  bg-gradient-to-br ${svc.gradient}
+                  border border-[var(--border-subtle)]
+                  hover:border-cta/30 transition-all
+                  flex flex-col justify-between
+                  active:scale-[0.97]
+                `}>
+                  <div className={`w-10 h-10 rounded-xl ${svc.iconBg} flex items-center justify-center text-xl`}>
+                    {svc.icon}
                   </div>
-                </Card>
+                  <div>
+                    <h3 className="text-sm font-bold text-text-primary">{svc.title}</h3>
+                    <p className="text-[11px] text-text-tertiary">{svc.desc}</p>
+                  </div>
+                </div>
               </Link>
             </motion.div>
           ))}
         </motion.div>
       </section>
 
-      {/* Tarot Banner */}
-      <section className="px-4 md:px-6 lg:px-8 max-w-5xl mx-auto mt-8 mb-12">
+      {/* 추가 서비스 - 가로 스크롤 또는 작은 칩 */}
+      <section className="px-4 mt-5">
+        <h2 className="text-sm font-semibold text-text-secondary mb-3 px-1">더 많은 운세</h2>
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          variants={stagger}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="grid grid-cols-4 gap-2"
+        >
+          {SUB_SERVICES.map((svc) => (
+            <motion.div key={svc.id} variants={fadeUp}>
+              <Link href={svc.href}>
+                <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-space-surface/50 border border-[var(--border-subtle)] hover:border-cta/30 transition-all active:scale-[0.95]">
+                  <span className="text-2xl">{svc.icon}</span>
+                  <span className="text-[11px] font-medium text-text-secondary">{svc.title}</span>
+                  <span className="text-[9px] text-text-tertiary">
+                    {svc.credit === 'sun' ? `☀️${svc.cost}` : `🌙${svc.cost}`}
+                  </span>
+                </div>
+              </Link>
+            </motion.div>
+          ))}
+        </motion.div>
+      </section>
+
+      {/* 타로 배너 */}
+      <section className="px-4 mt-6 mb-10">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.5 }}
         >
           <Link href="/tarot">
             <Card hover padding="none" glow="cta" className="overflow-hidden">
-              <div className="relative px-6 py-8 md:py-10 bg-gradient-to-br from-[rgba(124,92,252,0.15)] to-[rgba(59,130,246,0.08)]">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-[rgba(124,92,252,0.2)] flex items-center justify-center text-3xl shrink-0">
+              <div className="relative px-5 py-5 bg-gradient-to-br from-[rgba(124,92,252,0.15)] to-[rgba(59,130,246,0.08)]">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[rgba(124,92,252,0.2)] flex items-center justify-center text-2xl shrink-0">
                     ✦
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-text-primary mb-1">타로 상담실</h3>
-                    <p className="text-sm text-text-secondary">별빛이 비추는 신비로운 카드의 메시지</p>
+                    <h3 className="text-base font-bold text-text-primary mb-0.5">타로 상담실</h3>
+                    <p className="text-xs text-text-secondary">카드가 전하는 신비로운 메시지</p>
                   </div>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round">
                     <path d="M9 18l6-6-6-6" />
                   </svg>
                 </div>
@@ -175,16 +238,16 @@ export default function HomePage() {
         </motion.div>
       </section>
 
-      {/* Bottom CTA */}
-      <section className="px-4 md:px-6 lg:px-8 max-w-5xl mx-auto mb-16 text-center">
+      {/* 하단 CTA */}
+      <section className="px-4 mb-16 text-center">
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="py-8"
+          className="py-6"
         >
-          <p className="text-sm text-text-tertiary mb-4">아직 사주를 모르시나요?</p>
-          <Link href="/saju?category=traditional">
+          <p className="text-xs text-text-tertiary mb-3">아직 사주를 모르시나요?</p>
+          <Link href="/saju">
             <Button variant="outline" size="md">
               무료 사주 계산
             </Button>
