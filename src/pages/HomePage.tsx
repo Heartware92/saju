@@ -40,9 +40,9 @@ const MAIN_SERVICES = [
   },
   {
     id: 'date-fortune',
-    title: '날짜별 운세',
+    title: '지정일 운세',
     icon: '📅',
-    desc: '연·월·일 운세',
+    desc: '특정 날짜의 운세',
     href: '/saju/input?category=date',
     gradient: 'from-blue-500/20 to-cyan-500/10',
     iconBg: 'bg-blue-500/15',
@@ -166,16 +166,14 @@ export default function HomePage() {
                   bg-gradient-to-br ${svc.gradient}
                   border border-[var(--border-subtle)]
                   hover:border-cta/30 transition-all
-                  flex flex-col justify-between
+                  flex flex-col items-center justify-center text-center
                   active:scale-[0.97]
                 `}>
-                  <div className={`w-10 h-10 rounded-xl ${svc.iconBg} flex items-center justify-center text-xl`}>
+                  <div className={`w-10 h-10 rounded-xl ${svc.iconBg} flex items-center justify-center text-xl mb-2`}>
                     {svc.icon}
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-text-primary">{svc.title}</h3>
-                    <p className="text-[11px] text-text-tertiary">{svc.desc}</p>
-                  </div>
+                  <h3 className="text-sm font-bold text-text-primary">{svc.title}</h3>
+                  <p className="text-[11px] text-text-tertiary">{svc.desc}</p>
                 </div>
               </Link>
             </motion.div>
