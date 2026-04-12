@@ -259,6 +259,168 @@
   color: var(--cta-primary);
 }
 
+/* Section hint (쉬운 설명) */
+.sectionHint {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(124, 92, 252, 0.06);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+/* Gyeokguk (격국) */
+.gyeokgukBox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gyeokgukHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gyeokgukName {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--cta-primary);
+  font-family: var(--font-serif);
+}
+
+.gyeokgukName small {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+.gyeokgukType {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: var(--space-elevated);
+  border: 1px solid var(--border-subtle);
+}
+
+.gyeokgukDesc {
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.gyeokgukReason {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.55;
+}
+
+.gyeokgukStatus {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.gyeokgukStatus[data-success="true"] {
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  color: var(--text-primary);
+}
+
+.gyeokgukStatus[data-success="false"] {
+  background: rgba(244, 63, 94, 0.08);
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  color: var(--text-primary);
+}
+
+.gyeokgukStatus strong {
+  font-size: 13px;
+  color: var(--cta-primary);
+}
+
+.gyeokgukTraits {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.traitRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.traitLabel {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.traitChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: var(--space-elevated);
+  border: 1px solid var(--border-subtle);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.chipAccent {
+  background: rgba(124, 92, 252, 0.1);
+  color: var(--cta-primary);
+  border-color: rgba(124, 92, 252, 0.25);
+}
+
+/* Sipseong (십성 분포) */
+.sipseongGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.sipseongItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: 10px;
+  background: var(--space-elevated);
+  border: 1px solid;
+  text-align: center;
+}
+
+.sipseongDim {
+  opacity: 0.55;
+}
+
+.sipseongName {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sipseongCount {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-serif);
+}
+
 /* Sinsal (신살) */
 .sinsalList {
   display: flex;

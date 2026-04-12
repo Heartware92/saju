@@ -51,6 +51,14 @@ const MAIN_SERVICES = [
 
 const SUB_SERVICES = [
   {
+    id: 'zamidusu',
+    title: '자미두수',
+    icon: '🌌',
+    href: '/saju/input?category=zamidusu',
+    credit: 'sun' as const,
+    cost: 3,
+  },
+  {
     id: 'love',
     title: '애정운',
     icon: '💕',
@@ -189,7 +197,7 @@ export default function HomePage() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="grid grid-cols-4 gap-2"
+          className="grid grid-cols-5 gap-2"
         >
           {SUB_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>

@@ -13,15 +13,65 @@
  * - 상세 AI 해석 (1500-2000자)
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { calculateSaju, SajuResult } from '../utils/sajuCalculator';
+import { calculateSaju, SajuResult, TEN_GODS_MAP } from '../utils/sajuCalculator';
 import { getCorrectedTimeForSaju } from '../utils/timeCorrection';
 import { getBasicInterpretation, getDetailedInterpretation } from '../services/fortuneService';
 import { PaywallModal, LockedCard } from '../features/saju/PaywallModal';
 import { useCreditStore } from '../store/useCreditStore';
+import { determineGyeokguk, analyzeGyeokgukStatus } from '../engine/gyeokguk';
 import styles from './SajuResultPage.module.css';
+
+const SIPSEONG_ORDER = ['비견', '겁재', '식신', '상관', '편재', '정재', '편관', '정관', '편인', '정인'] as const;
+
+const SIPSEONG_COLORS: Record<string, string> = {
+  '비견': '#34D399', '겁재': '#10B981',
+  '식신': '#F59E0B', '상관': '#FBBF24',
+  '편재': '#FB923C', '정재': '#F97316',
+  '편관': '#F43F5E', '정관': '#E11D48',
+  '편인': '#60A5FA', '정인': '#3B82F6',
+};
+
+function computeSipseongDistribution(result: SajuResult) {
+  const dayGan = result.dayMaster;
+  const map = TEN_GODS_MAP[dayGan];
+  if (!map) return {} as Record<string, number>;
+
+  const counts: Record<string, number> = {};
+  SIPSEONG_ORDER.forEach(s => { counts[s] = 0; });
+
+  // 천간 (일간 제외)
+  const stems = [
+    result.pillars.year.gan,
+    result.pillars.month.gan,
+    result.pillars.hour.gan,
+  ];
+  stems.forEach(gan => {
+    const s = map[gan];
+    if (s && counts[s] !== undefined) counts[s] += 1;
+  });
+
+  // 지지 지장간
+  const branches = [
+    result.pillars.year.hiddenStems,
+    result.pillars.month.hiddenStems,
+    result.pillars.day.hiddenStems,
+    result.pillars.hour.hiddenStems,
+  ];
+  branches.forEach(hidden => {
+    hidden.forEach(gan => {
+      const s = map[gan];
+      if (s && counts[s] !== undefined) counts[s] += 0.5; // 지장간은 0.5 가중치
+    });
+  });
+
+  // 반올림
+  Object.keys(counts).forEach(k => { counts[k] = Math.round(counts[k] * 2) / 2; });
+
+  return counts;
+}
 
 type TabType = 'wonguk' | 'daewoon' | 'analysis';
 
@@ -155,6 +205,17 @@ export default function SajuResultPage() {
       setDetailedLoading(false);
     }
   };
+
+  // 격국 + 십성 분포 계산 (result 의존)
+  const gyeokguk = useMemo(() => (result ? determineGyeokguk(result) : null), [result]);
+  const gyeokgukStatus = useMemo(
+    () => (result && gyeokguk ? analyzeGyeokgukStatus(result, gyeokguk) : null),
+    [result, gyeokguk]
+  );
+  const sipseongDist = useMemo(
+    () => (result ? computeSipseongDistribution(result) : ({} as Record<string, number>)),
+    [result]
+  );
 
   if (!result) {
     return <div className={styles.loading}>로딩 중...</div>;
@@ -304,6 +365,88 @@ export default function SajuResultPage() {
                   <span className={styles.yValue}>{result.giSin}</span>
                 </div>
               </div>
+              <p className={styles.sectionHint}>
+                용신은 사주에서 가장 필요한 오행이에요. 이 기운을 보태주는 색, 방향, 시기를 가까이하면 좋아요.
+              </p>
+            </div>
+
+            {/* 격국 */}
+            {gyeokguk && (
+              <div className={styles.section}>
+                <h2>🏛️ 격국 (格局)</h2>
+                <div className={styles.gyeokgukBox}>
+                  <div className={styles.gyeokgukHeader}>
+                    <span className={styles.gyeokgukName}>
+                      {gyeokguk.name}
+                      {gyeokguk.nameHanja && <small> · {gyeokguk.nameHanja}</small>}
+                    </span>
+                    <span className={styles.gyeokgukType}>{gyeokguk.type}</span>
+                  </div>
+                  <p className={styles.gyeokgukDesc}>{gyeokguk.description}</p>
+                  <p className={styles.gyeokgukReason}>판정 근거: {gyeokguk.reason}</p>
+
+                  {gyeokgukStatus && (
+                    <div
+                      className={styles.gyeokgukStatus}
+                      data-success={gyeokgukStatus.isSuccessful}
+                    >
+                      <strong>{gyeokgukStatus.isSuccessful ? '성격(成格)' : '패격(敗格)'}</strong>
+                      <span>{gyeokgukStatus.analysis}</span>
+                    </div>
+                  )}
+
+                  <div className={styles.gyeokgukTraits}>
+                    <div className={styles.traitRow}>
+                      <span className={styles.traitLabel}>성향 키워드</span>
+                      <div className={styles.traitChips}>
+                        {gyeokguk.traits.map((t) => (
+                          <span key={t} className={styles.chip}>{t}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className={styles.traitRow}>
+                      <span className={styles.traitLabel}>어울리는 직업</span>
+                      <div className={styles.traitChips}>
+                        {gyeokguk.careers.map((c) => (
+                          <span key={c} className={`${styles.chip} ${styles.chipAccent}`}>{c}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <p className={styles.sectionHint}>
+                  격국은 사주의 '주된 성격 유형'이에요. 월지에서 어떤 기운이 주도권을 잡았는지로 판정해요.
+                </p>
+              </div>
+            )}
+
+            {/* 십성 분포 */}
+            <div className={styles.section}>
+              <h2>✳️ 십성 분포 (十星)</h2>
+              <div className={styles.sipseongGrid}>
+                {SIPSEONG_ORDER.map((s) => {
+                  const count = sipseongDist[s] || 0;
+                  const dimmed = count === 0;
+                  return (
+                    <div
+                      key={s}
+                      className={`${styles.sipseongItem} ${dimmed ? styles.sipseongDim : ''}`}
+                      style={{ borderColor: dimmed ? 'var(--border-subtle)' : SIPSEONG_COLORS[s] }}
+                    >
+                      <span
+                        className={styles.sipseongName}
+                        style={{ color: dimmed ? 'var(--text-tertiary)' : SIPSEONG_COLORS[s] }}
+                      >
+                        {s}
+                      </span>
+                      <span className={styles.sipseongCount}>{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className={styles.sectionHint}>
+                십성은 일간을 기준으로 다른 간지가 어떤 역할(관성·재성·인성 등)을 하는지 보여줘요. 숫자가 많을수록 그 성향이 강해요.
+              </p>
             </div>
 
             {/* 상세 분석 잠금 카드 */}

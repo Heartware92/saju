@@ -3,22 +3,61 @@
  * 엽전 크레딧 시스템에 맞춘 무료/유료 구분
  */
 
-import { SajuResult } from '../utils/sajuCalculator';
+import { SajuResult, TEN_GODS_MAP } from '../utils/sajuCalculator';
+import { determineGyeokguk, analyzeGyeokgukStatus } from '../engine/gyeokguk';
 import type { TarotCardInfo } from '../services/api';
+
+/**
+ * 십성 분포 계산 (프롬프트용)
+ * - 천간(일간 제외) 1.0 가중치 + 지장간 0.5 가중치
+ */
+function computeSipseongCounts(result: SajuResult): Record<string, number> {
+  const dayGan = result.dayMaster;
+  const map = TEN_GODS_MAP[dayGan] || {};
+  const order = ['비견', '겁재', '식신', '상관', '편재', '정재', '편관', '정관', '편인', '정인'];
+  const counts: Record<string, number> = {};
+  order.forEach(s => { counts[s] = 0; });
+
+  [result.pillars.year.gan, result.pillars.month.gan, result.pillars.hour.gan].forEach(gan => {
+    const s = map[gan];
+    if (s && counts[s] !== undefined) counts[s] += 1;
+  });
+
+  [result.pillars.year.hiddenStems, result.pillars.month.hiddenStems,
+   result.pillars.day.hiddenStems, result.pillars.hour.hiddenStems].forEach(hidden => {
+    hidden.forEach(gan => {
+      const s = map[gan];
+      if (s && counts[s] !== undefined) counts[s] += 0.5;
+    });
+  });
+
+  Object.keys(counts).forEach(k => { counts[k] = Math.round(counts[k] * 2) / 2; });
+  return counts;
+}
+
+function formatSipseongCounts(counts: Record<string, number>): string {
+  return Object.entries(counts)
+    .filter(([, v]) => v > 0)
+    .map(([k, v]) => `${k}${v}`)
+    .join(' ');
+}
 
 /**
  * 시스템 프롬프트 (간결화)
  */
 export const SYSTEM_PROMPT = `당신은 정통 사주명리 전문가입니다.
-핵심만 간결하게, 실용적으로 답변하세요.
-한국어로 작성하며 이모지는 최소화하세요.`;
+십성(十星), 격국(格局), 용신(用神) 같은 전문 용어는 그대로 사용하되,
+괄호 안에 일상어로 쉽게 풀어주거나 해당 문단 끝에 2~3줄로 "쉽게 말하면…" 식의 설명을 덧붙이세요.
+핵심만 간결하고 실용적으로 답변하며, 한국어로 작성하고 이모지는 최소화하세요.`;
 
 /**
  * 무료 기본 해석 프롬프트 (0엽전)
  * - 만세력 + 간단한 종합 운세 (200-300자)
  */
 export const generateBasicPrompt = (result: SajuResult): string => {
-  const { pillars, elementPercent, isStrong, gender } = result;
+  const { pillars, elementPercent, isStrong, gender, yongSinElement, yongSin } = result;
+  const gyeokguk = determineGyeokguk(result);
+  const sipseong = formatSipseongCounts(computeSipseongCounts(result));
 
   return `사주 원국:
 년주: ${pillars.year.gan}${pillars.year.zhi}
@@ -28,10 +67,15 @@ export const generateBasicPrompt = (result: SajuResult): string => {
 
 오행: 목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%
 신강신약: ${isStrong ? '신강' : '신약'}
+용신: ${yongSinElement}(${yongSin})
+격국: ${gyeokguk.name}${gyeokguk.nameHanja ? `(${gyeokguk.nameHanja})` : ''}
+십성 분포: ${sipseong}
 성별: ${gender === 'male' ? '남성' : '여성'}
 
-위 사주의 핵심 특성과 종합운을 200-300자로 요약하세요.
-형식: 성격, 재물운, 애정운 각 1-2문장.`;
+위 사주의 핵심 특성과 종합운을 250-350자로 요약하세요.
+반드시 격국(${gyeokguk.name})의 본질과 용신(${yongSinElement})의 역할을 한 문장으로 간단히 언급하되,
+전문 용어는 괄호나 다음 문장에서 쉬운 말로 풀어주세요.
+형식: (1) 성격/격국 한줄, (2) 재물운, (3) 애정운, (4) 조언 — 각 1~2문장.`;
 };
 
 /**
@@ -70,10 +114,17 @@ export const generateDetailedPrompt = (result: SajuResult): string => {
     .map(s => `${s.year}년: ${s.gan}${s.zhi}`)
     .join(', ');
 
+  const gyeokguk = determineGyeokguk(result);
+  const gyeokgukStatus = analyzeGyeokgukStatus(result, gyeokguk);
+  const sipseong = formatSipseongCounts(computeSipseongCounts(result));
+
   return `사주 원국:
 년: ${pillars.year.gan}${pillars.year.zhi} 월: ${pillars.month.gan}${pillars.month.zhi} 일: ${pillars.day.gan}${pillars.day.zhi} 시: ${pillars.hour.gan}${pillars.hour.zhi}
 오행: 목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%
 ${isStrong ? '신강' : '신약'}, 용신: ${yongSinElement}(${yongSin})
+격국: ${gyeokguk.name}${gyeokguk.nameHanja ? `(${gyeokguk.nameHanja})` : ''} — ${gyeokguk.type}
+격국 성패: ${gyeokgukStatus.isSuccessful ? '성격(成格)' : '패격(敗格)'} — ${gyeokgukStatus.analysis}
+십성 분포: ${sipseong}
 성별: ${gender === 'male' ? '남성' : '여성'}
 
 신살: ${sinSalStr}
@@ -82,17 +133,20 @@ ${isStrong ? '신강' : '신약'}, 용신: ${yongSinElement}(${yongSin})
 대운 흐름: ${daeWoonStr}
 최근 세운: ${recentSeWoon}
 
-위 정보를 바탕으로 아래 항목을 각 200-300자씩 분석하세요 (총 1500-2000자):
+위 정보를 바탕으로 아래 항목을 각 200-300자씩 분석하세요 (총 1700-2200자).
+반드시 전문 용어(격국·용신·십성·상관견관 등)는 첫 등장 시 한 번은 괄호 속에 일상어로 풀어 쓰세요.
+예: "정관격(바른 관직과 책임감의 사주)"
 
-1. 종합운 - 타고난 성격과 삶의 방향
-2. 재물운 - 재복과 경제적 능력
-3. 애정운 - 연애와 결혼운
-4. 건강운 - 주의할 신체 부위
-5. 직업운 - 적성과 커리어 조언
-6. 현재 운세 - 대운/세운 기반 현황
-7. 조언 - 실천 가능한 구체적 조언
+1. 종합운 - 타고난 성격과 삶의 방향 (격국 특성 반영)
+2. 격국·용신 해설 - 왜 이 격국인지, 용신 ${yongSinElement}은 어떤 역할을 하는지 쉽게 설명
+3. 재물운 - 재복과 경제적 능력 (재성의 강약 해석)
+4. 애정운 - 연애와 결혼운 (관성/재성 관점)
+5. 건강운 - 주의할 신체 부위
+6. 직업운 - 격국 기반 적성과 커리어 조언
+7. 현재 운세 - 대운/세운 기반 현황
+8. 조언 - 용신을 활용하는 색·방향·시기 등 실천 가능한 조언
 
-각 항목을 명확히 구분하여 작성하세요.`;
+각 항목을 "### 제목" 형식으로 명확히 구분하여 작성하세요.`;
 };
 
 /**
