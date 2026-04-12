@@ -259,6 +259,92 @@
   color: var(--cta-primary);
 }
 
+/* Tojeong (토정비결) */
+.gwaeBig {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.gwaeNumber {
+  font-size: 56px;
+  font-weight: 800;
+  font-family: var(--font-serif);
+  color: var(--cta-primary);
+  line-height: 1;
+  letter-spacing: 2px;
+}
+
+.gwaeSub {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.gwaeBreakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gwaeRow {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--space-elevated);
+  border: 1px solid var(--border-subtle);
+}
+
+.gwaeLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cta-primary);
+  padding: 4px 8px;
+  border-radius: 99px;
+  background: rgba(124, 92, 252, 0.1);
+  text-align: center;
+  align-self: flex-start;
+}
+
+.gwaeBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gwaeName {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.gwaeName small {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.gwaeSymbol {
+  font-size: 22px;
+  margin-right: 6px;
+  color: var(--cta-primary);
+}
+
+.gwaeMean {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.gwaeFormula {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono, monospace);
+}
+
 /* Section hint (쉬운 설명) */
 .sectionHint {
   margin-top: 10px;

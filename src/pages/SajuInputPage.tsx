@@ -19,6 +19,7 @@ const SAJU_CATEGORIES: Record<string, { title: string; icon: string; desc: strin
   'traditional': { title: '정통 사주', icon: '📜', desc: '나의 타고난 명운 분석' },
   'newyear': { title: '2026 신년운세', icon: '🐍', desc: '병오년 청뱀띠 총운' },
   'tojeong': { title: '토정비결', icon: '📖', desc: '한 해의 길흉화복' },
+  'zamidusu': { title: '자미두수', icon: '🌌', desc: '북두칠성과 12궁으로 보는 명운' },
   'love': { title: '애정운', icon: '❤️', desc: '나의 인연과 연애 스타일' },
   'wealth': { title: '재물운', icon: '💰', desc: '재물 모으는 법과 시기' },
   'date': { title: '지정일 운세', icon: '📅', desc: '중요한 날의 기운 확인' },
@@ -172,7 +173,12 @@ export default function SajuInputPage() {
       ...(targetDate && { targetDate })
     })
 
-    router.push(`/saju/result?${queryParams.toString()}`)
+    // 카테고리별 결과 페이지 분기
+    let target = '/saju/result';
+    if (categoryId === 'tojeong') target = '/saju/tojeong';
+    else if (categoryId === 'zamidusu') target = '/saju/zamidusu';
+
+    router.push(`${target}?${queryParams.toString()}`)
   }
 
   return (

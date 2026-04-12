@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUserStore } from '../../store/useUserStore';
+import { auth } from '../../services/supabase';
 import { ArrowLeft } from 'lucide-react';
 
 export const SignupPage: React.FC = () => {
@@ -21,6 +22,19 @@ export const SignupPage: React.FC = () => {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  const handleSocial = async (provider: 'google' | 'kakao' | 'naver') => {
+    setError('');
+    try {
+      if (provider === 'naver') {
+        auth.signInWithNaver();
+        return;
+      }
+      await auth.signInWithProvider(provider);
+    } catch (err: any) {
+      setError(err?.message || '소셜 로그인 중 오류가 발생했습니다.');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,7 +138,7 @@ export const SignupPage: React.FC = () => {
                 {/* Google */}
                 <button
                   type="button"
-                  onClick={() => alert('구글 회원가입은 준비 중입니다')}
+                  onClick={() => handleSocial('google')}
                   className="w-14 h-14 rounded-full border border-[var(--border-default)] bg-space-elevated/40 flex items-center justify-center transition-all hover:scale-105 hover:border-[var(--border-strong)] hover:bg-space-elevated"
                   title="구글로 시작하기"
                 >
@@ -139,7 +153,7 @@ export const SignupPage: React.FC = () => {
                 {/* Naver */}
                 <button
                   type="button"
-                  onClick={() => alert('네이버 회원가입은 준비 중입니다')}
+                  onClick={() => handleSocial('naver')}
                   className="w-14 h-14 rounded-full bg-[#03C75A] flex items-center justify-center transition-all hover:scale-105 hover:shadow-lg hover:shadow-[#03C75A]/20"
                   title="네이버로 시작하기"
                 >
@@ -151,7 +165,7 @@ export const SignupPage: React.FC = () => {
                 {/* Kakao */}
                 <button
                   type="button"
-                  onClick={() => alert('카카오 회원가입은 준비 중입니다')}
+                  onClick={() => handleSocial('kakao')}
                   className="w-14 h-14 rounded-full bg-[#FEE500] flex items-center justify-center transition-all hover:scale-105 hover:shadow-lg hover:shadow-[#FEE500]/20"
                   title="카카오로 시작하기"
                 >

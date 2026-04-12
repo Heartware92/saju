@@ -13,9 +13,13 @@ import {
   generateTarotPrompt,
   generateHybridPrompt,
   generateLoveFortunePrompt,
-  generateWealthFortunePrompt
+  generateWealthFortunePrompt,
+  generateTojeongPrompt,
+  generateZamidusuPrompt
 } from '../constants/prompts';
 import type { TarotCardInfo } from './api';
+import type { TojeongResult } from '../engine/tojeong';
+import type { ZamidusuResult } from '../engine/zamidusu';
 
 interface FortuneResponse {
   success: boolean;
@@ -198,6 +202,44 @@ export const getTarotReading = async (
     const prompt = generateTarotPrompt(card, question);
     const content = await callGPT(prompt, 800);
 
+    return { success: true, content };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * 토정비결 (☀️2)
+ */
+export const getTojeongReading = async (
+  tj: TojeongResult
+): Promise<FortuneResponse> => {
+  try {
+    const success = await useCreditStore.getState().consumeCredit('sun', 2, '토정비결');
+    if (!success) {
+      return { success: false, error: '크레딧이 부족합니다' };
+    }
+    const prompt = generateTojeongPrompt(tj);
+    const content = await callGPT(prompt, 3200);
+    return { success: true, content };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * 자미두수 (☀️3)
+ */
+export const getZamidusuReading = async (
+  z: ZamidusuResult
+): Promise<FortuneResponse> => {
+  try {
+    const success = await useCreditStore.getState().consumeCredit('sun', 3, '자미두수');
+    if (!success) {
+      return { success: false, error: '크레딧이 부족합니다' };
+    }
+    const prompt = generateZamidusuPrompt(z);
+    const content = await callGPT(prompt, 3500);
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };

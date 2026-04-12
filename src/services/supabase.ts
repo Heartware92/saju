@@ -59,7 +59,38 @@ export const auth = {
   resetPassword: async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     if (error) throw error;
-  }
+  },
+
+  /**
+   * OAuth 소셜 로그인 (Google / Kakao) — Supabase 네이티브 지원 제공자.
+   * 브라우저가 제공자의 인증 페이지로 이동한 뒤, 완료되면
+   * `NEXT_PUBLIC_BASE_URL/auth/callback` 으로 돌아와 code 교환이 이뤄진다.
+   */
+  signInWithProvider: async (provider: 'google' | 'kakao') => {
+    const baseUrl =
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${baseUrl}/auth/callback`,
+      },
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  /**
+   * Naver 로그인은 Supabase 네이티브 제공자가 아니므로
+   * 자체 OAuth 라우트(/api/auth/naver/start)로 넘겨 커스텀 플로우를 타게 한다.
+   */
+  signInWithNaver: () => {
+    const baseUrl =
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+    window.location.href = `${baseUrl}/api/auth/naver/start`;
+  },
 };
 
 /**
