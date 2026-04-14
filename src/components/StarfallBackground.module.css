@@ -42,45 +42,58 @@
   100% { transform: translate(-2%, 1%) scale(1.05); }
 }
 
-/* 트윙클 별빛 — 파스텔 배경 위에서도 보이도록 좀 더 크고 따뜻한 색조로 */
+/* 트윙클 별빛 — 파스텔 배경 위에 또렷하게 보이도록 짙은 골드·플럼·코랄 팔레트
+   흰색은 파스텔에 묻히므로 지양, 다층 레이어로 밀도 확보 */
 .stars {
   position: absolute;
   inset: 0;
 }
 .starsBack {
   background-image:
-    radial-gradient(2px 2px at 10% 20%, rgba(255, 255, 255, 0.95), transparent 100%),
-    radial-gradient(1.5px 1.5px at 30% 65%, rgba(252, 232, 178, 0.85), transparent 100%),
-    radial-gradient(2px 2px at 50% 10%, rgba(255, 255, 255, 0.9), transparent 100%),
-    radial-gradient(2.5px 2.5px at 70% 40%, rgba(232, 164, 144, 0.8), transparent 100%),
-    radial-gradient(1.5px 1.5px at 85% 75%, rgba(255, 255, 255, 0.75), transparent 100%),
-    radial-gradient(2px 2px at 15% 80%, rgba(201, 181, 228, 0.8), transparent 100%),
-    radial-gradient(2px 2px at 45% 50%, rgba(252, 232, 178, 0.85), transparent 100%),
-    radial-gradient(1.5px 1.5px at 60% 85%, rgba(255, 255, 255, 0.7), transparent 100%),
-    radial-gradient(2px 2px at 90% 15%, rgba(232, 164, 144, 0.75), transparent 100%),
-    radial-gradient(1.5px 1.5px at 25% 35%, rgba(255, 255, 255, 0.6), transparent 100%);
+    radial-gradient(3px 3px at 8% 12%,  rgba(180, 120, 60, 0.95),  transparent 70%),
+    radial-gradient(2.5px 2.5px at 22% 28%, rgba(140, 80, 160, 0.9), transparent 70%),
+    radial-gradient(3px 3px at 38% 8%,  rgba(200, 130, 80, 0.95),  transparent 70%),
+    radial-gradient(2px 2px at 52% 22%, rgba(160, 100, 180, 0.85), transparent 70%),
+    radial-gradient(3.5px 3.5px at 68% 14%, rgba(190, 120, 70, 0.95), transparent 70%),
+    radial-gradient(2.5px 2.5px at 82% 30%, rgba(150, 90, 170, 0.9), transparent 70%),
+    radial-gradient(3px 3px at 14% 44%, rgba(180, 110, 70, 0.95), transparent 70%),
+    radial-gradient(2px 2px at 30% 52%, rgba(130, 80, 150, 0.85), transparent 70%),
+    radial-gradient(3.5px 3.5px at 46% 40%, rgba(200, 140, 90, 0.95), transparent 70%),
+    radial-gradient(2.5px 2.5px at 62% 56%, rgba(160, 100, 170, 0.9), transparent 70%),
+    radial-gradient(3px 3px at 78% 48%, rgba(190, 130, 80, 0.95), transparent 70%),
+    radial-gradient(2px 2px at 92% 38%, rgba(140, 90, 160, 0.85), transparent 70%),
+    radial-gradient(3px 3px at 10% 70%, rgba(180, 120, 70, 0.95), transparent 70%),
+    radial-gradient(2.5px 2.5px at 28% 78%, rgba(150, 90, 170, 0.9), transparent 70%),
+    radial-gradient(3.5px 3.5px at 44% 88%, rgba(200, 130, 80, 0.95), transparent 70%),
+    radial-gradient(2px 2px at 58% 74%, rgba(130, 80, 150, 0.85), transparent 70%),
+    radial-gradient(3px 3px at 72% 82%, rgba(190, 120, 75, 0.95), transparent 70%),
+    radial-gradient(2.5px 2.5px at 86% 66%, rgba(160, 100, 170, 0.9), transparent 70%);
   animation: twinkle 4.2s ease-in-out infinite alternate;
 }
 .starsFront {
   background-image:
-    radial-gradient(1.5px 1.5px at 5% 45%, rgba(255, 255, 255, 0.8), transparent 100%),
-    radial-gradient(2.5px 2.5px at 20% 90%, rgba(252, 232, 178, 0.9), transparent 100%),
-    radial-gradient(2px 2px at 40% 30%, rgba(201, 181, 228, 0.8), transparent 100%),
-    radial-gradient(1.5px 1.5px at 55% 70%, rgba(255, 255, 255, 0.75), transparent 100%),
-    radial-gradient(2.5px 2.5px at 75% 55%, rgba(232, 164, 144, 0.85), transparent 100%),
-    radial-gradient(1.5px 1.5px at 95% 40%, rgba(255, 255, 255, 0.7), transparent 100%),
-    radial-gradient(2px 2px at 35% 15%, rgba(252, 232, 178, 0.8), transparent 100%),
-    radial-gradient(1.5px 1.5px at 65% 95%, rgba(255, 255, 255, 0.65), transparent 100%);
+    radial-gradient(4px 4px at 18% 18%, rgba(140, 70, 50, 0.85),  transparent 65%),
+    radial-gradient(3px 3px at 34% 34%, rgba(110, 60, 140, 0.8),  transparent 65%),
+    radial-gradient(4.5px 4.5px at 50% 12%, rgba(150, 80, 55, 0.9), transparent 65%),
+    radial-gradient(3px 3px at 66% 32%, rgba(120, 65, 145, 0.85),  transparent 65%),
+    radial-gradient(4px 4px at 80% 20%, rgba(145, 75, 55, 0.9),   transparent 65%),
+    radial-gradient(3px 3px at 24% 58%, rgba(115, 60, 135, 0.85),  transparent 65%),
+    radial-gradient(4.5px 4.5px at 42% 72%, rgba(155, 85, 60, 0.9), transparent 65%),
+    radial-gradient(3px 3px at 60% 64%, rgba(120, 65, 140, 0.85),  transparent 65%),
+    radial-gradient(4px 4px at 74% 86%, rgba(150, 80, 55, 0.9),   transparent 65%),
+    radial-gradient(3px 3px at 88% 78%, rgba(115, 60, 135, 0.85),  transparent 65%),
+    radial-gradient(3.5px 3.5px at 6% 36%, rgba(145, 75, 55, 0.9),  transparent 65%),
+    radial-gradient(3px 3px at 40% 96%, rgba(120, 65, 140, 0.85),  transparent 65%);
   animation: twinkle 5.5s ease-in-out infinite alternate-reverse;
 }
 
 @keyframes twinkle {
-  0%   { opacity: 0.55; }
-  50%  { opacity: 0.95; }
-  100% { opacity: 0.7; }
+  0%   { opacity: 0.75; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.85; }
 }
 
-/* 별똥별 — 상단에서 하단으로 대각선(≈45°) 낙하
+/* 별똥별 — 혜성 스타일 (머리 블룸 + 부드럽게 페이드되는 꼬리)
    외부 래퍼는 0×0 이므로 percent translate 가 먹히지 않음 → px 로 명시적 이동 */
 .shootingStar {
   position: absolute;
@@ -88,43 +101,66 @@
   height: 0;
   opacity: 0;
   animation-name: shoot;
-  animation-timing-function: cubic-bezier(0.35, 0.05, 0.2, 1);
+  animation-timing-function: cubic-bezier(0.45, 0.05, 0.55, 1);
   animation-iteration-count: infinite;
   will-change: transform, opacity;
 }
 
-/* 모뉴먼트밸리 스타일 — 좀 더 크고 뚜렷하게 (길이↑, 두께↑, 글로우↑) */
+/* 꼬리 — 얇고 부드럽게 페이드, 미사일이 아닌 혜성 streak */
 .shootingStar .trail {
   position: absolute;
   left: 0;
   top: 0;
-  width: 180px;
-  height: 3px;
+  width: 150px;
+  height: 2.2px;
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(252, 232, 178, 0.45) 30%,
-    rgba(232, 164, 144, 0.9) 75%,
-    #ffffff 100%
+    transparent 0%,
+    rgba(252, 232, 178, 0.04) 40%,
+    rgba(252, 210, 160, 0.22) 68%,
+    rgba(255, 240, 220, 0.7) 88%,
+    rgba(255, 255, 255, 0.98) 100%
   );
-  border-radius: 3px;
-  filter: blur(0.3px);
-  box-shadow:
-    0 0 12px 2px rgba(232, 164, 144, 0.75),
-    0 0 24px 4px rgba(252, 232, 178, 0.4);
-  /* 머리(오른쪽 밝은 끝)를 좌하단으로 향하게 — 꼬리는 우상단으로 뻗음
-     transform-origin 이 머리이므로 225° 회전하면 꼬리가 상우측으로 뻗음 */
+  border-radius: 999px;
+  filter: blur(0.8px);
+  box-shadow: 0 0 6px 1px rgba(255, 230, 200, 0.22);
+  /* 머리(오른쪽 밝은 끝)를 우하단으로 향하게 — 꼬리는 좌상단으로 뻗음
+     → 별똥별 아이콘(머리 오른쪽/꼬리 왼쪽) 방향과 일치하는 좌상→우하 낙하 */
   transform-origin: 100% 50%;
-  transform: rotate(225deg);
+  transform: rotate(-45deg);
 }
 
-/* 우상단 외부 → 좌하단 외부 대각선 낙하
-   래퍼가 0×0 이라 % translate 는 작동 안 함 → px 사용 */
+/* 머리 블룸 — 둥근 빛망울로 혜성 느낌 (미사일 같은 납작한 머리 방지) */
+.shootingStar .trail::after {
+  content: '';
+  position: absolute;
+  right: -3px;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #ffffff 0%,
+    rgba(255, 240, 220, 0.92) 38%,
+    rgba(252, 210, 160, 0.45) 65%,
+    transparent 100%
+  );
+  filter: blur(0.4px);
+  box-shadow:
+    0 0 12px 3px rgba(255, 230, 200, 0.8),
+    0 0 26px 7px rgba(252, 210, 160, 0.3);
+}
+
+/* 좌상단 외부 → 우하단 외부 대각선 낙하 — 별똥별 머리 방향과 일치
+   앞뒤 페이드 구간을 충분히 둬서 '팍 나타났다 팍 사라지는' 미사일 느낌 제거 */
 @keyframes shoot {
-  0%   { transform: translate(0, 0);            opacity: 0; }
-  6%   {                                        opacity: 1; }
-  82%  {                                        opacity: 1; }
-  100% { transform: translate(-520px, 960px);   opacity: 0; }
+  0%   { transform: translate(0, 0);          opacity: 0; }
+  10%  {                                      opacity: 0.85; }
+  50%  {                                      opacity: 1; }
+  85%  {                                      opacity: 0.85; }
+  100% { transform: translate(560px, 980px);  opacity: 0; }
 }
 
 /* reduce-motion 사용자는 정적 별빛만 */

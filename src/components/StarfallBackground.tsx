@@ -10,22 +10,22 @@
  */
 import styles from './StarfallBackground.module.css';
 
-/* 상단 우측(-30%~-15%, left 55%~105%) 에서 출발 → 좌하단 바깥으로 대각 낙하
-   좌측으로 520px 이동하므로 시작 left 는 우측에 치우치도록 배치
+/* 상단 좌측(-30%~-15%, left -10%~45%) 에서 출발 → 우하단 바깥으로 대각 낙하
+   별똥별 아이콘(머리 오른쪽/꼬리 왼쪽)의 이동 방향과 일치
    각 별똥별이 서로 다른 궤적을 그려 화면 전체(글자/카드 뒤)를 가로지름 */
 const SHOOTING_STARS = [
-  { top: '-22%', left: '95%',  delay: '0s',    duration: '3.8s' },
-  { top: '-28%', left: '70%',  delay: '1.4s',  duration: '4.2s' },
-  { top: '-16%', left: '85%',  delay: '2.1s',  duration: '3.4s' },
-  { top: '-35%', left: '110%', delay: '3.2s',  duration: '4.6s' },
-  { top: '-18%', left: '60%',  delay: '4.0s',  duration: '4.0s' },
-  { top: '-24%', left: '100%', delay: '5.3s',  duration: '3.6s' },
-  { top: '-20%', left: '75%',  delay: '6.6s',  duration: '4.4s' },
-  { top: '-30%', left: '55%',  delay: '7.8s',  duration: '3.8s' },
-  { top: '-15%', left: '90%',  delay: '9.1s',  duration: '3.5s' },
-  { top: '-25%', left: '105%', delay: '10.4s', duration: '4.2s' },
-  { top: '-32%', left: '65%',  delay: '11.7s', duration: '4.0s' },
-  { top: '-19%', left: '80%',  delay: '13.0s', duration: '3.7s' },
+  { top: '-22%', left: '5%',   delay: '0s',    duration: '3.8s' },
+  { top: '-28%', left: '30%',  delay: '1.4s',  duration: '4.2s' },
+  { top: '-16%', left: '15%',  delay: '2.1s',  duration: '3.4s' },
+  { top: '-35%', left: '-10%', delay: '3.2s',  duration: '4.6s' },
+  { top: '-18%', left: '40%',  delay: '4.0s',  duration: '4.0s' },
+  { top: '-24%', left: '0%',   delay: '5.3s',  duration: '3.6s' },
+  { top: '-20%', left: '25%',  delay: '6.6s',  duration: '4.4s' },
+  { top: '-30%', left: '45%',  delay: '7.8s',  duration: '3.8s' },
+  { top: '-15%', left: '10%',  delay: '9.1s',  duration: '3.5s' },
+  { top: '-25%', left: '-5%',  delay: '10.4s', duration: '4.2s' },
+  { top: '-32%', left: '35%',  delay: '11.7s', duration: '4.0s' },
+  { top: '-19%', left: '20%',  delay: '13.0s', duration: '3.7s' },
 ];
 
 export default function StarfallBackground() {
