@@ -91,9 +91,9 @@ const fadeUp = {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-space-deep">
+    <div className="min-h-screen">
       {/* Hero - 간결하게 */}
-      <section className="relative starfield nebula-glow overflow-hidden">
+      <section className="relative overflow-hidden">
         <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 pt-14 pb-10">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
@@ -101,13 +101,17 @@ export default function HomePage() {
             transition={{ duration: 0.8, ease: 'easeOut' }}
             className="mb-5"
           >
-            <div className="relative w-20 h-20 mx-auto">
+            <div className="relative w-24 h-24 mx-auto">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cta/30 to-purple-600/20 animate-pulse-glow" />
-              <div className="absolute inset-2 rounded-full bg-gradient-to-br from-cta/20 to-transparent" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-3xl opacity-80">☯</span>
+              <div className="absolute inset-1 rounded-full bg-white/40 backdrop-blur-sm overflow-hidden flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/animations/solar-system.gif"
+                  alt="태양계 애니메이션"
+                  className="w-[78%] h-[78%] object-contain"
+                />
               </div>
-              <div className="absolute inset-[-6px] border border-cta/20 rounded-full animate-orbit" style={{ animationDuration: '30s' }} />
+              <div className="absolute inset-[-6px] border border-cta/30 rounded-full animate-orbit" style={{ animationDuration: '30s' }} />
             </div>
           </motion.div>
 

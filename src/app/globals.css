@@ -2,26 +2,26 @@
 /* 폰트는 next/font로 layout.tsx에서 로드 — 외부 @import는 CLS·성능 페널티 */
 
 /* ============================================
-   사주 몽환적 우주 디자인 시스템 (Dreamy Cosmos)
+   사주 몽환적 파스텔 디자인 시스템 (Pastel Dawn)
    "우주의 기운을 당신께 드려요"
-   — 듀스크(dusk) 밤하늘 톤: 심연 바이올렛 → 자수정 → 장미빛 지평선
+   — 이른 아침 하늘 톤: 라벤더 블루 → 로즈 → 피치 → 버터 옐로
    ============================================ */
 
 :root {
-  /* === Background (Dusk Sky) === */
-  --space-void: #0f0920;
-  --space-deep: #1a1230;
-  --space-mid: #2d1f4a;
-  --space-surface: rgba(74, 57, 104, 0.45);
-  --space-elevated: rgba(90, 69, 120, 0.55);
-  --space-overlay: rgba(15, 9, 32, 0.82);
+  /* === Background (Pastel Dawn Sky) === */
+  --space-void: #f8e7d4;        /* 지평선의 가장 밝은 톤 */
+  --space-deep: #e9d8ea;        /* 라일락 (base bg) */
+  --space-mid: #d8c8e4;         /* 옅은 라벤더 */
+  --space-surface: rgba(255, 255, 255, 0.55);
+  --space-elevated: rgba(255, 255, 255, 0.75);
+  --space-overlay: rgba(61, 41, 96, 0.65);
 
-  /* === Text (Warm Starlight) === */
-  --text-primary: #fff5e1;
-  --text-secondary: #d4b8d4;
-  --text-tertiary: #8f7a9c;
-  --text-inverse: #1a1230;
-  --text-hanja: #e8c5b8;
+  /* === Text (Dark Plum on Pastel — 대비 확보) === */
+  --text-primary: #3d2960;      /* 진한 플럼 — 본문 */
+  --text-secondary: #6b5585;    /* 중간 플럼 */
+  --text-tertiary: #9585a8;     /* 연한 플럼 */
+  --text-inverse: #fff5e1;
+  --text-hanja: #8a4a3e;        /* 한자용 쿨 테라코타 */
 
   /* === Sun (해) - Premium === */
   --sun-core: #fce8b2;
@@ -79,10 +79,10 @@
   --status-error: #F43F5E;
   --status-info: #60A5FA;
 
-  /* === Border (warm dusk hue) === */
-  --border-subtle: rgba(244, 194, 161, 0.12);
-  --border-default: rgba(244, 194, 161, 0.22);
-  --border-strong: rgba(244, 194, 161, 0.4);
+  /* === Border (warm pastel hue) === */
+  --border-subtle: rgba(61, 41, 96, 0.1);
+  --border-default: rgba(61, 41, 96, 0.18);
+  --border-strong: rgba(61, 41, 96, 0.32);
   --border-focus: #e8a490;
 }
 
@@ -145,12 +145,12 @@ html {
 }
 
 body {
-  /* 바깥(데스크탑 여백)은 정적인 듀스크 그라디언트 —
+  /* 바깥(데스크탑 여백)은 정적인 파스텔 던 그라디언트 —
      별똥별 애니메이션은 app-container(9:16 프레임) 안쪽에서만 재생 */
   background:
-    radial-gradient(ellipse at 50% 110%, rgba(232, 180, 216, 0.22) 0%, transparent 55%),
-    radial-gradient(ellipse at 20% 10%, rgba(124, 92, 200, 0.14) 0%, transparent 50%),
-    linear-gradient(180deg, #1a1230 0%, #2d1f4a 35%, #4a3968 70%, #7a5588 100%);
+    radial-gradient(ellipse at 50% 110%, rgba(252, 232, 178, 0.5) 0%, transparent 55%),
+    radial-gradient(ellipse at 20% 10%, rgba(201, 181, 228, 0.3) 0%, transparent 50%),
+    linear-gradient(180deg, #c9d4f0 0%, #e4c8e0 30%, #f4c2a1 65%, #fce8b2 100%);
   background-attachment: fixed;
   color: var(--text-primary);
   font-family: 'Pretendard', -apple-system, 'Noto Sans KR', sans-serif;
@@ -425,7 +425,7 @@ body {
 
 /* Prevent overscroll bounce coloring — body 에 그라디언트가 있으므로 html 은 단색 fallback */
 html {
-  background: #1a1230;
+  background: #e9d8ea;
   overscroll-behavior: none;
 }
 
@@ -484,9 +484,10 @@ html {
   width: 100%;
   max-width: 430px;
   z-index: 40;
-  background: rgba(26, 18, 48, 0.88);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* 파스텔 버터 옐로 지평선과 자연스럽게 이어지는 프로스티드 크림 */
+  background: linear-gradient(180deg, rgba(252, 232, 178, 0.55) 0%, rgba(255, 245, 225, 0.85) 100%);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
   border-top: 1px solid var(--border-subtle);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }

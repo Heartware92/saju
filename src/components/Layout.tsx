@@ -81,7 +81,7 @@ export default function Layout({ children }: LayoutProps) {
         <StarfallBackground />
 
         {/* Top Header Bar */}
-        <header className="sticky top-0 z-50 flex items-center justify-between h-12 px-4 bg-[rgba(26,18,48,0.88)] backdrop-blur-xl border-b border-[var(--border-subtle)]">
+        <header className="sticky top-0 z-50 flex items-center justify-between h-12 px-4 bg-[rgba(255,245,225,0.75)] backdrop-blur-xl border-b border-[var(--border-subtle)]">
           {/* Left: 이천점 로고 (홈 링크) — 추후 아이콘으로 교체 */}
           <Link
             href="/"
@@ -125,9 +125,9 @@ export default function Layout({ children }: LayoutProps) {
               className="fixed inset-0 z-50 bg-black/50"
               onClick={() => setMenuOpen(false)}
             />
-            <div className="fixed top-0 right-0 w-[280px] h-full z-50 bg-space-deep border-l border-[var(--border-subtle)] p-6 shadow-2xl animate-slideInRight">
+            <div className="fixed top-0 right-0 w-[280px] h-full z-50 bg-[rgba(255,245,225,0.96)] backdrop-blur-xl border-l border-[var(--border-subtle)] p-6 shadow-2xl animate-slideInRight">
               <div className="flex items-center justify-between mb-8">
-                <span className="text-lg font-bold bg-gradient-to-r from-cta to-purple-400 bg-clip-text text-transparent">
+                <span className="text-lg font-bold bg-gradient-to-r from-cta to-[#c9a6ff] bg-clip-text text-transparent">
                   이천점
                 </span>
                 <button
