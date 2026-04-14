@@ -73,12 +73,12 @@ export default function HomePage() {
           >
             <div className="relative w-24 h-24 mx-auto">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cta/30 to-purple-600/20 animate-pulse-glow" />
-              <div className="absolute inset-1 rounded-full bg-white/40 backdrop-blur-sm overflow-hidden flex items-center justify-center">
+              <div className="absolute inset-1 rounded-full bg-white overflow-hidden flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/animations/solar-system.gif"
                   alt="태양계 애니메이션"
-                  className="w-[78%] h-[78%] object-contain"
+                  className="w-full h-full object-contain"
                 />
               </div>
               <div className="absolute inset-[-6px] border border-cta/30 rounded-full animate-orbit" style={{ animationDuration: '30s' }} />
