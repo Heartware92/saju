@@ -42,41 +42,11 @@ const MAIN_SERVICES = [
 ];
 
 const SUB_SERVICES = [
-  {
-    id: 'zamidusu',
-    title: '자미두수',
-    href: '/saju/input?category=zamidusu',
-    credit: 'sun' as const,
-    cost: 3,
-  },
-  {
-    id: 'love',
-    title: '애정운',
-    href: '/saju/input?category=love',
-    credit: 'sun' as const,
-    cost: 2,
-  },
-  {
-    id: 'wealth',
-    title: '재물운',
-    href: '/saju/input?category=wealth',
-    credit: 'sun' as const,
-    cost: 2,
-  },
-  {
-    id: 'tarot',
-    title: '타로',
-    href: '/tarot',
-    credit: 'moon' as const,
-    cost: 1,
-  },
-  {
-    id: 'newyear',
-    title: '신년운세',
-    href: '/saju/input?category=newyear',
-    credit: 'moon' as const,
-    cost: 1,
-  },
+  { id: 'zamidusu', title: '자미두수', href: '/saju/input?category=zamidusu' },
+  { id: 'love',     title: '애정운',   href: '/saju/input?category=love' },
+  { id: 'wealth',   title: '재물운',   href: '/saju/input?category=wealth' },
+  { id: 'tarot',    title: '타로',     href: '/tarot' },
+  { id: 'newyear',  title: '신년운세', href: '/saju/input?category=newyear' },
 ];
 
 const stagger = {
@@ -119,7 +89,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-2xl font-bold text-text-primary mb-2"
+            className="text-3xl font-bold text-text-primary mb-2 tracking-tight"
             style={{ fontFamily: 'var(--font-serif)' }}
           >
             이천점
@@ -129,7 +99,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.35 }}
-            className="text-sm text-text-secondary mb-6"
+            className="text-base font-medium text-text-secondary mb-6"
           >
             우주의 기운을 당신께 드려요
           </motion.p>
@@ -162,14 +132,14 @@ export default function HomePage() {
               <Link href={svc.href}>
                 <div className={`
                   relative rounded-2xl p-4 h-[120px]
-                  bg-gradient-to-br ${svc.gradient}
-                  border border-[var(--border-subtle)]
-                  hover:border-cta/30 transition-all
+                  bg-gradient-to-br ${svc.gradient} bg-white/40
+                  border border-[var(--border-default)]
+                  hover:border-cta/50 transition-all
                   flex flex-col items-center justify-center text-center gap-1.5
                   active:scale-[0.97]
                 `}>
-                  <h3 className="text-base font-bold text-text-primary">{svc.title}</h3>
-                  <p className="text-[11px] text-text-tertiary">{svc.desc}</p>
+                  <h3 className="text-lg font-bold text-text-primary tracking-tight">{svc.title}</h3>
+                  <p className="text-xs font-medium text-text-secondary">{svc.desc}</p>
                 </div>
               </Link>
             </motion.div>
@@ -179,7 +149,7 @@ export default function HomePage() {
 
       {/* 추가 서비스 - 가로 스크롤 또는 작은 칩 */}
       <section className="px-4 mt-5">
-        <h2 className="text-sm font-semibold text-text-secondary mb-3 px-1">더 많은 운세</h2>
+        <h2 className="text-base font-bold text-text-primary mb-3 px-1">더 많은 운세</h2>
         <motion.div
           variants={stagger}
           initial="hidden"
@@ -190,11 +160,8 @@ export default function HomePage() {
           {SUB_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>
               <Link href={svc.href}>
-                <div className="flex flex-col items-center justify-center gap-1 h-[64px] p-2 rounded-xl bg-space-surface/50 border border-[var(--border-subtle)] hover:border-cta/30 transition-all active:scale-[0.95]">
-                  <span className="text-[12px] font-semibold text-text-primary">{svc.title}</span>
-                  <span className="text-[10px] text-text-tertiary">
-                    {svc.credit === 'sun' ? `해 ${svc.cost}` : `달 ${svc.cost}`}
-                  </span>
+                <div className="flex items-center justify-center h-[56px] p-2 rounded-xl bg-white/55 border border-[var(--border-default)] hover:border-cta/50 transition-all active:scale-[0.95]">
+                  <span className="text-[13px] font-bold text-text-primary">{svc.title}</span>
                 </div>
               </Link>
             </motion.div>
@@ -215,8 +182,8 @@ export default function HomePage() {
               <div className="relative px-5 py-5 bg-gradient-to-br from-[rgba(232,164,144,0.18)] to-[rgba(201,166,255,0.1)]">
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
-                    <h3 className="text-base font-bold text-text-primary mb-0.5">타로 상담실</h3>
-                    <p className="text-xs text-text-secondary">카드가 전하는 오늘의 한 문장</p>
+                    <h3 className="text-lg font-bold text-text-primary mb-0.5 tracking-tight">타로 상담실</h3>
+                    <p className="text-sm font-medium text-text-secondary">카드가 전하는 오늘의 한 문장</p>
                   </div>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round">
                     <path d="M9 18l6-6-6-6" />
@@ -236,7 +203,7 @@ export default function HomePage() {
           viewport={{ once: true }}
           className="py-6"
         >
-          <p className="text-xs text-text-tertiary mb-3">아직 사주를 모르시나요?</p>
+          <p className="text-sm font-medium text-text-secondary mb-3">아직 사주를 모르시나요?</p>
           <Link href="/saju">
             <Button variant="outline" size="md">
               무료 사주 계산

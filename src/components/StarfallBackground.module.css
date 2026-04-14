@@ -110,20 +110,21 @@
   border-radius: 3px;
   filter: blur(0.3px);
   box-shadow:
-    0 0 12px 2px rgba(232, 164, 144, 0.7),
-    0 0 24px 4px rgba(252, 232, 178, 0.35);
-  /* 45° 각도로 회전 — 우측 끝(머리)을 기준으로 */
+    0 0 12px 2px rgba(232, 164, 144, 0.75),
+    0 0 24px 4px rgba(252, 232, 178, 0.4);
+  /* 머리(오른쪽 밝은 끝)를 좌하단으로 향하게 — 꼬리는 우상단으로 뻗음
+     transform-origin 이 머리이므로 225° 회전하면 꼬리가 상우측으로 뻗음 */
   transform-origin: 100% 50%;
-  transform: rotate(45deg);
+  transform: rotate(225deg);
 }
 
-/* 상 → 하 대각선 낙하 (좌상단 외부 → 우하단 외부)
+/* 우상단 외부 → 좌하단 외부 대각선 낙하
    래퍼가 0×0 이라 % translate 는 작동 안 함 → px 사용 */
 @keyframes shoot {
-  0%   { transform: translate(0, 0);          opacity: 0; }
-  6%   {                                      opacity: 1; }
-  80%  {                                      opacity: 1; }
-  100% { transform: translate(520px, 960px);  opacity: 0; }
+  0%   { transform: translate(0, 0);            opacity: 0; }
+  6%   {                                        opacity: 1; }
+  82%  {                                        opacity: 1; }
+  100% { transform: translate(-520px, 960px);   opacity: 0; }
 }
 
 /* reduce-motion 사용자는 정적 별빛만 */
