@@ -374,7 +374,13 @@ body {
   to { transform: translateX(0); }
 }
 
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
 .animate-slideInLeft { animation: slideInLeft 0.25s ease-out forwards; }
+.animate-slideInRight { animation: slideInRight 0.25s ease-out forwards; }
 .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
 .animate-slideUp { animation: slideUp 0.4s ease-out forwards; }
 .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }

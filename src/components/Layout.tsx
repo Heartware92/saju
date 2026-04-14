@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { CreditDisplay } from './ui/CreditDisplay';
 import { useCreditStore } from '../store/useCreditStore';
-import { useUserStore } from '../store/useUserStore';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -67,7 +66,6 @@ export default function Layout({ children }: LayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { sunBalance, moonBalance } = useCreditStore();
-  const { user } = useUserStore();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const isActive = (path: string) => {
@@ -79,18 +77,20 @@ export default function Layout({ children }: LayoutProps) {
     <div className="app-shell">
       <div className="app-container">
         {/* Top Header Bar */}
-        <header className="sticky top-0 z-50 flex items-center justify-between h-12 px-4 bg-[rgba(11,14,26,0.92)] backdrop-blur-xl border-b border-[var(--border-subtle)]">
-          {/* Left: Hamburger */}
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-space-elevated transition-colors"
+        <header className="sticky top-0 z-50 flex items-center justify-between h-12 px-4 bg-[rgba(26,18,48,0.88)] backdrop-blur-xl border-b border-[var(--border-subtle)]">
+          {/* Left: 이천점 로고 (홈 링크) — 추후 아이콘으로 교체 */}
+          <Link
+            href="/"
+            className="h-8 flex items-center px-1 rounded-lg transition-opacity hover:opacity-80 active:opacity-60"
+            aria-label="이천점 홈으로"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
+            <span
+              className="text-base font-bold bg-gradient-to-r from-[var(--cta-primary)] to-[var(--cta-secondary)] bg-clip-text text-transparent"
+              style={{ fontFamily: 'var(--font-serif)' }}
+            >
+              이천점
+            </span>
+          </Link>
 
           {/* Center: Credit Display */}
           <CreditDisplay
@@ -100,14 +100,16 @@ export default function Layout({ children }: LayoutProps) {
             onClick={() => router.push('/credit')}
           />
 
-          {/* Right: Profile */}
+          {/* Right: Hamburger */}
           <button
-            onClick={() => user ? router.push('/mypage') : router.push('/login')}
+            onClick={() => setMenuOpen(!menuOpen)}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-space-elevated transition-colors"
+            aria-label="메뉴 열기"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
         </header>
@@ -119,7 +121,7 @@ export default function Layout({ children }: LayoutProps) {
               className="fixed inset-0 z-50 bg-black/50"
               onClick={() => setMenuOpen(false)}
             />
-            <div className="fixed top-0 left-0 w-[280px] h-full z-50 bg-space-deep border-r border-[var(--border-subtle)] p-6 shadow-2xl animate-slideInLeft">
+            <div className="fixed top-0 right-0 w-[280px] h-full z-50 bg-space-deep border-l border-[var(--border-subtle)] p-6 shadow-2xl animate-slideInRight">
               <div className="flex items-center justify-between mb-8">
                 <span className="text-lg font-bold bg-gradient-to-r from-cta to-purple-400 bg-clip-text text-transparent">
                   이천점
