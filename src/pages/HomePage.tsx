@@ -140,7 +140,7 @@ export default function HomePage() {
             transition={{ duration: 0.6, delay: 0.35 }}
             className="text-sm text-text-secondary mb-6"
           >
-            2,000원으로 만나는 운명 상담
+            우주의 기운을 당신께 드려요
           </motion.p>
 
           <motion.div

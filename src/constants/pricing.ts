@@ -102,10 +102,16 @@ export const CREDIT_COST = {
   wealthFortune: { type: 'sun' as const, amount: 2 },
 
   // 타로
-  tarotReading: { type: 'moon' as const, amount: 1 },
+  tarotReading: { type: 'moon' as const, amount: 1 },      // 질문 타로 (1장)
+  todayTarot: { type: 'moon' as const, amount: 1 },        // 오늘의 타로 (1장, 하루 고정)
+  monthlyTarot: { type: 'sun' as const, amount: 1 },       // 이달의 타로 (3장 스프레드, 월단위 고정)
 
   // 하이브리드
   hybridReading: { type: 'sun' as const, amount: 3 },
+
+  // 기타 풀이법
+  tojeongReading: { type: 'sun' as const, amount: 2 },     // 토정비결
+  zamidusuReading: { type: 'sun' as const, amount: 3 },    // 자미두수
 
   // 기타
   pdfDownload: { type: 'moon' as const, amount: 1 },

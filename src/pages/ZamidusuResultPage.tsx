@@ -30,6 +30,8 @@ export default function ZamidusuResultPage() {
   const [unlocked, setUnlocked] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [selectedPalace, setSelectedPalace] = useState<number | null>(null);
+  // 자미두수는 시지(時支)로 명궁 위치가 결정되므로 시간 미상이면 명반 자체가 성립하지 않음
+  const hourUnknown = searchParams?.get('unknownTime') === 'true';
 
   const { fetchBalance } = useCreditStore();
 
@@ -39,6 +41,7 @@ export default function ZamidusuResultPage() {
 
   useEffect(() => {
     if (!searchParams) return;
+    if (hourUnknown) return; // 시간 미상이면 계산 스킵 — 아래에서 안내 화면 렌더
     try {
       const year = parseInt(searchParams.get('year') || '1990');
       const month = parseInt(searchParams.get('month') || '1');
@@ -52,7 +55,7 @@ export default function ZamidusuResultPage() {
     } catch (e: any) {
       setError(e?.message || '명반 계산 실패');
     }
-  }, [searchParams]);
+  }, [searchParams, hourUnknown]);
 
   const handleUnlock = async () => {
     if (!chart) return;
@@ -85,6 +88,65 @@ export default function ZamidusuResultPage() {
     return cells;
   }, [chart]);
 
+  // 시간 미상 차단 화면 — 자미두수는 시지(時支) 기반으로 명궁이 결정되므로
+  // 시간 없이는 12궁 배치 자체가 불가능. 사주 기본 해석으로 유도.
+  if (hourUnknown) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <button className={styles.backBtn} onClick={() => router.push('/saju/input')}>
+            ← 다시 입력
+          </button>
+          <div className={styles.headerCenter}>
+            <h1>자미두수</h1>
+          </div>
+        </div>
+        <div
+          style={{
+            margin: '24px 16px',
+            padding: '20px',
+            background: 'var(--space-surface)',
+            border: '1px solid rgba(251, 191, 36, 0.35)',
+            borderRadius: '16px',
+            color: 'var(--text-secondary)',
+            lineHeight: 1.6,
+          }}
+        >
+          <p style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 8 }}>
+            🕒 자미두수는 정확한 출생 시간이 필요합니다
+          </p>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 16 }}>
+            자미두수는 시지(時支)에 따라 명궁(命宮)·신궁(身宮)을 포함한 12궁 배치가 결정되는 명리 체계입니다.
+            출생 시간을 모르면 명반 자체가 성립하지 않아 해석의 근거가 사라집니다.
+          </p>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 16 }}>
+            대신 <strong>사주(삼주추명)</strong>은 시주 없이도 연·월·일주와 대운으로 성격·재물·애정·직업을
+            충실히 해석할 수 있습니다.
+          </p>
+          <button
+            onClick={() => {
+              if (!searchParams) return;
+              const qs = searchParams.toString();
+              router.push(`/saju/result?${qs}`);
+            }}
+            style={{
+              width: '100%',
+              padding: '12px',
+              background: 'var(--cta-primary)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 10,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            사주 해석으로 이동
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return <div className={styles.loading}>{error}</div>;
   }
@@ -103,7 +165,7 @@ export default function ZamidusuResultPage() {
           ← 다시 입력
         </button>
         <div className={styles.headerCenter}>
-          <h1>🌌 자미두수 명반</h1>
+          <h1>자미두수 명반</h1>
           <p className={styles.dateInfo}>
             {chart.solarDate} {chart.timeRange} · {chart.chineseDate}
           </p>

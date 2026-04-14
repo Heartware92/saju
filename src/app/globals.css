@@ -1,45 +1,46 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=Pretendard:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
+/* 폰트는 next/font로 layout.tsx에서 로드 — 외부 @import는 CLS·성능 페널티 */
 
 /* ============================================
-   사주 코스믹 디자인 시스템 (Cosmic Design System)
-   "우주의 기운을 드립니다"
+   사주 몽환적 우주 디자인 시스템 (Dreamy Cosmos)
+   "우주의 기운을 당신께 드려요"
+   — 듀스크(dusk) 밤하늘 톤: 심연 바이올렛 → 자수정 → 장미빛 지평선
    ============================================ */
 
 :root {
-  /* === Background (Deep Space) === */
-  --space-void: #06080F;
-  --space-deep: #0B0E1A;
-  --space-mid: #111527;
-  --space-surface: #181D35;
-  --space-elevated: #1F2544;
-  --space-overlay: rgba(6, 8, 15, 0.85);
+  /* === Background (Dusk Sky) === */
+  --space-void: #0f0920;
+  --space-deep: #1a1230;
+  --space-mid: #2d1f4a;
+  --space-surface: rgba(74, 57, 104, 0.45);
+  --space-elevated: rgba(90, 69, 120, 0.55);
+  --space-overlay: rgba(15, 9, 32, 0.82);
 
-  /* === Text (Starlight) === */
-  --text-primary: #EDEEF2;
-  --text-secondary: #9BA1B7;
-  --text-tertiary: #5E6480;
-  --text-inverse: #06080F;
-  --text-hanja: #C8CCE0;
+  /* === Text (Warm Starlight) === */
+  --text-primary: #fff5e1;
+  --text-secondary: #d4b8d4;
+  --text-tertiary: #8f7a9c;
+  --text-inverse: #1a1230;
+  --text-hanja: #e8c5b8;
 
   /* === Sun (해) - Premium === */
-  --sun-core: #FFD700;
-  --sun-corona: #FFA726;
-  --sun-flare: #FF8F00;
-  --sun-glow: rgba(255, 215, 0, 0.15);
+  --sun-core: #fce8b2;
+  --sun-corona: #f7d794;
+  --sun-flare: #f4c2a1;
+  --sun-glow: rgba(252, 232, 178, 0.2);
 
   /* === Moon (달) - Standard === */
-  --moon-core: #E0E7FF;
-  --moon-halo: #A5B4FC;
-  --moon-shadow: #7C8ADB;
-  --moon-glow: rgba(165, 180, 252, 0.12);
+  --moon-core: #e4d8f0;
+  --moon-halo: #c9b5e4;
+  --moon-shadow: #8f7aa8;
+  --moon-glow: rgba(201, 181, 228, 0.18);
 
-  /* === CTA (자미원 紫微垣) === */
-  --cta-primary: #7C5CFC;
-  --cta-primary-hover: #6B4CE0;
-  --cta-primary-active: #5A3DC8;
-  --cta-secondary: #3B82F6;
-  --cta-secondary-hover: #2563EB;
+  /* === CTA (Dawn Gradient — Peach → Lilac) === */
+  --cta-primary: #e8a490;
+  --cta-primary-hover: #dc9280;
+  --cta-primary-active: #c8806f;
+  --cta-secondary: #c9a6ff;
+  --cta-secondary-hover: #b594f0;
 
   /* === 오행 성운 (Five Nebulae) === */
   /* 목(木) - Eagle Nebula */
@@ -78,11 +79,11 @@
   --status-error: #F43F5E;
   --status-info: #60A5FA;
 
-  /* === Border === */
-  --border-subtle: rgba(155, 161, 183, 0.1);
-  --border-default: rgba(155, 161, 183, 0.2);
-  --border-strong: rgba(155, 161, 183, 0.35);
-  --border-focus: #7C5CFC;
+  /* === Border (warm dusk hue) === */
+  --border-subtle: rgba(244, 194, 161, 0.12);
+  --border-default: rgba(244, 194, 161, 0.22);
+  --border-strong: rgba(244, 194, 161, 0.4);
+  --border-focus: #e8a490;
 }
 
 @theme inline {
@@ -144,6 +145,7 @@ html {
 }
 
 body {
+  /* StarfallBackground가 fixed로 깔리므로 body 배경은 fallback용 단색 유지 */
   background: var(--space-deep);
   color: var(--text-primary);
   font-family: 'Pretendard', -apple-system, 'Noto Sans KR', sans-serif;
@@ -264,19 +266,19 @@ body {
    ============================================ */
 
 .glow-sun {
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3), 0 0 40px rgba(255, 215, 0, 0.1);
+  box-shadow: 0 0 20px rgba(252, 232, 178, 0.35), 0 0 40px rgba(252, 232, 178, 0.12);
 }
 
 .glow-moon {
-  box-shadow: 0 0 15px rgba(165, 180, 252, 0.25), 0 0 30px rgba(165, 180, 252, 0.08);
+  box-shadow: 0 0 15px rgba(201, 181, 228, 0.28), 0 0 30px rgba(201, 181, 228, 0.1);
 }
 
 .glow-cta {
-  box-shadow: 0 4px 15px rgba(124, 92, 252, 0.3);
+  box-shadow: 0 4px 15px rgba(232, 164, 144, 0.32);
 }
 
 .glow-cta-lg {
-  box-shadow: 0 6px 25px rgba(124, 92, 252, 0.45);
+  box-shadow: 0 6px 25px rgba(232, 164, 144, 0.45);
 }
 
 /* ============================================
@@ -432,11 +434,13 @@ html {
    ============================================ */
 
 .app-shell {
+  position: relative;
+  z-index: 1;
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   justify-content: center;
-  background: var(--space-void);
+  background: transparent; /* StarfallBackground가 뒤에 보이도록 */
 }
 
 .app-container {
@@ -447,7 +451,10 @@ html {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--space-deep);
+  /* 살짝 탁한 자수정 틴트로 가독성 유지 + 별빛은 은은히 비침 */
+  background: rgba(26, 18, 48, 0.62);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   box-shadow: none;
 }
 
@@ -456,7 +463,7 @@ html {
   .app-container {
     border-left: 1px solid var(--border-subtle);
     border-right: 1px solid var(--border-subtle);
-    box-shadow: 0 0 80px rgba(124, 92, 252, 0.06);
+    box-shadow: 0 0 80px rgba(232, 164, 144, 0.1);
   }
 }
 
@@ -468,7 +475,7 @@ html {
   width: 100%;
   max-width: 430px;
   z-index: 40;
-  background: rgba(11, 14, 26, 0.92);
+  background: rgba(26, 18, 48, 0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border-subtle);
@@ -477,11 +484,13 @@ html {
 
 /* Auth pages (login/signup) app container */
 .app-auth-shell {
+  position: relative;
+  z-index: 1;
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   justify-content: center;
-  background: var(--space-void);
+  background: transparent;
 }
 
 .app-auth-container {
@@ -490,13 +499,15 @@ html {
   max-width: 430px;
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--space-deep);
+  background: rgba(26, 18, 48, 0.62);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 @media (min-width: 480px) {
   .app-auth-container {
     border-left: 1px solid var(--border-subtle);
     border-right: 1px solid var(--border-subtle);
-    box-shadow: 0 0 80px rgba(124, 92, 252, 0.06);
+    box-shadow: 0 0 80px rgba(232, 164, 144, 0.1);
   }
 }

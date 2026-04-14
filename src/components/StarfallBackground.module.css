@@ -1,0 +1,126 @@
+/* 전역 배경 — 듀스크 밤하늘 + 별똥별 */
+
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 듀스크 그라데이션: 심연 → 자수정 → 장미빛 지평선 */
+.gradient {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 110%, rgba(232, 180, 216, 0.28) 0%, transparent 55%),
+    radial-gradient(ellipse at 20% 10%, rgba(124, 92, 200, 0.18) 0%, transparent 50%),
+    linear-gradient(180deg, #1a1230 0%, #2d1f4a 35%, #4a3968 70%, #7a5588 100%);
+}
+
+/* 은은한 보랏빛 성운(구름) */
+.nebula {
+  position: absolute;
+  inset: -10%;
+  background:
+    radial-gradient(circle at 70% 30%, rgba(212, 165, 199, 0.14) 0%, transparent 40%),
+    radial-gradient(circle at 25% 65%, rgba(168, 213, 229, 0.10) 0%, transparent 45%),
+    radial-gradient(circle at 55% 85%, rgba(252, 232, 178, 0.08) 0%, transparent 35%);
+  animation: nebula-drift 40s ease-in-out infinite alternate;
+}
+
+@keyframes nebula-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-2%, 1%) scale(1.05); }
+}
+
+/* 트윙클 별빛 */
+.stars {
+  position: absolute;
+  inset: 0;
+}
+.starsBack {
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255, 245, 225, 0.8), transparent 100%),
+    radial-gradient(1px 1px at 30% 65%, rgba(252, 232, 178, 0.6), transparent 100%),
+    radial-gradient(1px 1px at 50% 10%, rgba(255, 255, 255, 0.5), transparent 100%),
+    radial-gradient(1.5px 1.5px at 70% 40%, rgba(252, 232, 178, 0.9), transparent 100%),
+    radial-gradient(1px 1px at 85% 75%, rgba(255, 245, 225, 0.6), transparent 100%),
+    radial-gradient(1px 1px at 15% 80%, rgba(255, 255, 255, 0.5), transparent 100%),
+    radial-gradient(1.5px 1.5px at 45% 50%, rgba(252, 232, 178, 0.7), transparent 100%),
+    radial-gradient(1px 1px at 60% 85%, rgba(255, 245, 225, 0.5), transparent 100%),
+    radial-gradient(1px 1px at 90% 15%, rgba(255, 255, 255, 0.6), transparent 100%),
+    radial-gradient(1px 1px at 25% 35%, rgba(255, 245, 225, 0.4), transparent 100%);
+  animation: twinkle 4.2s ease-in-out infinite alternate;
+}
+.starsFront {
+  background-image:
+    radial-gradient(1px 1px at 5% 45%, rgba(255, 255, 255, 0.5), transparent 100%),
+    radial-gradient(1.5px 1.5px at 20% 90%, rgba(252, 232, 178, 0.8), transparent 100%),
+    radial-gradient(1px 1px at 40% 30%, rgba(255, 245, 225, 0.4), transparent 100%),
+    radial-gradient(1px 1px at 55% 70%, rgba(255, 255, 255, 0.6), transparent 100%),
+    radial-gradient(1.5px 1.5px at 75% 55%, rgba(252, 232, 178, 0.9), transparent 100%),
+    radial-gradient(1px 1px at 95% 40%, rgba(255, 245, 225, 0.5), transparent 100%),
+    radial-gradient(1px 1px at 35% 15%, rgba(255, 255, 255, 0.6), transparent 100%),
+    radial-gradient(1px 1px at 65% 95%, rgba(252, 232, 178, 0.4), transparent 100%);
+  animation: twinkle 5.5s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes twinkle {
+  0%   { opacity: 0.45; }
+  50%  { opacity: 0.85; }
+  100% { opacity: 0.55; }
+}
+
+/* 별똥별 — 대각선으로 스쳐지나가며 잠깐 빛나는 라인 */
+.shootingStar {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #fff5e1;
+  box-shadow: 0 0 6px 2px rgba(252, 232, 178, 0.8);
+  opacity: 0;
+  animation-name: shoot;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  animation-iteration-count: infinite;
+}
+
+.shootingStar::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  width: 140px;
+  height: 1.5px;
+  background: linear-gradient(
+    90deg,
+    rgba(252, 232, 178, 0) 0%,
+    rgba(252, 232, 178, 0.9) 60%,
+    #fff5e1 100%
+  );
+  transform-origin: right center;
+  transform: translate(-140px, -50%);
+  border-radius: 2px;
+  filter: blur(0.5px);
+}
+
+@keyframes shoot {
+  0%   { transform: translate(0, 0);        opacity: 0; }
+  5%   {                                    opacity: 1; }
+  70%  {                                    opacity: 1; }
+  100% { transform: translate(130vw, 55vh); opacity: 0; }
+}
+
+/* reduce-motion 사용자는 정적 별빛만 */
+@media (prefers-reduced-motion: reduce) {
+  .nebula,
+  .stars,
+  .shootingStar {
+    animation: none !important;
+  }
+  .shootingStar {
+    display: none;
+  }
+}

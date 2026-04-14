@@ -9,6 +9,33 @@ export const HEAVENLY_STEMS = ['갑', '을', '병', '정', '무', '기', '경', 
 // 지지 (12 Earthly Branches)
 export const EARTHLY_BRANCHES = ['자', '축', '인', '묘', '진', '사', '오', '미', '신', '유', '술', '해'];
 
+// ============================================
+// 한자(lunar-javascript 반환) → 한글 정규화
+// lunar-javascript는 천간/지지를 중국 한자(甲乙…癸 / 子丑…亥)로 반환하지만
+// 본 계산 모듈의 모든 맵(TEN_GODS_MAP, STEM_ELEMENT 등)은 한글 키를 사용한다.
+// 데이터가 들어오는 경계에서 반드시 한글로 정규화해야 모든 매핑이 정상 동작한다.
+// ============================================
+const HANJA_STEM_TO_HANGUL: Record<string, string> = {
+  '甲': '갑', '乙': '을', '丙': '병', '丁': '정', '戊': '무',
+  '己': '기', '庚': '경', '辛': '신', '壬': '임', '癸': '계'
+};
+const HANJA_BRANCH_TO_HANGUL: Record<string, string> = {
+  '子': '자', '丑': '축', '寅': '인', '卯': '묘', '辰': '진', '巳': '사',
+  '午': '오', '未': '미', '申': '신', '酉': '유', '戌': '술', '亥': '해'
+};
+/** 천간 문자(한자·한글 무관) → 한글 */
+export const normalizeGan = (g: string): string => {
+  if (!g) return '';
+  if (HEAVENLY_STEMS.includes(g)) return g;
+  return HANJA_STEM_TO_HANGUL[g] || '';
+};
+/** 지지 문자(한자·한글 무관) → 한글 */
+export const normalizeZhi = (z: string): string => {
+  if (!z) return '';
+  if (EARTHLY_BRANCHES.includes(z)) return z;
+  return HANJA_BRANCH_TO_HANGUL[z] || '';
+};
+
 // 오행
 export const FIVE_ELEMENTS = {
   wood: '목', fire: '화', earth: '토', metal: '금', water: '수'
@@ -144,6 +171,13 @@ export interface SajuResult {
   lunarDateSimple: string;
   isLeapMonth: boolean;
   gender: 'male' | 'female';
+  /**
+   * 출생 시간을 모를 때 true.
+   * - 시주(pillars.hour)는 빈 값("?")으로 세팅되어 화면에 "시간 미상"으로 표시됨.
+   * - 모든 하위 계산(오행·십성·신살·합충)은 시주를 제외하고 삼주추명으로 진행됨.
+   * - AI 프롬프트에도 플래그로 전달되어 자녀·말년·시간대 관련 해석이 제한됨.
+   */
+  hourUnknown: boolean;
   pillars: {
     year: Pillar;
     month: Pillar;
@@ -508,8 +542,8 @@ const calculateSeWoon = (dayGan: string, currentYear: number): SeWoon[] => {
     const lunar = solar.getLunar();
     const yearGanZhi = lunar.getYearInGanZhiExact();
 
-    const gan = yearGanZhi.substring(0, 1);
-    const zhi = yearGanZhi.substring(1, 2);
+    const gan = normalizeGan(yearGanZhi.substring(0, 1));
+    const zhi = normalizeZhi(yearGanZhi.substring(1, 2));
 
     seWoons.push({
       year,
@@ -530,15 +564,40 @@ const calculateSeWoon = (dayGan: string, currentYear: number): SeWoon[] => {
 // 메인 계산 함수
 // ============================================
 
+/**
+ * 출생 시간 미상 시 사용할 빈 시주 placeholder.
+ * 모든 문자열 필드를 빈 문자열, 배열 필드를 빈 배열로 둠으로써
+ * 하위 계산 함수들(`countElements`, `analyzeStrength`, `calculateSinSals`,
+ * `analyzeInteractions`)이 해당 기둥을 자연스럽게 건너뛰게 한다
+ * (예: `if (ganEl) count[ganEl] += 1` 의 falsy check, `branches.includes('')` 불일치).
+ */
+const EMPTY_HOUR_PILLAR: Pillar = {
+  gan: '',
+  zhi: '',
+  ganElement: '',
+  zhiElement: '',
+  ganYinYang: '',
+  zhiYinYang: '',
+  hiddenStems: [],
+  tenGodGan: '',
+  tenGodZhi: '',
+  twelveStage: ''
+};
+
 export const calculateSaju = (
   year: number,
   month: number,
   day: number,
   hour: number,
   minute: number,
-  gender: 'male' | 'female' = 'male'
+  gender: 'male' | 'female' = 'male',
+  hourUnknown: boolean = false
 ): SajuResult => {
-  const solar = Solar.fromYmdHms(year, month, day, hour, minute, 0);
+  // 시간 미상일 때도 lunar 계산 자체는 정오(12:00) 기준으로 돌려 일주(日柱)까지 안전하게 산출.
+  // 이후 시주만 비워 삼주추명 규칙으로 전환한다.
+  const safeHour = hourUnknown ? 12 : hour;
+  const safeMinute = hourUnknown ? 0 : minute;
+  const solar = Solar.fromYmdHms(year, month, day, safeHour, safeMinute, 0);
   const lunar = solar.getLunar();
   const baZi = lunar.getEightChar();
 
@@ -546,28 +605,34 @@ export const calculateSaju = (
   const yun = baZi.getYun(genderNum);
   const daewoonRaw = yun.getDaYun();
 
-  const dayGan = baZi.getDayGan();
+  const dayGan = normalizeGan(baZi.getDayGan());
+  const monthZhiNorm = normalizeZhi(baZi.getMonthZhi());
   const dayMasterElement = STEM_ELEMENT[dayGan] || '';
   const dayMasterYinYang = STEM_YINYANG[dayGan] || '';
 
-  const createPillar = (gan: string, zhi: string): Pillar => ({
-    gan,
-    zhi,
-    ganElement: STEM_ELEMENT[gan] || '',
-    zhiElement: BRANCH_ELEMENT[zhi] || '',
-    ganYinYang: STEM_YINYANG[gan] || '',
-    zhiYinYang: BRANCH_YINYANG[zhi] || '',
-    hiddenStems: BRANCH_HIDDEN_STEMS[zhi] || [],
-    tenGodGan: gan === dayGan ? '일주' : getTenGod(dayGan, gan),
-    tenGodZhi: getTenGodForBranch(dayGan, zhi),
-    twelveStage: getTwelveStage(dayGan, zhi)
-  });
+  const createPillar = (ganRaw: string, zhiRaw: string): Pillar => {
+    const gan = normalizeGan(ganRaw);
+    const zhi = normalizeZhi(zhiRaw);
+    return {
+      gan,
+      zhi,
+      ganElement: STEM_ELEMENT[gan] || '',
+      zhiElement: BRANCH_ELEMENT[zhi] || '',
+      ganYinYang: STEM_YINYANG[gan] || '',
+      zhiYinYang: BRANCH_YINYANG[zhi] || '',
+      hiddenStems: BRANCH_HIDDEN_STEMS[zhi] || [],
+      tenGodGan: gan === dayGan ? '일주' : getTenGod(dayGan, gan),
+      tenGodZhi: getTenGodForBranch(dayGan, zhi),
+      twelveStage: getTwelveStage(dayGan, zhi)
+    };
+  };
 
   const pillars = {
     year: createPillar(baZi.getYearGan(), baZi.getYearZhi()),
     month: createPillar(baZi.getMonthGan(), baZi.getMonthZhi()),
     day: createPillar(baZi.getDayGan(), baZi.getDayZhi()),
-    hour: createPillar(baZi.getTimeGan(), baZi.getTimeZhi())
+    // 시간 미상 시 시주는 빈 placeholder — 하위 계산이 자연스럽게 시주를 스킵함
+    hour: hourUnknown ? { ...EMPTY_HOUR_PILLAR } : createPillar(baZi.getTimeGan(), baZi.getTimeZhi())
   };
 
   const elementCount = countElements(pillars);
@@ -584,15 +649,15 @@ export const calculateSaju = (
   const strongElement = sortedElements[0][0];
   const weakElement = sortedElements[sortedElements.length - 1][0];
 
-  const strengthResult = analyzeStrength(dayGan, baZi.getMonthZhi(), pillars);
-  const yongSinResult = determineYongSin(dayMasterElement, strengthResult.isStrong, elementCount, baZi.getMonthZhi());
+  const strengthResult = analyzeStrength(dayGan, monthZhiNorm, pillars);
+  const yongSinResult = determineYongSin(dayMasterElement, strengthResult.isStrong, elementCount, monthZhiNorm);
   const sinSals = calculateSinSals(dayGan, pillars);
   const interactions = analyzeInteractions(pillars);
 
   const daeWoon: DaeWoon[] = daewoonRaw.map((dw: any) => {
     const ganZhi = dw.getGanZhi();
-    const gan = ganZhi.substring(0, 1);
-    const zhi = ganZhi.substring(1, 2);
+    const gan = normalizeGan(ganZhi.substring(0, 1));
+    const zhi = normalizeZhi(ganZhi.substring(1, 2));
     return {
       startAge: dw.getStartYear(),
       endAge: dw.getStartYear() + 9,
@@ -619,6 +684,7 @@ export const calculateSaju = (
     lunarDateSimple: `${Math.abs(lunarMonth)}월 ${lunarDay}일${isLeapMonth ? ' (윤달)' : ''}`,
     isLeapMonth,
     gender,
+    hourUnknown,
     pillars,
     dayMaster: dayGan,
     dayMasterElement,

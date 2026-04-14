@@ -149,17 +149,19 @@ export default function SajuResultPage() {
     const gender = (searchParams?.get('gender') || 'male') as 'male' | 'female';
     const longitude = parseFloat(searchParams?.get('longitude') || '126.978');
     const useTrueSolarTime = searchParams?.get('useTrueSolarTime') === 'true';
+    const unknownTime = searchParams?.get('unknownTime') === 'true';
 
     let finalHour = hour;
     let finalMinute = minute;
 
-    if (useTrueSolarTime) {
+    // 시간 미상일 땐 진태양시 보정도 의미 없음 — 건너뜀
+    if (useTrueSolarTime && !unknownTime) {
       const corrected = getCorrectedTimeForSaju(year, month, day, hour, minute, longitude);
       finalHour = corrected.finalHour;
       finalMinute = corrected.trueSolarTime.trueSolarTime.getMinutes();
     }
 
-    const sajuResult = calculateSaju(year, month, day, finalHour, finalMinute, gender);
+    const sajuResult = calculateSaju(year, month, day, finalHour, finalMinute, gender, unknownTime);
     setResult(sajuResult);
   }, [searchParams]);
 
@@ -238,6 +240,18 @@ export default function SajuResultPage() {
         </div>
       </div>
 
+      {/* 시간 미상 안내 배너 — 삼주추명(三柱推命) 원칙 */}
+      {result.hourUnknown && (
+        <div className={styles.unknownHourBanner}>
+          <strong>🕒 시간 미상 · 삼주추명(三柱推命)</strong>
+          <p>
+            출생 시간 미상으로 시주(時柱)는 제외되었습니다. 연·월·일주 기반으로
+            성격·재물·직업·대운을 정상 분석하되,
+            <strong> 자녀운·말년운·시간대별 상세 조언</strong>은 제한적으로만 제공됩니다.
+          </p>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className={styles.tabs}>
         <button
@@ -277,35 +291,51 @@ export default function SajuResultPage() {
                 </div>
                 <div className={styles.pillarsRow}>
                   <span className={styles.label}>십성</span>
-                  <span>{pillars.hour.tenGodGan}</span>
+                  <span className={result.hourUnknown ? styles.hourUnknownCell : ''}>
+                    {result.hourUnknown ? '—' : pillars.hour.tenGodGan}
+                  </span>
                   <span className={styles.highlight}>일주</span>
                   <span>{pillars.month.tenGodGan}</span>
                   <span>{pillars.year.tenGodGan}</span>
                 </div>
                 <div className={`${styles.pillarsRow} ${styles.stemRow}`}>
                   <span className={styles.label}>천간</span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.hour.ganElement] }}>{pillars.hour.gan}</span>
+                  <span
+                    className={result.hourUnknown ? styles.hourUnknownCell : ''}
+                    style={result.hourUnknown ? undefined : { color: ELEMENT_COLORS[pillars.hour.ganElement] }}
+                  >
+                    {result.hourUnknown ? '?' : pillars.hour.gan}
+                  </span>
                   <span style={{ color: ELEMENT_COLORS[pillars.day.ganElement] }}>{pillars.day.gan}</span>
                   <span style={{ color: ELEMENT_COLORS[pillars.month.ganElement] }}>{pillars.month.gan}</span>
                   <span style={{ color: ELEMENT_COLORS[pillars.year.ganElement] }}>{pillars.year.gan}</span>
                 </div>
                 <div className={`${styles.pillarsRow} ${styles.branchRow}`}>
                   <span className={styles.label}>지지</span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.hour.zhiElement] }}>{pillars.hour.zhi}</span>
+                  <span
+                    className={result.hourUnknown ? styles.hourUnknownCell : ''}
+                    style={result.hourUnknown ? undefined : { color: ELEMENT_COLORS[pillars.hour.zhiElement] }}
+                  >
+                    {result.hourUnknown ? '?' : pillars.hour.zhi}
+                  </span>
                   <span style={{ color: ELEMENT_COLORS[pillars.day.zhiElement] }}>{pillars.day.zhi}</span>
                   <span style={{ color: ELEMENT_COLORS[pillars.month.zhiElement] }}>{pillars.month.zhi}</span>
                   <span style={{ color: ELEMENT_COLORS[pillars.year.zhiElement] }}>{pillars.year.zhi}</span>
                 </div>
                 <div className={styles.pillarsRow}>
                   <span className={styles.label}>지장간</span>
-                  <span className={styles.hiddenStems}>{pillars.hour.hiddenStems.join(' ')}</span>
+                  <span className={`${styles.hiddenStems} ${result.hourUnknown ? styles.hourUnknownCell : ''}`}>
+                    {result.hourUnknown ? '—' : pillars.hour.hiddenStems.join(' ')}
+                  </span>
                   <span className={styles.hiddenStems}>{pillars.day.hiddenStems.join(' ')}</span>
                   <span className={styles.hiddenStems}>{pillars.month.hiddenStems.join(' ')}</span>
                   <span className={styles.hiddenStems}>{pillars.year.hiddenStems.join(' ')}</span>
                 </div>
                 <div className={styles.pillarsRow}>
                   <span className={styles.label}>12운성</span>
-                  <span>{pillars.hour.twelveStage}</span>
+                  <span className={result.hourUnknown ? styles.hourUnknownCell : ''}>
+                    {result.hourUnknown ? '—' : pillars.hour.twelveStage}
+                  </span>
                   <span>{pillars.day.twelveStage}</span>
                   <span>{pillars.month.twelveStage}</span>
                   <span>{pillars.year.twelveStage}</span>

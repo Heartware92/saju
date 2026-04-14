@@ -1,0 +1,309 @@
+/**
+ * QA 검증 스크립트 — Vitest 셋업 전 임시 단위 검증
+ *
+ * 검증 항목:
+ *  1) tarotSeed 결정론성 (오늘/이달 같은 키 → 같은 카드, 다른 키 → 충분히 분산)
+ *  2) drawMany 중복 없음
+ *  3) 프롬프트 출력 스키마 sanity (### 헤더 / 금지어 / 필수 키워드)
+ *  4) pricing 엔트리 정합성 (신규 타로 모드·토정·자미두수)
+ *
+ * 실행: npx tsx scripts/qa-verify.ts
+ */
+
+import { drawOne, drawMany, getTodayKey, getMonthKey } from '../src/utils/tarotSeed';
+import {
+  generateTodayTarotPrompt,
+  generateMonthlyTarotPrompt,
+  generateTarotPrompt,
+} from '../src/constants/prompts';
+import { CREDIT_COST } from '../src/constants/pricing';
+import type { TarotCardInfo } from '../src/services/api';
+import { calculateSaju } from '../src/utils/sajuCalculator';
+
+type Result = { name: string; pass: boolean; detail?: string };
+const results: Result[] = [];
+const record = (name: string, pass: boolean, detail?: string) =>
+  results.push({ name, pass, detail });
+
+// ────────────────────────────────────────────────
+// 1) tarotSeed 결정론성
+// ────────────────────────────────────────────────
+{
+  const key = 'today:2026-04-14:user-abc';
+  const d1 = drawOne(key);
+  const d2 = drawOne(key);
+  record(
+    '[seed] drawOne 같은 키 → 동일 결과',
+    d1.cardIndex === d2.cardIndex && d1.isReversed === d2.isReversed,
+    `${JSON.stringify(d1)} vs ${JSON.stringify(d2)}`
+  );
+}
+{
+  // 다른 날짜 키 100개 → 카드 인덱스 분산도 확인 (편향 금지)
+  const counts = new Array(22).fill(0);
+  for (let i = 0; i < 1000; i++) {
+    const d = drawOne(`today:2026-04-${String(i).padStart(3, '0')}`);
+    counts[d.cardIndex]++;
+  }
+  const min = Math.min(...counts);
+  const max = Math.max(...counts);
+  // 균일분포 기대값 ≈ 45, min>15, max<90 수준 (22장, 1000회)
+  record(
+    '[seed] drawOne 분산도 (1000회, 22장)',
+    min >= 15 && max <= 100,
+    `min=${min}, max=${max}, counts=${counts.join(',')}`
+  );
+}
+{
+  // 역방향 확률 ≈ 0.35
+  let rev = 0;
+  const N = 2000;
+  for (let i = 0; i < N; i++) {
+    const d = drawOne(`rev-test-${i}`);
+    if (d.isReversed) rev++;
+  }
+  const pct = rev / N;
+  record(
+    '[seed] 역방향 확률 ≈ 0.35 (±0.05)',
+    pct > 0.30 && pct < 0.40,
+    `${(pct * 100).toFixed(1)}%`
+  );
+}
+
+// ────────────────────────────────────────────────
+// 2) drawMany 중복 없음 + 결정론
+// ────────────────────────────────────────────────
+{
+  const key = 'month:2026-04:user-xyz';
+  const a = drawMany(key, 3);
+  const b = drawMany(key, 3);
+  const indicesA = a.map(x => x.cardIndex);
+  const unique = new Set(indicesA).size === 3;
+  const same = JSON.stringify(a) === JSON.stringify(b);
+  record('[seed] drawMany 3장 중복 없음', unique, `indices=${indicesA}`);
+  record('[seed] drawMany 결정론 (같은 키 → 같은 시퀀스)', same);
+}
+{
+  // 다른 월 키 → 다른 스프레드가 나오는지
+  const a = drawMany('month:2026-04', 3);
+  const b = drawMany('month:2026-05', 3);
+  const aStr = JSON.stringify(a.map(x => x.cardIndex));
+  const bStr = JSON.stringify(b.map(x => x.cardIndex));
+  record(
+    '[seed] 다른 월 키 → 다른 스프레드',
+    aStr !== bStr,
+    `Apr=${aStr} May=${bStr}`
+  );
+}
+
+// ────────────────────────────────────────────────
+// 3) 프롬프트 출력 스키마 sanity
+// ────────────────────────────────────────────────
+const sampleCard: TarotCardInfo = {
+  name: 'The Star',
+  nameKr: '별',
+  element: 'Air',
+  isReversed: false,
+  keywords: ['희망', '영감', '치유'],
+  meaning: '희망, 영감, 치유',
+};
+const sampleCardRev: TarotCardInfo = { ...sampleCard, isReversed: true };
+
+{
+  const p = generateTodayTarotPrompt(sampleCard, '2026년 4월 14일');
+  const headers = ['### 오늘의 카드 한 줄', '### 오늘 잘 풀리는 영역', '### 오늘 주의할 함정', '### 관계·소통 포인트', '### 하루를 빛낼 작은 의식'];
+  const missing = headers.filter(h => !p.includes(h));
+  record(
+    '[prompt] 오늘의 타로 — 5개 섹션 헤더 포함',
+    missing.length === 0,
+    missing.length ? `missing: ${missing.join(', ')}` : `length=${p.length}`
+  );
+  record(
+    '[prompt] 오늘의 타로 — "이모지 금지" 규칙 명시',
+    p.includes('이모지 금지'),
+  );
+  record(
+    '[prompt] 오늘의 타로 — 카드 방향 주입 (정방향)',
+    p.includes('정방향'),
+  );
+}
+
+{
+  const p = generateMonthlyTarotPrompt(
+    { early: sampleCard, middle: sampleCardRev, late: sampleCard },
+    '2026년 4월'
+  );
+  const headers = [
+    '### 이달의 전체 테마',
+    '### 상순(1~10일)',
+    '### 중순(11~20일)',
+    '### 하순(21~말일)',
+    '### 이달의 주력 과제',
+    '### 피해야 할 함정',
+    '### 이달의 실천 의식',
+  ];
+  const missing = headers.filter(h => !p.includes(h));
+  record(
+    '[prompt] 이달의 타로 — 7개 섹션 헤더 포함',
+    missing.length === 0,
+    missing.length ? `missing: ${missing.join(', ')}` : `length=${p.length}`
+  );
+  // 3장 순차 스토리 규칙
+  record(
+    '[prompt] 이달의 타로 — 순차 스토리 규칙 명시',
+    p.includes('순차') || p.includes('상순이 이래서') ,
+  );
+  record(
+    '[prompt] 이달의 타로 — 정/역 방향 주입 (상순 정 + 중순 역 + 하순 정)',
+    p.includes('상순(1~10일): 별') && p.includes('정방향') && p.includes('역방향'),
+  );
+}
+
+{
+  const p = generateTarotPrompt(sampleCard, '이직을 해도 될까요?');
+  const headers = ['### 카드의 현재 메시지', '### 질문에 대한 해석', '### 행동 조언', '### 주의점'];
+  const missing = headers.filter(h => !p.includes(h));
+  record(
+    '[prompt] 질문 타로 — 4개 섹션 헤더 포함',
+    missing.length === 0,
+    missing.length ? `missing: ${missing.join(', ')}` : `length=${p.length}`
+  );
+  record(
+    '[prompt] 질문 타로 — 질문 주입',
+    p.includes('이직을 해도 될까요?'),
+  );
+}
+
+// ────────────────────────────────────────────────
+// 4) pricing 정합성 (신규 엔트리)
+// ────────────────────────────────────────────────
+record(
+  '[pricing] todayTarot = 달1',
+  CREDIT_COST.todayTarot.type === 'moon' && CREDIT_COST.todayTarot.amount === 1,
+  JSON.stringify(CREDIT_COST.todayTarot)
+);
+record(
+  '[pricing] monthlyTarot = 해1',
+  CREDIT_COST.monthlyTarot.type === 'sun' && CREDIT_COST.monthlyTarot.amount === 1,
+  JSON.stringify(CREDIT_COST.monthlyTarot)
+);
+record(
+  '[pricing] tojeongReading = 해2',
+  CREDIT_COST.tojeongReading.type === 'sun' && CREDIT_COST.tojeongReading.amount === 2,
+  JSON.stringify(CREDIT_COST.tojeongReading)
+);
+record(
+  '[pricing] zamidusuReading = 해3',
+  CREDIT_COST.zamidusuReading.type === 'sun' && CREDIT_COST.zamidusuReading.amount === 3,
+  JSON.stringify(CREDIT_COST.zamidusuReading)
+);
+
+// ────────────────────────────────────────────────
+// 5) key 생성기 sanity
+// ────────────────────────────────────────────────
+{
+  const k1 = getTodayKey();
+  const k2 = getTodayKey('user-xxx');
+  record(
+    '[seed] getTodayKey 포맷 YYYY-MM-DD',
+    /^today:\d{4}-\d{2}-\d{2}$/.test(k1),
+    k1
+  );
+  record(
+    '[seed] getTodayKey uid 포함',
+    k2.endsWith(':user-xxx') && k2.startsWith('today:'),
+    k2
+  );
+}
+{
+  const k1 = getMonthKey();
+  record(
+    '[seed] getMonthKey 포맷 YYYY-MM',
+    /^month:\d{4}-\d{2}$/.test(k1),
+    k1
+  );
+}
+
+// ────────────────────────────────────────────────
+// 6) sajuCalculator 한자→한글 정규화 회귀 (2026-04-14 핫픽스)
+//   lunar-javascript가 반환하는 中 한자(壬·癸·申 등)를 한글로 정규화하지 않으면
+//   STEM_ELEMENT / TEN_GODS_MAP / BRANCH_HIDDEN_STEMS 조회가 전부 실패 →
+//   십성분포 0, 오행 all-0, 용신 undefined, 대운 tenGod/twelveStage 공백 이슈.
+// ────────────────────────────────────────────────
+{
+  const KOREAN_STEMS = ['갑','을','병','정','무','기','경','신','임','계'];
+  const KOREAN_BRANCHES = ['자','축','인','묘','진','사','오','미','신','유','술','해'];
+  const r = calculateSaju(1992, 9, 14, 12, 50, 'male', false);
+
+  record(
+    '[saju] dayMaster 한글 정규화',
+    KOREAN_STEMS.includes(r.dayMaster),
+    `dayMaster=${r.dayMaster}`
+  );
+  record(
+    '[saju] dayMasterElement 비어있지 않음 (오행 매핑 동작)',
+    r.dayMasterElement !== '' && ['목','화','토','금','수'].includes(r.dayMasterElement),
+    `dayMasterElement=${r.dayMasterElement}`
+  );
+  record(
+    '[saju] 년/월/일 천간 모두 한글',
+    KOREAN_STEMS.includes(r.pillars.year.gan)
+      && KOREAN_STEMS.includes(r.pillars.month.gan)
+      && KOREAN_STEMS.includes(r.pillars.day.gan),
+    `${r.pillars.year.gan}/${r.pillars.month.gan}/${r.pillars.day.gan}`
+  );
+  record(
+    '[saju] 년/월/일 지지 모두 한글',
+    KOREAN_BRANCHES.includes(r.pillars.year.zhi)
+      && KOREAN_BRANCHES.includes(r.pillars.month.zhi)
+      && KOREAN_BRANCHES.includes(r.pillars.day.zhi),
+    `${r.pillars.year.zhi}/${r.pillars.month.zhi}/${r.pillars.day.zhi}`
+  );
+  const elSum = r.elementCount.목 + r.elementCount.화 + r.elementCount.토 + r.elementCount.금 + r.elementCount.수;
+  record(
+    '[saju] elementCount 합 > 0 (오행 카운트 동작)',
+    elSum > 0,
+    `sum=${elSum}, ${JSON.stringify(r.elementCount)}`
+  );
+  record(
+    '[saju] 년주 tenGodGan 계산됨 (십성 매핑 동작)',
+    r.pillars.year.tenGodGan !== '' && r.pillars.year.tenGodGan !== '일주',
+    `year.tenGodGan=${r.pillars.year.tenGodGan}`
+  );
+  record(
+    '[saju] yongSinElement 유효',
+    !!r.yongSinElement && ['목','화','토','금','수'].includes(r.yongSinElement),
+    `yongSinElement=${r.yongSinElement}`
+  );
+  // daeWoon 첫 번째 유효 엔트리(startAge>0인 것)는 tenGod/twelveStage 모두 한글이어야 함
+  const validDw = r.daeWoon.find(d => d.gan && d.zhi);
+  record(
+    '[saju] 대운 tenGod/twelveStage 유효',
+    !!validDw && validDw.tenGod !== '' && validDw.twelveStage !== '',
+    validDw ? `${validDw.startAge}세 ${validDw.gan}${validDw.zhi} ${validDw.tenGod}/${validDw.twelveStage}` : 'no valid daewoon'
+  );
+  // seWoon 첫 엔트리
+  const sw0 = r.seWoon[0];
+  record(
+    '[saju] 세운 가장 앞 엔트리 tenGod/twelveStage 유효',
+    sw0 && KOREAN_STEMS.includes(sw0.gan) && sw0.tenGod !== '' && sw0.twelveStage !== '',
+    sw0 ? `${sw0.year} ${sw0.gan}${sw0.zhi} ${sw0.tenGod}/${sw0.twelveStage}` : 'no sewoon'
+  );
+}
+
+// ────────────────────────────────────────────────
+// Report
+// ────────────────────────────────────────────────
+console.log('\n━━━━━━━━━━ QA 검증 리포트 ━━━━━━━━━━');
+let passed = 0;
+let failed = 0;
+for (const r of results) {
+  const mark = r.pass ? '✓' : '✗';
+  const color = r.pass ? '\x1b[32m' : '\x1b[31m';
+  const reset = '\x1b[0m';
+  console.log(`${color}${mark}${reset} ${r.name}${r.detail && !r.pass ? `  → ${r.detail}` : ''}`);
+  if (r.pass) passed++;
+  else failed++;
+}
+console.log(`\n  ${passed} passed, ${failed} failed / ${results.length} total`);
+process.exit(failed > 0 ? 1 : 0);

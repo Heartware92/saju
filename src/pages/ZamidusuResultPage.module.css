@@ -16,25 +16,24 @@
   font-size: 0.95rem;
 }
 
-/* Header */
+/* Header — 모바일에서는 버튼을 위로 분리해 제목과 겹치지 않도록 */
 .header {
-  position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.25rem;
-  padding: 0.5rem 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  padding: 0.25rem 0 0;
 }
 
 .backBtn {
-  position: absolute;
-  left: 0;
+  align-self: flex-start;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #eadff2;
-  padding: 0.45rem 0.8rem;
+  padding: 0.4rem 0.75rem;
   border-radius: 999px;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -44,23 +43,28 @@
 
 .headerCenter {
   text-align: center;
+  padding: 0 0.25rem;
 }
 .headerCenter h1 {
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   font-weight: 700;
   margin: 0;
   background: linear-gradient(90deg, #c9a6ff, #9bd0ff);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  word-break: keep-all;
+  line-height: 1.3;
 }
 .dateInfo {
-  margin: 0.25rem 0 0;
-  font-size: 0.8rem;
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
   color: #bbb0c9;
+  word-break: keep-all;
+  line-height: 1.4;
 }
 
-/* Summary */
+/* Summary — 명주·신주·오행국·띠/별자리 */
 .summary {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -68,23 +72,30 @@
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
-  padding: 0.9rem;
+  padding: 0.9rem 0.75rem;
   margin-bottom: 1rem;
 }
 .summaryItem {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
+  justify-content: flex-start;
+  gap: 0.3rem;
+  min-width: 0; /* grid 자식 overflow 방지 */
+  text-align: center;
 }
 .summaryLabel {
   font-size: 0.7rem;
   color: #a79cba;
+  white-space: nowrap;
 }
 .summaryValue {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 600;
   color: #f3eef6;
+  word-break: keep-all;
+  line-height: 1.3;
+  text-align: center;
 }
 
 /* 12궁 Board (4x4) */
@@ -313,10 +324,29 @@
   margin: 0;
 }
 
-/* Mobile */
+/* 태블릿 이하 */
+@media (max-width: 768px) {
+  .summary {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem 0.5rem;
+  }
+  .summaryValue {
+    font-size: 0.95rem;
+  }
+}
+
+/* 모바일 */
 @media (max-width: 640px) {
   .summary {
     grid-template-columns: repeat(2, 1fr);
+    padding: 0.75rem 0.6rem;
+    gap: 0.7rem 0.4rem;
+  }
+  .summaryLabel {
+    font-size: 0.68rem;
+  }
+  .summaryValue {
+    font-size: 0.88rem;
   }
   .board {
     grid-template-rows: repeat(4, minmax(88px, auto));
@@ -352,6 +382,9 @@
     font-size: 0.75rem;
   }
   .headerCenter h1 {
-    font-size: 1.15rem;
+    font-size: 1.2rem;
+  }
+  .dateInfo {
+    font-size: 0.74rem;
   }
 }

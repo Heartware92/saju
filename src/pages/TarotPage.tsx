@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { generateTarotPrompt, TarotElement } from '../services/api'
+import { generateTarotPrompt, TarotElement, TarotCardInfo } from '../services/api'
+import { getTodayTarotReading, getMonthlyTarotReading } from '../services/fortuneService'
+import { drawOne, drawMany, getTodayKey, getMonthKey, formatTodayString, formatMonthString } from '../utils/tarotSeed'
+import { useCreditStore } from '../store/useCreditStore'
 import styles from './TarotPage.module.css'
 
 interface TarotCard {
@@ -113,14 +116,108 @@ const ELEMENT_DESCRIPTIONS: Record<TarotElement, string> = {
 }
 
 type GameState = 'select' | 'shuffling' | 'spread' | 'revealing' | 'revealed'
+type TarotMode = 'question' | 'today' | 'monthly'
+
+/** TarotCard → 프롬프트용 TarotCardInfo 변환 */
+function toCardInfo(card: TarotCard, isReversed: boolean): TarotCardInfo {
+  return {
+    name: card.name,
+    nameKr: card.nameKr,
+    element: card.element,
+    isReversed,
+    keywords: isReversed ? card.keywords.reversed : card.keywords.upright,
+    meaning: isReversed ? card.meaningReversed : card.meaning,
+  }
+}
 
 export default function TarotPage() {
+  const [mode, setMode] = useState<TarotMode>('question')
+
+  // === 질문 타로 (기존 플로우) ===
   const [gameState, setGameState] = useState<GameState>('select')
   const [selectedCard, setSelectedCard] = useState<TarotCard | null>(null)
   const [isReversed, setIsReversed] = useState(false)
   const [analysis, setAnalysis] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [shuffledCards, setShuffledCards] = useState<number[]>([])
+
+  // === 오늘/이달 타로 공통 ===
+  const [autoCards, setAutoCards] = useState<{ card: TarotCard; isReversed: boolean }[]>([])
+  const [autoAnalysis, setAutoAnalysis] = useState('')
+  const [autoLoading, setAutoLoading] = useState(false)
+  const [autoError, setAutoError] = useState<string | null>(null)
+  const [autoStarted, setAutoStarted] = useState(false)
+
+  const { fetchBalance } = useCreditStore()
+
+  useEffect(() => {
+    fetchBalance()
+  }, [])
+
+  // 모드 전환 시 상태 초기화
+  useEffect(() => {
+    setAutoCards([])
+    setAutoAnalysis('')
+    setAutoError(null)
+    setAutoStarted(false)
+    if (mode === 'question') {
+      resetGame()
+    }
+  }, [mode])
+
+  // 오늘의 타로 자동 실행
+  const runTodayTarot = async () => {
+    if (autoStarted) return
+    setAutoStarted(true)
+    setAutoLoading(true)
+    setAutoError(null)
+
+    try {
+      const key = getTodayKey()
+      const { cardIndex, isReversed: rev } = drawOne(key, TAROT_CARDS.length, 0.35)
+      const card = TAROT_CARDS[cardIndex]
+      setAutoCards([{ card, isReversed: rev }])
+
+      const cardInfo = toCardInfo(card, rev)
+      const res = await getTodayTarotReading(cardInfo, formatTodayString())
+      if (res.success && res.content) {
+        setAutoAnalysis(res.content)
+      } else {
+        setAutoError(res.error || '오늘의 타로를 불러오지 못했습니다')
+      }
+    } catch (e: any) {
+      setAutoError(e?.message || '오류가 발생했습니다')
+    } finally {
+      setAutoLoading(false)
+    }
+  }
+
+  // 이달의 타로 자동 실행 (3장)
+  const runMonthlyTarot = async () => {
+    if (autoStarted) return
+    setAutoStarted(true)
+    setAutoLoading(true)
+    setAutoError(null)
+
+    try {
+      const key = getMonthKey()
+      const draws = drawMany(key, 3, TAROT_CARDS.length, 0.35)
+      const cards = draws.map(d => ({ card: TAROT_CARDS[d.cardIndex], isReversed: d.isReversed }))
+      setAutoCards(cards)
+
+      const [early, middle, late] = cards.map(c => toCardInfo(c.card, c.isReversed))
+      const res = await getMonthlyTarotReading({ early, middle, late }, formatMonthString())
+      if (res.success && res.content) {
+        setAutoAnalysis(res.content)
+      } else {
+        setAutoError(res.error || '이달의 타로를 불러오지 못했습니다')
+      }
+    } catch (e: any) {
+      setAutoError(e?.message || '오류가 발생했습니다')
+    } finally {
+      setAutoLoading(false)
+    }
+  }
 
   const resetGame = () => {
     setGameState('select')
@@ -204,16 +301,197 @@ export default function TarotPage() {
     }
   }, [gameState, selectedCard])
 
+  const dateLabel = useMemo(() => {
+    if (mode === 'today') return formatTodayString()
+    if (mode === 'monthly') return formatMonthString()
+    return ''
+  }, [mode])
+
+  const modeDescriptions: Record<TarotMode, string> = {
+    today: '날짜에 따라 오늘 한 장이 정해집니다 · 🌙 1',
+    monthly: '이달의 흐름을 세 장으로 짚어드립니다 · ☀️ 1',
+    question: '마음속 질문 하나에 카드가 답합니다 · 🌙 1',
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h1>타로 상담</h1>
-        {gameState === 'select' && <p>마음을 비우고 카드를 섞어보세요</p>}
-        {gameState === 'shuffling' && <p>카드를 섞는 중...</p>}
-        {gameState === 'spread' && <p>마음이 끌리는 카드를 선택하세요</p>}
-        {(gameState === 'revealing' || gameState === 'revealed') && <p>당신의 운명이 드러납니다</p>}
+        {mode === 'question' && gameState === 'select' && <p>마음을 비우고 카드를 섞어보세요</p>}
+        {mode === 'question' && gameState === 'shuffling' && <p>카드를 섞는 중...</p>}
+        {mode === 'question' && gameState === 'spread' && <p>마음이 끌리는 카드를 선택하세요</p>}
+        {mode === 'question' && (gameState === 'revealing' || gameState === 'revealed') && <p>당신의 운명이 드러납니다</p>}
+        {mode !== 'question' && <p>{modeDescriptions[mode]}</p>}
       </div>
 
+      {/* 모드 선택 탭 */}
+      <div style={{
+        display: 'flex',
+        gap: 6,
+        margin: '0 auto 20px',
+        maxWidth: 520,
+        padding: 4,
+        background: 'var(--space-surface)',
+        borderRadius: 12,
+        border: '1px solid var(--border-subtle)',
+      }}>
+        {(['today', 'monthly', 'question'] as TarotMode[]).map((m) => {
+          const labels: Record<TarotMode, string> = {
+            today: '오늘의 타로',
+            monthly: '이달의 타로',
+            question: '질문 타로',
+          }
+          const active = mode === m
+          return (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              style={{
+                flex: 1,
+                padding: '10px 8px',
+                borderRadius: 10,
+                fontSize: 13,
+                fontWeight: active ? 700 : 500,
+                border: 'none',
+                cursor: 'pointer',
+                background: active ? 'var(--cta-primary)' : 'transparent',
+                color: active ? '#fff' : 'var(--text-tertiary)',
+                boxShadow: active ? '0 2px 8px rgba(124,92,252,0.3)' : 'none',
+                transition: 'all 0.2s',
+              }}
+            >
+              {labels[m]}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* 오늘 / 이달 모드 화면 */}
+      {(mode === 'today' || mode === 'monthly') && (
+        <div style={{ maxWidth: 640, margin: '0 auto' }}>
+          {!autoStarted && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                textAlign: 'center',
+                padding: '28px 20px',
+                background: 'var(--space-surface)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 16,
+              }}
+            >
+              <p style={{ fontSize: 14, color: 'var(--text-tertiary)', marginBottom: 6 }}>
+                {dateLabel}
+              </p>
+              <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 18 }}>
+                {mode === 'today'
+                  ? '오늘 당신에게 정해진 한 장을 펼쳐볼게요. 같은 날짜에는 같은 카드가 나타납니다.'
+                  : '이달의 흐름을 상순·중순·하순 세 장으로 짚어드립니다. 이달 안에는 같은 스프레드가 유지됩니다.'}
+              </p>
+              <motion.button
+                className={styles.shuffleBtn}
+                onClick={mode === 'today' ? runTodayTarot : runMonthlyTarot}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {mode === 'today' ? '오늘의 카드 펼치기 · 🌙 1' : '이달의 카드 펼치기 · ☀️ 1'}
+              </motion.button>
+            </motion.div>
+          )}
+
+          {autoStarted && (
+            <>
+              {/* 카드 카드 라인업 */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: 14,
+                flexWrap: 'wrap',
+                margin: '12px 0 24px',
+              }}>
+                {autoCards.map((c, idx) => {
+                  const labels = mode === 'monthly' ? ['상순', '중순', '하순'] : ['오늘']
+                  return (
+                    <motion.div
+                      key={idx}
+                      initial={{ rotateY: 180, opacity: 0 }}
+                      animate={{ rotateY: 0, opacity: 1 }}
+                      transition={{ duration: 0.6, delay: idx * 0.15 }}
+                      style={{
+                        width: 108,
+                        background: ELEMENT_COLORS[c.card.element] + '22',
+                        border: `2px solid ${ELEMENT_COLORS[c.card.element]}`,
+                        borderRadius: 12,
+                        padding: '10px 8px',
+                        textAlign: 'center',
+                        transform: c.isReversed ? 'rotate(180deg)' : 'none',
+                      }}
+                    >
+                      <div style={{
+                        transform: c.isReversed ? 'rotate(180deg)' : 'none',
+                      }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>
+                          {labels[idx]}
+                        </div>
+                        <div style={{ fontSize: 22, color: ELEMENT_COLORS[c.card.element], fontWeight: 700 }}>
+                          {c.card.symbol}
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 600, marginTop: 4 }}>
+                          {c.card.nameKr}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                          {c.isReversed ? '역방향' : '정방향'}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )
+                })}
+              </div>
+
+              {/* 분석 영역 */}
+              <div className={styles.analysisSection}>
+                <h3 className={styles.analysisSectionTitle}>
+                  {mode === 'today' ? '🌙 오늘의 리딩' : '☀️ 이달의 리딩'}
+                </h3>
+                {autoLoading && (
+                  <div className={styles.analysisPlaceholder}>
+                    <div className={styles.loadingSpinner}></div>
+                    <p>카드의 메시지를 풀어내는 중...</p>
+                  </div>
+                )}
+                {autoError && (
+                  <div className={styles.analysisPlaceholder}>
+                    <p style={{ color: '#f87171' }}>{autoError}</p>
+                    <button
+                      onClick={mode === 'today' ? runTodayTarot : runMonthlyTarot}
+                      style={{
+                        marginTop: 12,
+                        padding: '8px 16px',
+                        borderRadius: 8,
+                        border: '1px solid var(--border-subtle)',
+                        background: 'transparent',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      다시 시도
+                    </button>
+                  </div>
+                )}
+                {autoAnalysis && !autoLoading && (
+                  <div className={styles.analysisResult}>
+                    <pre>{autoAnalysis}</pre>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* 질문 타로 (기존 플로우) */}
+      {mode === 'question' && (
       <div className={styles.mainArea}>
         {gameState === 'select' && (
           <motion.div
@@ -366,6 +644,7 @@ export default function TarotPage() {
           </motion.div>
         )}
       </div>
+      )}
     </div>
   )
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Gowun_Batang, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import StarfallBackground from "../components/StarfallBackground";
 
 const gowunBatang = Gowun_Batang({
   weight: ['400', '700'],
@@ -18,8 +19,8 @@ const notoSansKR = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
-  title: "이천점 - 2,000원의 운명 상담",
-  description: "2,000원으로 만나는 사주·타로 운명 상담 서비스",
+  title: "이천점 — 우주의 기운을 당신께 드려요",
+  description: "별빛이 읽어주는 사주·타로·자미두수. 오늘 하늘이 건네는 한 문장을 받아보세요.",
   icons: {
     icon: '/coin.png',
   },
@@ -33,6 +34,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={`${gowunBatang.variable} ${notoSansKR.variable} antialiased`}>
+        <StarfallBackground />
         <Providers>
           {children}
         </Providers>
