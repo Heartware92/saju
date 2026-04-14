@@ -19,13 +19,13 @@ export const CreditDisplay: React.FC<CreditDisplayProps> = ({
     return (
       <button
         onClick={onClick}
-        className="flex items-center gap-3 px-3 py-1.5 rounded-xl glass-hover cursor-pointer"
+        className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-[rgba(36,20,63,0.88)] border border-[rgba(61,41,96,0.35)] cursor-pointer transition-none"
       >
         <span className="flex items-center gap-1">
           <SunIcon size={16} />
           <span className="text-sm font-bold text-sun-core">{sunBalance}</span>
         </span>
-        <span className="w-px h-4 bg-[var(--border-subtle)]" />
+        <span className="w-px h-4 bg-white/15" />
         <span className="flex items-center gap-1">
           <MoonIcon size={16} />
           <span className="text-sm font-bold text-moon-core">{moonBalance}</span>
