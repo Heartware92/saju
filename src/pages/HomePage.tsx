@@ -132,9 +132,9 @@ export default function HomePage() {
               <Link href={svc.href}>
                 <div className={`
                   relative rounded-2xl p-4 h-[120px]
-                  bg-gradient-to-br ${svc.gradient} bg-white/40
-                  border border-[var(--border-default)]
-                  hover:border-cta/50 transition-all
+                  bg-gradient-to-br ${svc.gradient}
+                  border border-[var(--border-subtle)]
+                  hover:border-cta/40 transition-all
                   flex flex-col items-center justify-center text-center gap-1.5
                   active:scale-[0.97]
                 `}>
@@ -160,7 +160,7 @@ export default function HomePage() {
           {SUB_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>
               <Link href={svc.href}>
-                <div className="flex items-center justify-center h-[56px] p-2 rounded-xl bg-white/55 border border-[var(--border-default)] hover:border-cta/50 transition-all active:scale-[0.95]">
+                <div className="flex items-center justify-center h-[56px] p-2 rounded-xl bg-space-surface/60 border border-[var(--border-subtle)] hover:border-cta/40 transition-all active:scale-[0.95]">
                   <span className="text-[13px] font-bold text-text-primary">{svc.title}</span>
                 </div>
               </Link>
