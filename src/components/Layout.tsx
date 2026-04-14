@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { CreditDisplay } from './ui/CreditDisplay';
 import { useCreditStore } from '../store/useCreditStore';
+import StarfallBackground from './StarfallBackground';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -76,6 +77,9 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="app-shell">
       <div className="app-container">
+        {/* 9:16 프레임 안쪽에 별똥별이 떨어지도록 — 바깥은 body 의 듀스크 그라디언트 */}
+        <StarfallBackground />
+
         {/* Top Header Bar */}
         <header className="sticky top-0 z-50 flex items-center justify-between h-12 px-4 bg-[rgba(26,18,48,0.88)] backdrop-blur-xl border-b border-[var(--border-subtle)]">
           {/* Left: 이천점 로고 (홈 링크) — 추후 아이콘으로 교체 */}
@@ -163,7 +167,7 @@ export default function Layout({ children }: LayoutProps) {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 w-full overflow-y-auto pb-[calc(64px+env(safe-area-inset-bottom,0px))]">
+        <main className="relative z-10 flex-1 w-full overflow-y-auto pb-[calc(64px+env(safe-area-inset-bottom,0px))]">
           {children}
         </main>
 

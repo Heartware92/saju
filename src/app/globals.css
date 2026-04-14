@@ -145,8 +145,13 @@ html {
 }
 
 body {
-  /* StarfallBackground가 fixed로 깔리므로 body 배경은 fallback용 단색 유지 */
-  background: var(--space-deep);
+  /* 바깥(데스크탑 여백)은 정적인 듀스크 그라디언트 —
+     별똥별 애니메이션은 app-container(9:16 프레임) 안쪽에서만 재생 */
+  background:
+    radial-gradient(ellipse at 50% 110%, rgba(232, 180, 216, 0.22) 0%, transparent 55%),
+    radial-gradient(ellipse at 20% 10%, rgba(124, 92, 200, 0.14) 0%, transparent 50%),
+    linear-gradient(180deg, #1a1230 0%, #2d1f4a 35%, #4a3968 70%, #7a5588 100%);
+  background-attachment: fixed;
   color: var(--text-primary);
   font-family: 'Pretendard', -apple-system, 'Noto Sans KR', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -418,9 +423,9 @@ body {
    Mobile / WebView Optimizations
    ============================================ */
 
-/* Prevent overscroll bounce coloring */
+/* Prevent overscroll bounce coloring — body 에 그라디언트가 있으므로 html 은 단색 fallback */
 html {
-  background: var(--space-void);
+  background: #1a1230;
   overscroll-behavior: none;
 }
 
@@ -457,11 +462,9 @@ html {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  /* 살짝 탁한 자수정 틴트로 가독성 유지 + 별빛은 은은히 비침 */
-  background: rgba(26, 18, 48, 0.62);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  box-shadow: none;
+  /* StarfallBackground 가 내부에 깔리므로 컨테이너는 투명 */
+  background: transparent;
+  overflow: hidden; /* 별똥별이 프레임 밖으로 넘지 않도록 클리핑 */
 }
 
 /* Desktop: show phone-like frame */
@@ -505,9 +508,8 @@ html {
   max-width: 430px;
   min-height: 100vh;
   min-height: 100dvh;
-  background: rgba(26, 18, 48, 0.62);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: transparent;
+  overflow: hidden;
 }
 
 @media (min-width: 480px) {

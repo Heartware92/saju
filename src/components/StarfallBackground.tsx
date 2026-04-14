@@ -10,12 +10,14 @@
  */
 import styles from './StarfallBackground.module.css';
 
+/* 상단 외부(-30%~-15%) 에서 출발 → 우하단 바깥으로 대각 낙하
+   left 는 화면 좌/중앙 분포 — 각 별똥별이 서로 다른 궤적을 그리도록 */
 const SHOOTING_STARS = [
-  { top: '8%',  left: '-10%', delay: '0s',    duration: '3.2s' },
-  { top: '22%', left: '-15%', delay: '5.8s',  duration: '3.8s' },
-  { top: '45%', left: '-8%',  delay: '2.4s',  duration: '4.2s' },
-  { top: '63%', left: '-12%', delay: '8.1s',  duration: '3.5s' },
-  { top: '78%', left: '-6%',  delay: '11.3s', duration: '4.6s' },
+  { top: '-20%', left: '10%', delay: '0s',    duration: '3.4s' },
+  { top: '-25%', left: '35%', delay: '4.6s',  duration: '4.0s' },
+  { top: '-15%', left: '55%', delay: '2.1s',  duration: '3.6s' },
+  { top: '-30%', left: '-5%', delay: '7.8s',  duration: '4.4s' },
+  { top: '-18%', left: '75%', delay: '10.2s', duration: '3.8s' },
 ];
 
 export default function StarfallBackground() {
@@ -42,7 +44,9 @@ export default function StarfallBackground() {
             animationDelay: s.delay,
             animationDuration: s.duration,
           }}
-        />
+        >
+          <span className={styles.trail} />
+        </span>
       ))}
     </div>
   );

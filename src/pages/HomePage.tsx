@@ -14,38 +14,30 @@ const MAIN_SERVICES = [
   {
     id: 'traditional',
     title: '정통 사주',
-    icon: '📜',
     desc: '사주팔자 종합 분석',
     href: '/saju',
     gradient: 'from-purple-500/20 to-indigo-500/10',
-    iconBg: 'bg-purple-500/15',
   },
   {
     id: 'today',
     title: '오늘의 운세',
-    icon: '☀️',
     desc: '오늘 하루 운세',
     href: '/saju/input?category=today',
     gradient: 'from-amber-500/20 to-orange-500/10',
-    iconBg: 'bg-amber-500/15',
   },
   {
     id: 'tojeong',
     title: '토정비결',
-    icon: '📖',
     desc: '한 해 길흉화복',
     href: '/saju/input?category=tojeong',
     gradient: 'from-emerald-500/20 to-teal-500/10',
-    iconBg: 'bg-emerald-500/15',
   },
   {
     id: 'date-fortune',
     title: '지정일 운세',
-    icon: '📅',
     desc: '특정 날짜의 운세',
     href: '/saju/input?category=date',
     gradient: 'from-blue-500/20 to-cyan-500/10',
-    iconBg: 'bg-blue-500/15',
   },
 ];
 
@@ -53,7 +45,6 @@ const SUB_SERVICES = [
   {
     id: 'zamidusu',
     title: '자미두수',
-    icon: '🌌',
     href: '/saju/input?category=zamidusu',
     credit: 'sun' as const,
     cost: 3,
@@ -61,7 +52,6 @@ const SUB_SERVICES = [
   {
     id: 'love',
     title: '애정운',
-    icon: '💕',
     href: '/saju/input?category=love',
     credit: 'sun' as const,
     cost: 2,
@@ -69,7 +59,6 @@ const SUB_SERVICES = [
   {
     id: 'wealth',
     title: '재물운',
-    icon: '💰',
     href: '/saju/input?category=wealth',
     credit: 'sun' as const,
     cost: 2,
@@ -77,7 +66,6 @@ const SUB_SERVICES = [
   {
     id: 'tarot',
     title: '타로',
-    icon: '🃏',
     href: '/tarot',
     credit: 'moon' as const,
     cost: 1,
@@ -85,7 +73,6 @@ const SUB_SERVICES = [
   {
     id: 'newyear',
     title: '신년운세',
-    icon: '🐍',
     href: '/saju/input?category=newyear',
     credit: 'moon' as const,
     cost: 1,
@@ -174,13 +161,10 @@ export default function HomePage() {
                   bg-gradient-to-br ${svc.gradient}
                   border border-[var(--border-subtle)]
                   hover:border-cta/30 transition-all
-                  flex flex-col items-center justify-center text-center
+                  flex flex-col items-center justify-center text-center gap-1.5
                   active:scale-[0.97]
                 `}>
-                  <div className={`w-10 h-10 rounded-xl ${svc.iconBg} flex items-center justify-center text-xl mb-2`}>
-                    {svc.icon}
-                  </div>
-                  <h3 className="text-sm font-bold text-text-primary">{svc.title}</h3>
+                  <h3 className="text-base font-bold text-text-primary">{svc.title}</h3>
                   <p className="text-[11px] text-text-tertiary">{svc.desc}</p>
                 </div>
               </Link>
@@ -202,11 +186,10 @@ export default function HomePage() {
           {SUB_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>
               <Link href={svc.href}>
-                <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-space-surface/50 border border-[var(--border-subtle)] hover:border-cta/30 transition-all active:scale-[0.95]">
-                  <span className="text-2xl">{svc.icon}</span>
-                  <span className="text-[11px] font-medium text-text-secondary">{svc.title}</span>
-                  <span className="text-[9px] text-text-tertiary">
-                    {svc.credit === 'sun' ? `☀️${svc.cost}` : `🌙${svc.cost}`}
+                <div className="flex flex-col items-center justify-center gap-1 h-[64px] p-2 rounded-xl bg-space-surface/50 border border-[var(--border-subtle)] hover:border-cta/30 transition-all active:scale-[0.95]">
+                  <span className="text-[12px] font-semibold text-text-primary">{svc.title}</span>
+                  <span className="text-[10px] text-text-tertiary">
+                    {svc.credit === 'sun' ? `해 ${svc.cost}` : `달 ${svc.cost}`}
                   </span>
                 </div>
               </Link>
@@ -225,14 +208,11 @@ export default function HomePage() {
         >
           <Link href="/tarot">
             <Card hover padding="none" glow="cta" className="overflow-hidden">
-              <div className="relative px-5 py-5 bg-gradient-to-br from-[rgba(124,92,252,0.15)] to-[rgba(59,130,246,0.08)]">
+              <div className="relative px-5 py-5 bg-gradient-to-br from-[rgba(232,164,144,0.18)] to-[rgba(201,166,255,0.1)]">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-[rgba(124,92,252,0.2)] flex items-center justify-center text-2xl shrink-0">
-                    ✦
-                  </div>
                   <div className="flex-1">
                     <h3 className="text-base font-bold text-text-primary mb-0.5">타로 상담실</h3>
-                    <p className="text-xs text-text-secondary">카드가 전하는 신비로운 메시지</p>
+                    <p className="text-xs text-text-secondary">카드가 전하는 오늘의 한 문장</p>
                   </div>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round">
                     <path d="M9 18l6-6-6-6" />

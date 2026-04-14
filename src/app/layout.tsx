@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Gowun_Batang, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
-import StarfallBackground from "../components/StarfallBackground";
 
 const gowunBatang = Gowun_Batang({
   weight: ['400', '700'],
@@ -34,7 +33,6 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={`${gowunBatang.variable} ${notoSansKR.variable} antialiased`}>
-        <StarfallBackground />
         <Providers>
           {children}
         </Providers>

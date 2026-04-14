@@ -1,14 +1,17 @@
 /* 전역 배경 — 듀스크 밤하늘 + 별똥별 */
 
+/* 부모(app-container, app-auth-container)가 position:relative + overflow:hidden 을 갖도록
+   설정되어 있어 이 .root 는 9:16 프레임 안에만 그려진다. */
 .root {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
 }
 
-/* 듀스크 그라데이션: 심연 → 자수정 → 장미빛 지평선 */
+/* 듀스크 그라데이션: 심연 → 자수정 → 장미빛 지평선
+   프레임 안쪽 톤을 바깥(body)과 동일하게 맞춰 이음새를 자연스럽게. */
 .gradient {
   position: absolute;
   inset: 0;
@@ -72,45 +75,45 @@
   100% { opacity: 0.55; }
 }
 
-/* 별똥별 — 대각선으로 스쳐지나가며 잠깐 빛나는 라인 */
+/* 별똥별 — 상단에서 하단으로 대각선(≈45°) 낙하
+   외부 래퍼는 translate 애니메이션만 담당, 내부 .trail 이 회전 + 꼬리 묘사 */
 .shootingStar {
   position: absolute;
-  width: 2px;
-  height: 2px;
-  border-radius: 50%;
-  background: #fff5e1;
-  box-shadow: 0 0 6px 2px rgba(252, 232, 178, 0.8);
+  width: 0;
+  height: 0;
   opacity: 0;
   animation-name: shoot;
-  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  animation-timing-function: cubic-bezier(0.35, 0.05, 0.2, 1);
   animation-iteration-count: infinite;
+  will-change: transform, opacity;
 }
 
-.shootingStar::after {
-  content: '';
+.shootingStar .trail {
   position: absolute;
-  top: 50%;
   left: 0;
-  transform: translateY(-50%);
-  width: 140px;
-  height: 1.5px;
+  top: 0;
+  width: 110px;
+  height: 1.8px;
   background: linear-gradient(
     90deg,
     rgba(252, 232, 178, 0) 0%,
-    rgba(252, 232, 178, 0.9) 60%,
+    rgba(252, 232, 178, 0.75) 70%,
     #fff5e1 100%
   );
-  transform-origin: right center;
-  transform: translate(-140px, -50%);
   border-radius: 2px;
-  filter: blur(0.5px);
+  filter: blur(0.4px);
+  box-shadow: 0 0 8px 1px rgba(252, 232, 178, 0.55);
+  /* 45° 각도로 회전 — 우측 끝(머리)을 기준으로 */
+  transform-origin: 100% 50%;
+  transform: rotate(45deg);
 }
 
+/* 상 → 하 대각선 낙하 (좌상단 외부 → 우하단 외부) */
 @keyframes shoot {
-  0%   { transform: translate(0, 0);        opacity: 0; }
-  5%   {                                    opacity: 1; }
-  70%  {                                    opacity: 1; }
-  100% { transform: translate(130vw, 55vh); opacity: 0; }
+  0%   { transform: translate(0, 0);             opacity: 0; }
+  8%   {                                         opacity: 1; }
+  75%  {                                         opacity: 1; }
+  100% { transform: translate(120%, 120%);       opacity: 0; }
 }
 
 /* reduce-motion 사용자는 정적 별빛만 */
