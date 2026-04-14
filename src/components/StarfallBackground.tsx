@@ -10,22 +10,24 @@
  */
 import styles from './StarfallBackground.module.css';
 
-/* 상단 좌측(-30%~-15%, left -10%~45%) 에서 출발 → 우하단 바깥으로 대각 낙하
-   별똥별 아이콘(머리 오른쪽/꼬리 왼쪽)의 이동 방향과 일치
-   각 별똥별이 서로 다른 궤적을 그려 화면 전체(글자/카드 뒤)를 가로지름 */
+/* 9:16 프레임(≈430×764) 중앙(≈215,382) 을 관통하는 궤적.
+   motion 은 translate(560px, 980px) → 기울기 1.75.
+   중심을 지나려면 시작점이 (215 - t·560, 382 - t·980) 상에 놓여야 하며,
+   프레임 바깥 좌상단에서 출발하도록 top/left 를 음수로 둠.
+   궤적에 약간씩 편차를 줘 전부 같은 대각선에 놓이지 않도록 흩뿌림. */
 const SHOOTING_STARS = [
-  { top: '-22%', left: '5%',   delay: '0s',    duration: '3.8s' },
-  { top: '-28%', left: '30%',  delay: '1.4s',  duration: '4.2s' },
-  { top: '-16%', left: '15%',  delay: '2.1s',  duration: '3.4s' },
-  { top: '-35%', left: '-10%', delay: '3.2s',  duration: '4.6s' },
-  { top: '-18%', left: '40%',  delay: '4.0s',  duration: '4.0s' },
-  { top: '-24%', left: '0%',   delay: '5.3s',  duration: '3.6s' },
-  { top: '-20%', left: '25%',  delay: '6.6s',  duration: '4.4s' },
-  { top: '-30%', left: '45%',  delay: '7.8s',  duration: '3.8s' },
-  { top: '-15%', left: '10%',  delay: '9.1s',  duration: '3.5s' },
-  { top: '-25%', left: '-5%',  delay: '10.4s', duration: '4.2s' },
-  { top: '-32%', left: '35%',  delay: '11.7s', duration: '4.0s' },
-  { top: '-19%', left: '20%',  delay: '13.0s', duration: '3.7s' },
+  { top: '-15%', left: '-20%', delay: '0s',    duration: '4.0s' },
+  { top: '-12%', left: '-5%',  delay: '1.4s',  duration: '3.8s' },
+  { top: '-20%', left: '-15%', delay: '2.1s',  duration: '4.2s' },
+  { top: '-8%',  left: '-28%', delay: '3.2s',  duration: '4.4s' },
+  { top: '-18%', left: '0%',   delay: '4.0s',  duration: '3.6s' },
+  { top: '-10%', left: '-10%', delay: '5.3s',  duration: '4.0s' },
+  { top: '-22%', left: '-3%',  delay: '6.6s',  duration: '3.8s' },
+  { top: '-14%', left: '-18%', delay: '7.8s',  duration: '4.2s' },
+  { top: '-16%', left: '-8%',  delay: '9.1s',  duration: '3.4s' },
+  { top: '-25%', left: '-22%', delay: '10.4s', duration: '4.4s' },
+  { top: '-11%', left: '-12%', delay: '11.7s', duration: '3.8s' },
+  { top: '-19%', left: '5%',   delay: '13.0s', duration: '4.0s' },
 ];
 
 export default function StarfallBackground() {
