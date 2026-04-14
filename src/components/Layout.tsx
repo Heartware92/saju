@@ -31,16 +31,13 @@ function NavIcon({ name, active }: { name: string; active: boolean }) {
         </svg>
       );
     case 'pillars':
+      // 태극(음양) — 사주의 상징
       return (
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round">
-          <line x1="5" y1="4" x2="5" y2="20" />
-          <line x1="10" y1="4" x2="10" y2="20" />
-          <line x1="15" y1="4" x2="15" y2="20" />
-          <line x1="20" y1="4" x2="20" y2="20" />
-          {active && <circle cx="5" cy="4" r="1.5" fill={color} />}
-          {active && <circle cx="10" cy="4" r="1.5" fill={color} />}
-          {active && <circle cx="15" cy="4" r="1.5" fill={color} />}
-          {active && <circle cx="20" cy="4" r="1.5" fill={color} />}
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 2 A5 5 0 0 1 12 12 A5 5 0 0 0 12 22" />
+          <circle cx="12" cy="7" r="1.1" fill={color} stroke="none" />
+          <circle cx="12" cy="17" r="1.1" fill={color} stroke="none" />
         </svg>
       );
     case 'card':
