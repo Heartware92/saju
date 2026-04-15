@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
+import { CITY_COORDINATES } from '../utils/timeCorrection';
 import type { BirthProfile } from '../types/credit';
 
 export default function ManageProfilesPage() {
@@ -31,6 +32,8 @@ export default function ManageProfilesPage() {
     birth_date: string;
     birth_time: string;
     gender: 'male' | 'female';
+    calendar_type: 'solar' | 'lunar';
+    birth_place: string;
     memo: string;
   } | null>(null);
 
@@ -59,17 +62,23 @@ export default function ManageProfilesPage() {
       birth_date: p.birth_date,
       birth_time: p.birth_time ?? '',
       gender: p.gender,
+      calendar_type: p.calendar_type ?? 'solar',
+      birth_place: p.birth_place || 'seoul',
       memo: p.memo ?? '',
     });
   };
 
   const saveEdit = async () => {
     if (!editing || !editForm) return;
+    const longitude = CITY_COORDINATES[editForm.birth_place]?.lng ?? null;
     const ok = await updateProfile(editing.id, {
       name: editForm.name.trim(),
       birth_date: editForm.birth_date,
       birth_time: editForm.birth_time || undefined,
       gender: editForm.gender,
+      calendar_type: editForm.calendar_type,
+      birth_place: editForm.birth_place,
+      longitude,
       memo: editForm.memo.trim() || undefined,
     });
     if (ok) {
@@ -77,6 +86,15 @@ export default function ManageProfilesPage() {
       setEditForm(null);
     }
   };
+
+  // 도시 카테고리별 그룹
+  const citiesByCategory = Object.entries(CITY_COORDINATES).reduce((acc, [key, value]) => {
+    const cat = value.category || '기타';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push({ key, name: value.name });
+    return acc;
+  }, {} as Record<string, { key: string; name: string }[]>);
+  const categoryOrder = ['대한민국', '북한', '아시아', '북미', '유럽', '오세아니아'];
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
@@ -269,6 +287,25 @@ export default function ManageProfilesPage() {
                 </div>
 
                 <div>
+                  <label className="text-[11px] text-text-tertiary block mb-1">양력/음력</label>
+                  <div className="flex gap-2">
+                    {(['solar', 'lunar'] as const).map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setEditForm({ ...editForm, calendar_type: c })}
+                        className={`flex-1 py-2 rounded-lg text-[13px] font-medium border transition-all ${
+                          editForm.calendar_type === c
+                            ? 'bg-[rgba(124,92,252,0.14)] border-cta/40 text-cta'
+                            : 'bg-[rgba(255,255,255,0.04)] border-[var(--border-subtle)] text-text-secondary'
+                        }`}
+                      >
+                        {c === 'solar' ? '☀️ 양력' : '🌙 음력'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
                   <label className="text-[11px] text-text-tertiary block mb-1">생년월일</label>
                   <input
                     type="date"
@@ -276,6 +313,27 @@ export default function ManageProfilesPage() {
                     onChange={(e) => setEditForm({ ...editForm, birth_date: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] text-sm text-text-primary focus:border-cta/50 outline-none"
                   />
+                </div>
+
+                <div>
+                  <label className="text-[11px] text-text-tertiary block mb-1">
+                    출생지 <span className="text-text-tertiary">(진태양시 보정에 사용)</span>
+                  </label>
+                  <select
+                    value={editForm.birth_place}
+                    onChange={(e) => setEditForm({ ...editForm, birth_place: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] text-sm text-text-primary focus:border-cta/50 outline-none"
+                  >
+                    {categoryOrder.map((cat) =>
+                      citiesByCategory[cat] ? (
+                        <optgroup key={cat} label={cat}>
+                          {citiesByCategory[cat].map((c) => (
+                            <option key={c.key} value={c.key}>{c.name}</option>
+                          ))}
+                        </optgroup>
+                      ) : null,
+                    )}
+                  </select>
                 </div>
 
                 <div>

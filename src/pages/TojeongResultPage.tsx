@@ -138,18 +138,18 @@ export default function TojeongResultPage() {
           </p>
         </div>
 
-        {/* AI 풀이 */}
+        {/* 명리 풀이 */}
         {!unlocked ? (
           <div className="mt-4">
             <LockedCard type="detailed" onClick={() => setShowPaywall(true)} />
           </div>
         ) : (
           <div className={styles.section}>
-            <h2>🤖 AI 풀이 (총운 + 월별)</h2>
+            <h2>📜 명리학 자문 풀이 (총운 + 월별)</h2>
             {loading ? (
               <div className={styles.analysisPlaceholder}>
                 <div className={styles.loadingSpinner} />
-                <p>AI가 괘를 풀이 중...</p>
+                <p>명리학 알고리즘으로 괘를 풀이 중...</p>
               </div>
             ) : (
               <div className={styles.analysisResult}>

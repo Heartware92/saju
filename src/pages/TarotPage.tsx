@@ -294,7 +294,7 @@ export default function TarotPage() {
     }
   }
 
-  // 카드가 드러나면 자동으로 AI 분석 시작
+  // 카드가 드러나면 자동으로 풀이 시작
   useEffect(() => {
     if (gameState === 'revealed' && selectedCard && !analysis && !isLoading) {
       handleAnalysis()
@@ -608,11 +608,11 @@ export default function TarotPage() {
               </p>
 
               <div className={styles.analysisSection}>
-                <h3 className={styles.analysisSectionTitle}>AI 카드 해석</h3>
+                <h3 className={styles.analysisSectionTitle}>카드 해석</h3>
                 {isLoading && (
                   <div className={styles.analysisPlaceholder}>
                     <div className={styles.loadingSpinner}></div>
-                    <p>AI가 카드의 의미를 해석하고 있습니다...</p>
+                    <p>카드의 의미를 해석하고 있습니다...</p>
                     <p style={{ fontSize: '14px', marginTop: '8px', opacity: 0.7 }}>
                       동양 오행과 서양 타로의 조화로운 해석을 준비 중입니다
                     </p>
@@ -627,7 +627,7 @@ export default function TarotPage() {
 
                 {!analysis && !isLoading && (
                   <div className={styles.analysisPlaceholder}>
-                    <p>AI 해석을 준비하고 있습니다...</p>
+                    <p>해석을 준비하고 있습니다...</p>
                   </div>
                 )}
               </div>

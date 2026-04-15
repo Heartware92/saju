@@ -5,12 +5,12 @@
  *
  * 무료 (0엽전):
  * - 사주 원국표, 오행 분포, 신강신약, 용신
- * - 기본 AI 해석 (200-300자)
+ * - 기본 명리 풀이 (200-300자)
  *
  * 유료 (2엽전):
  * - 대운/세운 상세
  * - 신살, 합충형파해
- * - 상세 AI 해석 (1500-2000자)
+ * - 상세 명리학 자문 풀이 (1500-2000자)
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -151,17 +151,25 @@ export default function SajuResultPage() {
     const useTrueSolarTime = searchParams?.get('useTrueSolarTime') === 'true';
     const unknownTime = searchParams?.get('unknownTime') === 'true';
 
+    let finalYear = year;
+    let finalMonth = month;
+    let finalDay = day;
     let finalHour = hour;
     let finalMinute = minute;
 
     // 시간 미상일 땐 진태양시 보정도 의미 없음 — 건너뜀
     if (useTrueSolarTime && !unknownTime) {
       const corrected = getCorrectedTimeForSaju(year, month, day, hour, minute, longitude);
-      finalHour = corrected.finalHour;
-      finalMinute = corrected.trueSolarTime.trueSolarTime.getMinutes();
+      // 보정 결과가 자정을 넘어가면 날짜도 함께 이동해야 일주(日柱)가 정확해진다
+      const tst = corrected.trueSolarTime.trueSolarTime;
+      finalYear = tst.getFullYear();
+      finalMonth = tst.getMonth() + 1;
+      finalDay = tst.getDate();
+      finalHour = tst.getHours();
+      finalMinute = tst.getMinutes();
     }
 
-    const sajuResult = calculateSaju(year, month, day, finalHour, finalMinute, gender, unknownTime);
+    const sajuResult = calculateSaju(finalYear, finalMonth, finalDay, finalHour, finalMinute, gender, unknownTime);
     setResult(sajuResult);
   }, [searchParams]);
 
@@ -270,7 +278,7 @@ export default function SajuResultPage() {
           className={`${styles.tab} ${activeTab === 'analysis' ? styles.active : ''}`}
           onClick={() => setActiveTab('analysis')}
         >
-          AI 풀이
+          명리 풀이
         </button>
       </div>
 
@@ -565,16 +573,16 @@ export default function SajuResultPage() {
           </motion.div>
         )}
 
-        {/* AI 풀이 탭 */}
+        {/* 명리 풀이 탭 */}
         {activeTab === 'analysis' && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             {/* 기본 해석 (무료) */}
             <div className={styles.section}>
-              <h2>🤖 기본 AI 풀이 (무료)</h2>
+              <h2>📜 기본 명리 풀이 (무료)</h2>
               {basicLoading ? (
                 <div className={styles.analysisPlaceholder}>
                   <div className={styles.loadingSpinner}></div>
-                  <p>AI가 분석 중...</p>
+                  <p>명리학 알고리즘으로 분석 중...</p>
                 </div>
               ) : basicAnalysis ? (
                 <div className={styles.analysisResult}>
@@ -594,7 +602,7 @@ export default function SajuResultPage() {
               </div>
             ) : (
               <div className={styles.section}>
-                <h2>🔮 상세 AI 풀이 (☀️ 2)</h2>
+                <h2>🔮 상세 명리학 자문 풀이 (☀️ 2)</h2>
                 {detailedLoading ? (
                   <div className={styles.analysisPlaceholder}>
                     <div className={styles.loadingSpinner}></div>

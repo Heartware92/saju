@@ -333,18 +333,18 @@ export default function ZamidusuResultPage() {
           );
         })()}
 
-        {/* AI 풀이 */}
+        {/* 자미두수 풀이 */}
         {!unlocked ? (
           <div className={styles.unlockWrap}>
             <LockedCard type="detailed" onClick={() => setShowPaywall(true)} />
           </div>
         ) : (
           <div className={styles.section}>
-            <h2>🤖 자미두수 AI 풀이</h2>
+            <h2>🌌 자미두수 명리학 자문 풀이</h2>
             {loading ? (
               <div className={styles.analysisPlaceholder}>
                 <div className={styles.loadingSpinner} />
-                <p>AI가 명반을 읽는 중...</p>
+                <p>명반을 분석하는 중...</p>
               </div>
             ) : (
               <div className={styles.analysisResult}>
