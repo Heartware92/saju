@@ -1,9 +1,18 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { useProfileStore } from '../store/useProfileStore';
+import { useUserStore } from '../store/useUserStore';
+import { calculateSaju } from '../utils/sajuCalculator';
+import {
+  getCharacterFromStem,
+  pillarToHanja,
+  STEM_TO_ELEMENT,
+} from '../lib/character';
 
 /**
  * 운세 서비스 목록 (포스텔러/점신/헬로봇 레퍼런스)
@@ -60,61 +69,218 @@ const fadeUp = {
 };
 
 export default function HomePage() {
+  const { user } = useUserStore();
+  const { profiles, fetchProfiles } = useProfileStore();
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    if (user) fetchProfiles();
+  }, [user, fetchProfiles]);
+
+  // 대표 프로필
+  const primary = useMemo(
+    () => profiles.find((p) => p.is_primary) ?? null,
+    [profiles],
+  );
+
+  // 대표 프로필 만세력 계산 (client-side, 즉시)
+  const sajuData = useMemo(() => {
+    if (!primary) return null;
+    const [y, m, d] = primary.birth_date.split('-').map(Number);
+    const unknownTime = !primary.birth_time;
+    const [h, min] = unknownTime
+      ? [12, 0]
+      : (primary.birth_time as string).split(':').map(Number);
+    try {
+      const result = calculateSaju(y, m, d, h, min, primary.gender, unknownTime);
+      const dayStem = result.pillars.day.gan;
+      const element = STEM_TO_ELEMENT[dayStem];
+      const character = getCharacterFromStem(dayStem);
+      return { pillars: result.pillars, element, character, unknownTime };
+    } catch (e) {
+      console.error('만세력 계산 실패:', e);
+      return null;
+    }
+  }, [primary]);
+
   return (
     <div className="min-h-screen">
-      {/* Hero - 간결하게 */}
+      {/* Hero — 대표 프로필 상태에 따라 분기 */}
       <section className="relative overflow-hidden">
-        <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 pt-14 pb-10">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="mb-5"
-          >
-            <div className="relative w-24 h-24 mx-auto">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cta/30 to-purple-600/20 animate-pulse-glow" />
-              <div className="absolute inset-1 rounded-full bg-white overflow-hidden flex items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/animations/solar-system.gif"
-                  alt="태양계 애니메이션"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <div className="absolute inset-[-6px] border border-cta/30 rounded-full animate-orbit" style={{ animationDuration: '30s' }} />
-            </div>
-          </motion.div>
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 pt-10 pb-8">
 
-          <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-3xl font-bold text-text-primary mb-2 tracking-tight"
-            style={{ fontFamily: 'var(--font-serif)' }}
-          >
-            이천점
-          </motion.h1>
+          {/* CASE 1: 대표 프로필 없음 → 등록 유도 */}
+          {!primary && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="w-full"
+            >
+              <Link href="/saju/input" className="block">
+                <div className="relative mx-auto w-full max-w-[340px] rounded-2xl px-6 py-8
+                                bg-gradient-to-br from-[rgba(124,92,252,0.18)] to-[rgba(201,166,255,0.08)]
+                                border border-[var(--border-subtle)] hover:border-cta/50
+                                transition-all active:scale-[0.98]">
+                  <div className="mx-auto w-16 h-16 mb-3 rounded-full bg-[rgba(20,12,38,0.6)]
+                                  border border-cta/30 flex items-center justify-center text-2xl">
+                    ✨
+                  </div>
+                  <h2
+                    className="text-lg font-bold text-text-primary mb-1 tracking-tight"
+                    style={{ fontFamily: 'var(--font-serif)' }}
+                  >
+                    대표 프로필을 선택하세요
+                  </h2>
+                  <p className="text-xs text-text-secondary">
+                    생년월일을 등록하면 당신의 캐릭터와 만세력을 볼 수 있어요
+                  </p>
+                  <div className="mt-4 inline-flex items-center gap-1 text-[13px] font-semibold text-cta">
+                    프로필 등록하기
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+          )}
 
-          <motion.p
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.35 }}
-            className="text-base font-medium text-text-secondary mb-6"
-          >
-            우주의 기운을 당신께 드려요
-          </motion.p>
+          {/* CASE 2: 대표 프로필 있음 → 캐릭터 + 만세력 */}
+          {primary && sajuData && sajuData.character && (
+            <>
+              {/* 캐릭터 이미지 */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
+                className="mb-3"
+              >
+                <div className="relative w-28 h-28 mx-auto">
+                  {/* 오행 색 글로우 */}
+                  <div
+                    className="absolute inset-[-8px] rounded-full blur-xl"
+                    style={{ backgroundColor: sajuData.character.colorGlow }}
+                  />
+                  {/* 내부 원 */}
+                  <div className="absolute inset-0 rounded-full overflow-hidden
+                                  bg-[rgba(20,12,38,0.85)] border border-[var(--border-subtle)]
+                                  flex items-center justify-center">
+                    {!imgError ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={sajuData.character.image}
+                        alt={sajuData.character.label}
+                        className="w-full h-full object-cover"
+                        onError={() => setImgError(true)}
+                      />
+                    ) : (
+                      <span className="text-5xl">{sajuData.character.emoji}</span>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-          >
-            <Link href="/saju">
-              <Button variant="primary" size="lg">
-                내 사주 보기
-              </Button>
-            </Link>
-          </motion.div>
+              {/* 이름 · 오행 */}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.15 }}
+                className="mb-5"
+              >
+                <h1
+                  className="text-xl font-bold text-text-primary tracking-tight mb-1"
+                  style={{ fontFamily: 'var(--font-serif)' }}
+                >
+                  {primary.name}
+                </h1>
+                <p className="text-sm font-medium text-text-secondary">
+                  <span style={{ color: sajuData.character.colorMain }}>
+                    {sajuData.character.hanjaElement}
+                  </span>
+                  {' · '}
+                  {sajuData.character.label}
+                </p>
+              </motion.div>
+
+              {/* 만세력 — 4기둥 한자 */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="w-full max-w-[340px]"
+              >
+                <div className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)]
+                                border border-[var(--border-subtle)] backdrop-blur-sm">
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider">
+                      만세력
+                    </span>
+                    <Link
+                      href="/saju/profile"
+                      className="text-[11px] font-medium text-cta hover:underline"
+                    >
+                      프로필 관리
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5 mb-3">
+                    {[
+                      { label: '시', pillar: sajuData.pillars.hour, unknown: sajuData.unknownTime },
+                      { label: '일', pillar: sajuData.pillars.day, unknown: false },
+                      { label: '월', pillar: sajuData.pillars.month, unknown: false },
+                      { label: '년', pillar: sajuData.pillars.year, unknown: false },
+                    ].map((col) => (
+                      <div
+                        key={col.label}
+                        className="rounded-xl bg-[rgba(20,12,38,0.6)]
+                                   border border-[var(--border-subtle)] p-2 text-center"
+                      >
+                        <div className="text-[10px] font-medium text-text-tertiary mb-1">
+                          {col.label}
+                        </div>
+                        {col.unknown ? (
+                          <div className="text-lg font-bold text-text-tertiary"
+                               style={{ fontFamily: 'var(--font-serif)' }}>
+                            ?
+                          </div>
+                        ) : (
+                          <>
+                            <div
+                              className="text-xl font-bold leading-tight"
+                              style={{ fontFamily: 'var(--font-serif)' }}
+                            >
+                              {pillarToHanja(col.pillar.gan, col.pillar.zhi)
+                                .split('')
+                                .map((char, i) => (
+                                  <div key={i} className="leading-tight text-text-primary">
+                                    {char}
+                                  </div>
+                                ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 만세력 보기 버튼 */}
+                  <Link
+                    href="/saju/manseryeok"
+                    className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl
+                               bg-[rgba(124,92,252,0.15)] border border-cta/30
+                               text-[13px] font-semibold text-cta
+                               hover:bg-[rgba(124,92,252,0.22)] active:scale-[0.98] transition-all"
+                  >
+                    만세력 보기
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </Link>
+                </div>
+              </motion.div>
+            </>
+          )}
+
         </div>
       </section>
 
