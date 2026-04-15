@@ -48,16 +48,18 @@ function ElementCell({
   const colors = element
     ? ELEMENT_CELL_COLORS[element]
     : { bg: 'rgba(255,255,255,0.06)', fg: 'var(--text-secondary)' };
-  const textSize =
-    size === 'lg' ? 'text-2xl' : size === 'md' ? 'text-lg' : 'text-sm';
+  // 한자가 짓눌려 보이지 않도록 cell 자체를 정사각형(aspect-square)로 잡고 폰트를 키운다
+  const fontPx = size === 'lg' ? 32 : size === 'md' ? 24 : 18;
   return (
     <div
-      className={`rounded-md flex items-center justify-center font-bold ${textSize}`}
+      className="w-full aspect-square rounded-lg flex items-center justify-center font-bold"
       style={{
         backgroundColor: colors.bg,
         color: colors.fg,
         fontFamily: 'var(--font-serif)',
-        minHeight: size === 'lg' ? 56 : size === 'md' ? 40 : 32,
+        fontSize: fontPx,
+        lineHeight: 1,
+        letterSpacing: 0,
       }}
     >
       {text}
@@ -166,12 +168,12 @@ export default function ManseryeokPage() {
         </button>
         <div className="text-center flex-1">
           <h1
-            className="text-base font-bold text-text-primary"
+            className="text-lg font-bold text-text-primary"
             style={{ fontFamily: 'var(--font-serif)' }}
           >
             만세력
           </h1>
-          <p className="text-[11px] text-text-tertiary mt-0.5">
+          <p className="text-[12px] text-text-secondary mt-0.5">
             {primary.name} · 만 {age - 1}세
           </p>
         </div>
@@ -179,7 +181,7 @@ export default function ManseryeokPage() {
       </div>
 
       {/* 생년월일 요약 */}
-      <div className="rounded-xl p-3 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] text-center text-[12px] text-text-secondary">
+      <div className="rounded-xl p-3.5 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] text-center text-[14px] text-text-secondary">
         {primary.birth_date}
         {primary.birth_time ? ` ${primary.birth_time}` : ' (시간 모름)'}
         {' · '}
@@ -189,19 +191,19 @@ export default function ManseryeokPage() {
       </div>
 
       {/* 4기둥 카드 */}
-      <section className="grid grid-cols-4 gap-2 mb-4">
+      <section className="grid grid-cols-4 gap-1.5 mb-5">
         {ordered.map((c) => (
           <div
             key={c.label}
-            className="rounded-xl p-2.5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] flex flex-col items-center gap-2"
+            className="rounded-xl p-2 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] flex flex-col items-center gap-1.5"
           >
             {/* 기둥 라벨 */}
-            <div className="text-[11px] font-medium text-text-tertiary">
+            <div className="text-[12px] font-semibold text-text-secondary">
               {c.label}
             </div>
 
             {/* 천간 십신 */}
-            <div className="text-[11px] text-text-secondary min-h-[15px]">
+            <div className="text-[12px] text-text-secondary min-h-[16px]">
               {c.unknown ? '—' : c.pillar.tenGodGan || '일간'}
             </div>
 
@@ -220,31 +222,31 @@ export default function ManseryeokPage() {
             />
 
             {/* 지지 십신 */}
-            <div className="text-[11px] text-text-secondary min-h-[15px]">
+            <div className="text-[12px] text-text-secondary min-h-[16px]">
               {c.unknown ? '—' : c.pillar.tenGodZhi}
             </div>
 
             {/* 12운성 */}
-            <div className="text-[10px] text-text-tertiary border-t border-[var(--border-subtle)] w-full text-center pt-1.5">
+            <div className="text-[11px] text-text-tertiary border-t border-[var(--border-subtle)] w-full text-center pt-1.5">
               {c.unknown ? '—' : c.pillar.twelveStage}
             </div>
 
             {/* 지장간 */}
-            <div className="flex flex-col items-center gap-0.5 w-full">
+            <div className="flex flex-col items-center gap-1 w-full">
               {c.unknown || c.pillar.hiddenStems.length === 0 ? (
-                <span className="text-[11px] text-text-tertiary">—</span>
+                <span className="text-[12px] text-text-tertiary">—</span>
               ) : (
                 c.pillar.hiddenStems.map((hs, i) => {
                   const el = STEM_ELEMENT[hs] as Element;
                   return (
-                    <div key={i} className="w-full flex items-center justify-between px-1 leading-tight">
+                    <div key={i} className="w-full flex items-center justify-between px-0.5 leading-tight">
                       <span
-                        className="text-[13px] font-bold"
+                        className="text-[16px] font-bold"
                         style={{ fontFamily: 'var(--font-serif)', color: ELEMENT_CELL_COLORS[el]?.bg }}
                       >
                         {stemToHanja(hs)}
                       </span>
-                      <span className="text-[9px] text-text-tertiary">{tenGodFor(dayGan, hs)}</span>
+                      <span className="text-[10px] text-text-tertiary">{tenGodFor(dayGan, hs)}</span>
                     </div>
                   );
                 })
@@ -255,18 +257,18 @@ export default function ManseryeokPage() {
       </section>
 
       {/* 오행 개수 */}
-      <section className="rounded-2xl p-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] mb-3">
-        <div className="flex items-center justify-between mb-2 px-1">
-          <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider">오행 분포</span>
-          <span className="text-[11px] text-text-secondary">
+      <section className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] mb-3">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <span className="text-[13px] font-semibold text-text-secondary uppercase tracking-wider">오행 분포</span>
+          <span className="text-[13px] text-text-secondary">
             {saju.isStrong ? '신강' : '신약'} · 용신 {saju.yongSinElement}
           </span>
         </div>
-        <div className="grid grid-cols-5 gap-1.5">
+        <div className="grid grid-cols-5 gap-2">
           {(['목','화','토','금','수'] as Element[]).map((el) => (
             <div key={el} className="flex flex-col items-center">
               <ElementCell element={el} text={el === '목' ? '木' : el === '화' ? '火' : el === '토' ? '土' : el === '금' ? '金' : '水'} size="md" />
-              <span className="text-[11px] text-text-secondary mt-1">{saju.elementCount[el]}</span>
+              <span className="text-[13px] font-medium text-text-secondary mt-1.5">{saju.elementCount[el]}</span>
             </div>
           ))}
         </div>
@@ -274,15 +276,15 @@ export default function ManseryeokPage() {
 
       {/* 합충형파해 */}
       {saju.interactions.length > 0 && (
-        <section className="rounded-2xl p-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] mb-3">
-          <div className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-2 px-1">
+        <section className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] mb-3">
+          <div className="text-[13px] font-semibold text-text-secondary uppercase tracking-wider mb-3 px-1">
             합·충·형
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {saju.interactions.map((it, i) => (
               <span
                 key={i}
-                className="text-[11px] px-2 py-1 rounded-md bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] text-text-secondary"
+                className="text-[13px] px-2.5 py-1.5 rounded-md bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] text-text-secondary"
               >
                 {it.description}
               </span>
@@ -293,18 +295,18 @@ export default function ManseryeokPage() {
 
       {/* 신살 */}
       {saju.sinSals.length > 0 && (
-        <section className="rounded-2xl p-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] mb-3">
-          <div className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-2 px-1">
+        <section className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] mb-3">
+          <div className="text-[13px] font-semibold text-text-secondary uppercase tracking-wider mb-3 px-1">
             신살
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {saju.sinSals.map((ss, i) => {
               const color =
                 ss.type === 'good' ? '#34D399' : ss.type === 'bad' ? '#F87171' : '#FBBF24';
               return (
                 <span
                   key={i}
-                  className="text-[11px] px-2 py-1 rounded-md border"
+                  className="text-[13px] px-2.5 py-1.5 rounded-md border"
                   style={{
                     color,
                     borderColor: `${color}55`,
@@ -321,13 +323,13 @@ export default function ManseryeokPage() {
       )}
 
       {/* 대운 */}
-      <section className="rounded-2xl p-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] mb-3">
-        <div className="flex items-center justify-between mb-2 px-1">
-          <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider">대운 (10년 단위)</span>
-          <span className="text-[11px] text-text-secondary">시작 {saju.daeWoonStartAge}세</span>
+      <section className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] mb-3">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <span className="text-[13px] font-semibold text-text-secondary uppercase tracking-wider">대운 (10년 단위)</span>
+          <span className="text-[13px] text-text-secondary">시작 {saju.daeWoonStartAge}세</span>
         </div>
-        <div className="overflow-x-auto -mx-3 px-3">
-          <div className="flex gap-1.5 min-w-max">
+        <div className="overflow-x-auto -mx-4 px-4">
+          <div className="flex gap-2 min-w-max">
             {saju.daeWoon.slice(0, 10).map((dw, i) => {
               const ganEl = STEM_ELEMENT[dw.gan] as Element;
               const zhiEl = BRANCH_ELEMENT[dw.zhi] as Element;
@@ -335,15 +337,15 @@ export default function ManseryeokPage() {
               return (
                 <div
                   key={i}
-                  className={`w-[58px] flex flex-col items-center gap-1 p-1.5 rounded-lg border ${
+                  className={`w-[68px] flex flex-col items-center gap-1.5 p-2 rounded-lg border ${
                     isCurrent ? 'border-cta/60 bg-cta/5' : 'border-[var(--border-subtle)]'
                   }`}
                 >
-                  <span className="text-[10px] text-text-tertiary">{dw.startAge}세</span>
-                  <span className="text-[9px] text-text-tertiary">{dw.tenGod}</span>
+                  <span className="text-[12px] font-medium text-text-secondary">{dw.startAge}세</span>
+                  <span className="text-[11px] text-text-tertiary">{dw.tenGod}</span>
                   <ElementCell element={ganEl} text={stemToHanja(dw.gan)} size="sm" />
                   <ElementCell element={zhiEl} text={zhiToHanja(dw.zhi)} size="sm" />
-                  <span className="text-[9px] text-text-tertiary">{dw.twelveStage}</span>
+                  <span className="text-[11px] text-text-tertiary">{dw.twelveStage}</span>
                 </div>
               );
             })}
@@ -352,13 +354,13 @@ export default function ManseryeokPage() {
       </section>
 
       {/* 세운 */}
-      <section className="rounded-2xl p-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] mb-3">
-        <div className="flex items-center justify-between mb-2 px-1">
-          <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider">세운 (10년)</span>
-          <span className="text-[11px] text-text-secondary">올해 {saju.currentSeWoon.gan}{saju.currentSeWoon.zhi}</span>
+      <section className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] mb-3">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <span className="text-[13px] font-semibold text-text-secondary uppercase tracking-wider">세운 (10년)</span>
+          <span className="text-[13px] text-text-secondary">올해 {saju.currentSeWoon.gan}{saju.currentSeWoon.zhi}</span>
         </div>
-        <div className="overflow-x-auto -mx-3 px-3">
-          <div className="flex gap-1.5 min-w-max">
+        <div className="overflow-x-auto -mx-4 px-4">
+          <div className="flex gap-2 min-w-max">
             {saju.seWoon.map((sw) => {
               const ganEl = STEM_ELEMENT[sw.gan] as Element;
               const zhiEl = BRANCH_ELEMENT[sw.zhi] as Element;
@@ -366,12 +368,12 @@ export default function ManseryeokPage() {
               return (
                 <div
                   key={sw.year}
-                  className={`w-[56px] flex flex-col items-center gap-1 p-1.5 rounded-lg border ${
+                  className={`w-[66px] flex flex-col items-center gap-1.5 p-2 rounded-lg border ${
                     isCurrent ? 'border-cta/60 bg-cta/5' : 'border-[var(--border-subtle)]'
                   }`}
                 >
-                  <span className="text-[10px] text-text-tertiary">{sw.year}</span>
-                  <span className="text-[9px] text-text-tertiary">{sw.tenGod}</span>
+                  <span className="text-[12px] font-medium text-text-secondary">{sw.year}</span>
+                  <span className="text-[11px] text-text-tertiary">{sw.tenGod}</span>
                   <ElementCell element={ganEl} text={stemToHanja(sw.gan)} size="sm" />
                   <ElementCell element={zhiEl} text={zhiToHanja(sw.zhi)} size="sm" />
                 </div>
@@ -382,7 +384,7 @@ export default function ManseryeokPage() {
       </section>
 
       {/* 하단 안내 */}
-      <p className="text-[11px] text-text-tertiary text-center mt-4">
+      <p className="text-[12px] text-text-tertiary text-center mt-4 leading-relaxed">
         이 만세력은 대표 프로필을 기준으로 자동 계산됩니다.
         <br />
         다른 가족/지인의 만세력을 보려면 프로필을 변경하세요.
