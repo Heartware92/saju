@@ -10,22 +10,18 @@
  */
 import styles from './StarfallBackground.module.css';
 
-/* 별마다 각기 다른 이동 벡터(tx, ty) + 꼬리 각도(angle) — 전부 같은 대각선이 아닌
-   40°~70° 범위의 다양한 기울기로 떨어지도록.
-   angle(deg) = atan2(ty, tx) * 180/π — 꼬리 기울기가 실제 이동 방향과 정확히 일치
-   (transform-origin 이 머리이므로 +각도면 꼬리가 반대방향으로 뻗음) */
-/* 4개 별 모두 프레임(~400×720) 좌측 대각선 바깥에서 시작해 우측 대각선 바깥으로
-   빠져나가도록 — midpoint = start + vector/2 ≈ 프레임 중앙(200,360) 통과
-   각도는 48°~68° 범위로 다양, 모든 별이 프레임의 대부분 면을 가로지름 */
+/* 모든 좌표/벡터는 컨테이너(9:16 프레임) 기준 % — 뷰포트 높이에 관계없이 동일한 궤적
+   midpoint = startX + tx/2 = 50%, startY + ty/2 = 50% → 모든 별이 정확히 중앙 관통
+   9:16 비율 기준 angle = atan2(ty * 16/9, tx) 로 꼬리 기울기 계산 */
 const SHOOTING_STARS = [
-  // 1) 가파른 — 상단 멀리에서 출발해 중앙을 가르며 하단으로
-  { top: '-32%', left: '-12%', delay: '0s',    duration: '7.0s', tx: '500px',  ty: '1180px', angle: '68deg' },
-  // 2) 중간 가파름 — 좌상단에서 대각선 길게
-  { top: '-25%', left: '-20%', delay: '8s',    duration: '7.5s', tx: '580px',  ty: '1080px', angle: '62deg' },
-  // 3) 중간 — 좌측에서 대각선으로 중앙 통과해 우측 아래까지
-  { top: '-15%', left: '-28%', delay: '16s',   duration: '7.2s', tx: '660px',  ty: '940px',  angle: '55deg' },
-  // 4) 완만 — 거의 수평에 가까운 긴 대각선, 프레임을 넓게 가로지름
-  { top: '-8%',  left: '-40%', delay: '24s',   duration: '8.0s', tx: '760px',  ty: '840px',  angle: '48deg' },
+  // 1) 가파른 (~70°) — 상단 중앙 근처에서 아래로 길게
+  { startX: '0%',   startY: '-25%', tx: '100%', ty: '150%', angle: '70deg', delay: '0s',   duration: '7.0s' },
+  // 2) 중간 가파름 (~64°) — 좌상단에서 중앙 가르며 우하단으로
+  { startX: '-10%', startY: '-20%', tx: '120%', ty: '140%', angle: '64deg', delay: '8s',   duration: '7.5s' },
+  // 3) 중간 (~59°) — 좌측에서 대각선 길게
+  { startX: '-20%', startY: '-15%', tx: '140%', ty: '130%', angle: '59deg', delay: '16s',  duration: '7.2s' },
+  // 4) 완만 (~53°) — 좌측 멀리에서 넓게 가로지름
+  { startX: '-30%', startY: '-10%', tx: '160%', ty: '120%', angle: '53deg', delay: '24s',  duration: '8.0s' },
 ];
 
 export default function StarfallBackground() {
@@ -47,10 +43,10 @@ export default function StarfallBackground() {
           key={i}
           className={styles.shootingStar}
           style={{
-            top: s.top,
-            left: s.left,
             animationDelay: s.delay,
             animationDuration: s.duration,
+            ['--start-x' as string]: s.startX,
+            ['--start-y' as string]: s.startY,
             ['--tx' as string]: s.tx,
             ['--ty' as string]: s.ty,
             ['--angle' as string]: s.angle,

@@ -94,24 +94,26 @@
 }
 
 /* 별똥별 — 혜성 스타일 (머리 블룸 + 부드럽게 페이드되는 꼬리)
-   외부 래퍼는 0×0 이므로 percent translate 가 먹히지 않음 → px 로 명시적 이동
+   래퍼를 컨테이너 풀사이즈(inset:0) 로 만들어 translate(%) 가 컨테이너 크기 기준
+   으로 정확히 동작하도록. 이렇게 해야 뷰포트 높이가 달라져도 궤적이 동일하게 중앙을 관통.
    ease-out 공격적 곡선 — 툭 튀어나와 빠르게 쏘아지다 감속 */
 .shootingStar {
   position: absolute;
-  width: 0;
-  height: 0;
+  inset: 0;
   opacity: 0;
   animation-name: shoot;
   animation-timing-function: cubic-bezier(0.12, 0.72, 0.3, 1);
   animation-iteration-count: infinite;
   will-change: transform, opacity;
+  pointer-events: none;
 }
 
-/* 꼬리 — 얇고 부드럽게 페이드, 미사일이 아닌 혜성 streak */
+/* 꼬리 — 얇고 부드럽게 페이드, 미사일이 아닌 혜성 streak
+   시작 위치는 래퍼(컨테이너) 기준 % 로 배치 */
 .shootingStar .trail {
   position: absolute;
-  left: 0;
-  top: 0;
+  left: var(--start-x, 0%);
+  top: var(--start-y, 0%);
   width: 150px;
   height: 2.2px;
   background: linear-gradient(
@@ -155,13 +157,13 @@
 }
 
 /* 좌상단 외부 → 우하단 외부 대각 낙하
-   이동 벡터는 별마다 --tx, --ty 로 제어 → 꼬리 기울기(--angle)와 정확히 일치
-   등장 순간(0→4%) 즉시 밝아짐 → ease-out 로 쏘아지며 감속 → 후반 트레일 페이드아웃 */
+   이동 벡터는 별마다 --tx, --ty 로 제어 (컨테이너 기준 %) → 모든 화면 크기에서
+   시작점+벡터/2 = 컨테이너 중앙(50%,50%) 이 되도록 tsx 에서 값 설계 */
 @keyframes shoot {
   0%   { transform: translate(0, 0);                                opacity: 0; }
   4%   {                                                            opacity: 1; }
   55%  {                                                            opacity: 1; }
-  100% { transform: translate(var(--tx, 560px), var(--ty, 980px));  opacity: 0; }
+  100% { transform: translate(var(--tx, 120%), var(--ty, 140%));    opacity: 0; }
 }
 
 /* reduce-motion 사용자는 정적 별빛만 */
