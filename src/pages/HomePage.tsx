@@ -15,11 +15,21 @@ import {
 } from '../lib/character';
 
 /**
- * 운세 서비스 목록 (포스텔러/점신/헬로봇 레퍼런스)
- * - 정통사주, 오늘의 운세, 토정비결, 날짜별 운세 (핵심 4종)
- * - 애정운, 재물운, 타로 (추가)
+ * 운세 서비스 목록
+ * - 메인 2x2: 신년운세 / 정통사주 / 오늘의 운세 / 지정일 운세
+ * - 메인 하단 1x2: 토정비결 / 자미두수
+ * - 서브 (작은 칩): 애정운 / 재물운 / 타로
  */
+const CURRENT_YEAR = new Date().getFullYear();
+
 const MAIN_SERVICES = [
+  {
+    id: 'newyear',
+    title: `${CURRENT_YEAR} 신년운세`,
+    desc: '한 해의 흐름',
+    href: '/saju/input?category=newyear',
+    gradient: 'from-rose-500/20 to-pink-500/10',
+  },
   {
     id: 'traditional',
     title: '정통 사주',
@@ -35,13 +45,6 @@ const MAIN_SERVICES = [
     gradient: 'from-amber-500/20 to-orange-500/10',
   },
   {
-    id: 'tojeong',
-    title: '토정비결',
-    desc: '한 해 길흉화복',
-    href: '/saju/input?category=tojeong',
-    gradient: 'from-emerald-500/20 to-teal-500/10',
-  },
-  {
     id: 'date-fortune',
     title: '지정일 운세',
     desc: '특정 날짜의 운세',
@@ -50,12 +53,27 @@ const MAIN_SERVICES = [
   },
 ];
 
+const SECONDARY_SERVICES = [
+  {
+    id: 'tojeong',
+    title: '토정비결',
+    desc: '한 해 길흉화복',
+    href: '/saju/input?category=tojeong',
+    gradient: 'from-emerald-500/20 to-teal-500/10',
+  },
+  {
+    id: 'zamidusu',
+    title: '자미두수',
+    desc: '별자리 명리',
+    href: '/saju/input?category=zamidusu',
+    gradient: 'from-violet-500/20 to-fuchsia-500/10',
+  },
+];
+
 const SUB_SERVICES = [
-  { id: 'zamidusu', title: '자미두수', href: '/saju/input?category=zamidusu' },
-  { id: 'love',     title: '애정운',   href: '/saju/input?category=love' },
-  { id: 'wealth',   title: '재물운',   href: '/saju/input?category=wealth' },
-  { id: 'tarot',    title: '타로',     href: '/tarot' },
-  { id: 'newyear',  title: '신년운세', href: '/saju/input?category=newyear' },
+  { id: 'love',   title: '애정운', href: '/saju/input?category=love' },
+  { id: 'wealth', title: '재물운', href: '/saju/input?category=wealth' },
+  { id: 'tarot',  title: '타로',   href: '/tarot' },
 ];
 
 const stagger = {
@@ -293,28 +311,28 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 핵심 서비스 - 2x2 큰 카드 */}
+      {/* 핵심 서비스 - 2x2 카드 (신년/정통/오늘/지정일) */}
       <section className="px-4 -mt-3 relative z-10">
         <motion.div
           variants={stagger}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="grid grid-cols-2 gap-3"
+          className="grid grid-cols-2 gap-2.5"
         >
           {MAIN_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>
               <Link href={svc.href}>
                 <div className={`
-                  relative rounded-2xl p-4 h-[120px]
+                  relative rounded-xl p-3 h-[88px]
                   bg-gradient-to-br ${svc.gradient}
                   border border-[var(--border-subtle)]
                   hover:border-cta/40 transition-all
-                  flex flex-col items-center justify-center text-center gap-1.5
+                  flex flex-col items-center justify-center text-center gap-1
                   active:scale-[0.97]
                 `}>
-                  <h3 className="text-lg font-bold text-text-primary tracking-tight">{svc.title}</h3>
-                  <p className="text-xs font-medium text-text-secondary">{svc.desc}</p>
+                  <h3 className="text-[15px] font-bold text-text-primary tracking-tight">{svc.title}</h3>
+                  <p className="text-[11px] font-medium text-text-secondary">{svc.desc}</p>
                 </div>
               </Link>
             </motion.div>
@@ -322,7 +340,36 @@ export default function HomePage() {
         </motion.div>
       </section>
 
-      {/* 추가 서비스 - 가로 스크롤 또는 작은 칩 */}
+      {/* 보조 핵심 서비스 - 1x2 (토정비결 / 자미두수) */}
+      <section className="px-4 mt-2.5 relative z-10">
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="grid grid-cols-2 gap-2.5"
+        >
+          {SECONDARY_SERVICES.map((svc) => (
+            <motion.div key={svc.id} variants={fadeUp}>
+              <Link href={svc.href}>
+                <div className={`
+                  relative rounded-xl p-3 h-[88px]
+                  bg-gradient-to-br ${svc.gradient}
+                  border border-[var(--border-subtle)]
+                  hover:border-cta/40 transition-all
+                  flex flex-col items-center justify-center text-center gap-1
+                  active:scale-[0.97]
+                `}>
+                  <h3 className="text-[15px] font-bold text-text-primary tracking-tight">{svc.title}</h3>
+                  <p className="text-[11px] font-medium text-text-secondary">{svc.desc}</p>
+                </div>
+              </Link>
+            </motion.div>
+          ))}
+        </motion.div>
+      </section>
+
+      {/* 추가 서비스 - 작은 칩 */}
       <section className="px-4 mt-5">
         <h2 className="text-base font-bold text-text-primary mb-3 px-1">더 많은 운세</h2>
         <motion.div
@@ -330,12 +377,12 @@ export default function HomePage() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="grid grid-cols-5 gap-2"
+          className="grid grid-cols-3 gap-2"
         >
           {SUB_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>
               <Link href={svc.href}>
-                <div className="flex items-center justify-center h-[56px] p-2 rounded-xl bg-space-surface/60 border border-[var(--border-subtle)] hover:border-cta/40 transition-all active:scale-[0.95]">
+                <div className="flex items-center justify-center h-[52px] p-2 rounded-xl bg-space-surface/60 border border-[var(--border-subtle)] hover:border-cta/40 transition-all active:scale-[0.95]">
                   <span className="text-[13px] font-bold text-text-primary">{svc.title}</span>
                 </div>
               </Link>

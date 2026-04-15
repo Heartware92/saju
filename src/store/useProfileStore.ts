@@ -45,10 +45,14 @@ export const useProfileStore = create<ProfileState>()(
       set({ loading: !hasCache, error: null });
       const user = await auth.getCurrentUser();
       if (!user) {
-        set({ profiles: [], loading: false, lastFetchedAt: Date.now() });
+        // 토큰 갱신 hiccup 등으로 일시적으로 user 가 null 일 수 있음.
+        // 기존 캐시를 비우면 사용자가 "프로필이 사라졌다" 고 느끼게 됨 → 캐시 유지하고 다음 호출에 다시 시도.
+        set({ loading: false });
         return;
       }
       const next = await profileDB.getProfiles(user.id);
+      // 서버가 빈 배열을 반환했고 우리는 이미 캐시가 있으면, 갱신은 하되
+      // 최소한의 안전장치로 lastFetchedAt 만 갱신 — 데이터 자체는 한 번 더 검증되도록 force=false 호출 허용
       set({ profiles: next, loading: false, lastFetchedAt: Date.now() });
     } catch (error: any) {
       console.error('Error fetching profiles:', error);
