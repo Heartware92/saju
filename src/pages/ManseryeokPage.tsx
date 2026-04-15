@@ -8,7 +8,7 @@
  *   (DB 에는 원국(原局) 원자료만 저장, 계산 결과는 저장하지 않음)
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -75,10 +75,28 @@ export default function ManseryeokPage() {
   const router = useRouter();
   const { user } = useUserStore();
   const { profiles, fetchProfiles } = useProfileStore();
+  const daeWoonScrollRef = useRef<HTMLDivElement>(null);
+  const seWoonScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (user) fetchProfiles();
   }, [user, fetchProfiles]);
+
+  // 현재 시점 카드를 가운데로 자동 스크롤
+  useEffect(() => {
+    const centerCurrent = (container: HTMLDivElement | null) => {
+      if (!container) return;
+      const target = container.querySelector<HTMLElement>('[data-current="true"]');
+      if (!target) return;
+      const offset = target.offsetLeft - container.clientWidth / 2 + target.clientWidth / 2;
+      container.scrollTo({ left: Math.max(0, offset), behavior: 'smooth' });
+    };
+    // 렌더 직후 한 번
+    requestAnimationFrame(() => {
+      centerCurrent(daeWoonScrollRef.current);
+      centerCurrent(seWoonScrollRef.current);
+    });
+  });
 
   const primary = useMemo(
     () => profiles.find((p) => p.is_primary) ?? null,
@@ -121,7 +139,8 @@ export default function ManseryeokPage() {
     }));
 
   const thisYear = new Date().getFullYear();
-  const age = thisYear - parseInt(primary.birth_date.slice(0, 4), 10) + 1;
+  const birthYear = parseInt(primary.birth_date.slice(0, 4), 10);
+  const age = thisYear - birthYear + 1; // 한국 나이
 
   return (
     <motion.div
@@ -301,22 +320,29 @@ export default function ManseryeokPage() {
       <section className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] mb-3">
         <div className="flex items-center justify-between mb-3 px-1">
           <span className="text-[13px] font-semibold text-text-secondary uppercase tracking-wider">대운 (10년 단위)</span>
-          <span className="text-[13px] text-text-secondary">시작 {saju.daeWoonStartAge}세</span>
+          <span className="text-[13px] text-text-secondary">대운수 {saju.daeWoonStartAge + 1}</span>
         </div>
-        <div className="overflow-x-auto -mx-4 px-4">
+        <div ref={daeWoonScrollRef} className="overflow-x-auto -mx-4 px-4 scroll-smooth">
           <div className="flex gap-2 min-w-max">
             {saju.daeWoon.slice(0, 10).map((dw, i) => {
               const ganEl = STEM_ELEMENT[dw.gan] as Element;
               const zhiEl = BRANCH_ELEMENT[dw.zhi] as Element;
-              const isCurrent = age >= dw.startAge && age <= dw.endAge;
+              const koreanAgeStart = dw.startAge + 1; // 한국 나이
+              const koreanAgeEnd = dw.endAge + 1;
+              const startCalYear = birthYear + dw.startAge; // 만 N년 후 = 출생년 + N
+              const isCurrent = age >= koreanAgeStart && age <= koreanAgeEnd;
               return (
                 <div
                   key={i}
-                  className={`w-[68px] flex flex-col items-center gap-1.5 p-2 rounded-lg border ${
-                    isCurrent ? 'border-cta/60 bg-cta/5' : 'border-[var(--border-subtle)]'
+                  data-current={isCurrent ? 'true' : undefined}
+                  className={`w-[80px] flex flex-col items-center gap-1.5 p-2 rounded-lg border ${
+                    isCurrent ? 'border-cta/60 bg-cta/10' : 'border-[var(--border-subtle)]'
                   }`}
                 >
-                  <span className="text-[12px] font-medium text-text-secondary">{dw.startAge}세</span>
+                  <span className="text-[13px] font-bold text-text-primary leading-none whitespace-nowrap">
+                    {koreanAgeStart}, <span className="font-normal text-text-secondary">{startCalYear}</span>
+                  </span>
+                  <span className="text-[10px] text-text-tertiary leading-none">만 {dw.startAge}</span>
                   <span className="text-[11px] text-text-tertiary">{dw.tenGod}</span>
                   <ElementCell element={ganEl} text={stemToHanja(dw.gan)} size="sm" />
                   <ElementCell element={zhiEl} text={zhiToHanja(dw.zhi)} size="sm" />
@@ -334,7 +360,7 @@ export default function ManseryeokPage() {
           <span className="text-[13px] font-semibold text-text-secondary uppercase tracking-wider">세운 (10년)</span>
           <span className="text-[13px] text-text-secondary">올해 {saju.currentSeWoon.gan}{saju.currentSeWoon.zhi}</span>
         </div>
-        <div className="overflow-x-auto -mx-4 px-4">
+        <div ref={seWoonScrollRef} className="overflow-x-auto -mx-4 px-4 scroll-smooth">
           <div className="flex gap-2 min-w-max">
             {saju.seWoon.map((sw) => {
               const ganEl = STEM_ELEMENT[sw.gan] as Element;
@@ -343,11 +369,15 @@ export default function ManseryeokPage() {
               return (
                 <div
                   key={sw.year}
-                  className={`w-[66px] flex flex-col items-center gap-1.5 p-2 rounded-lg border ${
-                    isCurrent ? 'border-cta/60 bg-cta/5' : 'border-[var(--border-subtle)]'
+                  data-current={isCurrent ? 'true' : undefined}
+                  className={`w-[72px] flex flex-col items-center gap-1.5 p-2 rounded-lg border ${
+                    isCurrent ? 'border-cta/60 bg-cta/10' : 'border-[var(--border-subtle)]'
                   }`}
                 >
-                  <span className="text-[12px] font-medium text-text-secondary">{sw.year}</span>
+                  <span className="text-[13px] font-bold text-text-primary leading-none">{sw.year}</span>
+                  <span className="text-[10px] text-text-tertiary leading-none">
+                    {sw.year - birthYear + 1}세
+                  </span>
                   <span className="text-[11px] text-text-tertiary">{sw.tenGod}</span>
                   <ElementCell element={ganEl} text={stemToHanja(sw.gan)} size="sm" />
                   <ElementCell element={zhiEl} text={zhiToHanja(sw.zhi)} size="sm" />
