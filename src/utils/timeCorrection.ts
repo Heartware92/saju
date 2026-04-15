@@ -100,15 +100,15 @@ export const CITY_COORDINATES: Record<string, { lat: number; lng: number; name: 
   'ulsan': { lat: 35.5384, lng: 129.3114, name: '울산광역시', category: '대한민국' },
   'sejong': { lat: 36.4800, lng: 127.2890, name: '세종특별자치시', category: '대한민국' },
 
-  // 도 (도청 소재지 기준)
-  'gyeonggi': { lat: 37.2752, lng: 127.0094, name: '경기도 (수원)', category: '대한민국' },
-  'gangwon': { lat: 37.8813, lng: 127.7298, name: '강원도 (춘천)', category: '대한민국' },
-  'chungbuk': { lat: 36.6357, lng: 127.4912, name: '충청북도 (청주)', category: '대한민국' },
-  'chungnam': { lat: 36.6588, lng: 126.6728, name: '충청남도 (홍성)', category: '대한민국' },
-  'jeonbuk': { lat: 35.8203, lng: 127.1088, name: '전라북도 (전주)', category: '대한민국' },
-  'jeonnam': { lat: 34.8161, lng: 126.4630, name: '전라남도 (무안)', category: '대한민국' },
-  'gyeongbuk': { lat: 36.5760, lng: 128.5056, name: '경상북도 (안동)', category: '대한민국' },
-  'gyeongnam': { lat: 35.2380, lng: 128.6924, name: '경상남도 (창원)', category: '대한민국' },
+  // 도 (좌표는 도청 소재지 기준 — 진태양시 보정 정확도 ±2분 수준)
+  'gyeonggi': { lat: 37.2752, lng: 127.0094, name: '경기도', category: '대한민국' },
+  'gangwon': { lat: 37.8813, lng: 127.7298, name: '강원도', category: '대한민국' },
+  'chungbuk': { lat: 36.6357, lng: 127.4912, name: '충청북도', category: '대한민국' },
+  'chungnam': { lat: 36.6588, lng: 126.6728, name: '충청남도', category: '대한민국' },
+  'jeonbuk': { lat: 35.8203, lng: 127.1088, name: '전라북도', category: '대한민국' },
+  'jeonnam': { lat: 34.8161, lng: 126.4630, name: '전라남도', category: '대한민국' },
+  'gyeongbuk': { lat: 36.5760, lng: 128.5056, name: '경상북도', category: '대한민국' },
+  'gyeongnam': { lat: 35.2380, lng: 128.6924, name: '경상남도', category: '대한민국' },
   'jeju': { lat: 33.4996, lng: 126.5312, name: '제주특별자치도', category: '대한민국' },
 
   // ========== 북한 ==========

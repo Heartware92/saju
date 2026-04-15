@@ -30,6 +30,9 @@ export default function SajuInputPage() {
   const searchParams = useSearchParams()
   const categoryId = searchParams?.get('category') || 'traditional'
   const category = SAJU_CATEGORIES[categoryId] || SAJU_CATEGORIES['traditional']
+  // 프로필 관리 페이지에서 "+ 새 프로필 추가" 로 진입한 경우.
+  // 분석 결과로 라우팅하지 않고 프로필만 저장 후 목록으로 복귀.
+  const isProfileOnly = searchParams?.get('mode') === 'profile-only'
 
   const currentYear = new Date().getFullYear()
   const { user } = useUserStore()
@@ -121,6 +124,11 @@ export default function SajuInputPage() {
     setShowProfileModal(false)
     setEditingProfile(null)
     setProfileForm({ name: '', memo: '' })
+
+    // 프로필 저장 전용 모드: 저장 직후 프로필 목록으로 복귀
+    if (isProfileOnly) {
+      router.push('/saju/profile')
+    }
   }
 
   const handleEditProfile = (profile: BirthProfile) => {
@@ -411,19 +419,27 @@ export default function SajuInputPage() {
         {/* 제출 버튼 */}
         <motion.button
           className={styles.submitBtn}
-          onClick={handleSubmit}
+          onClick={() => {
+            if (isProfileOnly) {
+              setEditingProfile(null)
+              setProfileForm({ name: '', memo: '' })
+              setShowProfileModal(true)
+            } else {
+              handleSubmit()
+            }
+          }}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
-          {category.title} 결과 보기
+          {isProfileOnly ? '프로필 저장' : `${category.title} 결과 보기`}
         </motion.button>
 
         {/* 뒤로가기 */}
         <button
           className={styles.backBtn}
-          onClick={() => router.push('/saju')}
+          onClick={() => router.push(isProfileOnly ? '/saju/profile' : '/saju')}
         >
-          ← 프로필 목록으로
+          ← {isProfileOnly ? '프로필 관리로' : '프로필 목록으로'}
         </button>
       </motion.div>
 

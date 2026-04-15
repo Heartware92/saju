@@ -113,7 +113,7 @@ export default function ManageProfilesPage() {
         <div className="rounded-2xl border border-dashed border-[var(--border-subtle)] p-8 text-center">
           <p className="text-sm text-text-secondary mb-3">아직 등록된 프로필이 없어요</p>
           <Link
-            href="/saju/input"
+            href="/saju/input?mode=profile-only"
             className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-cta text-white text-[13px] font-semibold"
           >
             새 프로필 추가
@@ -187,7 +187,7 @@ export default function ManageProfilesPage() {
       {/* 추가 버튼 */}
       {profiles.length > 0 && (
         <button
-          onClick={() => router.push('/saju/input')}
+          onClick={() => router.push('/saju/input?mode=profile-only')}
           className="w-full rounded-2xl border-2 border-dashed border-[var(--border-subtle)] hover:border-cta/40 p-3.5 flex items-center justify-center gap-2 text-text-tertiary hover:text-cta transition-all"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
