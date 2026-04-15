@@ -16,18 +16,18 @@ import styles from './StarfallBackground.module.css';
    프레임 바깥 좌상단에서 출발하도록 top/left 를 음수로 둠.
    궤적에 약간씩 편차를 줘 전부 같은 대각선에 놓이지 않도록 흩뿌림. */
 const SHOOTING_STARS = [
-  { top: '-15%', left: '-20%', delay: '0s',    duration: '4.0s' },
-  { top: '-12%', left: '-5%',  delay: '1.4s',  duration: '3.8s' },
-  { top: '-20%', left: '-15%', delay: '2.1s',  duration: '4.2s' },
-  { top: '-8%',  left: '-28%', delay: '3.2s',  duration: '4.4s' },
-  { top: '-18%', left: '0%',   delay: '4.0s',  duration: '3.6s' },
-  { top: '-10%', left: '-10%', delay: '5.3s',  duration: '4.0s' },
-  { top: '-22%', left: '-3%',  delay: '6.6s',  duration: '3.8s' },
-  { top: '-14%', left: '-18%', delay: '7.8s',  duration: '4.2s' },
-  { top: '-16%', left: '-8%',  delay: '9.1s',  duration: '3.4s' },
-  { top: '-25%', left: '-22%', delay: '10.4s', duration: '4.4s' },
-  { top: '-11%', left: '-12%', delay: '11.7s', duration: '3.8s' },
-  { top: '-19%', left: '5%',   delay: '13.0s', duration: '4.0s' },
+  { top: '-15%', left: '-20%', delay: '0s',    duration: '1.8s' },
+  { top: '-12%', left: '-5%',  delay: '0.9s',  duration: '1.6s' },
+  { top: '-20%', left: '-15%', delay: '1.6s',  duration: '2.0s' },
+  { top: '-8%',  left: '-28%', delay: '2.4s',  duration: '2.2s' },
+  { top: '-18%', left: '0%',   delay: '3.1s',  duration: '1.5s' },
+  { top: '-10%', left: '-10%', delay: '3.9s',  duration: '1.8s' },
+  { top: '-22%', left: '-3%',  delay: '4.7s',  duration: '1.7s' },
+  { top: '-14%', left: '-18%', delay: '5.5s',  duration: '2.0s' },
+  { top: '-16%', left: '-8%',  delay: '6.3s',  duration: '1.4s' },
+  { top: '-25%', left: '-22%', delay: '7.2s',  duration: '2.1s' },
+  { top: '-11%', left: '-12%', delay: '8.0s',  duration: '1.6s' },
+  { top: '-19%', left: '5%',   delay: '8.9s',  duration: '1.9s' },
 ];
 
 export default function StarfallBackground() {

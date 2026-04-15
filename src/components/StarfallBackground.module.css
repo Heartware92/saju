@@ -94,14 +94,15 @@
 }
 
 /* 별똥별 — 혜성 스타일 (머리 블룸 + 부드럽게 페이드되는 꼬리)
-   외부 래퍼는 0×0 이므로 percent translate 가 먹히지 않음 → px 로 명시적 이동 */
+   외부 래퍼는 0×0 이므로 percent translate 가 먹히지 않음 → px 로 명시적 이동
+   ease-out 공격적 곡선 — 툭 튀어나와 빠르게 쏘아지다 감속 */
 .shootingStar {
   position: absolute;
   width: 0;
   height: 0;
   opacity: 0;
   animation-name: shoot;
-  animation-timing-function: cubic-bezier(0.45, 0.05, 0.55, 1);
+  animation-timing-function: cubic-bezier(0.12, 0.72, 0.3, 1);
   animation-iteration-count: infinite;
   will-change: transform, opacity;
 }
@@ -153,13 +154,13 @@
     0 0 26px 7px rgba(252, 210, 160, 0.3);
 }
 
-/* 좌상단 외부 → 우하단 외부 대각선 낙하 — 별똥별 머리 방향과 일치
-   앞뒤 페이드 구간을 충분히 둬서 '팍 나타났다 팍 사라지는' 미사일 느낌 제거 */
+/* 좌상단 외부 → 우하단 외부 대각 낙하
+   등장 순간(0→4%) 즉시 밝아짐 → ease-out 로 쏘아지며 감속 → 후반 트레일 페이드아웃
+   '놓아지는' 느낌(등속/긴 페이드) 이 아닌 '쏘아지는' 임팩트 */
 @keyframes shoot {
   0%   { transform: translate(0, 0);          opacity: 0; }
-  10%  {                                      opacity: 0.85; }
-  50%  {                                      opacity: 1; }
-  85%  {                                      opacity: 0.85; }
+  4%   {                                      opacity: 1; }
+  55%  {                                      opacity: 1; }
   100% { transform: translate(560px, 980px);  opacity: 0; }
 }
 
