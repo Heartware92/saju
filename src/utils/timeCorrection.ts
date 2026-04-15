@@ -17,6 +17,37 @@ interface TimeZonePeriod {
   description: string;
 }
 
+/**
+ * 한국 서머타임(일광절약시간) 시행 이력 — 해당 기간은 시계가 +1시간 앞당겨져 있었으므로
+ * 사주 계산 시 시계시에서 **-60분** 해서 실제 표준시로 되돌려야 한다.
+ * 참고: 국가기록원 / KASI 공식 기록
+ * 시작/종료는 각 기간의 KST 로컬 날짜 (자정 경계).
+ */
+interface DstPeriod {
+  startDate: Date;
+  endDate: Date;
+  description: string;
+}
+const KOREA_DST_PERIODS: DstPeriod[] = [
+  { startDate: new Date('1948-06-01'), endDate: new Date('1948-09-13'), description: '1948 서머타임' },
+  { startDate: new Date('1949-04-03'), endDate: new Date('1949-09-11'), description: '1949 서머타임' },
+  { startDate: new Date('1950-04-01'), endDate: new Date('1950-09-10'), description: '1950 서머타임' },
+  { startDate: new Date('1951-05-06'), endDate: new Date('1951-09-09'), description: '1951 서머타임' },
+  { startDate: new Date('1955-05-05'), endDate: new Date('1955-09-09'), description: '1955 서머타임' },
+  { startDate: new Date('1956-05-20'), endDate: new Date('1956-09-30'), description: '1956 서머타임' },
+  { startDate: new Date('1957-05-05'), endDate: new Date('1957-09-22'), description: '1957 서머타임' },
+  { startDate: new Date('1958-05-04'), endDate: new Date('1958-09-21'), description: '1958 서머타임' },
+  { startDate: new Date('1959-05-03'), endDate: new Date('1959-09-20'), description: '1959 서머타임' },
+  { startDate: new Date('1960-05-01'), endDate: new Date('1960-09-18'), description: '1960 서머타임' },
+  { startDate: new Date('1987-05-10'), endDate: new Date('1987-10-11'), description: '1987 서머타임 (올림픽 대비)' },
+  { startDate: new Date('1988-05-08'), endDate: new Date('1988-10-09'), description: '1988 서머타임 (올림픽)' },
+];
+
+/** 특정 날짜가 한국 서머타임 기간에 해당하면 true */
+export const isKoreaDst = (date: Date): boolean => {
+  return KOREA_DST_PERIODS.some(p => date >= p.startDate && date < p.endDate);
+};
+
 // 한국의 역사적 표준시 변경 이력
 const KOREA_TIMEZONE_HISTORY: TimeZonePeriod[] = [
   {
@@ -174,9 +205,11 @@ export interface TrueSolarTimeResult {
   trueSolarTime: Date;
   longitudeCorrection: number; // 분
   equationOfTime: number; // 분
-  historicalCorrection: number; // 분
-  totalCorrection: number; // 분
+  historicalCorrection: number; // 분 (역사적 표준시 오프셋)
+  dstCorrection: number;        // 분 (서머타임 기간이면 -60)
+  totalCorrection: number;      // 분
   timezone: TimeZonePeriod;
+  isDst: boolean;
 }
 
 /**
@@ -213,10 +246,14 @@ export const calculateTrueSolarTime = (
     historicalCorrection = (timezone.utcOffset - currentOffset) * 60;
   }
 
-  // 5. 총 보정값
-  const totalCorrection = longitudeCorrection + equationOfTime + historicalCorrection;
+  // 5. 서머타임(DST) 보정 — 해당 기간의 시계시는 실제 시각보다 +1시간 앞서 있었음
+  const isDst = isKoreaDst(clockTime);
+  const dstCorrection = isDst ? -60 : 0;
 
-  // 6. 보정된 시간 계산
+  // 6. 총 보정값
+  const totalCorrection = longitudeCorrection + equationOfTime + historicalCorrection + dstCorrection;
+
+  // 7. 보정된 시간 계산
   const trueSolarTime = new Date(clockTime.getTime() + totalCorrection * 60 * 1000);
 
   return {
@@ -225,8 +262,10 @@ export const calculateTrueSolarTime = (
     longitudeCorrection: Math.round(longitudeCorrection * 10) / 10,
     equationOfTime: Math.round(equationOfTime * 10) / 10,
     historicalCorrection,
+    dstCorrection,
     totalCorrection: Math.round(totalCorrection * 10) / 10,
-    timezone
+    timezone,
+    isDst,
   };
 };
 
@@ -362,6 +401,24 @@ export interface CorrectedTimeResult {
 }
 
 /**
+ * 프로필의 birth_place(문자열 코드, 예: 'seoul') 또는 longitude(숫자) 로부터
+ * 진태양시 계산에 사용할 경도를 해석한다.
+ * - longitude 가 유효하면 그것 우선
+ * - birth_place 가 CITY_COORDINATES 키와 일치하면 그 좌표
+ * - 둘 다 없으면 서울(126.978) 기본값
+ */
+export const resolveBirthLongitude = (
+  birthPlace?: string | null,
+  longitude?: number | null,
+): number => {
+  if (typeof longitude === 'number' && isFinite(longitude)) return longitude;
+  if (birthPlace && CITY_COORDINATES[birthPlace]) {
+    return CITY_COORDINATES[birthPlace].lng;
+  }
+  return 126.978;
+};
+
+/**
  * 사주 계산을 위한 종합 시간 보정
  */
 export const getCorrectedTimeForSaju = (
@@ -393,6 +450,9 @@ export const getCorrectedTimeForSaju = (
   const summaryParts = [];
   if (applyTrueSolarTime && Math.abs(trueSolarTime.totalCorrection) >= 1) {
     summaryParts.push(`진태양시 보정 ${trueSolarTime.totalCorrection > 0 ? '+' : ''}${trueSolarTime.totalCorrection}분`);
+  }
+  if (trueSolarTime.isDst) {
+    summaryParts.push(`서머타임 -60분`);
   }
   if (zasiResult.dayChanged) {
     summaryParts.push(`자시 처리로 날짜 변경`);

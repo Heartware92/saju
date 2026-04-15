@@ -21,6 +21,7 @@ import {
   BRANCH_ELEMENT,
   type Pillar,
 } from '../utils/sajuCalculator';
+import { getCorrectedTimeForSaju, resolveBirthLongitude } from '../utils/timeCorrection';
 import {
   stemToHanja,
   zhiToHanja,
@@ -91,7 +92,21 @@ export default function ManseryeokPage() {
       ? [12, 0]
       : (primary.birth_time as string).split(':').map(Number);
     try {
-      return calculateSaju(y, m, d, h, min, primary.gender, unknownTime);
+      const longitude = resolveBirthLongitude(
+        primary.birth_place,
+        (primary as { longitude?: number | null }).longitude ?? null,
+      );
+      const corrected = getCorrectedTimeForSaju(y, m, d, h, min, longitude);
+      const d2 = corrected.trueSolarTime.trueSolarTime;
+      return calculateSaju(
+        d2.getFullYear(),
+        d2.getMonth() + 1,
+        d2.getDate(),
+        unknownTime ? 12 : d2.getHours(),
+        unknownTime ? 0 : d2.getMinutes(),
+        primary.gender,
+        unknownTime,
+      );
     } catch (e) {
       console.error(e);
       return null;

@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { calculateSaju } from '../utils/sajuCalculator';
+import { getCorrectedTimeForSaju, resolveBirthLongitude } from '../utils/timeCorrection';
 import {
   getCharacterFromStem,
   pillarToHanja,
@@ -83,7 +84,7 @@ export default function HomePage() {
     [profiles],
   );
 
-  // 대표 프로필 만세력 계산 (client-side, 즉시)
+  // 대표 프로필 만세력 계산 (client-side, 즉시) — 진태양시 보정 일관 적용
   const sajuData = useMemo(() => {
     if (!primary) return null;
     const [y, m, d] = primary.birth_date.split('-').map(Number);
@@ -92,7 +93,21 @@ export default function HomePage() {
       ? [12, 0]
       : (primary.birth_time as string).split(':').map(Number);
     try {
-      const result = calculateSaju(y, m, d, h, min, primary.gender, unknownTime);
+      const longitude = resolveBirthLongitude(
+        primary.birth_place,
+        (primary as { longitude?: number | null }).longitude ?? null,
+      );
+      const corrected = getCorrectedTimeForSaju(y, m, d, h, min, longitude);
+      const d2 = corrected.trueSolarTime.trueSolarTime;
+      const result = calculateSaju(
+        d2.getFullYear(),
+        d2.getMonth() + 1,
+        d2.getDate(),
+        unknownTime ? 12 : d2.getHours(),
+        unknownTime ? 0 : d2.getMinutes(),
+        primary.gender,
+        unknownTime,
+      );
       const dayStem = result.pillars.day.gan;
       const element = STEM_TO_ELEMENT[dayStem];
       const character = getCharacterFromStem(dayStem);

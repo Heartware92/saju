@@ -90,12 +90,15 @@ export default function SajuInputPage() {
     const birthDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     const birthTime = unknownTime ? undefined : `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
 
+    const birthLongitude = CITY_COORDINATES[birthPlace]?.lng ?? null;
+
     if (editingProfile) {
       await updateProfile(editingProfile.id, {
         name: profileForm.name.trim(),
         birth_date: birthDate,
         birth_time: birthTime,
         birth_place: birthPlace,
+        longitude: birthLongitude,
         gender,
         calendar_type: calendarType,
         memo: profileForm.memo || undefined,
@@ -106,6 +109,7 @@ export default function SajuInputPage() {
         birth_date: birthDate,
         birth_time: birthTime,
         birth_place: birthPlace,
+        longitude: birthLongitude,
         gender,
         calendar_type: calendarType,
         is_primary: profiles.length === 0,

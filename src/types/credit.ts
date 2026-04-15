@@ -85,7 +85,13 @@ export interface BirthProfile {
   name: string;
   birth_date: string;
   birth_time?: string;
+  /** CITY_COORDINATES 키(예: 'seoul') 또는 임의 지명 문자열 */
   birth_place: string;
+  /**
+   * 출생지 경도 (동경 +, 서경 -). 진태양시 보정에 사용.
+   * null 이면 birth_place 코드로 조회 → 그래도 없으면 서울(126.978) 기본.
+   */
+  longitude?: number | null;
   gender: 'male' | 'female';
   calendar_type: 'solar' | 'lunar';
   is_primary: boolean;
