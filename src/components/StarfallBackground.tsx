@@ -14,28 +14,19 @@ import styles from './StarfallBackground.module.css';
    40°~70° 범위의 다양한 기울기로 떨어지도록.
    angle(deg) = atan2(ty, tx) * 180/π — 꼬리 기울기가 실제 이동 방향과 정확히 일치
    (transform-origin 이 머리이므로 +각도면 꼬리가 반대방향으로 뻗음) */
+/* 4개 별 모두 궤적의 중간점이 프레임 중앙(~50%,50%) 근처를 스치도록 설계
+   — 기준 프레임 ~400×720 기준으로 midpoint = start + vector/2 ≈ (200px, 360px)
+   — 각 별마다 다른 각도로 낙하 (50°~73° 범위)
+   — 속도는 3.5~5s 로 여유있게 (이전 1.5~2.2s 에서 대폭 완화) */
 const SHOOTING_STARS = [
-  // 가파른 낙하 (~65°)
-  { top: '-18%', left: '-15%', delay: '0s',    duration: '1.8s', tx: '420px', ty: '900px',  angle: '65deg' },
-  { top: '-22%', left: '-5%',  delay: '1.1s',  duration: '2.0s', tx: '380px', ty: '950px',  angle: '68deg' },
-  { top: '-15%', left: '-22%', delay: '2.3s',  duration: '1.7s', tx: '400px', ty: '880px',  angle: '66deg' },
-
-  // 중간 각도 (~55°)
-  { top: '-12%', left: '-10%', delay: '0.5s',  duration: '1.6s', tx: '600px', ty: '860px',  angle: '55deg' },
-  { top: '-20%', left: '-18%', delay: '1.8s',  duration: '1.9s', tx: '550px', ty: '820px',  angle: '56deg' },
-  { top: '-8%',  left: '-25%', delay: '3.0s',  duration: '2.1s', tx: '640px', ty: '900px',  angle: '54deg' },
-
-  // 완만한 낙하 (~45°)
-  { top: '-10%', left: '-3%',  delay: '0.9s',  duration: '1.5s', tx: '700px', ty: '700px',  angle: '45deg' },
-  { top: '-14%', left: '-20%', delay: '2.6s',  duration: '1.8s', tx: '720px', ty: '720px',  angle: '45deg' },
-  { top: '-16%', left: '-8%',  delay: '3.8s',  duration: '1.6s', tx: '680px', ty: '660px',  angle: '44deg' },
-
-  // 매우 완만 (~40°)
-  { top: '-6%',  left: '-12%', delay: '1.4s',  duration: '1.7s', tx: '780px', ty: '620px',  angle: '38deg' },
-  { top: '-11%', left: '-6%',  delay: '3.2s',  duration: '1.9s', tx: '760px', ty: '640px',  angle: '40deg' },
-
-  // 가장 가파름 (~72°) 거의 수직 낙하에 가까운 별
-  { top: '-25%', left: '-2%',  delay: '2.0s',  duration: '2.2s', tx: '320px', ty: '980px',  angle: '72deg' },
+  // 1) 가파른 낙하 — 프레임 상단에서 시작해 중앙을 가르며 하단으로
+  { top: '-18%', left: '10%',  delay: '0s',   duration: '4.2s', tx: '300px', ty: '980px', angle: '73deg' },
+  // 2) 중간 기울기 — 왼쪽 위에서 대각선으로 중앙 통과
+  { top: '-14%', left: '-6%',  delay: '3.0s', duration: '4.6s', tx: '480px', ty: '920px', angle: '63deg' },
+  // 3) 완만 — 더 왼쪽에서 출발, 길게 스치듯
+  { top: '-10%', left: '-18%', delay: '6.5s', duration: '4.4s', tx: '580px', ty: '820px', angle: '55deg' },
+  // 4) 매우 완만 — 거의 수평에 가까운 유성
+  { top: '-6%',  left: '-22%', delay: '9.5s', duration: '5.0s', tx: '620px', ty: '740px', angle: '50deg' },
 ];
 
 export default function StarfallBackground() {
