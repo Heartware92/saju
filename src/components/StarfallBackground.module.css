@@ -160,11 +160,15 @@
 /* 좌상단 외부 → 우하단 외부 대각 낙하
    이동 벡터는 별마다 --tx, --ty 로 제어 (컨테이너 기준 %) → 모든 화면 크기에서
    시작점+벡터/2 = 컨테이너 중앙(50%,50%) 이 되도록 tsx 에서 값 설계 */
+/* 사이클의 앞 70% 는 대기(invisible at start), 72%~92% 에서 실제 낙하,
+   92%~100% 에서 페이드아웃. duration 30s 기준 → 21s 대기 → 6s 낙하 → 2.4s 페이드
+   두 별이 15s 씩 엇갈려 있으므로 실제로는 한 별이 지나가고 약 7s 정적 후 다음 별 등장 */
 @keyframes shoot {
   0%   { transform: translate(0, 0);                                opacity: 0; }
-  15%  {                                                            opacity: 1; }
-  85%  {                                                            opacity: 1; }
-  100% { transform: translate(var(--tx, 120%), var(--ty, 140%));    opacity: 0; }
+  70%  { transform: translate(0, 0);                                opacity: 0; }
+  72%  { transform: translate(0, 0);                                opacity: 1; }
+  92%  { transform: translate(var(--tx, 150%), var(--ty, 100%));    opacity: 1; }
+  100% { transform: translate(var(--tx, 150%), var(--ty, 100%));    opacity: 0; }
 }
 
 /* reduce-motion 사용자는 정적 별빛만 */
