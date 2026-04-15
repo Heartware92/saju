@@ -16,6 +16,7 @@ interface ProfileState {
   addProfile: (profile: Omit<BirthProfile, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<BirthProfile | null>;
   updateProfile: (id: string, updates: Partial<Omit<BirthProfile, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => Promise<boolean>;
   deleteProfile: (id: string) => Promise<boolean>;
+  setPrimary: (id: string) => Promise<boolean>;
   reset: () => void;
 }
 
@@ -87,6 +88,25 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
       return true;
     } catch (error: any) {
       console.error('Error deleting profile:', error);
+      set({ error: error.message, loading: false });
+      return false;
+    }
+  },
+
+  setPrimary: async (id) => {
+    try {
+      set({ loading: true, error: null });
+      const user = await auth.getCurrentUser();
+      if (!user) throw new Error('로그인이 필요합니다');
+
+      await profileDB.setPrimaryProfile(user.id, id);
+      set({
+        profiles: get().profiles.map(p => ({ ...p, is_primary: p.id === id })),
+        loading: false,
+      });
+      return true;
+    } catch (error: any) {
+      console.error('Error setting primary profile:', error);
       set({ error: error.message, loading: false });
       return false;
     }

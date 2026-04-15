@@ -381,5 +381,26 @@ export const profileDB = {
       .eq('id', id);
 
     if (error) throw error;
+  },
+
+  /**
+   * 대표 프로필 지정 — 사용자의 다른 프로필 is_primary 를 모두 false 로 돌린 뒤
+   * 대상만 true 로 세팅. 동시성 위험은 RLS + 단일 유저 사용이라 무시.
+   */
+  setPrimaryProfile: async (userId: string, profileId: string): Promise<void> => {
+    const { error: unsetError } = await supabase
+      .from('birth_profiles')
+      .update({ is_primary: false })
+      .eq('user_id', userId)
+      .neq('id', profileId);
+
+    if (unsetError) throw unsetError;
+
+    const { error: setError } = await supabase
+      .from('birth_profiles')
+      .update({ is_primary: true })
+      .eq('id', profileId);
+
+    if (setError) throw setError;
   }
 };
