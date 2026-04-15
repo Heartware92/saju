@@ -14,14 +14,14 @@ import styles from './StarfallBackground.module.css';
    midpoint = startX + tx/2 = 50%, startY + ty/2 = 50% → 모든 별이 정확히 중앙 관통
    9:16 비율 기준 angle = atan2(ty * 16/9, tx) 로 꼬리 기울기 계산 */
 const SHOOTING_STARS = [
-  // 1) 가파른 (~70°) — 상단 중앙 근처에서 아래로 길게
-  { startX: '0%',   startY: '-25%', tx: '100%', ty: '150%', angle: '70deg', delay: '0s',   duration: '7.0s' },
-  // 2) 중간 가파름 (~64°) — 좌상단에서 중앙 가르며 우하단으로
-  { startX: '-10%', startY: '-20%', tx: '120%', ty: '140%', angle: '64deg', delay: '8s',   duration: '7.5s' },
-  // 3) 중간 (~59°) — 좌측에서 대각선 길게
-  { startX: '-20%', startY: '-15%', tx: '140%', ty: '130%', angle: '59deg', delay: '16s',  duration: '7.2s' },
-  // 4) 완만 (~53°) — 좌측 멀리에서 넓게 가로지름
-  { startX: '-30%', startY: '-10%', tx: '160%', ty: '120%', angle: '53deg', delay: '24s',  duration: '8.0s' },
+  // 1) 중간 (~55°) — 좌상단에서 대각선으로 중앙 통과
+  { startX: '-15%', startY: '-2.5%', tx: '130%', ty: '105%', angle: '55deg', delay: '0s',   duration: '10.0s' },
+  // 2) 완만 (~50°) — 조금 더 수평에 가깝게
+  { startX: '-25%', startY: '0%',    tx: '150%', ty: '100%', angle: '50deg', delay: '10s',  duration: '10.5s' },
+  // 3) 더 완만 (~46°) — 좌측 멀리에서 길게 가로지름
+  { startX: '-35%', startY: '0%',    tx: '170%', ty: '100%', angle: '46deg', delay: '20s',  duration: '11.0s' },
+  // 4) 수평에 가까움 (~42°) — 가장 넓은 스윕
+  { startX: '-50%', startY: '0%',    tx: '200%', ty: '100%', angle: '42deg', delay: '30s',  duration: '11.5s' },
 ];
 
 export default function StarfallBackground() {

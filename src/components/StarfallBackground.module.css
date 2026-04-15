@@ -102,7 +102,8 @@
   inset: 0;
   opacity: 0;
   animation-name: shoot;
-  animation-timing-function: cubic-bezier(0.12, 0.72, 0.3, 1);
+  /* 부드러운 ease-out — 너무 공격적이지 않게 (이전 0.12,0.72,0.3,1 에서 완화) */
+  animation-timing-function: cubic-bezier(0.33, 0.1, 0.67, 1);
   animation-iteration-count: infinite;
   will-change: transform, opacity;
   pointer-events: none;
@@ -161,8 +162,8 @@
    시작점+벡터/2 = 컨테이너 중앙(50%,50%) 이 되도록 tsx 에서 값 설계 */
 @keyframes shoot {
   0%   { transform: translate(0, 0);                                opacity: 0; }
-  4%   {                                                            opacity: 1; }
-  55%  {                                                            opacity: 1; }
+  15%  {                                                            opacity: 1; }
+  85%  {                                                            opacity: 1; }
   100% { transform: translate(var(--tx, 120%), var(--ty, 140%));    opacity: 0; }
 }
 
