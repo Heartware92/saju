@@ -15,13 +15,12 @@ import { motion } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import {
-  calculateSaju,
   TEN_GODS_MAP,
   STEM_ELEMENT,
   BRANCH_ELEMENT,
   type Pillar,
 } from '../utils/sajuCalculator';
-import { getCorrectedTimeForSaju, resolveBirthLongitude } from '../utils/timeCorrection';
+import { computeSajuFromProfile } from '../utils/profileSaju';
 import {
   stemToHanja,
   zhiToHanja,
@@ -88,31 +87,7 @@ export default function ManseryeokPage() {
 
   const saju = useMemo(() => {
     if (!primary) return null;
-    const [y, m, d] = primary.birth_date.split('-').map(Number);
-    const unknownTime = !primary.birth_time;
-    const [h, min] = unknownTime
-      ? [12, 0]
-      : (primary.birth_time as string).split(':').map(Number);
-    try {
-      const longitude = resolveBirthLongitude(
-        primary.birth_place,
-        (primary as { longitude?: number | null }).longitude ?? null,
-      );
-      const corrected = getCorrectedTimeForSaju(y, m, d, h, min, longitude);
-      const d2 = corrected.trueSolarTime.trueSolarTime;
-      return calculateSaju(
-        d2.getFullYear(),
-        d2.getMonth() + 1,
-        d2.getDate(),
-        unknownTime ? 12 : d2.getHours(),
-        unknownTime ? 0 : d2.getMinutes(),
-        primary.gender,
-        unknownTime,
-      );
-    } catch (e) {
-      console.error(e);
-      return null;
-    }
+    return computeSajuFromProfile(primary);
   }, [primary]);
 
   if (!primary) {

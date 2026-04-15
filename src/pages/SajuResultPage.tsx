@@ -16,8 +16,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { Lunar } from 'lunar-javascript';
 import { calculateSaju, SajuResult, TEN_GODS_MAP } from '../utils/sajuCalculator';
-import { getCorrectedTimeForSaju } from '../utils/timeCorrection';
 import { getBasicInterpretation, getDetailedInterpretation } from '../services/fortuneService';
 import { PaywallModal, LockedCard } from '../features/saju/PaywallModal';
 import { useCreditStore } from '../store/useCreditStore';
@@ -147,29 +147,34 @@ export default function SajuResultPage() {
     const hour = parseInt(searchParams?.get('hour') || '12');
     const minute = parseInt(searchParams?.get('minute') || '0');
     const gender = (searchParams?.get('gender') || 'male') as 'male' | 'female';
-    const longitude = parseFloat(searchParams?.get('longitude') || '126.978');
-    const useTrueSolarTime = searchParams?.get('useTrueSolarTime') === 'true';
+    const calendarType = searchParams?.get('calendarType') || 'solar';
     const unknownTime = searchParams?.get('unknownTime') === 'true';
 
-    let finalYear = year;
-    let finalMonth = month;
-    let finalDay = day;
-    let finalHour = hour;
-    let finalMinute = minute;
-
-    // 시간 미상일 땐 진태양시 보정도 의미 없음 — 건너뜀
-    if (useTrueSolarTime && !unknownTime) {
-      const corrected = getCorrectedTimeForSaju(year, month, day, hour, minute, longitude);
-      // 보정 결과가 자정을 넘어가면 날짜도 함께 이동해야 일주(日柱)가 정확해진다
-      const tst = corrected.trueSolarTime.trueSolarTime;
-      finalYear = tst.getFullYear();
-      finalMonth = tst.getMonth() + 1;
-      finalDay = tst.getDate();
-      finalHour = tst.getHours();
-      finalMinute = tst.getMinutes();
+    // 1) 음력이면 양력으로 변환
+    let solarYear = year, solarMonth = month, solarDay = day;
+    if (calendarType === 'lunar') {
+      const lunar = Lunar.fromYmdHms(year, month, day, hour, minute, 0);
+      const solar = lunar.getSolar();
+      solarYear = solar.getYear();
+      solarMonth = solar.getMonth();
+      solarDay = solar.getDay();
     }
 
-    const sajuResult = calculateSaju(finalYear, finalMonth, finalDay, finalHour, finalMinute, gender, unknownTime);
+    // 2) 한국식 30분 시프트 시진 — 점신/천을귀인 호환 (오시=11:30~13:30 등)
+    let finalY = solarYear, finalM = solarMonth, finalD = solarDay;
+    let finalH = unknownTime ? 12 : hour;
+    let finalMin = unknownTime ? 0 : minute;
+    if (!unknownTime) {
+      const dt = new Date(solarYear, solarMonth - 1, solarDay, hour, minute);
+      const shifted = new Date(dt.getTime() - 30 * 60 * 1000);
+      finalY = shifted.getFullYear();
+      finalM = shifted.getMonth() + 1;
+      finalD = shifted.getDate();
+      finalH = shifted.getHours();
+      finalMin = shifted.getMinutes();
+    }
+
+    const sajuResult = calculateSaju(finalY, finalM, finalD, finalH, finalMin, gender, unknownTime);
     setResult(sajuResult);
   }, [searchParams]);
 

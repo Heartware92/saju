@@ -7,8 +7,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
-import { calculateSaju } from '../utils/sajuCalculator';
-import { getCorrectedTimeForSaju, resolveBirthLongitude } from '../utils/timeCorrection';
+import { computeSajuFromProfile } from '../utils/profileSaju';
 import {
   getCharacterFromStem,
   pillarToHanja,
@@ -84,38 +83,15 @@ export default function HomePage() {
     [profiles],
   );
 
-  // 대표 프로필 만세력 계산 (client-side, 즉시) — 진태양시 보정 일관 적용
+  // 대표 프로필 만세력 계산 — 음력/양력, 진태양시 보정 모두 헬퍼에서 일관 처리
   const sajuData = useMemo(() => {
     if (!primary) return null;
-    const [y, m, d] = primary.birth_date.split('-').map(Number);
-    const unknownTime = !primary.birth_time;
-    const [h, min] = unknownTime
-      ? [12, 0]
-      : (primary.birth_time as string).split(':').map(Number);
-    try {
-      const longitude = resolveBirthLongitude(
-        primary.birth_place,
-        (primary as { longitude?: number | null }).longitude ?? null,
-      );
-      const corrected = getCorrectedTimeForSaju(y, m, d, h, min, longitude);
-      const d2 = corrected.trueSolarTime.trueSolarTime;
-      const result = calculateSaju(
-        d2.getFullYear(),
-        d2.getMonth() + 1,
-        d2.getDate(),
-        unknownTime ? 12 : d2.getHours(),
-        unknownTime ? 0 : d2.getMinutes(),
-        primary.gender,
-        unknownTime,
-      );
-      const dayStem = result.pillars.day.gan;
-      const element = STEM_TO_ELEMENT[dayStem];
-      const character = getCharacterFromStem(dayStem);
-      return { pillars: result.pillars, element, character, unknownTime };
-    } catch (e) {
-      console.error('만세력 계산 실패:', e);
-      return null;
-    }
+    const result = computeSajuFromProfile(primary);
+    if (!result) return null;
+    const dayStem = result.pillars.day.gan;
+    const element = STEM_TO_ELEMENT[dayStem];
+    const character = getCharacterFromStem(dayStem);
+    return { pillars: result.pillars, element, character, unknownTime: result.hourUnknown };
   }, [primary]);
 
   return (
