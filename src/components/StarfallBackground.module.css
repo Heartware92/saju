@@ -125,10 +125,10 @@
   border-radius: 999px;
   filter: blur(0.8px);
   box-shadow: 0 0 6px 1px rgba(255, 230, 200, 0.22);
-  /* 머리(오른쪽 밝은 끝)를 우하단으로 향하게 — 꼬리는 좌상단으로 뻗음
-     → 별똥별 아이콘(머리 오른쪽/꼬리 왼쪽) 방향과 일치하는 좌상→우하 낙하 */
+  /* 꼬리 기울기는 별마다 --angle 로 제어 (이동 벡터 방향과 정확히 일치)
+     transform-origin 이 머리이므로 +각도면 꼬리가 head 에서 반대방향으로 뻗음 */
   transform-origin: 100% 50%;
-  transform: rotate(-45deg);
+  transform: rotate(var(--angle, 60deg));
 }
 
 /* 머리 블룸 — 둥근 빛망울로 혜성 느낌 (미사일 같은 납작한 머리 방지) */
@@ -155,13 +155,13 @@
 }
 
 /* 좌상단 외부 → 우하단 외부 대각 낙하
-   등장 순간(0→4%) 즉시 밝아짐 → ease-out 로 쏘아지며 감속 → 후반 트레일 페이드아웃
-   '놓아지는' 느낌(등속/긴 페이드) 이 아닌 '쏘아지는' 임팩트 */
+   이동 벡터는 별마다 --tx, --ty 로 제어 → 꼬리 기울기(--angle)와 정확히 일치
+   등장 순간(0→4%) 즉시 밝아짐 → ease-out 로 쏘아지며 감속 → 후반 트레일 페이드아웃 */
 @keyframes shoot {
-  0%   { transform: translate(0, 0);          opacity: 0; }
-  4%   {                                      opacity: 1; }
-  55%  {                                      opacity: 1; }
-  100% { transform: translate(560px, 980px);  opacity: 0; }
+  0%   { transform: translate(0, 0);                                opacity: 0; }
+  4%   {                                                            opacity: 1; }
+  55%  {                                                            opacity: 1; }
+  100% { transform: translate(var(--tx, 560px), var(--ty, 980px));  opacity: 0; }
 }
 
 /* reduce-motion 사용자는 정적 별빛만 */

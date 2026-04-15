@@ -10,24 +10,32 @@
  */
 import styles from './StarfallBackground.module.css';
 
-/* 9:16 프레임(≈430×764) 중앙(≈215,382) 을 관통하는 궤적.
-   motion 은 translate(560px, 980px) → 기울기 1.75.
-   중심을 지나려면 시작점이 (215 - t·560, 382 - t·980) 상에 놓여야 하며,
-   프레임 바깥 좌상단에서 출발하도록 top/left 를 음수로 둠.
-   궤적에 약간씩 편차를 줘 전부 같은 대각선에 놓이지 않도록 흩뿌림. */
+/* 별마다 각기 다른 이동 벡터(tx, ty) + 꼬리 각도(angle) — 전부 같은 대각선이 아닌
+   40°~70° 범위의 다양한 기울기로 떨어지도록.
+   angle(deg) = atan2(ty, tx) * 180/π — 꼬리 기울기가 실제 이동 방향과 정확히 일치
+   (transform-origin 이 머리이므로 +각도면 꼬리가 반대방향으로 뻗음) */
 const SHOOTING_STARS = [
-  { top: '-15%', left: '-20%', delay: '0s',    duration: '1.8s' },
-  { top: '-12%', left: '-5%',  delay: '0.9s',  duration: '1.6s' },
-  { top: '-20%', left: '-15%', delay: '1.6s',  duration: '2.0s' },
-  { top: '-8%',  left: '-28%', delay: '2.4s',  duration: '2.2s' },
-  { top: '-18%', left: '0%',   delay: '3.1s',  duration: '1.5s' },
-  { top: '-10%', left: '-10%', delay: '3.9s',  duration: '1.8s' },
-  { top: '-22%', left: '-3%',  delay: '4.7s',  duration: '1.7s' },
-  { top: '-14%', left: '-18%', delay: '5.5s',  duration: '2.0s' },
-  { top: '-16%', left: '-8%',  delay: '6.3s',  duration: '1.4s' },
-  { top: '-25%', left: '-22%', delay: '7.2s',  duration: '2.1s' },
-  { top: '-11%', left: '-12%', delay: '8.0s',  duration: '1.6s' },
-  { top: '-19%', left: '5%',   delay: '8.9s',  duration: '1.9s' },
+  // 가파른 낙하 (~65°)
+  { top: '-18%', left: '-15%', delay: '0s',    duration: '1.8s', tx: '420px', ty: '900px',  angle: '65deg' },
+  { top: '-22%', left: '-5%',  delay: '1.1s',  duration: '2.0s', tx: '380px', ty: '950px',  angle: '68deg' },
+  { top: '-15%', left: '-22%', delay: '2.3s',  duration: '1.7s', tx: '400px', ty: '880px',  angle: '66deg' },
+
+  // 중간 각도 (~55°)
+  { top: '-12%', left: '-10%', delay: '0.5s',  duration: '1.6s', tx: '600px', ty: '860px',  angle: '55deg' },
+  { top: '-20%', left: '-18%', delay: '1.8s',  duration: '1.9s', tx: '550px', ty: '820px',  angle: '56deg' },
+  { top: '-8%',  left: '-25%', delay: '3.0s',  duration: '2.1s', tx: '640px', ty: '900px',  angle: '54deg' },
+
+  // 완만한 낙하 (~45°)
+  { top: '-10%', left: '-3%',  delay: '0.9s',  duration: '1.5s', tx: '700px', ty: '700px',  angle: '45deg' },
+  { top: '-14%', left: '-20%', delay: '2.6s',  duration: '1.8s', tx: '720px', ty: '720px',  angle: '45deg' },
+  { top: '-16%', left: '-8%',  delay: '3.8s',  duration: '1.6s', tx: '680px', ty: '660px',  angle: '44deg' },
+
+  // 매우 완만 (~40°)
+  { top: '-6%',  left: '-12%', delay: '1.4s',  duration: '1.7s', tx: '780px', ty: '620px',  angle: '38deg' },
+  { top: '-11%', left: '-6%',  delay: '3.2s',  duration: '1.9s', tx: '760px', ty: '640px',  angle: '40deg' },
+
+  // 가장 가파름 (~72°) 거의 수직 낙하에 가까운 별
+  { top: '-25%', left: '-2%',  delay: '2.0s',  duration: '2.2s', tx: '320px', ty: '980px',  angle: '72deg' },
 ];
 
 export default function StarfallBackground() {
@@ -53,7 +61,10 @@ export default function StarfallBackground() {
             left: s.left,
             animationDelay: s.delay,
             animationDuration: s.duration,
-          }}
+            ['--tx' as string]: s.tx,
+            ['--ty' as string]: s.ty,
+            ['--angle' as string]: s.angle,
+          } as React.CSSProperties}
         >
           <span className={styles.trail} />
         </span>
