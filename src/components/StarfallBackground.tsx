@@ -15,12 +15,13 @@ import styles from './StarfallBackground.module.css';
    9:16 비율 기준 angle = atan2(ty * 16/9, tx) 로 꼬리 기울기 계산 */
 /* 2개 별이 동일 duration(30s)으로 정확히 15s 씩 엇갈려 번갈아 떨어지도록
    각 사이클 앞 70% 는 invisible 대기 → 실제 별똥별은 30s 중 ~8s 만 보임
-   → 한 별이 지나가고 약 7s 정적 후 다음 별 등장 (훨씬 덜 빈번) */
+   delay 음수 — keyframe 의 대기 구간(0~70%=21s)을 미리 소진시켜 페이지 진입 즉시 낙하 시작
+   Star 1 은 진입 직후(~0.6s)에 등장, Star 2 는 15s 뒤 등장, 이후 15s 간격 반복 */
 const SHOOTING_STARS = [
-  // 1) 중간 기울기 (~55°) — 좌상단에서 대각선
-  { startX: '-15%', startY: '-2.5%', tx: '130%', ty: '105%', angle: '55deg', delay: '0s',    duration: '30s' },
-  // 2) 완만 (~42°) — 좌측 멀리에서 넓게 가로지름
-  { startX: '-50%', startY: '0%',    tx: '200%', ty: '100%', angle: '42deg', delay: '15s',   duration: '30s' },
+  // 1) 중간 기울기 (~55°) — 진입 즉시 낙하
+  { startX: '-15%', startY: '-2.5%', tx: '130%', ty: '105%', angle: '55deg', delay: '-21s', duration: '30s' },
+  // 2) 완만 (~42°) — 15s 뒤 낙하
+  { startX: '-50%', startY: '0%',    tx: '200%', ty: '100%', angle: '42deg', delay: '-6s',  duration: '30s' },
 ];
 
 export default function StarfallBackground() {
