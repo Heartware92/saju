@@ -33,6 +33,8 @@ export interface CharacterInfo {
   hanjaElement: string; // 木 / 火 / 土 / 金 / 水
   colorMain: string;
   colorGlow: string;
+  tagline: string;     // 한 줄 요약 (홈 캐릭터 아래 노출)
+  traits: string[];    // 3-4개 성향 키워드
 }
 
 export const CHARACTER_BY_ELEMENT: Record<Element, CharacterInfo> = {
@@ -44,6 +46,8 @@ export const CHARACTER_BY_ELEMENT: Record<Element, CharacterInfo> = {
     hanjaElement: '木',
     colorMain: '#22C55E',
     colorGlow: 'rgba(74, 222, 128, 0.35)',
+    tagline: '곧게 뻗는 생장의 기운',
+    traits: ['성장 지향', '인자함', '추진력', '계획적'],
   },
   '화': {
     element: '화',
@@ -53,6 +57,8 @@ export const CHARACTER_BY_ELEMENT: Record<Element, CharacterInfo> = {
     hanjaElement: '火',
     colorMain: '#F97316',
     colorGlow: 'rgba(251, 191, 36, 0.35)',
+    tagline: '빛나고 확장하는 열정',
+    traits: ['열정적', '직관력', '표현력', '사교적'],
   },
   '토': {
     element: '토',
@@ -62,6 +68,8 @@ export const CHARACTER_BY_ELEMENT: Record<Element, CharacterInfo> = {
     hanjaElement: '土',
     colorMain: '#D97706',
     colorGlow: 'rgba(245, 158, 11, 0.35)',
+    tagline: '중심을 지키는 포용의 기운',
+    traits: ['신뢰감', '안정적', '포용력', '끈기'],
   },
   '금': {
     element: '금',
@@ -71,6 +79,8 @@ export const CHARACTER_BY_ELEMENT: Record<Element, CharacterInfo> = {
     hanjaElement: '金',
     colorMain: '#9CA3AF',
     colorGlow: 'rgba(229, 231, 235, 0.35)',
+    tagline: '단단하고 명확한 절도',
+    traits: ['원칙적', '결단력', '정의감', '분석적'],
   },
   '수': {
     element: '수',
@@ -80,6 +90,8 @@ export const CHARACTER_BY_ELEMENT: Record<Element, CharacterInfo> = {
     hanjaElement: '水',
     colorMain: '#3B82F6',
     colorGlow: 'rgba(139, 92, 246, 0.35)',
+    tagline: '유연하게 흐르는 지혜',
+    traits: ['지혜로움', '적응력', '통찰력', '유연함'],
   },
 };
 

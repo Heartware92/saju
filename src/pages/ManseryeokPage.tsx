@@ -188,75 +188,56 @@ export default function ManseryeokPage() {
         음력 {saju.lunarDateSimple}
       </div>
 
-      {/* 4기둥 표 */}
-      <section className="rounded-2xl p-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] mb-3">
-        {/* 행 라벨 + 4열 */}
-        <div className="grid grid-cols-[44px_repeat(4,1fr)] gap-1.5">
-          {/* 컬럼 헤더 */}
-          <div />
-          {ordered.map((c) => (
-            <div key={c.label} className="text-center text-[11px] font-medium text-text-tertiary">
+      {/* 4기둥 카드 */}
+      <section className="grid grid-cols-4 gap-2 mb-4">
+        {ordered.map((c) => (
+          <div
+            key={c.label}
+            className="rounded-xl p-2.5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] flex flex-col items-center gap-2"
+          >
+            {/* 기둥 라벨 */}
+            <div className="text-[11px] font-medium text-text-tertiary">
               {c.label}
             </div>
-          ))}
 
-          {/* 십신(천간) */}
-          <div className="text-[10px] text-text-tertiary flex items-center justify-end pr-1">십신</div>
-          {ordered.map((c) => (
-            <div key={`tg-${c.label}`} className="text-center text-[11px] text-text-secondary">
+            {/* 천간 십신 */}
+            <div className="text-[11px] text-text-secondary min-h-[15px]">
               {c.unknown ? '—' : c.pillar.tenGodGan || '일간'}
             </div>
-          ))}
 
-          {/* 천간 셀 */}
-          <div className="text-[10px] text-text-tertiary flex items-center justify-end pr-1">천간</div>
-          {ordered.map((c) => (
+            {/* 천간 */}
             <ElementCell
-              key={`gan-${c.label}`}
               element={c.unknown ? '' : (c.pillar.ganElement as Element)}
               text={c.unknown ? '?' : stemToHanja(c.pillar.gan)}
               size="lg"
             />
-          ))}
 
-          {/* 지지 셀 */}
-          <div className="text-[10px] text-text-tertiary flex items-center justify-end pr-1">지지</div>
-          {ordered.map((c) => (
+            {/* 지지 */}
             <ElementCell
-              key={`zhi-${c.label}`}
               element={c.unknown ? '' : (c.pillar.zhiElement as Element)}
               text={c.unknown ? '?' : zhiToHanja(c.pillar.zhi)}
               size="lg"
             />
-          ))}
 
-          {/* 십신(지지 주기) */}
-          <div className="text-[10px] text-text-tertiary flex items-center justify-end pr-1">십신</div>
-          {ordered.map((c) => (
-            <div key={`tgz-${c.label}`} className="text-center text-[11px] text-text-secondary">
+            {/* 지지 십신 */}
+            <div className="text-[11px] text-text-secondary min-h-[15px]">
               {c.unknown ? '—' : c.pillar.tenGodZhi}
             </div>
-          ))}
 
-          {/* 12운성 */}
-          <div className="text-[10px] text-text-tertiary flex items-center justify-end pr-1">운성</div>
-          {ordered.map((c) => (
-            <div key={`ts-${c.label}`} className="text-center text-[11px] text-text-secondary">
+            {/* 12운성 */}
+            <div className="text-[10px] text-text-tertiary border-t border-[var(--border-subtle)] w-full text-center pt-1.5">
               {c.unknown ? '—' : c.pillar.twelveStage}
             </div>
-          ))}
 
-          {/* 지장간 */}
-          <div className="text-[10px] text-text-tertiary flex items-start justify-end pr-1 pt-1">지장간</div>
-          {ordered.map((c) => (
-            <div key={`hs-${c.label}`} className="flex flex-col items-center gap-0.5">
+            {/* 지장간 */}
+            <div className="flex flex-col items-center gap-0.5 w-full">
               {c.unknown || c.pillar.hiddenStems.length === 0 ? (
                 <span className="text-[11px] text-text-tertiary">—</span>
               ) : (
                 c.pillar.hiddenStems.map((hs, i) => {
                   const el = STEM_ELEMENT[hs] as Element;
                   return (
-                    <div key={i} className="w-full flex flex-col items-center leading-tight">
+                    <div key={i} className="w-full flex items-center justify-between px-1 leading-tight">
                       <span
                         className="text-[13px] font-bold"
                         style={{ fontFamily: 'var(--font-serif)', color: ELEMENT_CELL_COLORS[el]?.bg }}
@@ -269,8 +250,8 @@ export default function ManseryeokPage() {
                 })
               )}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </section>
 
       {/* 오행 개수 */}

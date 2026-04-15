@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# KASI audit cache (regenerable)
+scripts/.kasi-cache/

@@ -36,13 +36,27 @@ function pad(n) {
   return String(n).padStart(2, '0');
 }
 
+/**
+ * lunar-javascript 의 Solar.getHour() 는 베이징시(UTC+8) 기준으로 절기 시각을 반환한다.
+ * KST(UTC+9) 로 변환하려면 +1 시간 보정 필수.
+ * (KASI 24절기 API 와 교차검증으로 확인됨, 2026-04 작업)
+ */
 function solarToKST(solar) {
+  // 베이징시 → Date 객체로 만든 후 +1h → KST ISO
   const y = solar.getYear();
-  const m = pad(solar.getMonth());
-  const d = pad(solar.getDay());
-  const h = pad(solar.getHour());
-  const mi = pad(solar.getMinute());
-  return `${y}-${m}-${d}T${h}:${mi}:00+09:00`;
+  const m = solar.getMonth();
+  const d = solar.getDay();
+  const h = solar.getHour();
+  const mi = solar.getMinute();
+  const beijing = new Date(Date.UTC(y, m - 1, d, h, mi, 0) - 8 * 3600 * 1000);
+  const kst = new Date(beijing.getTime() + 9 * 3600 * 1000); // UTC + 9
+  return (
+    `${kst.getUTCFullYear()}-` +
+    `${pad(kst.getUTCMonth() + 1)}-` +
+    `${pad(kst.getUTCDate())}T` +
+    `${pad(kst.getUTCHours())}:` +
+    `${pad(kst.getUTCMinutes())}:00+09:00`
+  );
 }
 
 function getJieQiTableForYear(year) {

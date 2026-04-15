@@ -4,6 +4,7 @@
  */
 
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { profileDB, auth } from '../services/supabase';
 import type { BirthProfile } from '../types/credit';
 
@@ -11,8 +12,10 @@ interface ProfileState {
   profiles: BirthProfile[];
   loading: boolean;
   error: string | null;
+  hydrated: boolean;
+  lastFetchedAt: number | null;
 
-  fetchProfiles: () => Promise<void>;
+  fetchProfiles: (opts?: { force?: boolean }) => Promise<void>;
   addProfile: (profile: Omit<BirthProfile, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<BirthProfile | null>;
   updateProfile: (id: string, updates: Partial<Omit<BirthProfile, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => Promise<boolean>;
   deleteProfile: (id: string) => Promise<boolean>;
@@ -20,21 +23,33 @@ interface ProfileState {
   reset: () => void;
 }
 
-export const useProfileStore = create<ProfileState>((set, get) => ({
-  profiles: [],
-  loading: false,
-  error: null,
+const STALE_MS = 60_000;
 
-  fetchProfiles: async () => {
+export const useProfileStore = create<ProfileState>()(
+  persist(
+    (set, get) => ({
+      profiles: [],
+      loading: false,
+      error: null,
+      hydrated: false,
+      lastFetchedAt: null,
+
+  fetchProfiles: async (opts) => {
+    const { lastFetchedAt, profiles } = get();
+    const fresh = lastFetchedAt && Date.now() - lastFetchedAt < STALE_MS;
+    const hasCache = profiles.length > 0;
+    if (!opts?.force && fresh) return;
+
     try {
-      set({ loading: true, error: null });
+      // 캐시가 있으면 백그라운드 갱신 — 로딩 표시 안 함 (깜빡임 방지)
+      set({ loading: !hasCache, error: null });
       const user = await auth.getCurrentUser();
       if (!user) {
-        set({ profiles: [], loading: false });
+        set({ profiles: [], loading: false, lastFetchedAt: Date.now() });
         return;
       }
-      const profiles = await profileDB.getProfiles(user.id);
-      set({ profiles, loading: false });
+      const next = await profileDB.getProfiles(user.id);
+      set({ profiles: next, loading: false, lastFetchedAt: Date.now() });
     } catch (error: any) {
       console.error('Error fetching profiles:', error);
       set({ error: error.message, loading: false });
@@ -113,6 +128,19 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   },
 
   reset: () => {
-    set({ profiles: [], loading: false, error: null });
+    set({ profiles: [], loading: false, error: null, lastFetchedAt: null });
   },
-}));
+    }),
+    {
+      name: 'saju-profiles-cache',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        profiles: state.profiles,
+        lastFetchedAt: state.lastFetchedAt,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
+    },
+  ),
+);

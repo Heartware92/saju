@@ -209,13 +209,31 @@ export default function HomePage() {
                 >
                   {primary.name}
                 </h1>
-                <p className="text-sm font-medium text-text-secondary">
+                <p className="text-sm font-medium text-text-secondary mb-2">
                   <span style={{ color: sajuData.character.colorMain }}>
                     {sajuData.character.hanjaElement}
                   </span>
                   {' · '}
                   {sajuData.character.label}
                 </p>
+                <p className="text-[13px] text-text-secondary mb-2 italic" style={{ fontFamily: 'var(--font-serif)' }}>
+                  "{sajuData.character.tagline}"
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                  {sajuData.character.traits.map((t) => (
+                    <span
+                      key={t}
+                      className="text-[11px] px-2 py-0.5 rounded-full border"
+                      style={{
+                        color: sajuData.character!.colorMain,
+                        borderColor: `${sajuData.character!.colorMain}55`,
+                        backgroundColor: `${sajuData.character!.colorMain}15`,
+                      }}
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
               </motion.div>
 
               {/* 만세력 — 4기둥 한자 */}
