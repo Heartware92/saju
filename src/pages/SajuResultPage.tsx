@@ -624,6 +624,7 @@ export default function SajuResultPage() {
             <h2>사주 원국 (만세력)</h2>
             <div className={styles.pillarsTable}>
               <div className={styles.pillarsHeader}>
+                <span aria-hidden="true" />
                 <span>시주</span>
                 <span>일주</span>
                 <span>월주</span>
