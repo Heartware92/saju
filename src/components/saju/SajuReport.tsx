@@ -201,25 +201,57 @@ function Crystal({ hanja, color, percent, delay, idSuffix }: {
   );
 }
 
+// 상생: 목→화→토→금→수→목 (인접 꼭짓점)
+const SHENG: Array<[number, number]> = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 0]];
+// 상극: 목→토→수→화→금→목 (한 칸 건너)
+const KE: Array<[number, number]> = [[0, 2], [2, 4], [4, 1], [1, 3], [3, 0]];
+
 function ElementCrystalPentagon({ counts }: { counts: Record<'목'|'화'|'토'|'금'|'수', number> }) {
   const W = 340, H = 320;
   const cx = W / 2, cy = H / 2 + 8;
   const R = 112;
   const total = ELEMENT_GEMS.reduce((s, e) => s + (counts[e.key] ?? 0), 0) || 1;
 
+  const vertexPt = (i: number, r = R) => {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+    return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+  };
+
   const pentagonPath = (scale: number) => {
     const pts: string[] = [];
     for (let i = 0; i < 5; i++) {
-      const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-      const x = cx + R * scale * Math.cos(a);
-      const y = cy + R * scale * Math.sin(a);
-      pts.push(`${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`);
+      const p = vertexPt(i, R * scale);
+      pts.push(`${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`);
     }
     return pts.join(' ') + ' Z';
   };
 
+  // 보석 중심에서 양쪽 끝을 safely 잘라내어 화살표가 보석 안으로 파고들지 않도록
+  const GEM_RADIUS = 44;
+  const shortenedLine = (i: number, j: number) => {
+    const p1 = vertexPt(i);
+    const p2 = vertexPt(j);
+    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len, uy = dy / len;
+    const sx = p1.x + ux * GEM_RADIUS;
+    const sy = p1.y + uy * GEM_RADIUS;
+    const ex = p2.x - ux * GEM_RADIUS;
+    const ey = p2.y - uy * GEM_RADIUS;
+    return `M ${sx.toFixed(1)} ${sy.toFixed(1)} L ${ex.toFixed(1)} ${ey.toFixed(1)}`;
+  };
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className={styles.crystalPentagonSvg}>
+      <defs>
+        <marker id="saju-sheng-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M0 0 L10 5 L0 10 Z" fill="#34D399" opacity="0.95" />
+        </marker>
+        <marker id="saju-ke-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto">
+          <path d="M0 0 L10 5 L0 10 Z" fill="#F43F5E" opacity="0.95" />
+        </marker>
+      </defs>
+
       {[1.32, 1.0, 0.5].map((scale, i) => (
         <path
           key={i}
@@ -230,10 +262,45 @@ function ElementCrystalPentagon({ counts }: { counts: Record<'목'|'화'|'토'|'
           strokeDasharray={i === 0 ? '4 4' : undefined}
         />
       ))}
+
+      {/* 상극 — 내부 펜타그램 (보석 뒤, 먼저 렌더) */}
+      {KE.map(([a, b], i) => (
+        <motion.path
+          key={`ke-${i}`}
+          d={shortenedLine(a, b)}
+          stroke="#F43F5E"
+          strokeWidth={1.4}
+          fill="none"
+          strokeDasharray="4 3"
+          markerEnd="url(#saju-ke-head)"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.7 }}
+          transition={{ duration: 0.5, delay: 1.1 + i * 0.08 }}
+        />
+      ))}
+
+      {/* 상생 — 오각형 외곽선 (보석 뒤) */}
+      {SHENG.map(([a, b], i) => (
+        <motion.path
+          key={`sheng-${i}`}
+          d={shortenedLine(a, b)}
+          stroke="#34D399"
+          strokeWidth={1.6}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray="5 4"
+          markerEnd="url(#saju-sheng-head)"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.9 }}
+          transition={{ duration: 0.5, delay: 0.9 + i * 0.08 }}
+        />
+      ))}
+
+      {/* 보석들 — 화살표 위에 올라오도록 마지막에 */}
       {ELEMENT_GEMS.map((gem, i) => {
-        const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-        const gx = cx + R * Math.cos(a) - 40;
-        const gy = cy + R * Math.sin(a) - 50;
+        const p = vertexPt(i);
+        const gx = p.x - 40;
+        const gy = p.y - 50;
         const pct = Math.round(((counts[gem.key] ?? 0) / total) * 100);
         return (
           <g key={gem.key} transform={`translate(${gx}, ${gy})`}>
@@ -248,6 +315,33 @@ function ElementCrystalPentagon({ counts }: { counts: Record<'목'|'화'|'토'|'
         );
       })}
     </svg>
+  );
+}
+
+function ElementPentagonLegend() {
+  return (
+    <div className={styles.pentagonKey}>
+      <span className={styles.pentagonKeyItem}>
+        <span
+          className={styles.pentagonKeySwatch}
+          style={{
+            backgroundColor: '#34D399',
+            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.35) 2px, rgba(0,0,0,0.35) 4px)',
+          }}
+        />
+        상생
+      </span>
+      <span className={styles.pentagonKeyItem}>
+        <span
+          className={styles.pentagonKeySwatch}
+          style={{
+            backgroundColor: '#F43F5E',
+            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px)',
+          }}
+        />
+        상극
+      </span>
+    </div>
   );
 }
 
@@ -291,24 +385,41 @@ function PillarsRelationBoard({
   interactions: Interaction[];
   hourUnknown: boolean;
 }) {
-  const columns = [
-    { col: 0 as PillarCol, pillar: pillars.hour, unknown: hourUnknown },
-    { col: 1 as PillarCol, pillar: pillars.day, unknown: false },
-    { col: 2 as PillarCol, pillar: pillars.month, unknown: false },
-    { col: 3 as PillarCol, pillar: pillars.year, unknown: false },
+  // 팔각형 8꼭짓점 배치 (cyclic 순서: 천간 4 왼→오, 지지 4 오→왼)
+  // 위 4개 = 천간 (시/일/월/년), 아래 4개 = 지지 (시/일/월/년)
+  const VB_W = 360;
+  const VB_H = 280;
+  const padX = 46;
+  const colW = (VB_W - 2 * padX) / 3;
+  const colX = (c: PillarCol) => padX + c * colW;
+  const stemY = 82;
+  const branchY = VB_H - 82; // 198
+
+  const cellY = (row: PillarRow) => (row === 'stem' ? stemY : branchY);
+
+  // 8 꼭짓점 — 팔각형 아웃라인 순서대로
+  const octVertices: Array<{
+    col: PillarCol;
+    row: PillarRow;
+    x: number;
+    y: number;
+    pillar: typeof pillars.hour;
+    unknown: boolean;
+  }> = [
+    { col: 0, row: 'stem',   x: colX(0), y: stemY,   pillar: pillars.hour,  unknown: hourUnknown },
+    { col: 1, row: 'stem',   x: colX(1), y: stemY,   pillar: pillars.day,   unknown: false },
+    { col: 2, row: 'stem',   x: colX(2), y: stemY,   pillar: pillars.month, unknown: false },
+    { col: 3, row: 'stem',   x: colX(3), y: stemY,   pillar: pillars.year,  unknown: false },
+    { col: 3, row: 'branch', x: colX(3), y: branchY, pillar: pillars.year,  unknown: false },
+    { col: 2, row: 'branch', x: colX(2), y: branchY, pillar: pillars.month, unknown: false },
+    { col: 1, row: 'branch', x: colX(1), y: branchY, pillar: pillars.day,   unknown: false },
+    { col: 0, row: 'branch', x: colX(0), y: branchY, pillar: pillars.hour,  unknown: hourUnknown },
   ];
 
-  const VB_W = 400;
-  const VB_H = 260;
-  const colX = (c: PillarCol) => 50 + c * 100;
-  const stemY = 85;
-  const branchY = 175;
-  const stemTopEdge = 40;
-  const branchBotEdge = 220;
-  const stemBusBase = 18;
-  const branchBusBase = 242;
-  const busStep = 10;
-  const cellY = (row: PillarRow) => (row === 'stem' ? stemY : branchY);
+  // 팔각형 아웃라인 path (8꼭짓점 cyclic)
+  const octOutline = octVertices
+    .map((v, i) => `${i === 0 ? 'M' : 'L'}${v.x},${v.y}`)
+    .join(' ') + ' Z';
 
   const edges = interactions
     .map((it, idx) => {
@@ -333,6 +444,10 @@ function PillarsRelationBoard({
   };
   const arcs: Arc[] = [];
 
+  // 셀 외곽까지의 안전 여백 (노드에서 선이 시작하도록)
+  const NODE_PAD = 22;
+
+  // 같은 행 스택: 여러 관계선이 겹치지 않게 단 아래/위로 쌓기
   let stemStack = 0;
   let branchStack = 0;
   let crossStack = 0;
@@ -354,25 +469,40 @@ function PillarsRelationBoard({
         let labelY: number;
 
         if (sameRow && a.row === 'stem') {
-          const busY = stemBusBase - stemStack * busStep;
-          d = `M ${ax} ${stemTopEdge} L ${ax} ${busY} L ${bx} ${busY} L ${bx} ${stemTopEdge}`;
-          labelX = (ax + bx) / 2;
-          labelY = busY;
+          // 천간 2노드 — 위쪽 아치 (quadratic curve)
+          const colDist = Math.abs(a.col - b.col);
+          const archH = 18 + colDist * 6 + stemStack * 8;
+          const midX = (ax + bx) / 2;
+          const controlY = ay - archH;
+          const startY = ay - NODE_PAD;
+          d = `M ${ax} ${startY} Q ${midX} ${controlY} ${bx} ${startY}`;
+          labelX = midX;
+          labelY = controlY + (archH * 0.4);
           stemStack++;
         } else if (sameRow && a.row === 'branch') {
-          const busY = branchBusBase + branchStack * busStep;
-          d = `M ${ax} ${branchBotEdge} L ${ax} ${busY} L ${bx} ${busY} L ${bx} ${branchBotEdge}`;
-          labelX = (ax + bx) / 2;
-          labelY = busY;
+          // 지지 2노드 — 아래쪽 아치
+          const colDist = Math.abs(a.col - b.col);
+          const archH = 18 + colDist * 6 + branchStack * 8;
+          const midX = (ax + bx) / 2;
+          const controlY = ay + archH;
+          const startY = ay + NODE_PAD;
+          d = `M ${ax} ${startY} Q ${midX} ${controlY} ${bx} ${startY}`;
+          labelX = midX;
+          labelY = controlY - (archH * 0.4);
           branchStack++;
         } else {
-          d = `M ${ax} ${ay} L ${bx} ${by}`;
-          const midY = (stemY + branchY) / 2;
-          const midX = (ax + bx) / 2;
+          // 천간 ↔ 지지 — 노드 테두리에서 테두리로 직선
+          const startX = ax;
+          const startY = ay + NODE_PAD;
+          const endX = bx;
+          const endY = by - NODE_PAD;
+          d = `M ${startX} ${startY} L ${endX} ${endY}`;
+          const midY = (startY + endY) / 2;
+          const midX = (startX + endX) / 2;
           const sameCol = a.col === b.col;
           const sign = crossStack % 2 === 0 ? -1 : 1;
           const mag = sameCol
-            ? 30 + Math.floor(crossStack / 2) * 16
+            ? 24 + Math.floor(crossStack / 2) * 16
             : Math.floor(crossStack / 2) * 18;
           labelX = midX + sign * mag;
           labelY = midY;
@@ -392,83 +522,117 @@ function PillarsRelationBoard({
     }
   });
 
+  // 확장 viewBox — 상하 여백 확보 (아치 튀어나오는 공간)
+  const MARGIN_TOP = 60;
+  const MARGIN_BOT = 60;
+  const EXT_H = VB_H + MARGIN_TOP + MARGIN_BOT;
+  const toExtY = (y: number) => y + MARGIN_TOP;
+
   return (
-    <div className={styles.relationBoardWrap}>
-      <div className={styles.pillarsTable}>
-        <div className={styles.pillarsHeader}>
-          <span aria-hidden="true" />
-          <span>시주</span>
-          <span>일주</span>
-          <span>월주</span>
-          <span>년주</span>
-        </div>
-        <div className={styles.relationDataWrap}>
-          <div className={styles.relationSpacerTop} aria-hidden="true" />
-          <div className={`${styles.pillarsRow} ${styles.stemRow}`}>
-            <span className={styles.label}>천간</span>
-            {columns.map(({ col, pillar, unknown }) => (
-              <span
-                key={`rs-${col}`}
-                className={unknown ? styles.hourUnknownCell : ''}
-                style={!unknown ? { color: ELEMENT_COLORS[pillar.ganElement] } : undefined}
-              >
-                {unknown ? '?' : <StemCell gan={pillar.gan} />}
-              </span>
+    <div className={styles.octBoardWrap}>
+      {/* 컬럼 헤더 */}
+      <div className={styles.octColHeader}>
+        <span>시주</span>
+        <span>일주</span>
+        <span>월주</span>
+        <span>년주</span>
+      </div>
+
+      <div
+        className={styles.octBoardInner}
+        style={{ aspectRatio: `${VB_W} / ${EXT_H}` }}
+      >
+        <svg
+          className={styles.octSvg}
+          viewBox={`0 0 ${VB_W} ${EXT_H}`}
+          preserveAspectRatio="xMidYMid meet"
+          aria-hidden="true"
+        >
+          <g transform={`translate(0, ${MARGIN_TOP})`}>
+            {/* 팔각형 아웃라인 — 결속 프레임 */}
+            <path
+              d={octOutline}
+              fill="rgba(124,92,252,0.06)"
+              stroke="rgba(168,132,255,0.35)"
+              strokeWidth={1.2}
+              strokeDasharray="5 4"
+            />
+
+            {/* 꼭짓점 노드 — 글자 뒤 후광 */}
+            {octVertices.map((v, i) => (
+              <circle
+                key={`node-${i}`}
+                cx={v.x}
+                cy={v.y}
+                r={26}
+                fill="rgba(20,12,38,0.85)"
+                stroke={v.unknown ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.14)'}
+                strokeWidth={1}
+              />
             ))}
-          </div>
-          <div className={`${styles.pillarsRow} ${styles.branchRow}`}>
-            <span className={styles.label}>지지</span>
-            {columns.map(({ col, pillar, unknown }) => (
-              <span
-                key={`rb-${col}`}
-                className={unknown ? styles.hourUnknownCell : ''}
-                style={!unknown ? { color: ELEMENT_COLORS[pillar.zhiElement] } : undefined}
-              >
-                {unknown ? '?' : <BranchCell zhi={pillar.zhi} />}
-              </span>
-            ))}
-          </div>
-          <div className={styles.relationSpacerBottom} aria-hidden="true" />
-          <svg
-            className={styles.relationOverlay}
-            viewBox={`0 0 ${VB_W} ${VB_H}`}
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
+
+            {/* 관계 화살/아치 */}
             {arcs.map(a => (
               <motion.path
                 key={a.key}
                 d={a.d}
                 stroke={a.color}
-                strokeWidth={1.6}
+                strokeWidth={1.8}
                 fill="none"
                 strokeLinecap="round"
-                strokeDasharray={a.type === '충' ? '4 3' : '0'}
-                vectorEffect="non-scaling-stroke"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.9 }}
-                transition={{ duration: 0.4 }}
+                strokeDasharray={a.type === '충' ? '5 3' : '0'}
+                initial={{ opacity: 0, pathLength: 0 }}
+                animate={{ opacity: 0.95, pathLength: 1 }}
+                transition={{ duration: 0.7, ease: 'easeOut' }}
               />
             ))}
-          </svg>
-          <div className={styles.relationLabels} aria-hidden="true">
-            {arcs.map(a => (
-              <span
-                key={`lab-${a.key}`}
-                className={styles.relationLabelBadge}
-                style={{
-                  left: `${(a.labelX / VB_W) * 100}%`,
-                  top: `${(a.labelY / VB_H) * 100}%`,
-                  color: a.color,
-                  borderColor: a.color,
-                }}
-              >
-                {a.type}
-              </span>
-            ))}
-          </div>
-        </div>
+          </g>
+        </svg>
+
+        {/* 8글자 HTML 레이어 — 꼭짓점 위에 절대 배치 */}
+        {octVertices.map((v, i) => {
+          const isStemRow = v.row === 'stem';
+          const element = isStemRow ? v.pillar.ganElement : v.pillar.zhiElement;
+          return (
+            <span
+              key={`cell-${i}`}
+              className={`${styles.octCell} ${v.unknown ? styles.hourUnknownCell : ''}`}
+              style={{
+                left: `${(v.x / VB_W) * 100}%`,
+                top: `${(toExtY(v.y) / EXT_H) * 100}%`,
+                color: v.unknown ? undefined : ELEMENT_COLORS[element],
+              }}
+            >
+              {v.unknown ? '?' : isStemRow ? <StemCell gan={v.pillar.gan} /> : <BranchCell zhi={v.pillar.zhi} />}
+            </span>
+          );
+        })}
+
+        {/* 관계 라벨 배지 */}
+        {arcs.map(a => (
+          <span
+            key={`lab-${a.key}`}
+            className={styles.relationLabelBadge}
+            style={{
+              left: `${(a.labelX / VB_W) * 100}%`,
+              top: `${(toExtY(a.labelY) / EXT_H) * 100}%`,
+              color: a.color,
+              borderColor: a.color,
+            }}
+          >
+            {a.type}
+          </span>
+        ))}
+
+        {/* 행 라벨 (천간/지지) — 왼쪽 바깥에 표시 */}
+        <span className={styles.octRowLabel} style={{ top: `${(toExtY(stemY) / EXT_H) * 100}%` }}>
+          천간
+        </span>
+        <span className={styles.octRowLabel} style={{ top: `${(toExtY(branchY) / EXT_H) * 100}%` }}>
+          지지
+        </span>
       </div>
+
       {interactions.length > 0 && (
         <ul className={styles.relationLegend}>
           {interactions.map((it, i) => (
@@ -727,6 +891,7 @@ export default function SajuReport({ result }: { result: SajuResult }) {
         <div className={styles.crystalPentagonWrap}>
           <ElementCrystalPentagon counts={elementCount as Record<'목'|'화'|'토'|'금'|'수', number>} />
         </div>
+        <ElementPentagonLegend />
 
         <div className={styles.subheading} style={{ marginTop: 20 }}>십성 분포 (十星)</div>
         <div className={styles.sipseongGrid}>

@@ -960,10 +960,75 @@
   color: var(--text-secondary);
 }
 
-/* 사주 관계 — 팔자 보드 + 오버레이 */
+/* 사주 관계 — 팔각형 노드 보드 */
 .relationBoardWrap {
   margin-top: 6px;
 }
+
+/* ============== 팔각형 관계 보드 ============== */
+.octBoardWrap {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.octColHeader {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 0 12px;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.octBoardInner {
+  position: relative;
+  width: 100%;
+  background: var(--space-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.octSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.octCell {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 4px 6px;
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--font-serif);
+  line-height: 1;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.octRowLabel {
+  position: absolute;
+  left: 8px;
+  transform: translateY(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+
 
 .relationBoard,
 .sinsalBoardWrap {
