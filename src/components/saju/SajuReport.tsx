@@ -471,21 +471,15 @@ function PillarsRelationBoard({
   const vertexIdx = (col: PillarCol, row: PillarRow) =>
     row === 'stem' ? col : 7 - col;
 
-  const isAdjacent = (i: number, j: number) => {
-    const diff = Math.abs(i - j);
-    return diff === 1 || diff === 7;
-  };
-
-  // 노드 중심→주어진 타깃 방향으로 NODE_R 만큼 밀어 노드 가장자리 좌표 반환
-  const edgeToward = (center: { x: number; y: number }, targetX: number, targetY: number) => {
-    const dx = targetX - center.x;
-    const dy = targetY - center.y;
+  // 중심에서 멀어지는(바깥) 단위 방향 벡터 — 팔각형 외곽 기준 라벨 배치
+  const outwardAt = (x: number, y: number) => {
+    const dx = x - cx;
+    const dy = y - cy;
     const len = Math.hypot(dx, dy) || 1;
-    return { x: center.x + (dx / len) * NODE_R, y: center.y + (dy / len) * NODE_R };
+    return { x: dx / len, y: dy / len };
   };
 
-  let outsideStack = 0;
-  let insideStack = 0;
+  let lineStack = 0;
 
   edges.forEach(({ it, cells, idx }) => {
     const color = INTERACTION_COLORS[it.type];
@@ -498,45 +492,36 @@ function PillarsRelationBoard({
         const va = octVertices[ia];
         const vb = octVertices[ib];
 
-        let d: string;
+        // 인접/비인접 모두 동일: 두 노드 가장자리를 잇는 직선
+        // 인접이면 팔각형 점선 아웃라인 위에 정확히 덮임
+        // 비인접이면 팔각형 내부를 가로지름
+        const { sx, sy, ex, ey } = shortenedLine(va, vb);
+        const d = `M ${sx.toFixed(1)} ${sy.toFixed(1)} L ${ex.toFixed(1)} ${ey.toFixed(1)}`;
+        const midX = (sx + ex) / 2;
+        const midY = (sy + ey) / 2;
+
+        const diff = Math.abs(ia - ib);
+        const adjacent = diff === 1 || diff === 7;
+
         let labelX: number;
         let labelY: number;
-
-        if (isAdjacent(ia, ib)) {
-          // 팔각형 인접 꼭짓점 — 바깥쪽 아치 (중심에서 멀어지는 방향)
-          const midX = (va.x + vb.x) / 2;
-          const midY = (va.y + vb.y) / 2;
-          const outDx = midX - cx;
-          const outDy = midY - cy;
-          const outLen = Math.hypot(outDx, outDy) || 1;
-          const ux = outDx / outLen;
-          const uy = outDy / outLen;
-          const archDepth = 40 + outsideStack * 14;
-          const ctrlX = midX + ux * archDepth;
-          const ctrlY = midY + uy * archDepth;
-          const sA = edgeToward(va, ctrlX, ctrlY);
-          const sB = edgeToward(vb, ctrlX, ctrlY);
-          d = `M ${sA.x.toFixed(1)} ${sA.y.toFixed(1)} Q ${ctrlX.toFixed(1)} ${ctrlY.toFixed(1)} ${sB.x.toFixed(1)} ${sB.y.toFixed(1)}`;
-          labelX = midX + ux * (archDepth * 0.55);
-          labelY = midY + uy * (archDepth * 0.55);
-          outsideStack++;
+        if (adjacent) {
+          // 아웃라인 위 선 → 라벨은 바깥쪽으로 오프셋
+          const out = outwardAt(midX, midY);
+          labelX = midX + out.x * 14;
+          labelY = midY + out.y * 14;
         } else {
-          // 비인접 꼭짓점 — 팔각형 내부 직선 (노드 가장자리끼리)
-          const { sx, sy, ex, ey } = shortenedLine(va, vb);
-          d = `M ${sx.toFixed(1)} ${sy.toFixed(1)} L ${ex.toFixed(1)} ${ey.toFixed(1)}`;
-          const midX = (sx + ex) / 2;
-          const midY = (sy + ey) / 2;
-          // 선 수직 방향으로 라벨 오프셋 (겹침 방지)
+          // 내부 직선 → 수직 방향 오프셋 + 스택
           const dxL = ex - sx;
           const dyL = ey - sy;
           const len = Math.hypot(dxL, dyL) || 1;
           const perpX = -dyL / len;
           const perpY = dxL / len;
-          const sign = insideStack % 2 === 0 ? 1 : -1;
-          const mag = 10 + Math.floor(insideStack / 2) * 14;
+          const sign = lineStack % 2 === 0 ? 1 : -1;
+          const mag = 10 + Math.floor(lineStack / 2) * 14;
           labelX = midX + perpX * mag * sign;
           labelY = midY + perpY * mag * sign;
-          insideStack++;
+          lineStack++;
         }
 
         arcs.push({
@@ -552,9 +537,9 @@ function PillarsRelationBoard({
     }
   });
 
-  // 확장 viewBox — 아치 튀어나오는 공간
-  const MARGIN_TOP = 70;
-  const MARGIN_BOT = 70;
+  // 확장 viewBox — 상단 컬럼 헤더 + 행 라벨 여유
+  const MARGIN_TOP = 50;
+  const MARGIN_BOT = 30;
   const EXT_H = VB_H + MARGIN_TOP + MARGIN_BOT;
   const toExtY = (y: number) => y + MARGIN_TOP;
 
