@@ -15,7 +15,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Lunar } from 'lunar-javascript';
-import { calculateSaju, SajuResult, TEN_GODS_MAP } from '../utils/sajuCalculator';
+import { calculateSaju, SajuResult, TEN_GODS_MAP, type Interaction, type SinSal } from '../utils/sajuCalculator';
 import { getBasicInterpretation, getDetailedInterpretation } from '../services/fortuneService';
 import { useProfileStore } from '../store/useProfileStore';
 import { computeSajuFromProfile } from '../utils/profileSaju';
@@ -430,6 +430,334 @@ function CountUp({ to, duration = 900 }: { to: number; duration?: number }) {
   return <>{v}</>;
 }
 
+// ============================================
+// 사주 관계 — 팔자 보드 + 관계 오버레이
+// ============================================
+
+// 표시 순서: 시=0, 일=1, 월=2, 년=3
+type PillarCol = 0 | 1 | 2 | 3;
+type PillarRow = 'stem' | 'branch';
+
+const INTERACTION_COLORS: Record<Interaction['type'], string> = {
+  '합': '#34D399',
+  '충': '#F43F5E',
+  '형': '#F59E0B',
+  '파': '#60A5FA',
+  '해': '#A78BFA',
+};
+
+const SINSAL_TYPE_COLORS: Record<SinSal['type'], string> = {
+  good: '#34D399',
+  bad: '#F43F5E',
+  neutral: '#F59E0B',
+};
+
+// '년간' | '월지' | ... → { col, row } (표시 기준)
+function elementPosToCell(el: string): { col: PillarCol; row: PillarRow } | null {
+  const pillarChar = el[0];
+  const kindChar = el[1];
+  const colMap: Record<string, PillarCol> = { '시': 0, '일': 1, '월': 2, '년': 3 };
+  const col = colMap[pillarChar];
+  if (col == null) return null;
+  if (kindChar !== '간' && kindChar !== '지') return null;
+  return { col, row: kindChar === '간' ? 'stem' : 'branch' };
+}
+
+function PillarsRelationBoard({
+  pillars,
+  interactions,
+  hourUnknown,
+}: {
+  pillars: SajuResult['pillars'];
+  interactions: Interaction[];
+  hourUnknown: boolean;
+}) {
+  // 표시 순서 left→right: 시, 일, 월, 년
+  const columns = [
+    { col: 0 as PillarCol, pillar: pillars.hour, unknown: hourUnknown },
+    { col: 1 as PillarCol, pillar: pillars.day, unknown: false },
+    { col: 2 as PillarCol, pillar: pillars.month, unknown: false },
+    { col: 3 as PillarCol, pillar: pillars.year, unknown: false },
+  ];
+
+  // SVG viewBox 좌표
+  const VB_W = 400;
+  const VB_H = 220;
+  const colX = (c: PillarCol) => 50 + c * 100;
+  const stemY = 60;
+  const branchY = 150;
+  const cellY = (row: PillarRow) => (row === 'stem' ? stemY : branchY);
+
+  // 각 interaction → 유효한 셀 좌표 리스트
+  const edges = interactions
+    .map((it, idx) => {
+      const cells = it.elements
+        .map(elementPosToCell)
+        .filter((c): c is { col: PillarCol; row: PillarRow } => c != null);
+      // 중복 제거
+      const unique = cells.filter(
+        (c, i, arr) => arr.findIndex(o => o.col === c.col && o.row === c.row) === i
+      );
+      return { it, cells: unique, idx };
+    })
+    .filter(e => e.cells.length >= 2);
+
+  // 같은 row에서 여러 셀이 있는 관계는 pair마다 arc 하나씩
+  type Arc = {
+    key: string;
+    color: string;
+    type: Interaction['type'];
+    desc: string;
+    d: string;
+    labelX: number;
+    labelY: number;
+  };
+  const arcs: Arc[] = [];
+
+  edges.forEach(({ it, cells, idx }) => {
+    const color = INTERACTION_COLORS[it.type];
+    // 같은 row 내 pair끼리 연결
+    for (let i = 0; i < cells.length; i++) {
+      for (let j = i + 1; j < cells.length; j++) {
+        const a = cells[i];
+        const b = cells[j];
+        const sameRow = a.row === b.row;
+        const ax = colX(a.col);
+        const bx = colX(b.col);
+        const ay = cellY(a.row);
+        const by = cellY(b.row);
+        const mx = (ax + bx) / 2;
+        const dx = Math.abs(bx - ax);
+
+        let d: string;
+        let labelX: number;
+        let labelY: number;
+        if (sameRow) {
+          // 위(stem)면 위로 아치, 아래(branch)면 아래로 아치
+          const dir = a.row === 'stem' ? -1 : 1;
+          const amp = 18 + dx * 0.22;
+          const cpy = ay + dir * amp;
+          d = `M ${ax} ${ay} Q ${mx} ${cpy} ${bx} ${by}`;
+          labelX = mx;
+          labelY = cpy + (dir === -1 ? -2 : 10);
+        } else {
+          // 다른 row: 중간점 오프셋으로 곡선
+          const cpy = (ay + by) / 2;
+          d = `M ${ax} ${ay} Q ${mx + 20} ${cpy} ${bx} ${by}`;
+          labelX = mx + 20;
+          labelY = cpy;
+        }
+        arcs.push({
+          key: `${idx}-${i}-${j}`,
+          color,
+          type: it.type,
+          desc: it.description,
+          d,
+          labelX,
+          labelY,
+        });
+      }
+    }
+  });
+
+  return (
+    <div className={styles.relationBoardWrap}>
+      <div className={styles.relationBoard}>
+        <div className={styles.relationHeaderRow}>
+          {columns.map(({ col }) => (
+            <span key={col} className={styles.relationHeaderCell}>
+              {['시주', '일주', '월주', '년주'][col]}
+            </span>
+          ))}
+        </div>
+        <div className={styles.relationGridWrap}>
+          <div className={styles.relationGrid}>
+            {/* 천간 */}
+            {columns.map(({ col, pillar, unknown }) => (
+              <div
+                key={`s-${col}`}
+                className={styles.relationCell}
+                style={!unknown ? { color: ELEMENT_COLORS[pillar.ganElement] } : undefined}
+              >
+                {unknown ? <span className={styles.relationUnknown}>?</span> : <StemCell gan={pillar.gan} />}
+              </div>
+            ))}
+            {/* 지지 */}
+            {columns.map(({ col, pillar, unknown }) => (
+              <div
+                key={`b-${col}`}
+                className={styles.relationCell}
+                style={!unknown ? { color: ELEMENT_COLORS[pillar.zhiElement] } : undefined}
+              >
+                {unknown ? <span className={styles.relationUnknown}>?</span> : <BranchCell zhi={pillar.zhi} />}
+              </div>
+            ))}
+          </div>
+          <svg
+            className={styles.relationOverlay}
+            viewBox={`0 0 ${VB_W} ${VB_H}`}
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            {arcs.map(a => (
+              <g key={a.key}>
+                <motion.path
+                  d={a.d}
+                  stroke={a.color}
+                  strokeWidth={1.6}
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeDasharray={a.type === '충' ? '4 3' : '0'}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.9 }}
+                  transition={{ duration: 0.4 }}
+                />
+                <rect
+                  x={a.labelX - 9}
+                  y={a.labelY - 8}
+                  width={18}
+                  height={14}
+                  rx={4}
+                  fill="var(--space-surface)"
+                  stroke={a.color}
+                  strokeWidth={1}
+                />
+                <text
+                  x={a.labelX}
+                  y={a.labelY + 2}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fontWeight={700}
+                  fill={a.color}
+                  style={{ fontFamily: 'var(--font-serif)' }}
+                >
+                  {a.type}
+                </text>
+              </g>
+            ))}
+          </svg>
+        </div>
+        {/* 관계 설명 리스트 */}
+        {interactions.length > 0 && (
+          <ul className={styles.relationLegend}>
+            {interactions.map((it, i) => (
+              <li key={i} className={styles.relationLegendItem}>
+                <span
+                  className={styles.relationLegendBadge}
+                  style={{ color: INTERACTION_COLORS[it.type], borderColor: INTERACTION_COLORS[it.type] }}
+                >
+                  {it.type}
+                </span>
+                <span className={styles.relationLegendDesc}>{it.description}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SinSalBoard({
+  pillars,
+  sinSals,
+  hourUnknown,
+}: {
+  pillars: SajuResult['pillars'];
+  sinSals: SinSal[];
+  hourUnknown: boolean;
+}) {
+  const columns = [
+    { col: 0 as PillarCol, pillar: pillars.hour, unknown: hourUnknown },
+    { col: 1 as PillarCol, pillar: pillars.day, unknown: false },
+    { col: 2 as PillarCol, pillar: pillars.month, unknown: false },
+    { col: 3 as PillarCol, pillar: pillars.year, unknown: false },
+  ];
+
+  // 기둥별 신살 그룹화 — 같은 기둥에 같은 신살 중복 금지
+  const byCol: Record<PillarCol, SinSal[]> = { 0: [], 1: [], 2: [], 3: [] };
+  sinSals.forEach(s => {
+    const unique = Array.from(new Set(s.pillars)) as PillarCol[];
+    unique.forEach(c => {
+      if (c === 0 || c === 1 || c === 2 || c === 3) {
+        const exists = byCol[c].some(x => x.name === s.name);
+        if (!exists) byCol[c].push(s);
+      }
+    });
+  });
+
+  return (
+    <div className={styles.sinsalBoardWrap}>
+      <div className={styles.relationHeaderRow}>
+        {columns.map(({ col }) => (
+          <span key={col} className={styles.relationHeaderCell}>
+            {['시주', '일주', '월주', '년주'][col]}
+          </span>
+        ))}
+      </div>
+      <div className={styles.relationGrid}>
+        {/* 천간 */}
+        {columns.map(({ col, pillar, unknown }) => (
+          <div
+            key={`ss-${col}`}
+            className={styles.relationCell}
+            style={!unknown ? { color: ELEMENT_COLORS[pillar.ganElement] } : undefined}
+          >
+            {unknown ? <span className={styles.relationUnknown}>?</span> : <StemCell gan={pillar.gan} />}
+          </div>
+        ))}
+        {/* 지지 */}
+        {columns.map(({ col, pillar, unknown }) => (
+          <div
+            key={`sb-${col}`}
+            className={styles.relationCell}
+            style={!unknown ? { color: ELEMENT_COLORS[pillar.zhiElement] } : undefined}
+          >
+            {unknown ? <span className={styles.relationUnknown}>?</span> : <BranchCell zhi={pillar.zhi} />}
+          </div>
+        ))}
+      </div>
+      {/* 기둥별 신살 태그 */}
+      <div className={styles.sinsalTagRow}>
+        {columns.map(({ col }) => (
+          <div key={col} className={styles.sinsalTagCell}>
+            {byCol[col].length === 0 ? (
+              <span className={styles.sinsalTagEmpty}>—</span>
+            ) : (
+              byCol[col].map(s => (
+                <span
+                  key={s.name}
+                  className={styles.sinsalTag}
+                  style={{ color: SINSAL_TYPE_COLORS[s.type], borderColor: SINSAL_TYPE_COLORS[s.type] }}
+                  title={s.description}
+                >
+                  {s.name}
+                </span>
+              ))
+            )}
+          </div>
+        ))}
+      </div>
+      {/* 신살 설명 리스트 */}
+      {sinSals.length > 0 && (
+        <ul className={styles.sinsalDescList}>
+          {sinSals.map((s, i) => (
+            <li key={`${s.name}-${i}`} className={styles.sinsalDescItem}>
+              <span
+                className={styles.sinsalDescName}
+                style={{ color: SINSAL_TYPE_COLORS[s.type] }}
+              >
+                {s.name}
+              </span>
+              <span className={styles.sinsalDescText}>{s.description}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function SajuResultPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -682,42 +1010,40 @@ export default function SajuResultPage() {
             </div>
           </div>
 
-          {/* 2. 사주 관계 — 천간·지지 신살과 길성 */}
+          {/* 2. 사주 관계 — 천간지지 / 신살과 길성 */}
           {(interactions.length > 0 || sinSals.length > 0) && (
             <div className={styles.section}>
-              <h2>사주 관계 · 천간지지 신살과 길성</h2>
+              <h2>사주 관계</h2>
 
-              {interactions.length > 0 && (
-                <>
-                  <div className={styles.subheading}>합충형파해</div>
-                  <div className={styles.interactionList}>
-                    {interactions.map((inter, idx) => (
-                      <div key={`i-${idx}`} className={styles.interactionItem} data-type={inter.type}>
-                        <span className={styles.interType}>{inter.type}</span>
-                        <span className={styles.interDesc}>{inter.description}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
+              <div className={styles.subheading}>천간과 지지</div>
+              {interactions.length > 0 ? (
+                <PillarsRelationBoard
+                  pillars={pillars}
+                  interactions={interactions}
+                  hourUnknown={result.hourUnknown}
+                />
+              ) : (
+                <p className={styles.sectionHint} style={{ margin: '6px 0 14px' }}>
+                  천간·지지 간 합·충·형·파·해 관계가 두드러지지 않아요.
+                </p>
               )}
 
-              {sinSals.length > 0 && (
-                <>
-                  <div className={styles.subheading} style={{ marginTop: 16 }}>신살 · 길성</div>
-                  <div className={styles.sinsalList}>
-                    {sinSals.map((sinsal, idx) => (
-                      <div key={`s-${idx}`} className={styles.sinsalItem} data-type={sinsal.type}>
-                        <span className={styles.sinsalName}>{sinsal.name}</span>
-                        <span className={styles.sinsalDesc}>{sinsal.description}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
+              <div className={styles.subheading} style={{ marginTop: 18 }}>신살과 길성</div>
+              {sinSals.length > 0 ? (
+                <SinSalBoard
+                  pillars={pillars}
+                  sinSals={sinSals}
+                  hourUnknown={result.hourUnknown}
+                />
+              ) : (
+                <p className={styles.sectionHint} style={{ margin: '6px 0 0' }}>
+                  눈에 띄는 신살·길성이 없어요.
+                </p>
               )}
 
-              <p className={styles.sectionHint}>
-                합·충·형·파·해는 천간과 지지 사이의 기운이 서로 끌어당기거나 부딪히는 방식이에요.
-                신살과 길성은 특정 관계가 만들어내는 특수한 성격·사건의 단서예요.
+              <p className={styles.sectionHint} style={{ marginTop: 14 }}>
+                합·충·형·파·해는 천간과 지지 사이의 기운이 끌어당기거나 부딪히는 방식이에요.
+                신살과 길성은 특정 기둥에서 발동하는 특수한 성격·사건의 단서예요.
               </p>
             </div>
           )}

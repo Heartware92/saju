@@ -139,6 +139,12 @@ export interface SinSal {
   name: string;
   type: 'good' | 'bad' | 'neutral';
   description: string;
+  /**
+   * 신살이 걸린 기둥 인덱스 (표시 순서 기준: 0=시, 1=일, 2=월, 3=년)
+   * - 지지를 기반으로 발동한 신살은 해당 지지가 위치한 기둥을 기록
+   * - 조합형(삼형 등)은 관여한 모든 기둥을 기록
+   */
+  pillars: number[];
 }
 
 export interface Interaction {
@@ -364,7 +370,15 @@ const calculateSinSals = (
   pillars: { year: Pillar; month: Pillar; day: Pillar; hour: Pillar }
 ): SinSal[] => {
   const sinSals: SinSal[] = [];
-  const branches = [pillars.year.zhi, pillars.month.zhi, pillars.day.zhi, pillars.hour.zhi];
+  // 내부 배열 인덱스 → 표시 기둥 인덱스(시0/일1/월2/년3)
+  const branches: Array<{ zhi: string; col: number }> = [
+    { zhi: pillars.year.zhi, col: 3 },
+    { zhi: pillars.month.zhi, col: 2 },
+    { zhi: pillars.day.zhi, col: 1 },
+    { zhi: pillars.hour.zhi, col: 0 },
+  ];
+  const findCols = (target: string): number[] =>
+    branches.filter(b => b.zhi === target).map(b => b.col);
 
   const tianYiGuiRen: Record<string, string[]> = {
     '갑': ['축', '미'], '을': ['자', '신'], '병': ['해', '유'], '정': ['해', '유'],
@@ -373,8 +387,9 @@ const calculateSinSals = (
   };
 
   const guiRenBranches = tianYiGuiRen[dayGan] || [];
-  if (branches.some(b => guiRenBranches.includes(b))) {
-    sinSals.push({ name: '천을귀인', type: 'good', description: '위기 시 귀인의 도움을 받는 최고의 길신' });
+  const guiRenCols = branches.filter(b => guiRenBranches.includes(b.zhi)).map(b => b.col);
+  if (guiRenCols.length > 0) {
+    sinSals.push({ name: '천을귀인', type: 'good', description: '위기 시 귀인의 도움을 받는 최고의 길신', pillars: guiRenCols });
   }
 
   const yeokMa: Record<string, string> = {
@@ -385,8 +400,9 @@ const calculateSinSals = (
 
   const yearBranch = pillars.year.zhi;
   const yeokMaBranch = yeokMa[yearBranch];
-  if (branches.includes(yeokMaBranch)) {
-    sinSals.push({ name: '역마살', type: 'neutral', description: '이동수가 많음, 해외/여행/무역 관련 기회' });
+  const yeokMaCols = findCols(yeokMaBranch);
+  if (yeokMaCols.length > 0) {
+    sinSals.push({ name: '역마살', type: 'neutral', description: '이동수가 많음, 해외/여행/무역 관련 기회', pillars: yeokMaCols });
   }
 
   const doHwa: Record<string, string> = {
@@ -397,8 +413,9 @@ const calculateSinSals = (
   };
 
   const doHwaBranch = doHwa[yearBranch];
-  if (branches.includes(doHwaBranch)) {
-    sinSals.push({ name: '도화살', type: 'neutral', description: '인기와 매력, 연예/예술/대인관계에 유리' });
+  const doHwaCols = findCols(doHwaBranch);
+  if (doHwaCols.length > 0) {
+    sinSals.push({ name: '도화살', type: 'neutral', description: '인기와 매력, 연예/예술/대인관계에 유리', pillars: doHwaCols });
   }
 
   const hwaGae: Record<string, string> = {
@@ -409,23 +426,32 @@ const calculateSinSals = (
   };
 
   const hwaGaeBranch = hwaGae[yearBranch];
-  if (branches.includes(hwaGaeBranch)) {
-    sinSals.push({ name: '화개살', type: 'neutral', description: '종교/학문/예술적 재능, 고독한 탐구자' });
+  const hwaGaeCols = findCols(hwaGaeBranch);
+  if (hwaGaeCols.length > 0) {
+    sinSals.push({ name: '화개살', type: 'neutral', description: '종교/학문/예술적 재능, 고독한 탐구자', pillars: hwaGaeCols });
   }
 
-  const hasInSaSin = ['인', '사', '신'].every(b => branches.includes(b));
-  const hasChukSulMi = ['축', '술', '미'].every(b => branches.includes(b));
+  const hasInSaSin = ['인', '사', '신'].every(b => branches.some(br => br.zhi === b));
+  const hasChukSulMi = ['축', '술', '미'].every(b => branches.some(br => br.zhi === b));
 
-  if (hasInSaSin) sinSals.push({ name: '인사신 삼형', type: 'bad', description: '지세지형 - 교통사고, 수술, 갈등 주의' });
-  if (hasChukSulMi) sinSals.push({ name: '축술미 삼형', type: 'bad', description: '무은지형 - 가족 갈등, 건강 주의' });
+  if (hasInSaSin) {
+    const cols = branches.filter(b => ['인', '사', '신'].includes(b.zhi)).map(b => b.col);
+    sinSals.push({ name: '인사신 삼형', type: 'bad', description: '지세지형 - 교통사고, 수술, 갈등 주의', pillars: cols });
+  }
+  if (hasChukSulMi) {
+    const cols = branches.filter(b => ['축', '술', '미'].includes(b.zhi)).map(b => b.col);
+    sinSals.push({ name: '축술미 삼형', type: 'bad', description: '무은지형 - 가족 갈등, 건강 주의', pillars: cols });
+  }
 
   const guiMun: string[][] = [
     ['자', '유'], ['축', '오'], ['인', '미'], ['묘', '신'], ['진', '사'], ['술', '해']
   ];
 
   guiMun.forEach(pair => {
-    if (branches.includes(pair[0]) && branches.includes(pair[1])) {
-      sinSals.push({ name: '귀문관살', type: 'neutral', description: '영적 감수성, 직관력 강함, 예술/종교적 재능' });
+    const cols = branches.filter(b => pair.includes(b.zhi)).map(b => b.col);
+    const hasBoth = pair.every(p => branches.some(br => br.zhi === p));
+    if (hasBoth) {
+      sinSals.push({ name: '귀문관살', type: 'neutral', description: '영적 감수성, 직관력 강함, 예술/종교적 재능', pillars: cols });
     }
   });
 
@@ -495,13 +521,15 @@ const analyzeInteractions = (
   ];
 
   triCombinations.forEach(([b1, b2, b3, element]) => {
-    const branchVals = branches.map(b => b.val);
-    const matches = [b1, b2, b3].filter(b => branchVals.includes(b));
-    if (matches.length >= 2) {
+    const trioSet = new Set([b1, b2, b3]);
+    const matched = branches.filter(br => trioSet.has(br.val));
+    const uniqueVals = new Set(matched.map(m => m.val));
+    if (uniqueVals.size >= 2) {
+      const matchVals = Array.from(uniqueVals);
       interactions.push({
         type: '합',
-        elements: matches,
-        description: `${matches.join('')} ${matches.length === 3 ? '삼합' : '반합'} ${element}국 - 강력한 ${element} 기운 형성`
+        elements: matched.map(m => m.pos),
+        description: `${matchVals.join('')} ${uniqueVals.size === 3 ? '삼합' : '반합'} ${element}국 - 강력한 ${element} 기운 형성`
       });
     }
   });
