@@ -27,28 +27,28 @@ const MAIN_SERVICES = [
     id: 'newyear',
     title: `${CURRENT_YEAR} 신년운세`,
     desc: '한 해의 흐름',
-    href: '/saju/input?category=newyear',
+    direct: '/saju/newyear',
     gradient: 'from-rose-500/20 to-pink-500/10',
   },
   {
     id: 'traditional',
     title: '정통 사주',
     desc: '사주팔자 종합 분석',
-    href: '/saju',
+    direct: '/saju',
     gradient: 'from-purple-500/20 to-indigo-500/10',
   },
   {
     id: 'today',
     title: '오늘의 운세',
     desc: '오늘 하루 운세',
-    href: '/saju/input?category=today',
+    direct: '/saju/today',
     gradient: 'from-amber-500/20 to-orange-500/10',
   },
   {
-    id: 'date-fortune',
+    id: 'date',
     title: '지정일 운세',
     desc: '특정 날짜의 운세',
-    href: '/saju/input?category=date',
+    direct: '/saju/date',
     gradient: 'from-blue-500/20 to-cyan-500/10',
   },
 ];
@@ -58,17 +58,29 @@ const SECONDARY_SERVICES = [
     id: 'tojeong',
     title: '토정비결',
     desc: '한 해 길흉화복',
-    href: '/saju/input?category=tojeong',
+    direct: '/saju/tojeong',
     gradient: 'from-emerald-500/20 to-teal-500/10',
   },
   {
     id: 'zamidusu',
     title: '자미두수',
     desc: '별자리 명리',
-    href: '/saju/input?category=zamidusu',
+    direct: '/saju/zamidusu',
     gradient: 'from-violet-500/20 to-fuchsia-500/10',
   },
 ];
+
+/**
+ * 대표 프로필 존재 여부에 따라 이동 경로를 결정한다.
+ * - primary 있음: 바로 결과 페이지로 (각 결과 페이지가 primary profile 을 읽어 해석)
+ * - primary 없음: 입력 화면으로 이동 (카테고리 쿼리 유지)
+ * - traditional/tarot 처럼 항상 직행인 경로는 그대로
+ */
+function resolveHref(id: string, direct: string, hasPrimary: boolean): string {
+  if (id === 'traditional') return direct;
+  if (hasPrimary) return direct;
+  return `/saju/input?category=${id}`;
+}
 
 const SUB_SERVICES = [
   { id: 'love',   title: '애정운', href: '/saju/input?category=love' },
@@ -101,7 +113,7 @@ export default function HomePage() {
     [profiles],
   );
 
-  // 대표 프로필 만세력 계산 — 음력/양력, 진태양시 보정 모두 헬퍼에서 일관 처리
+  // 대표 프로필 만세력 계산 — 음력/양력 변환은 헬퍼에서 일관 처리
   const sajuData = useMemo(() => {
     if (!primary) return null;
     const result = computeSajuFromProfile(primary);
@@ -322,7 +334,7 @@ export default function HomePage() {
         >
           {MAIN_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>
-              <Link href={svc.href}>
+              <Link href={resolveHref(svc.id, svc.direct, !!primary)}>
                 <div className={`
                   relative rounded-xl p-3 h-[88px]
                   bg-gradient-to-br ${svc.gradient}
@@ -351,7 +363,7 @@ export default function HomePage() {
         >
           {SECONDARY_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>
-              <Link href={svc.href}>
+              <Link href={resolveHref(svc.id, svc.direct, !!primary)}>
                 <div className={`
                   relative rounded-xl p-3 h-[88px]
                   bg-gradient-to-br ${svc.gradient}

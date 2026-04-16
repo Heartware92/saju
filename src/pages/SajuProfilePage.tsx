@@ -60,7 +60,6 @@ export default function SajuProfilePage() {
       gender: profile.gender,
       calendarType: profile.calendar_type,
       longitude: coords.lng.toString(),
-      useTrueSolarTime: 'true',
       unknownTime: unknownTime.toString(),
       category: 'traditional',
     });

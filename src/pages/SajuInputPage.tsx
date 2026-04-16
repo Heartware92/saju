@@ -47,7 +47,6 @@ export default function SajuInputPage() {
   const [minute, setMinute] = useState(0)
   const [unknownTime, setUnknownTime] = useState(false)
   const [birthPlace, setBirthPlace] = useState('seoul')
-  const [useTrueSolarTime, setUseTrueSolarTime] = useState(true)
   const [targetDate, setTargetDate] = useState('')
 
   // 프로필 관련
@@ -179,7 +178,6 @@ export default function SajuInputPage() {
       gender,
       calendarType,
       longitude: coords.lng.toString(),
-      useTrueSolarTime: useTrueSolarTime.toString(),
       unknownTime: unknownTime.toString(),
       category: categoryId,
       ...(targetDate && { targetDate })
@@ -392,9 +390,6 @@ export default function SajuInputPage() {
               )
             ))}
           </select>
-          <p className={styles.hint}>
-            진태양시 보정에 출생지 경도가 사용됩니다
-          </p>
         </div>
 
         {/* 지정일 운세 전용: 날짜 입력 */}
@@ -412,21 +407,6 @@ export default function SajuInputPage() {
             </p>
           </div>
         )}
-
-        {/* 진태양시 옵션 */}
-        <div className={styles.section}>
-          <label className={styles.checkboxFull}>
-            <input
-              type="checkbox"
-              checked={useTrueSolarTime}
-              onChange={(e) => setUseTrueSolarTime(e.target.checked)}
-            />
-            <span>진태양시 보정 적용</span>
-          </label>
-          <p className={styles.hint}>
-            경도 보정과 균시차를 적용하여 정확한 시주를 계산합니다
-          </p>
-        </div>
 
         {/* 제출 버튼 */}
         <motion.button

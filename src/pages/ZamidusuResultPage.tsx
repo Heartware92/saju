@@ -16,34 +16,57 @@ import {
 } from '../engine/zamidusu';
 import { buildZamidusuReading, type ZamidusuReading } from '../engine/zamidusu/reading';
 import styles from './ZamidusuResultPage.module.css';
+import { useProfileStore } from '../store/useProfileStore';
 
 export default function ZamidusuResultPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { profiles, fetchProfiles } = useProfileStore();
+  const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
 
   const [chart, setChart] = useState<ZamidusuResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedPalace, setSelectedPalace] = useState<number | null>(null);
+
+  const hasUrlBirth = !!(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
+  const primaryHourUnknown = !!primary && !primary.birth_time;
   // 자미두수는 시지(時支)로 명궁 위치가 결정되므로 시간 미상이면 명반 자체가 성립하지 않음
-  const hourUnknown = searchParams?.get('unknownTime') === 'true';
+  const hourUnknown = hasUrlBirth
+    ? searchParams?.get('unknownTime') === 'true'
+    : primaryHourUnknown;
+
+  useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
   useEffect(() => {
-    if (!searchParams) return;
-    if (hourUnknown) return; // 시간 미상이면 계산 스킵 — 아래에서 안내 화면 렌더
+    if (hourUnknown) return;
     try {
-      const year = parseInt(searchParams.get('year') || '1990');
-      const month = parseInt(searchParams.get('month') || '1');
-      const day = parseInt(searchParams.get('day') || '1');
-      const hour = parseInt(searchParams.get('hour') || '12');
-      const gender = (searchParams.get('gender') || 'male') as 'male' | 'female';
-      const calendarType = (searchParams.get('calendarType') || 'solar') as 'solar' | 'lunar';
+      let year: number, month: number, day: number, hour: number;
+      let gender: 'male' | 'female';
+      let calendarType: 'solar' | 'lunar';
+
+      if (hasUrlBirth) {
+        year = parseInt(searchParams!.get('year')!);
+        month = parseInt(searchParams!.get('month')!);
+        day = parseInt(searchParams!.get('day')!);
+        hour = parseInt(searchParams!.get('hour') || '12');
+        gender = (searchParams!.get('gender') || 'male') as 'male' | 'female';
+        calendarType = (searchParams!.get('calendarType') || 'solar') as 'solar' | 'lunar';
+      } else if (primary) {
+        const [y, m, d] = primary.birth_date.split('-').map(Number);
+        year = y; month = m; day = d;
+        hour = primary.birth_time ? parseInt(primary.birth_time.split(':')[0]) : 12;
+        gender = primary.gender;
+        calendarType = primary.calendar_type;
+      } else {
+        return;
+      }
 
       const result = calculateZamidusu(year, month, day, hour, gender, calendarType);
       setChart(result);
     } catch (e: any) {
       setError(e?.message || '명반 계산 실패');
     }
-  }, [searchParams, hourUnknown]);
+  }, [searchParams, hourUnknown, hasUrlBirth, primary]);
 
   const reading: ZamidusuReading | null = useMemo(() => {
     return chart ? buildZamidusuReading(chart) : null;
@@ -121,6 +144,20 @@ export default function ZamidusuResultPage() {
     );
   }
 
+  if (!hasUrlBirth && !primary) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <p className="text-[15px] font-semibold text-text-primary mb-2">대표 프로필이 없어요</p>
+        <p className="text-[13px] text-text-secondary mb-4">프로필을 등록하면 자미두수를 볼 수 있어요</p>
+        <button
+          onClick={() => router.push('/saju/input')}
+          className="px-4 py-2 rounded-lg bg-cta text-white text-[13px] font-semibold"
+        >
+          프로필 등록하기
+        </button>
+      </div>
+    );
+  }
   if (error) {
     return <div className={styles.loading}>{error}</div>;
   }

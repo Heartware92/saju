@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import { calculateTojeong, type TojeongResult } from '../engine/tojeong';
 import { buildTojeongReading, type TojeongReading } from '../engine/tojeong/reading';
 import type { GwaeGrade } from '../engine/tojeong/gwae-table';
+import { useProfileStore } from '../store/useProfileStore';
 
 const GRADE_COLOR: Record<GwaeGrade, string> = {
   '대길': '#34D399',
@@ -25,14 +26,29 @@ const GRADE_COLOR: Record<GwaeGrade, string> = {
 export default function TojeongResultPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { profiles, fetchProfiles } = useProfileStore();
+  const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
+
+  useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
   const { tojeong, reading } = useMemo(() => {
-    if (!searchParams) return { tojeong: null, reading: null };
-    const year = parseInt(searchParams.get('year') || '1990');
-    const month = parseInt(searchParams.get('month') || '1');
-    const day = parseInt(searchParams.get('day') || '1');
-    const calendarType = (searchParams.get('calendarType') || 'solar') as 'solar' | 'lunar';
-    const targetYear = parseInt(searchParams.get('targetYear') || String(new Date().getFullYear()));
+    const hasUrlBirth = !!(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
+    let year: number, month: number, day: number, calendarType: 'solar' | 'lunar';
+    const targetYear = parseInt(searchParams?.get('targetYear') || String(new Date().getFullYear()));
+
+    if (hasUrlBirth) {
+      year = parseInt(searchParams!.get('year')!);
+      month = parseInt(searchParams!.get('month')!);
+      day = parseInt(searchParams!.get('day')!);
+      calendarType = (searchParams!.get('calendarType') || 'solar') as 'solar' | 'lunar';
+    } else if (primary) {
+      const [y, m, d] = primary.birth_date.split('-').map(Number);
+      year = y; month = m; day = d;
+      calendarType = primary.calendar_type;
+    } else {
+      return { tojeong: null, reading: null };
+    }
+
     try {
       const t = calculateTojeong(year, month, day, calendarType, targetYear);
       const r = buildTojeongReading(t);
@@ -40,9 +56,23 @@ export default function TojeongResultPage() {
     } catch {
       return { tojeong: null, reading: null };
     }
-  }, [searchParams]);
+  }, [searchParams, primary]);
 
   if (!tojeong || !reading) {
+    if (!primary && !searchParams?.get('year')) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+          <p className="text-[15px] font-semibold text-text-primary mb-2">대표 프로필이 없어요</p>
+          <p className="text-[13px] text-text-secondary mb-4">프로필을 등록하면 토정비결을 볼 수 있어요</p>
+          <button
+            onClick={() => router.push('/saju/input')}
+            className="px-4 py-2 rounded-lg bg-cta text-white text-[13px] font-semibold"
+          >
+            프로필 등록하기
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-cta border-t-transparent rounded-full animate-spin" />

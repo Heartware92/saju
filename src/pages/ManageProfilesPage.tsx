@@ -317,7 +317,7 @@ export default function ManageProfilesPage() {
 
                 <div>
                   <label className="text-[11px] text-text-tertiary block mb-1">
-                    출생지 <span className="text-text-tertiary">(진태양시 보정에 사용)</span>
+                    출생지
                   </label>
                   <select
                     value={editForm.birth_place}
