@@ -3,10 +3,7 @@
 /**
  * 사주 결과 페이지 — 전체 무료 공개
  *
- * 섹션:
- * - 원국 탭: 사주 원국표, 오행 분포, 신강신약, 용신, 격국, 십성
- * - 대운·세운 탭: 대운 10단, 세운, 신살, 합충형파해
- * - 명리 풀이 탭: 기본 + 상세 해석 (AI 생성)
+ * 단일 플로우: 사주 원국 → 사주 관계(합충형파해·신살) → 오행·십성 → 신강신약 → 대운수 → 명리 풀이
  *
  * 입력 소스 우선순위:
  * 1. URL 쿼리 (year/month/day/hour/...)
@@ -89,7 +86,6 @@ function computeSipseongDistribution(result: SajuResult) {
   return counts;
 }
 
-type TabType = 'wonguk' | 'daewoon' | 'analysis';
 
 const ELEMENT_COLORS: Record<string, string> = {
   '목': '#34D399',
@@ -137,18 +133,11 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
   });
   const dataPolygon = dataPoints.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
 
-  // 상생 호 — 외곽 Q 커브
+  // 상생 — 오각형 테두리 (인접 꼭짓점 직선, 점선 처리)
   const shengArcD = (a: number, b: number) => {
-    const pa = pt(a, rMax + 4);
-    const pb = pt(b, rMax + 4);
-    const mx = (pa.x + pb.x) / 2;
-    const my = (pa.y + pb.y) / 2;
-    const dx = mx - cx;
-    const dy = my - cy;
-    const len = Math.max(1, Math.sqrt(dx * dx + dy * dy));
-    const cpx = cx + (dx / len) * (rMax + 36);
-    const cpy = cy + (dy / len) * (rMax + 36);
-    return `M ${pa.x.toFixed(1)} ${pa.y.toFixed(1)} Q ${cpx.toFixed(1)} ${cpy.toFixed(1)} ${pb.x.toFixed(1)} ${pb.y.toFixed(1)}`;
+    const pa = pt(a, rMax);
+    const pb = pt(b, rMax);
+    return `M ${pa.x.toFixed(1)} ${pa.y.toFixed(1)} L ${pb.x.toFixed(1)} ${pb.y.toFixed(1)}`;
   };
 
   // 상극 라인 — 내부 직선 (양 끝 안쪽으로 당겨 꼭짓점 닷과 겹치지 않게)
@@ -228,7 +217,7 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
           style={{ transformOrigin: `${cx}px ${cy}px` }}
         />
 
-        {/* 상생 — 외곽 호 */}
+        {/* 상생 — 오각형 테두리(점선) */}
         {SHENG.map(([a, b], i) => (
           <motion.path
             key={`sheng-${i}`}
@@ -236,11 +225,12 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
             stroke="#34D399"
             strokeWidth={1.5}
             fill="none"
-            opacity={0.65}
+            opacity={0.7}
             strokeLinecap="round"
+            strokeDasharray="4 4"
             markerEnd="url(#shengHead)"
             initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 0.65 }}
+            animate={{ pathLength: 1, opacity: 0.7 }}
             transition={{ duration: 0.6, delay: 0.9 + i * 0.1 }}
           />
         ))}
@@ -317,15 +307,18 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
       {/* 생·극 범례 */}
       <div className={styles.pentagonKey}>
         <span className={styles.pentagonKeyItem}>
-          <span className={styles.pentagonKeySwatch} style={{ backgroundColor: '#34D399' }} />
-          相生
+          <span
+            className={styles.pentagonKeySwatch}
+            style={{ backgroundColor: '#34D399', backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.35) 2px, rgba(0,0,0,0.35) 4px)' }}
+          />
+          상생
         </span>
         <span className={styles.pentagonKeyItem}>
           <span
             className={styles.pentagonKeySwatch}
             style={{ backgroundColor: '#F43F5E', backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px)' }}
           />
-          相剋
+          상극
         </span>
       </div>
 
@@ -442,7 +435,6 @@ export default function SajuResultPage() {
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
 
-  const [activeTab, setActiveTab] = useState<TabType>('wonguk');
   const [result, setResult] = useState<SajuResult | null>(null);
 
   const [basicAnalysis, setBasicAnalysis] = useState('');
@@ -620,140 +612,178 @@ export default function SajuResultPage() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className={styles.tabs}>
-        <button
-          className={`${styles.tab} ${activeTab === 'wonguk' ? styles.active : ''}`}
-          onClick={() => setActiveTab('wonguk')}
-        >
-          사주 원국
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'daewoon' ? styles.active : ''}`}
-          onClick={() => setActiveTab('daewoon')}
-        >
-          대운·세운
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'analysis' ? styles.active : ''}`}
-          onClick={() => setActiveTab('analysis')}
-        >
-          명리 풀이
-        </button>
-      </div>
-
-      {/* Content */}
+      {/* Content — 단일 플로우: 사주원국 → 사주관계 → 오행·십성 → 신강신약 → 대운수 → 명리풀이 */}
       <div className={styles.content}>
-        {/* 원국 탭 (무료) */}
-        {activeTab === 'wonguk' && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            {/* 사주 원국표 */}
-            <div className={styles.section}>
-              <h2>사주 원국 (만세력)</h2>
-              <div className={styles.pillarsTable}>
-                <div className={styles.pillarsHeader}>
-                  <span>시주</span>
-                  <span>일주</span>
-                  <span>월주</span>
-                  <span>년주</span>
-                </div>
-                <div className={styles.pillarsRow}>
-                  <span className={styles.label}>십성</span>
-                  <span className={result.hourUnknown ? styles.hourUnknownCell : ''}>
-                    {result.hourUnknown ? '—' : pillars.hour.tenGodGan}
-                  </span>
-                  <span className={styles.highlight}>일주</span>
-                  <span>{pillars.month.tenGodGan}</span>
-                  <span>{pillars.year.tenGodGan}</span>
-                </div>
-                <div className={`${styles.pillarsRow} ${styles.stemRow}`}>
-                  <span className={styles.label}>천간</span>
-                  <span
-                    className={result.hourUnknown ? styles.hourUnknownCell : ''}
-                    style={result.hourUnknown ? undefined : { color: ELEMENT_COLORS[pillars.hour.ganElement] }}
-                  >
-                    {result.hourUnknown ? '?' : <StemCell gan={pillars.hour.gan} />}
-                  </span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.day.ganElement] }}><StemCell gan={pillars.day.gan} /></span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.month.ganElement] }}><StemCell gan={pillars.month.gan} /></span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.year.ganElement] }}><StemCell gan={pillars.year.gan} /></span>
-                </div>
-                <div className={`${styles.pillarsRow} ${styles.branchRow}`}>
-                  <span className={styles.label}>지지</span>
-                  <span
-                    className={result.hourUnknown ? styles.hourUnknownCell : ''}
-                    style={result.hourUnknown ? undefined : { color: ELEMENT_COLORS[pillars.hour.zhiElement] }}
-                  >
-                    {result.hourUnknown ? '?' : <BranchCell zhi={pillars.hour.zhi} />}
-                  </span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.day.zhiElement] }}><BranchCell zhi={pillars.day.zhi} /></span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.month.zhiElement] }}><BranchCell zhi={pillars.month.zhi} /></span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.year.zhiElement] }}><BranchCell zhi={pillars.year.zhi} /></span>
-                </div>
-                <div className={styles.pillarsRow}>
-                  <span className={styles.label}>지장간</span>
-                  <span className={`${styles.hiddenStems} ${result.hourUnknown ? styles.hourUnknownCell : ''}`}>
-                    {result.hourUnknown ? '—' : pillars.hour.hiddenStems.map(stemToHanja).join(' ')}
-                  </span>
-                  <span className={styles.hiddenStems}>{pillars.day.hiddenStems.map(stemToHanja).join(' ')}</span>
-                  <span className={styles.hiddenStems}>{pillars.month.hiddenStems.map(stemToHanja).join(' ')}</span>
-                  <span className={styles.hiddenStems}>{pillars.year.hiddenStems.map(stemToHanja).join(' ')}</span>
-                </div>
-                <div className={styles.pillarsRow}>
-                  <span className={styles.label}>12운성</span>
-                  <span className={result.hourUnknown ? styles.hourUnknownCell : ''}>
-                    {result.hourUnknown ? '—' : pillars.hour.twelveStage}
-                  </span>
-                  <span>{pillars.day.twelveStage}</span>
-                  <span>{pillars.month.twelveStage}</span>
-                  <span>{pillars.year.twelveStage}</span>
-                </div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+
+          {/* 1. 사주 원국 */}
+          <div className={styles.section}>
+            <h2>사주 원국 (만세력)</h2>
+            <div className={styles.pillarsTable}>
+              <div className={styles.pillarsHeader}>
+                <span>시주</span>
+                <span>일주</span>
+                <span>월주</span>
+                <span>년주</span>
+              </div>
+              <div className={styles.pillarsRow}>
+                <span className={styles.label}>십성</span>
+                <span className={result.hourUnknown ? styles.hourUnknownCell : ''}>
+                  {result.hourUnknown ? '—' : pillars.hour.tenGodGan}
+                </span>
+                <span className={styles.highlight}>일주</span>
+                <span>{pillars.month.tenGodGan}</span>
+                <span>{pillars.year.tenGodGan}</span>
+              </div>
+              <div className={`${styles.pillarsRow} ${styles.stemRow}`}>
+                <span className={styles.label}>천간</span>
+                <span
+                  className={result.hourUnknown ? styles.hourUnknownCell : ''}
+                  style={result.hourUnknown ? undefined : { color: ELEMENT_COLORS[pillars.hour.ganElement] }}
+                >
+                  {result.hourUnknown ? '?' : <StemCell gan={pillars.hour.gan} />}
+                </span>
+                <span style={{ color: ELEMENT_COLORS[pillars.day.ganElement] }}><StemCell gan={pillars.day.gan} /></span>
+                <span style={{ color: ELEMENT_COLORS[pillars.month.ganElement] }}><StemCell gan={pillars.month.gan} /></span>
+                <span style={{ color: ELEMENT_COLORS[pillars.year.ganElement] }}><StemCell gan={pillars.year.gan} /></span>
+              </div>
+              <div className={`${styles.pillarsRow} ${styles.branchRow}`}>
+                <span className={styles.label}>지지</span>
+                <span
+                  className={result.hourUnknown ? styles.hourUnknownCell : ''}
+                  style={result.hourUnknown ? undefined : { color: ELEMENT_COLORS[pillars.hour.zhiElement] }}
+                >
+                  {result.hourUnknown ? '?' : <BranchCell zhi={pillars.hour.zhi} />}
+                </span>
+                <span style={{ color: ELEMENT_COLORS[pillars.day.zhiElement] }}><BranchCell zhi={pillars.day.zhi} /></span>
+                <span style={{ color: ELEMENT_COLORS[pillars.month.zhiElement] }}><BranchCell zhi={pillars.month.zhi} /></span>
+                <span style={{ color: ELEMENT_COLORS[pillars.year.zhiElement] }}><BranchCell zhi={pillars.year.zhi} /></span>
+              </div>
+              <div className={styles.pillarsRow}>
+                <span className={styles.label}>지장간</span>
+                <span className={`${styles.hiddenStems} ${result.hourUnknown ? styles.hourUnknownCell : ''}`}>
+                  {result.hourUnknown ? '—' : pillars.hour.hiddenStems.map(stemToHanja).join(' ')}
+                </span>
+                <span className={styles.hiddenStems}>{pillars.day.hiddenStems.map(stemToHanja).join(' ')}</span>
+                <span className={styles.hiddenStems}>{pillars.month.hiddenStems.map(stemToHanja).join(' ')}</span>
+                <span className={styles.hiddenStems}>{pillars.year.hiddenStems.map(stemToHanja).join(' ')}</span>
+              </div>
+              <div className={styles.pillarsRow}>
+                <span className={styles.label}>12운성</span>
+                <span className={result.hourUnknown ? styles.hourUnknownCell : ''}>
+                  {result.hourUnknown ? '—' : pillars.hour.twelveStage}
+                </span>
+                <span>{pillars.day.twelveStage}</span>
+                <span>{pillars.month.twelveStage}</span>
+                <span>{pillars.year.twelveStage}</span>
               </div>
             </div>
+          </div>
 
-            {/* 오행 분포 */}
+          {/* 2. 사주 관계 — 천간·지지 신살과 길성 */}
+          {(interactions.length > 0 || sinSals.length > 0) && (
             <div className={styles.section}>
-              <h2>오행 분포</h2>
-              <ElementPentagon percents={elementPercent as unknown as Record<string, number>} />
-            </div>
+              <h2>사주 관계 · 천간지지 신살과 길성</h2>
 
-            {/* 신강/신약 */}
-            <div className={styles.section}>
-              <h2>신강/신약 판정</h2>
-              <div className={styles.strengthBox}>
-                <div className={styles.strengthBadge} data-strong={result.isStrong}>
-                  {result.isStrong ? '신강' : '신약'} ({result.strengthScore}점)
-                </div>
-                <p>{result.strengthAnalysis}</p>
-              </div>
-            </div>
+              {interactions.length > 0 && (
+                <>
+                  <div className={styles.subheading}>합충형파해</div>
+                  <div className={styles.interactionList}>
+                    {interactions.map((inter, idx) => (
+                      <div key={`i-${idx}`} className={styles.interactionItem} data-type={inter.type}>
+                        <span className={styles.interType}>{inter.type}</span>
+                        <span className={styles.interDesc}>{inter.description}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
 
-            {/* 용신 */}
-            <div className={styles.section}>
-              <h2>용신/희신/기신</h2>
-              <div className={styles.yongshinBox}>
-                <div className={styles.yongshinItem}>
-                  <span className={styles.yLabel}>용신</span>
-                  <span className={styles.yValue}>{result.yongSinElement} ({result.yongSin})</span>
-                </div>
-                <div className={styles.yongshinItem}>
-                  <span className={styles.yLabel}>희신</span>
-                  <span className={styles.yValue}>{result.heeSin}</span>
-                </div>
-                <div className={styles.yongshinItem}>
-                  <span className={styles.yLabel}>기신</span>
-                  <span className={styles.yValue}>{result.giSin}</span>
-                </div>
-              </div>
+              {sinSals.length > 0 && (
+                <>
+                  <div className={styles.subheading} style={{ marginTop: 16 }}>신살 · 길성</div>
+                  <div className={styles.sinsalList}>
+                    {sinSals.map((sinsal, idx) => (
+                      <div key={`s-${idx}`} className={styles.sinsalItem} data-type={sinsal.type}>
+                        <span className={styles.sinsalName}>{sinsal.name}</span>
+                        <span className={styles.sinsalDesc}>{sinsal.description}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
               <p className={styles.sectionHint}>
-                용신은 사주에서 가장 필요한 오행이에요. 이 기운을 보태주는 색, 방향, 시기를 가까이하면 좋아요.
+                합·충·형·파·해는 천간과 지지 사이의 기운이 서로 끌어당기거나 부딪히는 방식이에요.
+                신살과 길성은 특정 관계가 만들어내는 특수한 성격·사건의 단서예요.
               </p>
             </div>
+          )}
 
-            {/* 격국 */}
+          {/* 3. 오행과 십성 */}
+          <div className={styles.section}>
+            <h2>오행과 십성</h2>
+
+            <div className={styles.subheading}>오행 분포</div>
+            <ElementPentagon percents={elementPercent as unknown as Record<string, number>} />
+
+            <div className={styles.subheading} style={{ marginTop: 20 }}>십성 분포 (十星)</div>
+            <div className={styles.sipseongGrid}>
+              {SIPSEONG_ORDER.map((s) => {
+                const count = sipseongDist[s] || 0;
+                const dimmed = count === 0;
+                return (
+                  <div
+                    key={s}
+                    className={`${styles.sipseongItem} ${dimmed ? styles.sipseongDim : ''}`}
+                    style={{ borderColor: dimmed ? 'var(--border-subtle)' : SIPSEONG_COLORS[s] }}
+                  >
+                    <span
+                      className={styles.sipseongName}
+                      style={{ color: dimmed ? 'var(--text-tertiary)' : SIPSEONG_COLORS[s] }}
+                    >
+                      {s}
+                    </span>
+                    <span className={styles.sipseongCount}>{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className={styles.sectionHint}>
+              오행은 내 사주에 깃든 자연의 기운 비율이고, 십성은 일간을 기준으로 다른 간지가 어떤 역할(관성·재성·인성 등)을 하는지 보여줘요.
+            </p>
+          </div>
+
+          {/* 4. 신강신약 */}
+          <div className={styles.section}>
+            <h2>신강신약</h2>
+
+            <div className={styles.strengthBox}>
+              <div className={styles.strengthBadge} data-strong={result.isStrong}>
+                {result.isStrong ? '신강' : '신약'} ({result.strengthScore}점)
+              </div>
+              <p>{result.strengthAnalysis}</p>
+            </div>
+
+            <div className={styles.subheading} style={{ marginTop: 16 }}>용신 · 희신 · 기신</div>
+            <div className={styles.yongshinBox}>
+              <div className={styles.yongshinItem}>
+                <span className={styles.yLabel}>용신</span>
+                <span className={styles.yValue}>{result.yongSinElement} ({result.yongSin})</span>
+              </div>
+              <div className={styles.yongshinItem}>
+                <span className={styles.yLabel}>희신</span>
+                <span className={styles.yValue}>{result.heeSin}</span>
+              </div>
+              <div className={styles.yongshinItem}>
+                <span className={styles.yLabel}>기신</span>
+                <span className={styles.yValue}>{result.giSin}</span>
+              </div>
+            </div>
+
             {gyeokguk && (
-              <div className={styles.section}>
-                <h2>격국 (格局)</h2>
+              <>
+                <div className={styles.subheading} style={{ marginTop: 16 }}>격국 (格局)</div>
                 <div className={styles.gyeokgukBox}>
                   <div className={styles.gyeokgukHeader}>
                     <span className={styles.gyeokgukName}>
@@ -794,163 +824,93 @@ export default function SajuResultPage() {
                     </div>
                   </div>
                 </div>
-                <p className={styles.sectionHint}>
-                  격국은 사주의 '주된 성격 유형'이에요. 월지에서 어떤 기운이 주도권을 잡았는지로 판정해요.
-                </p>
-              </div>
+              </>
             )}
 
-            {/* 십성 분포 */}
-            <div className={styles.section}>
-              <h2>십성 분포 (十星)</h2>
-              <div className={styles.sipseongGrid}>
-                {SIPSEONG_ORDER.map((s) => {
-                  const count = sipseongDist[s] || 0;
-                  const dimmed = count === 0;
-                  return (
-                    <div
-                      key={s}
-                      className={`${styles.sipseongItem} ${dimmed ? styles.sipseongDim : ''}`}
-                      style={{ borderColor: dimmed ? 'var(--border-subtle)' : SIPSEONG_COLORS[s] }}
-                    >
-                      <span
-                        className={styles.sipseongName}
-                        style={{ color: dimmed ? 'var(--text-tertiary)' : SIPSEONG_COLORS[s] }}
-                      >
-                        {s}
-                      </span>
-                      <span className={styles.sipseongCount}>{count}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <p className={styles.sectionHint}>
-                십성은 일간을 기준으로 다른 간지가 어떤 역할(관성·재성·인성 등)을 하는지 보여줘요. 숫자가 많을수록 그 성향이 강해요.
-              </p>
-            </div>
+            <p className={styles.sectionHint}>
+              신강·신약은 내 일간이 얼마나 힘 있게 버티고 있는지 판정한 결과예요. 그에 따라 필요한 용신과 주된 성격 유형(격국)이 결정돼요.
+            </p>
+          </div>
 
-          </motion.div>
-        )}
+          {/* 5. 대운수 */}
+          <div className={styles.section}>
+            <h2>대운수</h2>
+            <p className={styles.subInfo}>대운 시작: {result.daeWoonStartAge}세</p>
 
-        {/* 대운세운 탭 */}
-        {activeTab === 'daewoon' && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            {/* 대운 */}
-            <div className={styles.section}>
-              <h2>대운 (10년 주기)</h2>
-              <p className={styles.subInfo}>대운 시작: {result.daeWoonStartAge}세</p>
-              <div className={styles.daewoonScroll}>
-                {daeWoon.slice(0, 10).map((dw, idx) => (
-                  <div key={idx} className={styles.daewoonCard}>
-                    <div className={styles.dwAge}>{dw.startAge}~{dw.endAge}세</div>
-                    <div className={styles.dwGanZhi}>
-                      <span style={{ color: ELEMENT_COLORS[dw.ganElement] }}>{stemToHanja(dw.gan)}</span>
-                      <span style={{ color: ELEMENT_COLORS[dw.zhiElement] }}>{zhiToHanja(dw.zhi)}</span>
-                    </div>
-                    <div className={styles.dwInfo}>
-                      <span>{dw.tenGod}</span>
-                      <span>{dw.twelveStage}</span>
-                    </div>
+            <div className={styles.subheading}>대운 (10년 주기)</div>
+            <div className={styles.daewoonScroll}>
+              {daeWoon.slice(0, 10).map((dw, idx) => (
+                <div key={idx} className={styles.daewoonCard}>
+                  <div className={styles.dwAge}>{dw.startAge}~{dw.endAge}세</div>
+                  <div className={styles.dwGanZhi}>
+                    <span style={{ color: ELEMENT_COLORS[dw.ganElement] }}>{stemToHanja(dw.gan)}</span>
+                    <span style={{ color: ELEMENT_COLORS[dw.zhiElement] }}>{zhiToHanja(dw.zhi)}</span>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 세운 */}
-            <div className={styles.section}>
-              <h2>세운 (연운)</h2>
-              <div className={styles.sewoonGrid}>
-                {seWoon.map((sw, idx) => (
-                  <div key={idx} className={`${styles.sewoonCard} ${idx === 0 ? styles.current : ''}`}>
-                    <div className={styles.swYear}>{sw.year}년</div>
-                    <div className={styles.swAnimal}>{sw.animal}띠</div>
-                    <div className={styles.swGanZhi}>
-                      <span style={{ color: ELEMENT_COLORS[sw.ganElement] }}>{stemToHanja(sw.gan)}</span>
-                      <span style={{ color: ELEMENT_COLORS[sw.zhiElement] }}>{zhiToHanja(sw.zhi)}</span>
-                    </div>
-                    <div className={styles.swInfo}>
-                      <span>{sw.tenGod}</span>
-                      <span>{sw.twelveStage}</span>
-                    </div>
+                  <div className={styles.dwInfo}>
+                    <span>{dw.tenGod}</span>
+                    <span>{dw.twelveStage}</span>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
 
-            {/* 신살 */}
-            {sinSals.length > 0 && (
-              <div className={styles.section}>
-                <h2>신살</h2>
-                <div className={styles.sinsalList}>
-                  {sinSals.map((sinsal, idx) => (
-                    <div key={idx} className={styles.sinsalItem} data-type={sinsal.type}>
-                      <span className={styles.sinsalName}>{sinsal.name}</span>
-                      <span className={styles.sinsalDesc}>{sinsal.description}</span>
-                    </div>
-                  ))}
+            <div className={styles.subheading} style={{ marginTop: 16 }}>세운 (연운)</div>
+            <div className={styles.sewoonGrid}>
+              {seWoon.map((sw, idx) => (
+                <div key={idx} className={`${styles.sewoonCard} ${idx === 0 ? styles.current : ''}`}>
+                  <div className={styles.swYear}>{sw.year}년</div>
+                  <div className={styles.swAnimal}>{sw.animal}띠</div>
+                  <div className={styles.swGanZhi}>
+                    <span style={{ color: ELEMENT_COLORS[sw.ganElement] }}>{stemToHanja(sw.gan)}</span>
+                    <span style={{ color: ELEMENT_COLORS[sw.zhiElement] }}>{zhiToHanja(sw.zhi)}</span>
+                  </div>
+                  <div className={styles.swInfo}>
+                    <span>{sw.tenGod}</span>
+                    <span>{sw.twelveStage}</span>
+                  </div>
                 </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 6. 명리 풀이 (AI) */}
+          <div className={styles.section}>
+            <h2>기본 명리 풀이</h2>
+            {basicLoading ? (
+              <div className={styles.analysisPlaceholder}>
+                <div className={styles.loadingSpinner}></div>
+                <p>명리학 알고리즘으로 분석 중...</p>
+              </div>
+            ) : basicAnalysis ? (
+              <div className={styles.analysisResult}>
+                <pre>{basicAnalysis}</pre>
+              </div>
+            ) : (
+              <div className={styles.analysisPlaceholder}>
+                <p>기본 해석을 불러오는 중...</p>
               </div>
             )}
+          </div>
 
-            {/* 합충형파해 */}
-            {interactions.length > 0 && (
-              <div className={styles.section}>
-                <h2>합충형파해</h2>
-                <div className={styles.interactionList}>
-                  {interactions.map((inter, idx) => (
-                    <div key={idx} className={styles.interactionItem} data-type={inter.type}>
-                      <span className={styles.interType}>{inter.type}</span>
-                      <span className={styles.interDesc}>{inter.description}</span>
-                    </div>
-                  ))}
-                </div>
+          <div className={styles.section}>
+            <h2>상세 명리학 자문 풀이</h2>
+            {detailedLoading ? (
+              <div className={styles.analysisPlaceholder}>
+                <div className={styles.loadingSpinner}></div>
+                <p>상세 분석 중...</p>
+              </div>
+            ) : detailedAnalysis ? (
+              <div className={styles.analysisResult}>
+                <pre>{detailedAnalysis}</pre>
+              </div>
+            ) : (
+              <div className={styles.analysisPlaceholder}>
+                <p>상세 해석을 불러오는 중...</p>
               </div>
             )}
-          </motion.div>
-        )}
+          </div>
 
-        {/* 명리 풀이 탭 */}
-        {activeTab === 'analysis' && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            {/* 기본 해석 */}
-            <div className={styles.section}>
-              <h2>기본 명리 풀이</h2>
-              {basicLoading ? (
-                <div className={styles.analysisPlaceholder}>
-                  <div className={styles.loadingSpinner}></div>
-                  <p>명리학 알고리즘으로 분석 중...</p>
-                </div>
-              ) : basicAnalysis ? (
-                <div className={styles.analysisResult}>
-                  <pre>{basicAnalysis}</pre>
-                </div>
-              ) : (
-                <div className={styles.analysisPlaceholder}>
-                  <p>기본 해석을 불러오는 중...</p>
-                </div>
-              )}
-            </div>
-
-            {/* 상세 해석 */}
-            <div className={styles.section}>
-              <h2>상세 명리학 자문 풀이</h2>
-              {detailedLoading ? (
-                <div className={styles.analysisPlaceholder}>
-                  <div className={styles.loadingSpinner}></div>
-                  <p>상세 분석 중...</p>
-                </div>
-              ) : detailedAnalysis ? (
-                <div className={styles.analysisResult}>
-                  <pre>{detailedAnalysis}</pre>
-                </div>
-              ) : (
-                <div className={styles.analysisPlaceholder}>
-                  <p>상세 해석을 불러오는 중...</p>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
+        </motion.div>
       </div>
     </div>
   );
