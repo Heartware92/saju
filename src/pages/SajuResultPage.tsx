@@ -528,17 +528,17 @@ function PillarsRelationBoard({
     { col: 3 as PillarCol, pillar: pillars.year, unknown: false },
   ];
 
-  // SVG viewBox 좌표 — 위·아래 여유를 넉넉히 두어 괄호형 라우팅을 수용
+  // SVG viewBox — 데이터 영역(라벨 컬럼 제외) 기준 좌표계
   const VB_W = 400;
-  const VB_H = 280;
-  const colX = (c: PillarCol) => 50 + c * 100;
-  const stemY = 100;          // 천간 셀 중심
-  const branchY = 190;        // 지지 셀 중심
-  const stemTopEdge = 72;     // 천간 셀 위 경계(라인 시작)
-  const branchBotEdge = 218;  // 지지 셀 아래 경계(라인 시작)
-  const stemBusBase = 46;     // 천간 괄호 가로 기준선 (위로 쌓임)
-  const branchBusBase = 244;  // 지지 괄호 가로 기준선 (아래로 쌓임)
-  const busStep = 12;         // 다중 관계 스택 간격
+  const VB_H = 260;
+  const colX = (c: PillarCol) => 50 + c * 100; // 4등분 컬럼 중심
+  const stemY = 85;           // 천간 셀 중심 (상단 40 패드 + 45)
+  const branchY = 175;        // 지지 셀 중심 (40 + 90 + 45)
+  const stemTopEdge = 40;     // 천간 셀 위 경계
+  const branchBotEdge = 220;  // 지지 셀 아래 경계 (40 + 90 + 90)
+  const stemBusBase = 18;     // 천간 괄호 가로 기준선
+  const branchBusBase = 242;  // 지지 괄호 가로 기준선
+  const busStep = 10;         // 다중 관계 스택 간격
   const cellY = (row: PillarRow) => (row === 'stem' ? stemY : branchY);
 
   // 각 interaction → 유효한 셀 좌표 리스트
@@ -565,9 +565,10 @@ function PillarsRelationBoard({
   };
   const arcs: Arc[] = [];
 
-  // 같은 row에 여러 관계선이 겹칠 때를 대비해 스택 카운터 사용
+  // 스택 카운터: 같은 row에 여러 관계선이 있을 때 bus 기준선을 계단식으로 분리
   let stemStack = 0;
   let branchStack = 0;
+  let crossStack = 0;
 
   edges.forEach(({ it, cells, idx }) => {
     const color = INTERACTION_COLORS[it.type];
@@ -586,24 +587,29 @@ function PillarsRelationBoard({
         let labelY: number;
 
         if (sameRow && a.row === 'stem') {
-          // 천간끼리 — 위쪽 직선 괄호(⎴)
           const busY = stemBusBase - stemStack * busStep;
           d = `M ${ax} ${stemTopEdge} L ${ax} ${busY} L ${bx} ${busY} L ${bx} ${stemTopEdge}`;
           labelX = (ax + bx) / 2;
           labelY = busY;
           stemStack++;
         } else if (sameRow && a.row === 'branch') {
-          // 지지끼리 — 아래쪽 직선 괄호(⎵)
           const busY = branchBusBase + branchStack * busStep;
           d = `M ${ax} ${branchBotEdge} L ${ax} ${busY} L ${bx} ${busY} L ${bx} ${branchBotEdge}`;
           labelX = (ax + bx) / 2;
           labelY = busY;
           branchStack++;
         } else {
-          // 천간↔지지 교차 — 단순 직선
+          // 천간↔지지 교차 — 직선. 라벨은 chord 중점에서 수직 방향으로 분산.
           d = `M ${ax} ${ay} L ${bx} ${by}`;
-          labelX = (ax + bx) / 2;
-          labelY = (ay + by) / 2;
+          const dxv = bx - ax;
+          const dyv = by - ay;
+          const len = Math.sqrt(dxv * dxv + dyv * dyv) || 1;
+          const nx = -dyv / len;
+          const ny = dxv / len;
+          const off = (crossStack % 2 === 0 ? 1 : -1) * (12 + Math.floor(crossStack / 2) * 10);
+          labelX = (ax + bx) / 2 + nx * off;
+          labelY = (ay + by) / 2 + ny * off;
+          crossStack++;
         }
 
         arcs.push({
@@ -621,37 +627,41 @@ function PillarsRelationBoard({
 
   return (
     <div className={styles.relationBoardWrap}>
-      <div className={styles.relationBoard}>
-        <div className={styles.relationHeaderRow}>
-          {columns.map(({ col }) => (
-            <span key={col} className={styles.relationHeaderCell}>
-              {['시주', '일주', '월주', '년주'][col]}
-            </span>
-          ))}
+      <div className={styles.pillarsTable}>
+        <div className={styles.pillarsHeader}>
+          <span aria-hidden="true" />
+          <span>시주</span>
+          <span>일주</span>
+          <span>월주</span>
+          <span>년주</span>
         </div>
-        <div className={styles.relationGridWrap}>
-          <div className={styles.relationGrid}>
-            {/* 천간 */}
+        <div className={styles.relationDataWrap}>
+          <div className={styles.relationSpacerTop} aria-hidden="true" />
+          <div className={`${styles.pillarsRow} ${styles.stemRow}`}>
+            <span className={styles.label}>천간</span>
             {columns.map(({ col, pillar, unknown }) => (
-              <div
-                key={`s-${col}`}
-                className={styles.relationCell}
+              <span
+                key={`rs-${col}`}
+                className={unknown ? styles.hourUnknownCell : ''}
                 style={!unknown ? { color: ELEMENT_COLORS[pillar.ganElement] } : undefined}
               >
-                {unknown ? <span className={styles.relationUnknown}>?</span> : <StemCell gan={pillar.gan} />}
-              </div>
-            ))}
-            {/* 지지 */}
-            {columns.map(({ col, pillar, unknown }) => (
-              <div
-                key={`b-${col}`}
-                className={styles.relationCell}
-                style={!unknown ? { color: ELEMENT_COLORS[pillar.zhiElement] } : undefined}
-              >
-                {unknown ? <span className={styles.relationUnknown}>?</span> : <BranchCell zhi={pillar.zhi} />}
-              </div>
+                {unknown ? '?' : <StemCell gan={pillar.gan} />}
+              </span>
             ))}
           </div>
+          <div className={`${styles.pillarsRow} ${styles.branchRow}`}>
+            <span className={styles.label}>지지</span>
+            {columns.map(({ col, pillar, unknown }) => (
+              <span
+                key={`rb-${col}`}
+                className={unknown ? styles.hourUnknownCell : ''}
+                style={!unknown ? { color: ELEMENT_COLORS[pillar.zhiElement] } : undefined}
+              >
+                {unknown ? '?' : <BranchCell zhi={pillar.zhi} />}
+              </span>
+            ))}
+          </div>
+          <div className={styles.relationSpacerBottom} aria-hidden="true" />
           <svg
             className={styles.relationOverlay}
             viewBox={`0 0 ${VB_W} ${VB_H}`}
@@ -674,7 +684,6 @@ function PillarsRelationBoard({
               />
             ))}
           </svg>
-          {/* 관계 타입 배지 — HTML로 렌더해서 왜곡 방지 */}
           <div className={styles.relationLabels} aria-hidden="true">
             {arcs.map(a => (
               <span
@@ -692,23 +701,22 @@ function PillarsRelationBoard({
             ))}
           </div>
         </div>
-        {/* 관계 설명 리스트 */}
-        {interactions.length > 0 && (
-          <ul className={styles.relationLegend}>
-            {interactions.map((it, i) => (
-              <li key={i} className={styles.relationLegendItem}>
-                <span
-                  className={styles.relationLegendBadge}
-                  style={{ color: INTERACTION_COLORS[it.type], borderColor: INTERACTION_COLORS[it.type] }}
-                >
-                  {it.type}
-                </span>
-                <span className={styles.relationLegendDesc}>{it.description}</span>
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
+      {interactions.length > 0 && (
+        <ul className={styles.relationLegend}>
+          {interactions.map((it, i) => (
+            <li key={i} className={styles.relationLegendItem}>
+              <span
+                className={styles.relationLegendBadge}
+                style={{ color: INTERACTION_COLORS[it.type], borderColor: INTERACTION_COLORS[it.type] }}
+              >
+                {it.type}
+              </span>
+              <span className={styles.relationLegendDesc}>{it.description}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -743,57 +751,60 @@ function SinSalBoard({
 
   return (
     <div className={styles.sinsalBoardWrap}>
-      <div className={styles.relationHeaderRow}>
-        {columns.map(({ col }) => (
-          <span key={col} className={styles.relationHeaderCell}>
-            {['시주', '일주', '월주', '년주'][col]}
-          </span>
-        ))}
+      <div className={styles.pillarsTable}>
+        <div className={styles.pillarsHeader}>
+          <span aria-hidden="true" />
+          <span>시주</span>
+          <span>일주</span>
+          <span>월주</span>
+          <span>년주</span>
+        </div>
+        <div className={`${styles.pillarsRow} ${styles.stemRow}`}>
+          <span className={styles.label}>천간</span>
+          {columns.map(({ col, pillar, unknown }) => (
+            <span
+              key={`ss-${col}`}
+              className={unknown ? styles.hourUnknownCell : ''}
+              style={!unknown ? { color: ELEMENT_COLORS[pillar.ganElement] } : undefined}
+            >
+              {unknown ? '?' : <StemCell gan={pillar.gan} />}
+            </span>
+          ))}
+        </div>
+        <div className={`${styles.pillarsRow} ${styles.branchRow}`}>
+          <span className={styles.label}>지지</span>
+          {columns.map(({ col, pillar, unknown }) => (
+            <span
+              key={`sb-${col}`}
+              className={unknown ? styles.hourUnknownCell : ''}
+              style={!unknown ? { color: ELEMENT_COLORS[pillar.zhiElement] } : undefined}
+            >
+              {unknown ? '?' : <BranchCell zhi={pillar.zhi} />}
+            </span>
+          ))}
+        </div>
+        <div className={`${styles.pillarsRow} ${styles.sinsalRow}`}>
+          <span className={styles.label}>신살</span>
+          {columns.map(({ col }) => (
+            <span key={`st-${col}`} className={styles.sinsalTagCell}>
+              {byCol[col].length === 0 ? (
+                <span className={styles.sinsalTagEmpty}>—</span>
+              ) : (
+                byCol[col].map(s => (
+                  <span
+                    key={s.name}
+                    className={styles.sinsalTag}
+                    style={{ color: SINSAL_TYPE_COLORS[s.type], borderColor: SINSAL_TYPE_COLORS[s.type] }}
+                    title={s.description}
+                  >
+                    {s.name}
+                  </span>
+                ))
+              )}
+            </span>
+          ))}
+        </div>
       </div>
-      <div className={styles.relationGrid}>
-        {/* 천간 */}
-        {columns.map(({ col, pillar, unknown }) => (
-          <div
-            key={`ss-${col}`}
-            className={styles.relationCell}
-            style={!unknown ? { color: ELEMENT_COLORS[pillar.ganElement] } : undefined}
-          >
-            {unknown ? <span className={styles.relationUnknown}>?</span> : <StemCell gan={pillar.gan} />}
-          </div>
-        ))}
-        {/* 지지 */}
-        {columns.map(({ col, pillar, unknown }) => (
-          <div
-            key={`sb-${col}`}
-            className={styles.relationCell}
-            style={!unknown ? { color: ELEMENT_COLORS[pillar.zhiElement] } : undefined}
-          >
-            {unknown ? <span className={styles.relationUnknown}>?</span> : <BranchCell zhi={pillar.zhi} />}
-          </div>
-        ))}
-      </div>
-      {/* 기둥별 신살 태그 */}
-      <div className={styles.sinsalTagRow}>
-        {columns.map(({ col }) => (
-          <div key={col} className={styles.sinsalTagCell}>
-            {byCol[col].length === 0 ? (
-              <span className={styles.sinsalTagEmpty}>—</span>
-            ) : (
-              byCol[col].map(s => (
-                <span
-                  key={s.name}
-                  className={styles.sinsalTag}
-                  style={{ color: SINSAL_TYPE_COLORS[s.type], borderColor: SINSAL_TYPE_COLORS[s.type] }}
-                  title={s.description}
-                >
-                  {s.name}
-                </span>
-              ))
-            )}
-          </div>
-        ))}
-      </div>
-      {/* 신살 설명 리스트 */}
       {sinSals.length > 0 && (
         <ul className={styles.sinsalDescList}>
           {sinSals.map((s, i) => (

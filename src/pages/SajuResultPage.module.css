@@ -943,64 +943,45 @@
   gap: 6px;
 }
 
-.relationHeaderRow {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  text-align: center;
-  padding: 8px 4px;
-  background: rgba(124, 92, 252, 0.08);
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--cta-primary);
-}
 
-.relationHeaderCell {
-  display: inline-block;
-}
-
-.relationGridWrap {
+/* 사주 관계 보드 — 사주 원국 그리드 재사용 + 상하 여백 + SVG 오버레이 */
+.relationDataWrap {
   position: relative;
-}
-
-.relationGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: 90px 90px;
-  align-items: center;
-  justify-items: center;
-  padding: 32px 0;
   background: var(--space-elevated);
-  border-radius: 12px;
   border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  overflow: visible;
 }
 
-.relationCell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  font-family: var(--font-serif);
+.relationSpacerTop,
+.relationSpacerBottom {
+  height: 36px;
 }
 
-.relationUnknown {
-  font-size: 24px;
-  color: var(--text-tertiary);
+.relationDataWrap .pillarsRow {
+  border-bottom: 1px dashed var(--border-subtle);
+}
+
+.relationDataWrap .pillarsRow:last-of-type {
+  border-bottom: none;
 }
 
 .relationOverlay {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  top: 0;
+  bottom: 0;
+  left: 60px;   /* 라벨 컬럼(56) + 좌측 패딩(4) */
+  right: 4px;
   pointer-events: none;
   overflow: visible;
 }
 
 .relationLabels {
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 60px;
+  right: 4px;
   pointer-events: none;
 }
 
@@ -1057,12 +1038,11 @@
   flex: 1;
 }
 
-/* SinSal board tags */
-.sinsalTagRow {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  margin-top: 4px;
+/* SinSal board — 신살 태그를 사주 원국 그리드 행으로 통합 */
+.pillarsRow.sinsalRow {
+  padding: 10px 4px;
+  font-size: 12px;
+  align-items: start;
 }
 
 .sinsalTagCell {
@@ -1070,8 +1050,7 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 6px 2px;
-  min-height: 28px;
+  min-height: 24px;
 }
 
 .sinsalTag {
