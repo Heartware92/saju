@@ -26,7 +26,7 @@ import styles from './SajuResultPage.module.css';
 const SectionHelp = ({ text }: { text: string }) => {
   const [open, setOpen] = useState(false);
   return (
-    <>
+    <span className={styles.sectionHelpWrap}>
       <button
         type="button"
         className={styles.sectionHelpBtn}
@@ -38,11 +38,28 @@ const SectionHelp = ({ text }: { text: string }) => {
         <span>설명</span>
       </button>
       {open && (
-        <div className={styles.sectionHelpPanel} role="note">
-          {text}
-        </div>
+        <>
+          <button
+            type="button"
+            className={styles.sectionHelpBackdrop}
+            onClick={() => setOpen(false)}
+            aria-label="설명 닫기"
+            tabIndex={-1}
+          />
+          <div className={styles.sectionHelpPopover} role="dialog" aria-modal="false">
+            <button
+              type="button"
+              className={styles.sectionHelpClose}
+              onClick={() => setOpen(false)}
+              aria-label="설명 닫기"
+            >
+              ×
+            </button>
+            <p>{text}</p>
+          </div>
+        </>
       )}
-    </>
+    </span>
   );
 };
 
@@ -511,12 +528,17 @@ function PillarsRelationBoard({
     { col: 3 as PillarCol, pillar: pillars.year, unknown: false },
   ];
 
-  // SVG viewBox 좌표
+  // SVG viewBox 좌표 — 위·아래 여유를 넉넉히 두어 괄호형 라우팅을 수용
   const VB_W = 400;
-  const VB_H = 220;
+  const VB_H = 280;
   const colX = (c: PillarCol) => 50 + c * 100;
-  const stemY = 60;
-  const branchY = 150;
+  const stemY = 100;          // 천간 셀 중심
+  const branchY = 190;        // 지지 셀 중심
+  const stemTopEdge = 72;     // 천간 셀 위 경계(라인 시작)
+  const branchBotEdge = 218;  // 지지 셀 아래 경계(라인 시작)
+  const stemBusBase = 46;     // 천간 괄호 가로 기준선 (위로 쌓임)
+  const branchBusBase = 244;  // 지지 괄호 가로 기준선 (아래로 쌓임)
+  const busStep = 12;         // 다중 관계 스택 간격
   const cellY = (row: PillarRow) => (row === 'stem' ? stemY : branchY);
 
   // 각 interaction → 유효한 셀 좌표 리스트
@@ -525,7 +547,6 @@ function PillarsRelationBoard({
       const cells = it.elements
         .map(elementPosToCell)
         .filter((c): c is { col: PillarCol; row: PillarRow } => c != null);
-      // 중복 제거
       const unique = cells.filter(
         (c, i, arr) => arr.findIndex(o => o.col === c.col && o.row === c.row) === i
       );
@@ -533,7 +554,6 @@ function PillarsRelationBoard({
     })
     .filter(e => e.cells.length >= 2);
 
-  // 같은 row에서 여러 셀이 있는 관계는 pair마다 arc 하나씩
   type Arc = {
     key: string;
     color: string;
@@ -545,9 +565,12 @@ function PillarsRelationBoard({
   };
   const arcs: Arc[] = [];
 
+  // 같은 row에 여러 관계선이 겹칠 때를 대비해 스택 카운터 사용
+  let stemStack = 0;
+  let branchStack = 0;
+
   edges.forEach(({ it, cells, idx }) => {
     const color = INTERACTION_COLORS[it.type];
-    // 같은 row 내 pair끼리 연결
     for (let i = 0; i < cells.length; i++) {
       for (let j = i + 1; j < cells.length; j++) {
         const a = cells[i];
@@ -557,27 +580,32 @@ function PillarsRelationBoard({
         const bx = colX(b.col);
         const ay = cellY(a.row);
         const by = cellY(b.row);
-        const mx = (ax + bx) / 2;
-        const dx = Math.abs(bx - ax);
 
         let d: string;
         let labelX: number;
         let labelY: number;
-        if (sameRow) {
-          // 위(stem)면 위로 아치, 아래(branch)면 아래로 아치
-          const dir = a.row === 'stem' ? -1 : 1;
-          const amp = 18 + dx * 0.22;
-          const cpy = ay + dir * amp;
-          d = `M ${ax} ${ay} Q ${mx} ${cpy} ${bx} ${by}`;
-          labelX = mx;
-          labelY = cpy + (dir === -1 ? -2 : 10);
+
+        if (sameRow && a.row === 'stem') {
+          // 천간끼리 — 위쪽 직선 괄호(⎴)
+          const busY = stemBusBase - stemStack * busStep;
+          d = `M ${ax} ${stemTopEdge} L ${ax} ${busY} L ${bx} ${busY} L ${bx} ${stemTopEdge}`;
+          labelX = (ax + bx) / 2;
+          labelY = busY;
+          stemStack++;
+        } else if (sameRow && a.row === 'branch') {
+          // 지지끼리 — 아래쪽 직선 괄호(⎵)
+          const busY = branchBusBase + branchStack * busStep;
+          d = `M ${ax} ${branchBotEdge} L ${ax} ${busY} L ${bx} ${busY} L ${bx} ${branchBotEdge}`;
+          labelX = (ax + bx) / 2;
+          labelY = busY;
+          branchStack++;
         } else {
-          // 다른 row: 중간점 오프셋으로 곡선
-          const cpy = (ay + by) / 2;
-          d = `M ${ax} ${ay} Q ${mx + 20} ${cpy} ${bx} ${by}`;
-          labelX = mx + 20;
-          labelY = cpy;
+          // 천간↔지지 교차 — 단순 직선
+          d = `M ${ax} ${ay} L ${bx} ${by}`;
+          labelX = (ax + bx) / 2;
+          labelY = (ay + by) / 2;
         }
+
         arcs.push({
           key: `${idx}-${i}-${j}`,
           color,
