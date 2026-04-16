@@ -199,11 +199,10 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
             strokeWidth={1}
             fill="none"
             strokeDasharray="3 3"
-            opacity={0.42}
             markerEnd="url(#keHead)"
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 0.42 }}
-            transition={{ duration: 0.7, delay: 1.1 + i * 0.1 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.5 }}
+            transition={{ duration: 0.5, delay: 1.1 + i * 0.1 }}
           />
         ))}
 
@@ -228,13 +227,12 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
             stroke="#34D399"
             strokeWidth={1.5}
             fill="none"
-            opacity={0.7}
             strokeLinecap="round"
             strokeDasharray="4 4"
             markerEnd="url(#shengHead)"
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 0.7 }}
-            transition={{ duration: 0.6, delay: 0.9 + i * 0.1 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.8 }}
+            transition={{ duration: 0.5, delay: 0.9 + i * 0.1 }}
           />
         ))}
 
