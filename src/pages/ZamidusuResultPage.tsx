@@ -14,9 +14,7 @@ import {
   ZamidusuPalace,
   BRANCH_GRID_POSITIONS,
 } from '../engine/zamidusu';
-import { getZamidusuReading } from '../services/fortuneService';
-import { useCreditStore } from '../store/useCreditStore';
-import { PaywallModal, LockedCard } from '../features/saju/PaywallModal';
+import { buildZamidusuReading, type ZamidusuReading } from '../engine/zamidusu/reading';
 import styles from './ZamidusuResultPage.module.css';
 
 export default function ZamidusuResultPage() {
@@ -25,19 +23,9 @@ export default function ZamidusuResultPage() {
 
   const [chart, setChart] = useState<ZamidusuResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [interpretation, setInterpretation] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [unlocked, setUnlocked] = useState(false);
-  const [showPaywall, setShowPaywall] = useState(false);
   const [selectedPalace, setSelectedPalace] = useState<number | null>(null);
   // 자미두수는 시지(時支)로 명궁 위치가 결정되므로 시간 미상이면 명반 자체가 성립하지 않음
   const hourUnknown = searchParams?.get('unknownTime') === 'true';
-
-  const { fetchBalance } = useCreditStore();
-
-  useEffect(() => {
-    fetchBalance();
-  }, []);
 
   useEffect(() => {
     if (!searchParams) return;
@@ -57,23 +45,9 @@ export default function ZamidusuResultPage() {
     }
   }, [searchParams, hourUnknown]);
 
-  const handleUnlock = async () => {
-    if (!chart) return;
-    setLoading(true);
-    try {
-      const res = await getZamidusuReading(chart);
-      if (res.success && res.content) {
-        setInterpretation(res.content);
-        setUnlocked(true);
-      } else {
-        alert(res.error || '해석을 불러오지 못했어요.');
-      }
-    } catch {
-      alert('오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const reading: ZamidusuReading | null = useMemo(() => {
+    return chart ? buildZamidusuReading(chart) : null;
+  }, [chart]);
 
   // 12궁을 지지 기준으로 4x4 그리드 셀 매핑 (가운데 2x2는 정보 영역)
   const gridCells = useMemo(() => {
@@ -333,34 +307,164 @@ export default function ZamidusuResultPage() {
           );
         })()}
 
-        {/* 자미두수 풀이 */}
-        {!unlocked ? (
-          <div className={styles.unlockWrap}>
-            <LockedCard type="detailed" onClick={() => setShowPaywall(true)} />
-          </div>
-        ) : (
-          <div className={styles.section}>
-            <h2>🌌 자미두수 명리학 자문 풀이</h2>
-            {loading ? (
-              <div className={styles.analysisPlaceholder}>
-                <div className={styles.loadingSpinner} />
-                <p>명반을 분석하는 중...</p>
-              </div>
-            ) : (
-              <div className={styles.analysisResult}>
-                <pre>{interpretation}</pre>
+        {/* 자미두수 무료 풀이 */}
+        {reading && (
+          <>
+            {/* 프로필 헤드라인 */}
+            <div className={styles.section}>
+              <h2>🌌 명반 요약</h2>
+              <p style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.7, marginBottom: 12 }}>
+                {reading.profileHeadline}
+              </p>
+
+              {/* 명궁 주성 */}
+              {reading.coreStars.length > 0 && (
+                <>
+                  <h3 style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 12, marginBottom: 6 }}>
+                    명궁 주성
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {reading.coreStars.map((s, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          padding: 10,
+                          background: 'rgba(255,255,255,0.04)',
+                          borderRadius: 10,
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+                          {s.name}({s.hanja}) — {s.keywords.slice(0, 3).join(' · ')}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                          {s.theme}
+                        </div>
+                        {s.mutagen && (
+                          <div style={{ fontSize: 11, color: '#FBBF24', marginTop: 4 }}>
+                            {s.mutagen.name} — {s.mutagen.effect}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* 보조성 */}
+              {reading.helperStars.length > 0 && (
+                <>
+                  <h3 style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 12, marginBottom: 6 }}>
+                    명궁 6길성 보좌
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {reading.helperStars.map((h, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          fontSize: 11,
+                          padding: '4px 8px',
+                          background: 'rgba(52,211,153,0.1)',
+                          color: '#34D399',
+                          borderRadius: 6,
+                          border: '1px solid rgba(52,211,153,0.35)',
+                        }}
+                        title={h.effect}
+                      >
+                        {h.name}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* 사화(四化) */}
+            {reading.mutagens.length > 0 && (
+              <div className={styles.section}>
+                <h2>✨ 사화(四化) — 별의 변동</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {reading.mutagens.map((m, i) => {
+                    const color =
+                      m.type === '화록' ? '#34D399'
+                      : m.type === '화권' ? '#60A5FA'
+                      : m.type === '화과' ? '#FBBF24'
+                      : '#F87171';
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          padding: 10,
+                          background: `${color}12`,
+                          border: `1px solid ${color}55`,
+                          borderRadius: 10,
+                        }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 700, color, marginBottom: 4 }}>
+                          {m.type} · {m.star} @ {m.palace}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2 }}>
+                          {m.effect}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                          긍정: {m.positive} / 주의: {m.caution}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
-          </div>
+
+            {/* 주요 궁 요약 */}
+            <div className={styles.section}>
+              <h2>🏛 주요 궁 풀이</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {reading.domainSummaries.map((d, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      padding: 10,
+                      background: 'rgba(255,255,255,0.04)',
+                      borderRadius: 10,
+                    }}
+                  >
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>
+                      {d.palace}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                      {d.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 조언 · 주의 */}
+            <div className={styles.section}>
+              <h2>💡 조언</h2>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {reading.advice.map((a, i) => (
+                  <li key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', gap: 8 }}>
+                    <span style={{ color: '#34D399' }}>✓</span>
+                    <span>{a}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className={styles.section}>
+              <h2>⚠️ 주의할 점</h2>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {reading.warnings.map((w, i) => (
+                  <li key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', gap: 8 }}>
+                    <span style={{ color: '#F87171' }}>!</span>
+                    <span>{w}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
         )}
       </motion.div>
-
-      <PaywallModal
-        isOpen={showPaywall}
-        onClose={() => setShowPaywall(false)}
-        onUnlock={handleUnlock}
-        type="detailed"
-      />
     </div>
   );
 }

@@ -1,0 +1,527 @@
+/**
+ * 기간 운세 엔진 (신년운세 · 오늘의 운세 · 지정일 운세 통합)
+ *
+ * 원국(natal chart)과 대상 기간(년/월/일)의 간지를 비교하여
+ * 결정론적으로 운세 점수와 해석 카드를 생성한다.
+ *
+ * 모든 계산은 순수 함수 — LLM 호출 없이 오프라인 결과 보장.
+ */
+
+import { Solar, Lunar } from 'lunar-javascript';
+import {
+  HEAVENLY_STEMS,
+  EARTHLY_BRANCHES,
+  STEM_ELEMENT,
+  BRANCH_ELEMENT,
+  TEN_GODS_MAP,
+  BRANCH_HIDDEN_STEMS,
+  normalizeGan,
+  normalizeZhi,
+  type SajuResult,
+} from '../utils/sajuCalculator';
+
+// ============================================
+// 타입
+// ============================================
+
+export type FortuneScope = 'year' | 'month' | 'day';
+
+export type FortuneGrade = '대길' | '길' | '중길' | '평' | '중흉' | '흉';
+
+export interface FortuneDomain {
+  key: 'overall' | 'wealth' | 'career' | 'love' | 'health' | 'study';
+  label: string;
+  score: number; // 0~100
+  grade: FortuneGrade;
+  summary: string;
+  tips: string[];
+}
+
+export interface TargetGanZhi {
+  gan: string;
+  zhi: string;
+  ganZhi: string;
+  ganElement: string;
+  zhiElement: string;
+  tenGodGan: string;
+  tenGodZhi: string;
+  hiddenStems: string[];
+}
+
+export interface GanZhiInteraction {
+  kind: '삼합' | '육합' | '육충' | '형' | '반합' | '없음';
+  between: string; // "년지(申) × 세운지(午)" 등
+  nature: 'good' | 'bad' | 'mixed';
+  description: string;
+}
+
+export interface PeriodFortune {
+  scope: FortuneScope;
+  targetLabel: string; // "2026년" / "2026-04-15" / "4월"
+  targetDate: string;  // ISO — e.g., 2026-04-15
+  lunarLabel: string;  // "을사년 기묘월 갑자일" 등
+  targetGanZhi: TargetGanZhi;
+  overallScore: number; // 0~100
+  overallGrade: FortuneGrade;
+  headline: string;     // 한 줄 총평
+  summary: string;      // 2~3문장
+  domains: FortuneDomain[];
+  interactions: GanZhiInteraction[];
+  luckyColors: string[];
+  luckyNumbers: number[];
+  luckyDirection: string;
+  luckyTime: string;
+  cautions: string[];
+  monthlyFlow?: { month: number; grade: FortuneGrade; keyword: string }[]; // year scope only
+}
+
+// ============================================
+// 상수 / 헬퍼
+// ============================================
+
+const ELEMENT_COLORS: Record<string, string[]> = {
+  '목': ['초록', '연두', '민트'],
+  '화': ['빨강', '주황', '핑크'],
+  '토': ['노랑', '황토', '베이지'],
+  '금': ['화이트', '실버', '그레이'],
+  '수': ['파랑', '네이비', '블랙'],
+};
+
+const ELEMENT_NUMBERS: Record<string, number[]> = {
+  '목': [3, 8],
+  '화': [2, 7],
+  '토': [5, 10],
+  '금': [4, 9],
+  '수': [1, 6],
+};
+
+const ELEMENT_DIRECTIONS: Record<string, string> = {
+  '목': '동쪽',
+  '화': '남쪽',
+  '토': '중앙',
+  '금': '서쪽',
+  '수': '북쪽',
+};
+
+const ELEMENT_TIMES: Record<string, string> = {
+  '목': '오전 5시~7시 (인·묘시)',
+  '화': '오전 11시~오후 1시 (사·오시)',
+  '토': '진·술·축·미시',
+  '금': '오후 3시~7시 (신·유시)',
+  '수': '밤 11시~새벽 3시 (자·축시)',
+};
+
+const TEN_GOD_SCORE: Record<string, number> = {
+  '정관': 12, '정인': 10, '정재': 10, '식신': 9, '편재': 7,
+  '편인': 2, '겁재': -3, '비견': 0, '상관': -4, '편관': -2,
+};
+
+// 삼합(三合)
+const SAMHAP: [string, string, string, string][] = [
+  ['신', '자', '진', '수'],
+  ['사', '유', '축', '금'],
+  ['인', '오', '술', '화'],
+  ['해', '묘', '미', '목'],
+];
+
+// 육합(六合)
+const YUKHAP: [string, string, string][] = [
+  ['자', '축', '토'],
+  ['인', '해', '목'],
+  ['묘', '술', '화'],
+  ['진', '유', '금'],
+  ['사', '신', '수'],
+  ['오', '미', '화'],
+];
+
+// 육충(六沖)
+const YUKCHUNG: [string, string][] = [
+  ['자', '오'], ['축', '미'], ['인', '신'],
+  ['묘', '유'], ['진', '술'], ['사', '해'],
+];
+
+// 형(刑) — 삼형 + 자형
+const HYEONG: [string, string][] = [
+  ['인', '사'], ['사', '신'], ['인', '신'],
+  ['축', '술'], ['술', '미'], ['축', '미'],
+  ['자', '묘'],
+];
+
+function checkBranchPair(a: string, b: string): GanZhiInteraction | null {
+  // 육충 우선
+  for (const [x, y] of YUKCHUNG) {
+    if ((a === x && b === y) || (a === y && b === x)) {
+      return {
+        kind: '육충',
+        between: `${a} × ${b}`,
+        nature: 'bad',
+        description: `${a}와 ${b}가 충돌 — 변동·이동·갈등 암시`,
+      };
+    }
+  }
+  // 형
+  for (const [x, y] of HYEONG) {
+    if ((a === x && b === y) || (a === y && b === x)) {
+      return {
+        kind: '형',
+        between: `${a} × ${b}`,
+        nature: 'bad',
+        description: `${a}와 ${b}가 형 — 시비·소송·건강 주의`,
+      };
+    }
+  }
+  // 육합
+  for (const [x, y, el] of YUKHAP) {
+    if ((a === x && b === y) || (a === y && b === x)) {
+      return {
+        kind: '육합',
+        between: `${a} × ${b}`,
+        nature: 'good',
+        description: `${a}와 ${b}가 육합(${el}) — 결속·인연·협력의 기운`,
+      };
+    }
+  }
+  // 반합 (삼합 중 2자 매칭)
+  for (const [a1, a2, a3, el] of SAMHAP) {
+    const trio = [a1, a2, a3];
+    if (trio.includes(a) && trio.includes(b) && a !== b) {
+      return {
+        kind: '반합',
+        between: `${a} × ${b}`,
+        nature: 'good',
+        description: `${a}와 ${b}가 반합(${el}국) — 원하는 방향으로 기운 결집`,
+      };
+    }
+  }
+  return null;
+}
+
+function gradeFromScore(s: number): FortuneGrade {
+  if (s >= 85) return '대길';
+  if (s >= 70) return '길';
+  if (s >= 55) return '중길';
+  if (s >= 45) return '평';
+  if (s >= 30) return '중흉';
+  return '흉';
+}
+
+// ============================================
+// 대상 간지 조회
+// ============================================
+
+function ganZhiForYear(year: number) {
+  const solar = Solar.fromYmd(year, 6, 15);
+  const lunar = solar.getLunar();
+  const gz = lunar.getYearInGanZhi();
+  return { gan: normalizeGan(gz[0]), zhi: normalizeZhi(gz[1]), ganZhi: gz };
+}
+
+function ganZhiForDate(isoDate: string) {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const solar = Solar.fromYmd(y, m, d);
+  const lunar = solar.getLunar();
+  const yearGz = lunar.getYearInGanZhi();
+  const monthGz = lunar.getMonthInGanZhi();
+  const dayGz = lunar.getDayInGanZhi();
+  return {
+    year: { gan: normalizeGan(yearGz[0]), zhi: normalizeZhi(yearGz[1]), ganZhi: yearGz },
+    month: { gan: normalizeGan(monthGz[0]), zhi: normalizeZhi(monthGz[1]), ganZhi: monthGz },
+    day: { gan: normalizeGan(dayGz[0]), zhi: normalizeZhi(dayGz[1]), ganZhi: dayGz },
+    lunarLabel: `${yearGz}년 ${monthGz}월 ${dayGz}일`,
+  };
+}
+
+// ============================================
+// 점수 계산
+// ============================================
+
+function scoreForTarget(saju: SajuResult, target: TargetGanZhi): {
+  overall: number;
+  domains: Record<FortuneDomain['key'], number>;
+  rationale: string[];
+} {
+  const dayGan = saju.dayMaster;
+  const rationale: string[] = [];
+  let base = 50;
+
+  // 1) 천간 십신 점수
+  const ganScore = TEN_GOD_SCORE[target.tenGodGan] ?? 0;
+  base += ganScore;
+  if (target.tenGodGan) {
+    rationale.push(`대상 천간 십신: ${target.tenGodGan} (${ganScore >= 0 ? '+' : ''}${ganScore})`);
+  }
+
+  // 2) 지지 십신 점수
+  const zhiScore = TEN_GOD_SCORE[target.tenGodZhi] ?? 0;
+  base += zhiScore * 0.8;
+
+  // 3) 용신 일치 보너스
+  if (target.ganElement === saju.yongSinElement) {
+    base += 10;
+    rationale.push(`대상 천간이 용신(${saju.yongSinElement}) — 기운 상승 +10`);
+  }
+  if (target.zhiElement === saju.yongSinElement) {
+    base += 6;
+  }
+
+  // 4) 합·충 보너스/페널티 (4기둥 지지와 대상 지지 비교)
+  const pillars = [saju.pillars.year, saju.pillars.month, saju.pillars.day, saju.pillars.hour].filter(p => p.zhi);
+  let interactionBonus = 0;
+  pillars.forEach(p => {
+    const inter = checkBranchPair(p.zhi, target.zhi);
+    if (inter) {
+      if (inter.nature === 'good') interactionBonus += 4;
+      else if (inter.nature === 'bad') interactionBonus -= 5;
+    }
+  });
+  base += interactionBonus;
+  if (interactionBonus !== 0) {
+    rationale.push(`지지 상호작용 합산 ${interactionBonus >= 0 ? '+' : ''}${interactionBonus}`);
+  }
+
+  // 5) clamp
+  const overall = Math.max(5, Math.min(95, Math.round(base)));
+
+  // 6) 영역별 점수 — 십신 매핑 기반
+  const wealthBoost = ['정재', '편재', '식신'].includes(target.tenGodGan) ? 15
+    : ['겁재', '비견'].includes(target.tenGodGan) ? -8 : 0;
+  const careerBoost = ['정관', '편관', '정인'].includes(target.tenGodGan) ? 15
+    : target.tenGodGan === '상관' ? -8 : 0;
+  const loveBoost = ['정재', '정관'].includes(target.tenGodGan) ? 12
+    : ['편재', '편관'].includes(target.tenGodGan) ? 6
+    : target.tenGodGan === '겁재' ? -6 : 0;
+  const healthBoost = interactionBonus < 0 ? -10 : ['정인', '식신'].includes(target.tenGodGan) ? 8 : 0;
+  const studyBoost = ['정인', '편인', '식신'].includes(target.tenGodGan) ? 14 : 0;
+
+  const clamp = (v: number) => Math.max(5, Math.min(95, Math.round(overall * 0.5 + 25 + v)));
+
+  return {
+    overall,
+    domains: {
+      overall,
+      wealth: clamp(wealthBoost),
+      career: clamp(careerBoost),
+      love: clamp(loveBoost),
+      health: clamp(healthBoost),
+      study: clamp(studyBoost),
+    },
+    rationale,
+  };
+}
+
+// ============================================
+// 해석 빌더
+// ============================================
+
+function buildDomainSummary(key: FortuneDomain['key'], grade: FortuneGrade, target: TargetGanZhi): { summary: string; tips: string[] } {
+  const g = target.tenGodGan || '—';
+  const positive = grade === '대길' || grade === '길' || grade === '중길';
+
+  const byKey: Record<FortuneDomain['key'], { up: string; down: string; tipsUp: string[]; tipsDown: string[] }> = {
+    overall: {
+      up: `전반적 기운이 ${g}의 흐름으로 순조롭게 열립니다.`,
+      down: `${g}의 기운이 강해 조심이 필요한 시기입니다.`,
+      tipsUp: ['기회가 오면 망설이지 말 것', '주변 인연을 넓혀두기'],
+      tipsDown: ['무리한 결정 미루기', '이성적 판단 유지'],
+    },
+    wealth: {
+      up: `재물의 기운이 ${g}을(를) 통해 들어옵니다.`,
+      down: `재물이 빠져나가기 쉬운 구조 — 지출 관리 필요.`,
+      tipsUp: ['저축·재투자 타이밍', '부수입 기회 주목'],
+      tipsDown: ['충동 소비 자제', '공동 투자 신중'],
+    },
+    career: {
+      up: `직장·커리어의 기운이 상승, ${g}이(가) 도움을 줍니다.`,
+      down: `직장 내 충돌·평가 변동이 예상 — 신중히.`,
+      tipsUp: ['중요 발표·면접 밀어붙이기', '상사·협력자에 선물 인사'],
+      tipsDown: ['말실수 주의', '문서·계약 이중 점검'],
+    },
+    love: {
+      up: `애정 기운이 활발 — 인연·고백·화해에 좋음.`,
+      down: `관계 균열 가능 — 자존심보단 배려.`,
+      tipsUp: ['새 만남·데이트 시도', '상대 이야기 경청'],
+      tipsDown: ['말 조심·감정 폭발 자제', '잠시 거리두기'],
+    },
+    health: {
+      up: `심신 컨디션 안정 — 규칙적 리듬 유지.`,
+      down: `과로·스트레스 주의 — 휴식 우선.`,
+      tipsUp: ['운동·야외 활동 확대', '수면 패턴 유지'],
+      tipsDown: ['무리한 야근 자제', '소화·호흡기 점검'],
+    },
+    study: {
+      up: `학습·집중력 상승 — 시험·자격 준비에 유리.`,
+      down: `집중이 흩어지는 시기 — 단기 목표에 집중.`,
+      tipsUp: ['핵심 과목부터 집중 공략', '스터디 그룹 결성'],
+      tipsDown: ['과목 분산 자제', '짧은 시간 반복 학습'],
+    },
+  };
+  const block = byKey[key];
+  return {
+    summary: positive ? block.up : block.down,
+    tips: positive ? block.tipsUp : block.tipsDown,
+  };
+}
+
+function buildHeadline(target: TargetGanZhi, grade: FortuneGrade, scope: FortuneScope): string {
+  const when = scope === 'year' ? '올해' : scope === 'day' ? '오늘' : '이 날';
+  const toneMap: Record<FortuneGrade, string> = {
+    '대길': `${when}은 크게 열리는 시기입니다`,
+    '길': `${when}은 순풍이 불어옵니다`,
+    '중길': `${when}은 잔잔히 흘러갑니다`,
+    '평': `${when}은 담담한 하루·해가 됩니다`,
+    '중흉': `${when}은 신중히 돌아갈 때입니다`,
+    '흉': `${when}은 몸을 낮춰 지나가야 합니다`,
+  };
+  return `${toneMap[grade]} — ${target.tenGodGan}의 기운`;
+}
+
+function buildCautions(saju: SajuResult, target: TargetGanZhi, interactions: GanZhiInteraction[]): string[] {
+  const out: string[] = [];
+  const badInters = interactions.filter(i => i.nature === 'bad');
+  if (badInters.length >= 2) out.push('충·형이 겹치는 구조 — 변동·분쟁 주의');
+  if (saju.giSin && target.ganElement === STEM_ELEMENT[saju.giSin]) {
+    out.push(`기신(${saju.giSin}) 기운이 드러나 — 관성적 선택 피하기`);
+  }
+  if (target.tenGodGan === '상관') out.push('상관의 해 — 말·표현 관련 문제 조심');
+  if (target.tenGodGan === '겁재') out.push('겁재의 해 — 금전·동업 관련 이별 주의');
+  if (out.length === 0) out.push('특별한 흉조 없음 — 평소의 리듬 유지');
+  return out;
+}
+
+// ============================================
+// 월별 흐름 (신년운세 전용)
+// ============================================
+
+function buildMonthlyFlow(saju: SajuResult, year: number): { month: number; grade: FortuneGrade; keyword: string }[] {
+  const result: { month: number; grade: FortuneGrade; keyword: string }[] = [];
+  for (let m = 1; m <= 12; m++) {
+    const mid = Solar.fromYmd(year, m, 15);
+    const lunar = mid.getLunar();
+    const monthGz = lunar.getMonthInGanZhi();
+    const mGan = normalizeGan(monthGz[0]);
+    const mZhi = normalizeZhi(monthGz[1]);
+    const targetGan = TEN_GODS_MAP[saju.dayMaster]?.[mGan] ?? '';
+    const ganElement = STEM_ELEMENT[mGan];
+
+    let score = 50;
+    score += TEN_GOD_SCORE[targetGan] ?? 0;
+    if (ganElement === saju.yongSinElement) score += 8;
+    // 충 검사
+    const inter = checkBranchPair(saju.pillars.day.zhi, mZhi);
+    if (inter?.nature === 'bad') score -= 8;
+    else if (inter?.nature === 'good') score += 5;
+    const grade = gradeFromScore(Math.max(15, Math.min(90, score)));
+    const keyword =
+      grade === '대길' ? '전진·도약'
+      : grade === '길' ? '확장·기회'
+      : grade === '중길' ? '축적·안정'
+      : grade === '평' ? '유지·관찰'
+      : grade === '중흉' ? '신중·보수'
+      : '휴식·정비';
+    result.push({ month: m, grade, keyword });
+  }
+  return result;
+}
+
+// ============================================
+// 메인
+// ============================================
+
+export function calculatePeriodFortune(
+  saju: SajuResult,
+  opts: { scope: FortuneScope; date?: string; year?: number },
+): PeriodFortune {
+  const dayGan = saju.dayMaster;
+  let gan = '', zhi = '', ganZhi = '', lunarLabel = '', targetLabel = '', targetDate = '';
+
+  if (opts.scope === 'year') {
+    const year = opts.year ?? new Date().getFullYear();
+    const gz = ganZhiForYear(year);
+    gan = gz.gan; zhi = gz.zhi; ganZhi = gz.ganZhi;
+    targetLabel = `${year}년`;
+    targetDate = `${year}-01-01`;
+    lunarLabel = `${ganZhi}년`;
+  } else {
+    const date = opts.date ?? new Date().toISOString().slice(0, 10);
+    const gz = ganZhiForDate(date);
+    const ref = opts.scope === 'day' ? gz.day : gz.month;
+    gan = ref.gan; zhi = ref.zhi; ganZhi = ref.ganZhi;
+    targetDate = date;
+    targetLabel = opts.scope === 'day' ? date : `${date.slice(0, 7)}월`;
+    lunarLabel = gz.lunarLabel;
+  }
+
+  const target: TargetGanZhi = {
+    gan, zhi, ganZhi,
+    ganElement: STEM_ELEMENT[gan] ?? '',
+    zhiElement: BRANCH_ELEMENT[zhi] ?? '',
+    tenGodGan: TEN_GODS_MAP[dayGan]?.[gan] ?? '',
+    tenGodZhi: (() => {
+      const main = BRANCH_HIDDEN_STEMS[zhi]?.[0];
+      return main ? TEN_GODS_MAP[dayGan]?.[main] ?? '' : '';
+    })(),
+    hiddenStems: BRANCH_HIDDEN_STEMS[zhi] ?? [],
+  };
+
+  const { overall, domains } = scoreForTarget(saju, target);
+  const overallGrade = gradeFromScore(overall);
+
+  // 원국 4지지와 대상 지지 상호작용
+  const interactions: GanZhiInteraction[] = [];
+  (['year', 'month', 'day', 'hour'] as const).forEach(k => {
+    const z = saju.pillars[k].zhi;
+    if (!z) return;
+    const inter = checkBranchPair(z, target.zhi);
+    if (inter) {
+      interactions.push({
+        ...inter,
+        between: `${k === 'year' ? '년지' : k === 'month' ? '월지' : k === 'day' ? '일지' : '시지'}(${z}) × 대상지(${target.zhi})`,
+      });
+    }
+  });
+
+  const domainList: FortuneDomain[] = (['overall', 'wealth', 'career', 'love', 'health', 'study'] as const).map(key => {
+    const score = domains[key];
+    const grade = gradeFromScore(score);
+    const { summary, tips } = buildDomainSummary(key, grade, target);
+    return {
+      key,
+      label: { overall: '총운', wealth: '재물운', career: '직장·학업운', love: '애정운', health: '건강운', study: '학업·자격운' }[key],
+      score,
+      grade,
+      summary,
+      tips,
+    };
+  });
+
+  const luckyEl = saju.yongSinElement || target.ganElement;
+  const monthlyFlow = opts.scope === 'year' ? buildMonthlyFlow(saju, opts.year ?? new Date().getFullYear()) : undefined;
+
+  const headline = buildHeadline(target, overallGrade, opts.scope);
+  const summary =
+    overallGrade === '대길' || overallGrade === '길'
+      ? `${target.ganZhi}의 기운이 일간 ${dayGan}에 ${target.tenGodGan}으로 작용하며 흐름을 밀어줍니다. ${luckyEl} 기운을 활용해 기회를 잡을 때입니다.`
+      : overallGrade === '중길' || overallGrade === '평'
+      ? `${target.ganZhi}의 기운은 일간 ${dayGan}과 큰 굴곡 없이 흐릅니다. 작은 기회를 놓치지 말고 꾸준함을 유지하세요.`
+      : `${target.ganZhi}의 기운이 일간 ${dayGan}과 부딪히는 부분이 있어 무리한 행동은 피해야 합니다. 내실을 다지는 시기로 활용하세요.`;
+
+  return {
+    scope: opts.scope,
+    targetLabel,
+    targetDate,
+    lunarLabel,
+    targetGanZhi: target,
+    overallScore: overall,
+    overallGrade,
+    headline,
+    summary,
+    domains: domainList,
+    interactions,
+    luckyColors: ELEMENT_COLORS[luckyEl] ?? ELEMENT_COLORS['목'],
+    luckyNumbers: ELEMENT_NUMBERS[luckyEl] ?? [3, 8],
+    luckyDirection: ELEMENT_DIRECTIONS[luckyEl] ?? '동쪽',
+    luckyTime: ELEMENT_TIMES[luckyEl] ?? '오전',
+    cautions: buildCautions(saju, target, interactions),
+    monthlyFlow,
+  };
+}

@@ -121,6 +121,10 @@ export interface Pillar {
   tenGodGan: string;
   tenGodZhi: string;
   twelveStage: string;
+  /** 12신살 (년지 삼합 기준) — 겁살/재살/천살/지살/도화/월살/망신/장성/반안/역마/육해/화개 */
+  sinSal12: string;
+  /** 일주 기준 공망 여부 */
+  isKongmang: boolean;
 }
 
 export interface ElementCount {
@@ -533,11 +537,57 @@ const getAnimal = (branch: string): string => {
   return animals[branch] || '';
 };
 
+// ============================================
+// 12신살 (년지 삼합 기준)
+// ============================================
+/**
+ * 년지가 속한 삼합(水/金/火/木 국)에 따라 각 지지에 붙는 신살을 반환.
+ * 순서: 겁살 → 재살 → 천살 → 지살 → 도화(연살) → 월살 → 망신 → 장성 → 반안 → 역마 → 육해 → 화개
+ * 지살은 항상 "생지(삼합 첫 글자)" 에 위치 — 그로부터 시계방향으로 돈다.
+ */
+const SINSAL12_SEQUENCE = ['겁살','재살','천살','지살','도화','월살','망신','장성','반안','역마','육해','화개'];
+// 삼합 그룹 → 지살이 위치하는 지지(=생지)의 EARTHLY_BRANCHES 인덱스
+const SINSAL12_GROUP_START: Record<string, number> = {
+  '신': 8, '자': 8, '진': 8, // 수국 — 지살=신
+  '사': 5, '유': 5, '축': 5, // 금국 — 지살=사
+  '인': 2, '오': 2, '술': 2, // 화국 — 지살=인
+  '해': 11, '묘': 11, '미': 11, // 목국 — 지살=해
+};
+const getSinSal12 = (yearZhi: string, targetZhi: string): string => {
+  const start = SINSAL12_GROUP_START[yearZhi];
+  const targetIdx = EARTHLY_BRANCHES.indexOf(targetZhi);
+  if (start === undefined || targetIdx < 0) return '';
+  // 지살이 순서상 index 3 이므로, 지살 위치(start)에서 뺀 뒤 +3 을 더하면 신살 인덱스가 나온다.
+  const sinSalIdx = ((targetIdx - start + 12) % 12 + 3) % 12;
+  return SINSAL12_SEQUENCE[sinSalIdx];
+};
+
+// ============================================
+// 공망 (일주 기준 순중공망)
+// ============================================
+/**
+ * 일주가 속한 60갑자 순(旬)에서 빠지는 2개 지지 = 공망.
+ * 공망 지지 인덱스 = (순 시작 지지 + 10), (+11) mod 12
+ * 순 시작 지지 인덱스 = (일지idx - 일간idx + 12) mod 12
+ */
+const getKongmangZhis = (dayGan: string, dayZhi: string): [string, string] | null => {
+  const ganIdx = HEAVENLY_STEMS.indexOf(dayGan);
+  const zhiIdx = EARTHLY_BRANCHES.indexOf(dayZhi);
+  if (ganIdx < 0 || zhiIdx < 0) return null;
+  const sunStart = (zhiIdx - ganIdx + 12) % 12;
+  const k1 = (sunStart + 10) % 12;
+  const k2 = (sunStart + 11) % 12;
+  return [EARTHLY_BRANCHES[k1], EARTHLY_BRANCHES[k2]];
+};
+
 const calculateSeWoon = (dayGan: string, currentYear: number): SeWoon[] => {
   const seWoons: SeWoon[] = [];
 
-  for (let i = 0; i < 10; i++) {
-    const year = currentYear + i;
+  // 다른 어플처럼 과거~미래를 함께 보여준다 — 현재년 -7 ~ +4 (총 12년)
+  // 자동 센터 스크롤이 currentYear 카드를 가운데로 끌어다 놓는다.
+  const startYear = currentYear - 7;
+  for (let i = 0; i < 12; i++) {
+    const year = startYear + i;
     const solar = Solar.fromYmd(year, 6, 15);
     const lunar = solar.getLunar();
     const yearGanZhi = lunar.getYearInGanZhiExact();
@@ -581,7 +631,9 @@ const EMPTY_HOUR_PILLAR: Pillar = {
   hiddenStems: [],
   tenGodGan: '',
   tenGodZhi: '',
-  twelveStage: ''
+  twelveStage: '',
+  sinSal12: '',
+  isKongmang: false,
 };
 
 export const calculateSaju = (
@@ -610,6 +662,11 @@ export const calculateSaju = (
   const dayMasterElement = STEM_ELEMENT[dayGan] || '';
   const dayMasterYinYang = STEM_YINYANG[dayGan] || '';
 
+  // 12신살·공망 판정에 필요한 기준 지지들을 먼저 뽑는다.
+  const yearZhiForSinsal = normalizeZhi(baZi.getYearZhi());
+  const dayZhiForKongmang = normalizeZhi(baZi.getDayZhi());
+  const kongmangZhis = getKongmangZhis(dayGan, dayZhiForKongmang);
+
   const createPillar = (ganRaw: string, zhiRaw: string): Pillar => {
     const gan = normalizeGan(ganRaw);
     const zhi = normalizeZhi(zhiRaw);
@@ -623,7 +680,9 @@ export const calculateSaju = (
       hiddenStems: BRANCH_HIDDEN_STEMS[zhi] || [],
       tenGodGan: gan === dayGan ? '일주' : getTenGod(dayGan, gan),
       tenGodZhi: getTenGodForBranch(dayGan, zhi),
-      twelveStage: getTwelveStage(dayGan, zhi)
+      twelveStage: getTwelveStage(dayGan, zhi),
+      sinSal12: getSinSal12(yearZhiForSinsal, zhi),
+      isKongmang: kongmangZhis ? (zhi === kongmangZhis[0] || zhi === kongmangZhis[1]) : false,
     };
   };
 
@@ -672,7 +731,7 @@ export const calculateSaju = (
 
   const currentYear = new Date().getFullYear();
   const seWoon = calculateSeWoon(dayGan, currentYear);
-  const currentSeWoon = seWoon[0];
+  const currentSeWoon = seWoon.find(s => s.year === currentYear) ?? seWoon[0];
 
   const lunarMonth = lunar.getMonth();
   const lunarDay = lunar.getDay();

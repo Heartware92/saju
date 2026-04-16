@@ -189,6 +189,18 @@ export default function SajuInputPage() {
     let target = '/saju/result';
     if (categoryId === 'tojeong') target = '/saju/tojeong';
     else if (categoryId === 'zamidusu') target = '/saju/zamidusu';
+    else if (categoryId === 'newyear') target = '/saju/newyear';
+    else if (categoryId === 'today') target = '/saju/today';
+    else if (categoryId === 'date') target = '/saju/date';
+
+    // 지정일 운세는 targetDate 를 date 파라미터로 전달
+    if (categoryId === 'date' && targetDate) {
+      queryParams.set('date', targetDate);
+    }
+    // 신년운세는 현재 연도 고정
+    if (categoryId === 'newyear') {
+      queryParams.set('year', String(currentYear));
+    }
 
     router.push(`${target}?${queryParams.toString()}`)
   }
