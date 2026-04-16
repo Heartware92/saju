@@ -63,14 +63,30 @@ export interface SibiUnseong {
 
 // 신강신약
 export interface SingangSinyak {
-  status: '신강' | '신약' | '중화';
+  status: '매우 신강' | '신강' | '중화' | '신약' | '매우 신약';
+  /** 0~100 정규화 점수 (강화점 / (강화점 + 약화점) * 100) */
   score: number;
+  /** 득령(得令) — 월지 정기가 일간과 같은 오행 또는 인성이면 true */
+  deukRyeong: boolean;
+  /** 득지(得地) — 일지가 일간을 돕는 오행이면 true */
+  deukJi: boolean;
+  /** 득세(得勢) — 전체 강화점수 ≥ 약화점수 */
+  deukSe: boolean;
   detail: {
+    /** 비겁(比劫) — 일간과 같은 오행 */
     bijeopScore: number;
+    /** 인성(印星) — 일간을 생하는 오행 */
     inseongScore: number;
-    unseongScore: number;
-    gwanseongPenalty: number;
+    /** 식상(食傷) — 일간이 생하는 오행 */
+    sikSangPenalty: number;
+    /** 재성(財星) — 일간이 극하는 오행 */
     jaeseongPenalty: number;
+    /** 관성(官星) — 일간을 극하는 오행 */
+    gwanseongPenalty: number;
+    /** 강화점 총합 (비겁 + 인성 + 득령 보너스 포함) */
+    supportTotal: number;
+    /** 약화점 총합 (관성 + 재성 + 식상) */
+    weakenTotal: number;
   };
 }
 

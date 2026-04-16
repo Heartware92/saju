@@ -1084,9 +1084,40 @@ export default function SajuResultPage() {
 
             <div className={styles.strengthBox}>
               <div className={styles.strengthBadge} data-strong={result.isStrong}>
-                {result.isStrong ? '신강' : '신약'} ({result.strengthScore}점)
+                {result.strengthStatus} ({result.strengthScore}점)
+              </div>
+              <div className={styles.strengthTrio}>
+                <span className={styles.trioChip} data-on={result.deukRyeong}>
+                  <span className={styles.trioName}>득령</span>
+                  <span className={styles.trioValue}>{result.deukRyeong ? '성립' : '불성립'}</span>
+                </span>
+                <span className={styles.trioChip} data-on={result.deukJi}>
+                  <span className={styles.trioName}>득지</span>
+                  <span className={styles.trioValue}>{result.deukJi ? '성립' : '불성립'}</span>
+                </span>
+                <span className={styles.trioChip} data-on={result.deukSe}>
+                  <span className={styles.trioName}>득세</span>
+                  <span className={styles.trioValue}>{result.deukSe ? '성립' : '불성립'}</span>
+                </span>
               </div>
               <p>{result.strengthAnalysis}</p>
+              <div className={styles.strengthDetail}>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>강화점(비겁·인성·득령)</span>
+                  <span className={styles.detailValue}>{result.strengthDetail.supportTotal.toFixed(1)}</span>
+                </div>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>약화점(식상·재성·관성)</span>
+                  <span className={styles.detailValue}>{result.strengthDetail.weakenTotal.toFixed(1)}</span>
+                </div>
+                <div className={styles.detailBreakdown}>
+                  <span>비겁 {result.strengthDetail.bijeopScore.toFixed(1)}</span>
+                  <span>인성 {result.strengthDetail.inseongScore.toFixed(1)}</span>
+                  <span>식상 {result.strengthDetail.sikSangPenalty.toFixed(1)}</span>
+                  <span>재성 {result.strengthDetail.jaeseongPenalty.toFixed(1)}</span>
+                  <span>관성 {result.strengthDetail.gwanseongPenalty.toFixed(1)}</span>
+                </div>
+              </div>
             </div>
 
             <div className={styles.subheading} style={{ marginTop: 16 }}>용신 · 희신 · 기신</div>

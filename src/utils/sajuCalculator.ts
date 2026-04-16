@@ -204,6 +204,11 @@ export interface SajuResult {
   isStrong: boolean;
   strengthScore: number;
   strengthAnalysis: string;
+  strengthStatus: StrengthStatus;
+  deukRyeong: boolean;
+  deukJi: boolean;
+  deukSe: boolean;
+  strengthDetail: StrengthDetail;
   yongSin: string;
   heeSin: string;
   giSin: string;
@@ -288,49 +293,168 @@ const getControllingElement = (element: string): string => {
   return controlling[element] || '';
 };
 
+// 오행 상생/상극
+const ELEMENT_GENERATES: Record<string, string> = {
+  '목': '화', '화': '토', '토': '금', '금': '수', '수': '목'
+};
+const ELEMENT_CONTROLS: Record<string, string> = {
+  '목': '토', '화': '금', '토': '수', '금': '목', '수': '화'
+};
+
+type SipseongGroup = '비겁' | '인성' | '식상' | '재성' | '관성';
+
+// 일간 오행 대비 대상 오행 → 십성 그룹
+const classifySipseongGroup = (dayEl: string, targetEl: string): SipseongGroup => {
+  if (!dayEl || !targetEl) return '비겁';
+  if (targetEl === dayEl) return '비겁';
+  if (ELEMENT_GENERATES[targetEl] === dayEl) return '인성';   // 대상이 일간을 생
+  if (ELEMENT_GENERATES[dayEl] === targetEl) return '식상';   // 일간이 대상을 생
+  if (ELEMENT_CONTROLS[dayEl] === targetEl) return '재성';    // 일간이 대상을 극
+  return '관성';                                               // 대상이 일간을 극
+};
+
+// 12운성별 점수 (지지가 일간에게 제공하는 기반 점수)
+const STAGE_POINTS: Record<string, number> = {
+  '장생': 12, '목욕': 8, '관대': 12, '건록': 18, '제왕': 20,
+  '쇠': 8, '병': 4, '사': 2, '묘': 8, '절': 0, '태': 2, '양': 6
+};
+
+// 지장간 가중치: 정기/중기/여기
+const HIDDEN_STEM_WEIGHTS = [0.6, 0.3, 0.1];
+
+export interface StrengthDetail {
+  bijeopScore: number;
+  inseongScore: number;
+  sikSangPenalty: number;
+  jaeseongPenalty: number;
+  gwanseongPenalty: number;
+  supportTotal: number;
+  weakenTotal: number;
+}
+
+export type StrengthStatus = '매우 신강' | '신강' | '중화' | '신약' | '매우 신약';
+
 const analyzeStrength = (
   dayGan: string,
   monthBranch: string,
   pillars: { year: Pillar; month: Pillar; day: Pillar; hour: Pillar }
-): { isStrong: boolean; score: number; analysis: string } => {
-  const dayElement = STEM_ELEMENT[dayGan];
-  let score = 50;
+): {
+  isStrong: boolean;
+  score: number;
+  status: StrengthStatus;
+  analysis: string;
+  deukRyeong: boolean;
+  deukJi: boolean;
+  deukSe: boolean;
+  detail: StrengthDetail;
+} => {
+  const dayEl = STEM_ELEMENT[dayGan] || '';
 
-  const monthElement = BRANCH_ELEMENT[monthBranch];
-  const helpingElements = getHelpingElements(dayElement);
+  // 십성 그룹별 원점수 집계
+  const scores: Record<SipseongGroup, number> = {
+    '비겁': 0, '인성': 0, '식상': 0, '재성': 0, '관성': 0
+  };
 
-  if (helpingElements.includes(monthElement)) {
-    score += 25;
-  } else if (getControllingElement(dayElement) === monthElement) {
-    score -= 20;
-  }
-
-  const dayBranchElement = pillars.day.zhiElement;
-  if (helpingElements.includes(dayBranchElement)) {
-    score += 15;
-  }
-
-  const allElements = [
-    pillars.year.ganElement, pillars.year.zhiElement,
-    pillars.month.ganElement,
-    pillars.hour.ganElement, pillars.hour.zhiElement
+  // 1) 천간 가산 — 월간 10점 / 년·시간 각 7점 (일간 제외)
+  const stemInputs: Array<[string, number]> = [
+    [pillars.year.gan, 7],
+    [pillars.month.gan, 10],
+    [pillars.hour.gan, 7]
   ];
-
-  allElements.forEach(el => {
-    if (helpingElements.includes(el)) score += 5;
-    else if (getControllingElement(dayElement) === el) score -= 5;
+  stemInputs.forEach(([stem, weight]) => {
+    if (!stem) return;
+    const el = STEM_ELEMENT[stem];
+    if (!el) return;
+    scores[classifySipseongGroup(dayEl, el)] += weight;
   });
 
-  const isStrong = score >= 55;
+  // 2) 지지 — 12운성 기반 점수를 지장간 비율(6:3:1)로 분배, 각 지장간의 오행으로 십성 분류
+  const branchList = [pillars.year.zhi, pillars.month.zhi, pillars.day.zhi, pillars.hour.zhi];
+  branchList.forEach(branch => {
+    if (!branch) return;
+    const stage = getTwelveStage(dayGan, branch);
+    const base = STAGE_POINTS[stage] ?? 0;
+    const hidden = BRANCH_HIDDEN_STEMS[branch] || [];
+    hidden.forEach((stem, idx) => {
+      const w = HIDDEN_STEM_WEIGHTS[idx] ?? 0;
+      const el = STEM_ELEMENT[stem];
+      if (!el || w === 0 || base === 0) return;
+      scores[classifySipseongGroup(dayEl, el)] += base * w;
+    });
+  });
 
+  // 3) 득령(得令) — 월지 정기가 일간과 같은 오행이거나 일간을 생하면 +20 보너스
+  const monthMainStem = BRANCH_HIDDEN_STEMS[monthBranch]?.[0];
+  const monthMainEl = monthMainStem ? STEM_ELEMENT[monthMainStem] : '';
+  const deukRyeong = !!monthMainEl && (
+    monthMainEl === dayEl || ELEMENT_GENERATES[monthMainEl] === dayEl
+  );
+  const deukRyeongBonus = deukRyeong ? 20 : 0;
+
+  // 4) 득지(得地) — 일지가 일간을 돕는 오행(비겁 or 인성)이면 true
+  const dayBranchEl = pillars.day.zhiElement;
+  const deukJi = !!dayBranchEl && (
+    dayBranchEl === dayEl || ELEMENT_GENERATES[dayBranchEl] === dayEl
+  );
+
+  const bijeopScore = Math.round(scores['비겁'] * 10) / 10;
+  const inseongScore = Math.round(scores['인성'] * 10) / 10;
+  const sikSangPenalty = Math.round(scores['식상'] * 10) / 10;
+  const jaeseongPenalty = Math.round(scores['재성'] * 10) / 10;
+  const gwanseongPenalty = Math.round(scores['관성'] * 10) / 10;
+
+  const supportTotal = Math.round((bijeopScore + inseongScore + deukRyeongBonus) * 10) / 10;
+  const weakenTotal = Math.round((sikSangPenalty + jaeseongPenalty + gwanseongPenalty) * 10) / 10;
+
+  // 5) 득세(得勢) — 강화점수 ≥ 약화점수
+  const deukSe = supportTotal >= weakenTotal;
+
+  // 6) 정규화 점수 0~100
+  const denom = supportTotal + weakenTotal;
+  const score = denom > 0 ? Math.round((supportTotal / denom) * 100) : 50;
+
+  // 7) 5단계 판정
+  let status: StrengthStatus;
+  if (score >= 70) status = '매우 신강';
+  else if (score >= 60) status = '신강';
+  else if (score >= 45) status = '중화';
+  else if (score >= 35) status = '신약';
+  else status = '매우 신약';
+
+  const isStrong = score >= 60;
+
+  const trio = [deukRyeong && '득령', deukJi && '득지', deukSe && '득세'].filter(Boolean).join('·') || '삼자(득령·득지·득세) 모두 미성립';
   let analysis = '';
-  if (score >= 70) analysis = '매우 강한 신강 사주입니다. 기운이 넘쳐 설기나 극이 필요합니다.';
-  else if (score >= 55) analysis = '신강 사주입니다. 적절한 발산이 필요합니다.';
-  else if (score >= 45) analysis = '중화된 사주입니다. 균형이 잘 잡혀있습니다.';
-  else if (score >= 30) analysis = '신약 사주입니다. 도움과 보호가 필요합니다.';
-  else analysis = '매우 약한 신약 사주입니다. 인성과 비겁의 도움이 절실합니다.';
+  if (status === '매우 신강') {
+    analysis = `매우 강한 신강 사주입니다(${trio}). 기운이 넘쳐 관성이나 식상으로 설기·제어가 필요합니다.`;
+  } else if (status === '신강') {
+    analysis = `신강 사주입니다(${trio}). 적절한 발산과 재·관의 조화가 필요합니다.`;
+  } else if (status === '중화') {
+    analysis = `중화된 사주입니다(${trio}). 오행 균형이 비교적 잘 잡혀 있어 상황에 맞춘 용신 운용이 유리합니다.`;
+  } else if (status === '신약') {
+    analysis = `신약 사주입니다(${trio}). 인성·비겁의 도움이 필요합니다.`;
+  } else {
+    analysis = `매우 약한 신약 사주입니다(${trio}). 인성과 비겁의 도움이 절실합니다.`;
+  }
 
-  return { isStrong, score, analysis };
+  return {
+    isStrong,
+    score,
+    status,
+    analysis,
+    deukRyeong,
+    deukJi,
+    deukSe,
+    detail: {
+      bijeopScore,
+      inseongScore,
+      sikSangPenalty,
+      jaeseongPenalty,
+      gwanseongPenalty,
+      supportTotal,
+      weakenTotal
+    }
+  };
 };
 
 const determineYongSin = (
@@ -783,6 +907,11 @@ export const calculateSaju = (
     isStrong: strengthResult.isStrong,
     strengthScore: strengthResult.score,
     strengthAnalysis: strengthResult.analysis,
+    strengthStatus: strengthResult.status,
+    deukRyeong: strengthResult.deukRyeong,
+    deukJi: strengthResult.deukJi,
+    deukSe: strengthResult.deukSe,
+    strengthDetail: strengthResult.detail,
     yongSin: yongSinResult.yongSin,
     heeSin: yongSinResult.heeSin,
     giSin: yongSinResult.giSin,

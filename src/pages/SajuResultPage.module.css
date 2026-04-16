@@ -380,6 +380,95 @@
   line-height: 1.6;
 }
 
+.strengthTrio {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0 14px;
+  flex-wrap: wrap;
+}
+
+.trioChip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--space-elevated);
+  min-width: 72px;
+}
+
+.trioChip[data-on="true"] {
+  border-color: rgba(244, 63, 94, 0.45);
+  background: rgba(244, 63, 94, 0.12);
+}
+
+.trioName {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-bottom: 2px;
+  letter-spacing: 0.3px;
+}
+
+.trioChip[data-on="true"] .trioName {
+  color: var(--fire-core);
+}
+
+.trioValue {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.trioChip[data-on="true"] .trioValue {
+  color: var(--text-primary);
+}
+
+.strengthDetail {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--space-elevated);
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  text-align: left;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 4px 0;
+}
+
+.detailRow + .detailRow {
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.detailLabel {
+  color: var(--text-tertiary);
+}
+
+.detailValue {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.detailBreakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-subtle);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Yongshin (용신) */
 .yongshinBox {
   display: grid;
