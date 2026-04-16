@@ -23,6 +23,37 @@ import { determineGyeokguk, analyzeGyeokgukStatus } from '../engine/gyeokguk';
 import { stemToHanja, zhiToHanja } from '../lib/character';
 import styles from './SajuResultPage.module.css';
 
+const SectionHelp = ({ text }: { text: string }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        className={styles.sectionHelpBtn}
+        onClick={() => setOpen(v => !v)}
+        aria-expanded={open}
+        aria-label="섹션 설명 보기"
+      >
+        <span aria-hidden="true">※</span>
+        <span>설명</span>
+      </button>
+      {open && (
+        <div className={styles.sectionHelpPanel} role="note">
+          {text}
+        </div>
+      )}
+    </>
+  );
+};
+
+const SECTION_HELP_TEXT: Record<string, string> = {
+  wonguk: '태어난 해·달·날·시의 천간과 지지로 구성된 네 기둥(年·月·日·時)이에요. 팔자(八字) 8글자가 운명의 기본 구조를 만들고, 지장간·12운성·십성으로 그 힘과 역할을 읽어요.',
+  relation: '사주 여덟 글자 사이의 상호작용이에요. 합(결합)·충(충돌)·형(긴장)·파(깨짐)·해(해침) 같은 관계와, 특정 별자리처럼 작용하는 신살(神殺)·길성(吉星)이 인생의 주요 포인트를 드러내요.',
+  ohaeng: '오행(목·화·토·금·수)은 사주에 깃든 자연 기운의 비율이고, 십성은 일간을 기준으로 다른 간지가 맡는 역할(비겁·식상·재성·관성·인성)을 뜻해요.',
+  strength: '일간(日干·자기 자신)이 얼마나 힘 있게 서 있는지 판정한 결과예요. 득령(월지 지원)·득지(일지 지원)·득세(전체 지원)의 3단계로 체크해 매우 신강부터 매우 신약까지 5단계로 판별해요.',
+  daewoon: '10년 단위로 바뀌는 큰 흐름의 운이에요. 대운이 시작되는 나이부터 각 구간이 어떤 오행·십성 기운을 가져오는지 보면 인생의 변동 시기를 읽을 수 있어요.',
+};
+
 const StemCell = ({ gan }: { gan: string }) => (
   <span className={styles.stemCell}>
     <span className={styles.pillarHangul}>{gan}</span>
@@ -943,7 +974,10 @@ export default function SajuResultPage() {
 
           {/* 1. 사주 원국 */}
           <div className={styles.section}>
-            <h2>사주 원국 (만세력)</h2>
+            <div className={styles.sectionHeader}>
+              <h2>사주 원국 (만세력)</h2>
+              <SectionHelp text={SECTION_HELP_TEXT.wonguk} />
+            </div>
             <div className={styles.pillarsTable}>
               <div className={styles.pillarsHeader}>
                 <span aria-hidden="true" />
@@ -1009,7 +1043,10 @@ export default function SajuResultPage() {
           {/* 2. 사주 관계 — 천간지지 / 신살과 길성 */}
           {(interactions.length > 0 || sinSals.length > 0) && (
             <div className={styles.section}>
-              <h2>사주 관계</h2>
+              <div className={styles.sectionHeader}>
+                <h2>사주 관계</h2>
+                <SectionHelp text={SECTION_HELP_TEXT.relation} />
+              </div>
 
               <div className={styles.subheading}>천간과 지지</div>
               {interactions.length > 0 ? (
@@ -1046,7 +1083,10 @@ export default function SajuResultPage() {
 
           {/* 3. 오행과 십성 */}
           <div className={styles.section}>
-            <h2>오행과 십성</h2>
+            <div className={styles.sectionHeader}>
+              <h2>오행과 십성</h2>
+              <SectionHelp text={SECTION_HELP_TEXT.ohaeng} />
+            </div>
 
             <div className={styles.subheading}>오행 분포</div>
             <ElementPentagon percents={elementPercent as unknown as Record<string, number>} />
@@ -1080,7 +1120,10 @@ export default function SajuResultPage() {
 
           {/* 4. 신강신약 */}
           <div className={styles.section}>
-            <h2>신강신약</h2>
+            <div className={styles.sectionHeader}>
+              <h2>신강신약</h2>
+              <SectionHelp text={SECTION_HELP_TEXT.strength} />
+            </div>
 
             <div className={styles.strengthBox}>
               <div className={styles.strengthBadge} data-strong={result.isStrong}>
@@ -1189,7 +1232,10 @@ export default function SajuResultPage() {
 
           {/* 5. 대운수 */}
           <div className={styles.section}>
-            <h2>대운수</h2>
+            <div className={styles.sectionHeader}>
+              <h2>대운수</h2>
+              <SectionHelp text={SECTION_HELP_TEXT.daewoon} />
+            </div>
             <p className={styles.subInfo}>대운 시작: {result.daeWoonStartAge}세</p>
 
             <div className={styles.subheading}>대운 (10년 주기)</div>
