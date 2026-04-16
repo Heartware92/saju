@@ -196,6 +196,29 @@
   font-family: var(--font-serif);
 }
 
+.stemCell,
+.branchCell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  gap: 2px;
+}
+
+.pillarHanja {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pillarHangul {
+  font-size: 10px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  opacity: 0.7;
+  line-height: 1;
+}
+
 .pillarsRow .highlight {
   color: var(--cta-primary);
   font-size: 13px;
@@ -239,6 +262,57 @@
   height: 100%;
   border-radius: 99px;
   transition: width 0.8s ease;
+}
+
+/* Element Pentagon (오행 분포 레이더) */
+.pentagonWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0 8px;
+}
+
+.pentagonSvg {
+  max-width: 280px;
+  filter: drop-shadow(0 0 14px rgba(124, 92, 252, 0.18));
+}
+
+.pentagonLegend {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.pentagonLegendItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 4px;
+  background: rgba(20, 12, 38, 0.45);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.pentagonLegendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.pentagonLegendLabel {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.pentagonLegendValue {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Strength (신강/신약) */

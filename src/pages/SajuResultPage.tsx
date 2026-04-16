@@ -26,8 +26,19 @@ import { determineGyeokguk, analyzeGyeokgukStatus } from '../engine/gyeokguk';
 import { stemToHanja, zhiToHanja } from '../lib/character';
 import styles from './SajuResultPage.module.css';
 
-const formatStem = (gan: string) => `${stemToHanja(gan)}(${gan})`;
-const formatBranch = (zhi: string) => `${zhiToHanja(zhi)}(${zhi})`;
+const StemCell = ({ gan }: { gan: string }) => (
+  <span className={styles.stemCell}>
+    <span className={styles.pillarHangul}>{gan}</span>
+    <span className={styles.pillarHanja}>{stemToHanja(gan)}</span>
+  </span>
+);
+
+const BranchCell = ({ zhi }: { zhi: string }) => (
+  <span className={styles.branchCell}>
+    <span className={styles.pillarHanja}>{zhiToHanja(zhi)}</span>
+    <span className={styles.pillarHangul}>{zhi}</span>
+  </span>
+);
 
 const SIPSEONG_ORDER = ['비견', '겁재', '식신', '상관', '편재', '정재', '편관', '정관', '편인', '정인'] as const;
 
@@ -87,6 +98,157 @@ const ELEMENT_COLORS: Record<string, string> = {
   '금': '#CBD5E1',
   '수': '#3B82F6'
 };
+
+const ELEMENT_ORDER = ['목', '화', '토', '금', '수'] as const;
+
+function ElementPentagon({ percents }: { percents: Record<string, number> }) {
+  const size = 260;
+  const cx = size / 2;
+  const cy = size / 2;
+  const rMax = size * 0.36;
+  // 정오각형 꼭짓점 각도 (12시 방향 시작, 시계 방향)
+  const angleFor = (i: number) => -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+  const pt = (i: number, r: number) => ({
+    x: cx + r * Math.cos(angleFor(i)),
+    y: cy + r * Math.sin(angleFor(i)),
+  });
+
+  const gridLevels = [0.25, 0.5, 0.75, 1];
+  const gridPolys = gridLevels.map((lv) =>
+    ELEMENT_ORDER.map((_, i) => {
+      const p = pt(i, rMax * lv);
+      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+    }).join(' ')
+  );
+
+  // 최대값 기준 스케일 (최대 퍼센트가 40% 이하여도 칸이 꽉 차도록)
+  const maxPct = Math.max(...ELEMENT_ORDER.map((e) => percents[e] ?? 0), 1);
+  const scale = 1 / Math.max(maxPct, 20) * 100;
+
+  const dataPoints = ELEMENT_ORDER.map((el, i) => {
+    const v = percents[el] ?? 0;
+    const r = rMax * Math.min(1, (v / 100) * scale);
+    return pt(i, r);
+  });
+  const dataPolygon = dataPoints.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+  return (
+    <div className={styles.pentagonWrap}>
+      <svg viewBox={`0 0 ${size} ${size}`} width="100%" className={styles.pentagonSvg}>
+        {/* 그리드 오각형 */}
+        {gridPolys.map((pts, i) => (
+          <polygon
+            key={i}
+            points={pts}
+            fill="none"
+            stroke="var(--border-subtle)"
+            strokeWidth={1}
+            strokeDasharray={i === gridPolys.length - 1 ? '0' : '3 3'}
+            opacity={0.6}
+          />
+        ))}
+        {/* 축 라인 */}
+        {ELEMENT_ORDER.map((_, i) => {
+          const p = pt(i, rMax);
+          return (
+            <line
+              key={i}
+              x1={cx} y1={cy} x2={p.x} y2={p.y}
+              stroke="var(--border-subtle)" strokeWidth={1} opacity={0.4}
+            />
+          );
+        })}
+        {/* 데이터 폴리곤 — 중심에서 확장 */}
+        <motion.polygon
+          points={dataPolygon}
+          fill="url(#pentagonFill)"
+          stroke="rgba(124,92,252,0.85)"
+          strokeWidth={2}
+          strokeLinejoin="round"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+          style={{ transformOrigin: `${cx}px ${cy}px` }}
+        />
+        {/* 데이터 꼭짓점 닷 */}
+        {dataPoints.map((p, i) => (
+          <motion.circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r={4}
+            fill={ELEMENT_COLORS[ELEMENT_ORDER[i]]}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.4 + i * 0.06 }}
+          />
+        ))}
+        {/* 라벨 */}
+        {ELEMENT_ORDER.map((el, i) => {
+          const lp = pt(i, rMax + 22);
+          return (
+            <text
+              key={el}
+              x={lp.x}
+              y={lp.y}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize={14}
+              fontWeight={700}
+              fill={ELEMENT_COLORS[el]}
+            >
+              {el}
+            </text>
+          );
+        })}
+        <defs>
+          <radialGradient id="pentagonFill" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(124,92,252,0.35)" />
+            <stop offset="100%" stopColor="rgba(124,92,252,0.08)" />
+          </radialGradient>
+        </defs>
+      </svg>
+
+      {/* 하단 퍼센트 뱃지 — 숫자 카운트업 */}
+      <div className={styles.pentagonLegend}>
+        {ELEMENT_ORDER.map((el, i) => (
+          <div key={el} className={styles.pentagonLegendItem}>
+            <span
+              className={styles.pentagonLegendDot}
+              style={{ backgroundColor: ELEMENT_COLORS[el] }}
+            />
+            <span className={styles.pentagonLegendLabel}>{el}</span>
+            <motion.span
+              className={styles.pentagonLegendValue}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 + i * 0.08 }}
+            >
+              <CountUp to={percents[el] ?? 0} />%
+            </motion.span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CountUp({ to, duration = 900 }: { to: number; duration?: number }) {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setV(Math.round(to * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [to, duration]);
+  return <>{v}</>;
+}
 
 export default function SajuResultPage() {
   const searchParams = useSearchParams();
@@ -324,11 +486,11 @@ export default function SajuResultPage() {
                     className={result.hourUnknown ? styles.hourUnknownCell : ''}
                     style={result.hourUnknown ? undefined : { color: ELEMENT_COLORS[pillars.hour.ganElement] }}
                   >
-                    {result.hourUnknown ? '?' : formatStem(pillars.hour.gan)}
+                    {result.hourUnknown ? '?' : <StemCell gan={pillars.hour.gan} />}
                   </span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.day.ganElement] }}>{formatStem(pillars.day.gan)}</span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.month.ganElement] }}>{formatStem(pillars.month.gan)}</span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.year.ganElement] }}>{formatStem(pillars.year.gan)}</span>
+                  <span style={{ color: ELEMENT_COLORS[pillars.day.ganElement] }}><StemCell gan={pillars.day.gan} /></span>
+                  <span style={{ color: ELEMENT_COLORS[pillars.month.ganElement] }}><StemCell gan={pillars.month.gan} /></span>
+                  <span style={{ color: ELEMENT_COLORS[pillars.year.ganElement] }}><StemCell gan={pillars.year.gan} /></span>
                 </div>
                 <div className={`${styles.pillarsRow} ${styles.branchRow}`}>
                   <span className={styles.label}>지지</span>
@@ -336,11 +498,11 @@ export default function SajuResultPage() {
                     className={result.hourUnknown ? styles.hourUnknownCell : ''}
                     style={result.hourUnknown ? undefined : { color: ELEMENT_COLORS[pillars.hour.zhiElement] }}
                   >
-                    {result.hourUnknown ? '?' : formatBranch(pillars.hour.zhi)}
+                    {result.hourUnknown ? '?' : <BranchCell zhi={pillars.hour.zhi} />}
                   </span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.day.zhiElement] }}>{formatBranch(pillars.day.zhi)}</span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.month.zhiElement] }}>{formatBranch(pillars.month.zhi)}</span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.year.zhiElement] }}>{formatBranch(pillars.year.zhi)}</span>
+                  <span style={{ color: ELEMENT_COLORS[pillars.day.zhiElement] }}><BranchCell zhi={pillars.day.zhi} /></span>
+                  <span style={{ color: ELEMENT_COLORS[pillars.month.zhiElement] }}><BranchCell zhi={pillars.month.zhi} /></span>
+                  <span style={{ color: ELEMENT_COLORS[pillars.year.zhiElement] }}><BranchCell zhi={pillars.year.zhi} /></span>
                 </div>
                 <div className={styles.pillarsRow}>
                   <span className={styles.label}>지장간</span>
@@ -366,25 +528,7 @@ export default function SajuResultPage() {
             {/* 오행 분포 */}
             <div className={styles.section}>
               <h2>⚖️ 오행 분포</h2>
-              <div className={styles.elementChart}>
-                {Object.entries(elementPercent).map(([element, percent]) => (
-                  <div key={element} className={styles.elementBar}>
-                    <div className={styles.elementLabel}>
-                      <span style={{ color: ELEMENT_COLORS[element] }}>{element}</span>
-                      <span>{percent}%</span>
-                    </div>
-                    <div className={styles.barContainer}>
-                      <motion.div
-                        className={styles.bar}
-                        style={{ backgroundColor: ELEMENT_COLORS[element] }}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${percent}%` }}
-                        transition={{ duration: 0.8, delay: 0.2 }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <ElementPentagon percents={elementPercent as unknown as Record<string, number>} />
             </div>
 
             {/* 신강/신약 */}
