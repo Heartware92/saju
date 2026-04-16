@@ -170,19 +170,53 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
           style={{ transformOrigin: `${cx}px ${cy}px` }}
         />
-        {/* 데이터 꼭짓점 닷 */}
-        {dataPoints.map((p, i) => (
-          <motion.circle
-            key={i}
-            cx={p.x}
-            cy={p.y}
-            r={4}
-            fill={ELEMENT_COLORS[ELEMENT_ORDER[i]]}
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.4 + i * 0.06 }}
-          />
-        ))}
+        {/* 데이터 꼭짓점 닷 — 반짝이는 할로 + 코어 */}
+        {dataPoints.map((p, i) => {
+          const color = ELEMENT_COLORS[ELEMENT_ORDER[i]];
+          return (
+            <g key={i}>
+              <motion.circle
+                cx={p.x}
+                cy={p.y}
+                r={8}
+                fill={color}
+                initial={{ opacity: 0 }}
+                animate={{ scale: [1, 1.9, 1], opacity: [0.35, 0, 0.35] }}
+                transition={{
+                  duration: 2.4,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                  delay: 0.6 + i * 0.35,
+                }}
+                style={{ transformOrigin: `${p.x}px ${p.y}px` }}
+              />
+              <motion.circle
+                cx={p.x}
+                cy={p.y}
+                r={4.5}
+                fill={color}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.4, delay: 0.4 + i * 0.06 }}
+                style={{ transformOrigin: `${p.x}px ${p.y}px` }}
+              />
+              <motion.circle
+                cx={p.x - 1.4}
+                cy={p.y - 1.4}
+                r={1.1}
+                fill="#ffffff"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 1, 0] }}
+                transition={{
+                  duration: 1.6,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                  delay: 0.8 + i * 0.4,
+                }}
+              />
+            </g>
+          );
+        })}
         {/* 라벨 */}
         {ELEMENT_ORDER.map((el, i) => {
           const lp = pt(i, rMax + 22);
@@ -209,15 +243,12 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
         </defs>
       </svg>
 
-      {/* 하단 퍼센트 뱃지 — 숫자 카운트업 */}
+      {/* 하단 비커 — 오행 분량만큼 액체가 채워지고 넘실거림 */}
       <div className={styles.pentagonLegend}>
         {ELEMENT_ORDER.map((el, i) => (
           <div key={el} className={styles.pentagonLegendItem}>
-            <span
-              className={styles.pentagonLegendDot}
-              style={{ backgroundColor: ELEMENT_COLORS[el] }}
-            />
-            <span className={styles.pentagonLegendLabel}>{el}</span>
+            <ElementBeaker pct={percents[el] ?? 0} color={ELEMENT_COLORS[el]} />
+            <span className={styles.pentagonLegendLabel} style={{ color: ELEMENT_COLORS[el] }}>{el}</span>
             <motion.span
               className={styles.pentagonLegendValue}
               initial={{ opacity: 0, y: 4 }}
@@ -230,6 +261,73 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
         ))}
       </div>
     </div>
+  );
+}
+
+function ElementBeaker({ pct, color }: { pct: number; color: string }) {
+  const W = 72;
+  const H = 56;
+  const level = Math.min(100, Math.max(0, pct));
+  const empty = level === 0;
+  const surfaceY = H - (H * level) / 100;
+  const amp = 2.6;
+
+  const buildWave = (phase: number) => {
+    const step = W / 12;
+    let d = `M ${-W} ${surfaceY}`;
+    for (let x = 0; x <= 2 * W; x += step) {
+      const y = surfaceY + Math.sin((x / W) * Math.PI * 2 + phase) * amp;
+      d += ` L ${x - W} ${y.toFixed(2)}`;
+    }
+    d += ` L ${W} ${H} L ${-W} ${H} Z`;
+    return d;
+  };
+
+  const clipId = `bk-${color.replace('#', '')}`;
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className={styles.beaker}>
+      <defs>
+        <clipPath id={clipId}>
+          <rect x="1" y="1" width={W - 2} height={H - 2} rx="6" />
+        </clipPath>
+        <linearGradient id={`${clipId}-shine`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.35)" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+        </linearGradient>
+      </defs>
+      <rect x="1" y="1" width={W - 2} height={H - 2} rx="6" fill="rgba(20,12,38,0.55)" />
+      {!empty && (
+        <g clipPath={`url(#${clipId})`}>
+          <motion.path
+            d={buildWave(0)}
+            fill={color}
+            opacity={0.55}
+            initial={{ x: 0 }}
+            animate={{ x: W }}
+            transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+          />
+          <motion.path
+            d={buildWave(Math.PI)}
+            fill={color}
+            opacity={0.9}
+            initial={{ x: W }}
+            animate={{ x: 0 }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+          />
+          <rect x="0" y="0" width={W} height={H} fill={`url(#${clipId}-shine)`} opacity={0.4} />
+        </g>
+      )}
+      <rect
+        x="0.5"
+        y="0.5"
+        width={W - 1}
+        height={H - 1}
+        rx="6"
+        fill="none"
+        stroke="var(--border-subtle)"
+      />
+    </svg>
   );
 }
 
@@ -425,7 +523,7 @@ export default function SajuResultPage() {
       {/* 시간 미상 안내 배너 — 삼주추명(三柱推命) 원칙 */}
       {result.hourUnknown && (
         <div className={styles.unknownHourBanner}>
-          <strong>🕒 시간 미상 · 삼주추명(三柱推命)</strong>
+          <strong>시간 미상 · 삼주추명(三柱推命)</strong>
           <p>
             출생 시간 미상으로 시주(時柱)는 제외되었습니다. 연·월·일주 기반으로
             성격·재물·직업·대운을 정상 분석하되,
@@ -463,7 +561,7 @@ export default function SajuResultPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             {/* 사주 원국표 */}
             <div className={styles.section}>
-              <h2>📜 사주 원국 (만세력)</h2>
+              <h2>사주 원국 (만세력)</h2>
               <div className={styles.pillarsTable}>
                 <div className={styles.pillarsHeader}>
                   <span>시주</span>
@@ -527,13 +625,13 @@ export default function SajuResultPage() {
 
             {/* 오행 분포 */}
             <div className={styles.section}>
-              <h2>⚖️ 오행 분포</h2>
+              <h2>오행 분포</h2>
               <ElementPentagon percents={elementPercent as unknown as Record<string, number>} />
             </div>
 
             {/* 신강/신약 */}
             <div className={styles.section}>
-              <h2>💪 신강/신약 판정</h2>
+              <h2>신강/신약 판정</h2>
               <div className={styles.strengthBox}>
                 <div className={styles.strengthBadge} data-strong={result.isStrong}>
                   {result.isStrong ? '신강' : '신약'} ({result.strengthScore}점)
@@ -544,7 +642,7 @@ export default function SajuResultPage() {
 
             {/* 용신 */}
             <div className={styles.section}>
-              <h2>🎯 용신/희신/기신</h2>
+              <h2>용신/희신/기신</h2>
               <div className={styles.yongshinBox}>
                 <div className={styles.yongshinItem}>
                   <span className={styles.yLabel}>용신</span>
@@ -567,7 +665,7 @@ export default function SajuResultPage() {
             {/* 격국 */}
             {gyeokguk && (
               <div className={styles.section}>
-                <h2>🏛️ 격국 (格局)</h2>
+                <h2>격국 (格局)</h2>
                 <div className={styles.gyeokgukBox}>
                   <div className={styles.gyeokgukHeader}>
                     <span className={styles.gyeokgukName}>
@@ -616,7 +714,7 @@ export default function SajuResultPage() {
 
             {/* 십성 분포 */}
             <div className={styles.section}>
-              <h2>✳️ 십성 분포 (十星)</h2>
+              <h2>십성 분포 (十星)</h2>
               <div className={styles.sipseongGrid}>
                 {SIPSEONG_ORDER.map((s) => {
                   const count = sipseongDist[s] || 0;
@@ -651,7 +749,7 @@ export default function SajuResultPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             {/* 대운 */}
             <div className={styles.section}>
-              <h2>📈 대운 (10년 주기)</h2>
+              <h2>대운 (10년 주기)</h2>
               <p className={styles.subInfo}>대운 시작: {result.daeWoonStartAge}세</p>
               <div className={styles.daewoonScroll}>
                 {daeWoon.slice(0, 10).map((dw, idx) => (
@@ -672,7 +770,7 @@ export default function SajuResultPage() {
 
             {/* 세운 */}
             <div className={styles.section}>
-              <h2>📅 세운 (연운)</h2>
+              <h2>세운 (연운)</h2>
               <div className={styles.sewoonGrid}>
                 {seWoon.map((sw, idx) => (
                   <div key={idx} className={`${styles.sewoonCard} ${idx === 0 ? styles.current : ''}`}>
@@ -694,7 +792,7 @@ export default function SajuResultPage() {
             {/* 신살 */}
             {sinSals.length > 0 && (
               <div className={styles.section}>
-                <h2>✨ 신살</h2>
+                <h2>신살</h2>
                 <div className={styles.sinsalList}>
                   {sinSals.map((sinsal, idx) => (
                     <div key={idx} className={styles.sinsalItem} data-type={sinsal.type}>
@@ -709,7 +807,7 @@ export default function SajuResultPage() {
             {/* 합충형파해 */}
             {interactions.length > 0 && (
               <div className={styles.section}>
-                <h2>🔄 합충형파해</h2>
+                <h2>합충형파해</h2>
                 <div className={styles.interactionList}>
                   {interactions.map((inter, idx) => (
                     <div key={idx} className={styles.interactionItem} data-type={inter.type}>
@@ -728,7 +826,7 @@ export default function SajuResultPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             {/* 기본 해석 */}
             <div className={styles.section}>
-              <h2>📜 기본 명리 풀이</h2>
+              <h2>기본 명리 풀이</h2>
               {basicLoading ? (
                 <div className={styles.analysisPlaceholder}>
                   <div className={styles.loadingSpinner}></div>
@@ -747,7 +845,7 @@ export default function SajuResultPage() {
 
             {/* 상세 해석 */}
             <div className={styles.section}>
-              <h2>🔮 상세 명리학 자문 풀이</h2>
+              <h2>상세 명리학 자문 풀이</h2>
               {detailedLoading ? (
                 <div className={styles.analysisPlaceholder}>
                   <div className={styles.loadingSpinner}></div>

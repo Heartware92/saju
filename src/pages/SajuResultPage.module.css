@@ -281,35 +281,31 @@
 .pentagonLegend {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  gap: 8px;
   width: 100%;
-  max-width: 320px;
+  max-width: 380px;
 }
 
 .pentagonLegendItem {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 6px 4px;
-  background: rgba(20, 12, 38, 0.45);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  gap: 4px;
 }
 
-.pentagonLegendDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.beaker {
+  display: block;
+  border-radius: 7px;
+  overflow: visible;
 }
 
 .pentagonLegendLabel {
-  font-size: 11px;
-  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .pentagonLegendValue {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
