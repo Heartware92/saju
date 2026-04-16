@@ -385,19 +385,20 @@ function PillarsRelationBoard({
   interactions: Interaction[];
   hourUnknown: boolean;
 }) {
-  // 팔각형 8꼭짓점 배치 (cyclic 순서: 천간 4 왼→오, 지지 4 오→왼)
-  // 위 4개 = 천간 (시/일/월/년), 아래 4개 = 지지 (시/일/월/년)
-  const VB_W = 360;
+  // 정팔각형 배치 — 45° 간격으로 8꼭짓점
+  // 위쪽 4개: 천간 (시·일·월·년 ←→), 아래쪽 4개: 지지 (시·일·월·년 ←→)
+  const VB_W = 320;
   const VB_H = 280;
-  const padX = 46;
-  const colW = (VB_W - 2 * padX) / 3;
-  const colX = (c: PillarCol) => padX + c * colW;
-  const stemY = 82;
-  const branchY = VB_H - 82; // 198
+  const cx = VB_W / 2;
+  const cy = VB_H / 2;
+  const R = 100;
 
-  const cellY = (row: PillarRow) => (row === 'stem' ? stemY : branchY);
+  const vertexAt = (angleDeg: number) => {
+    const rad = (angleDeg * Math.PI) / 180;
+    return { x: cx + R * Math.cos(rad), y: cy + R * Math.sin(rad) };
+  };
 
-  // 8 꼭짓점 — 팔각형 아웃라인 순서대로
+  // 8 꼭짓점 — 팔각형 시계방향 순서 (천간 왼→오, 지지 오→왼)
   const octVertices: Array<{
     col: PillarCol;
     row: PillarRow;
@@ -406,19 +407,23 @@ function PillarsRelationBoard({
     pillar: typeof pillars.hour;
     unknown: boolean;
   }> = [
-    { col: 0, row: 'stem',   x: colX(0), y: stemY,   pillar: pillars.hour,  unknown: hourUnknown },
-    { col: 1, row: 'stem',   x: colX(1), y: stemY,   pillar: pillars.day,   unknown: false },
-    { col: 2, row: 'stem',   x: colX(2), y: stemY,   pillar: pillars.month, unknown: false },
-    { col: 3, row: 'stem',   x: colX(3), y: stemY,   pillar: pillars.year,  unknown: false },
-    { col: 3, row: 'branch', x: colX(3), y: branchY, pillar: pillars.year,  unknown: false },
-    { col: 2, row: 'branch', x: colX(2), y: branchY, pillar: pillars.month, unknown: false },
-    { col: 1, row: 'branch', x: colX(1), y: branchY, pillar: pillars.day,   unknown: false },
-    { col: 0, row: 'branch', x: colX(0), y: branchY, pillar: pillars.hour,  unknown: hourUnknown },
+    { ...vertexAt(202.5), col: 0, row: 'stem',   pillar: pillars.hour,  unknown: hourUnknown },
+    { ...vertexAt(247.5), col: 1, row: 'stem',   pillar: pillars.day,   unknown: false },
+    { ...vertexAt(292.5), col: 2, row: 'stem',   pillar: pillars.month, unknown: false },
+    { ...vertexAt(337.5), col: 3, row: 'stem',   pillar: pillars.year,  unknown: false },
+    { ...vertexAt(22.5),  col: 3, row: 'branch', pillar: pillars.year,  unknown: false },
+    { ...vertexAt(67.5),  col: 2, row: 'branch', pillar: pillars.month, unknown: false },
+    { ...vertexAt(112.5), col: 1, row: 'branch', pillar: pillars.day,   unknown: false },
+    { ...vertexAt(157.5), col: 0, row: 'branch', pillar: pillars.hour,  unknown: hourUnknown },
   ];
 
-  // 팔각형 아웃라인 path (8꼭짓점 cyclic)
+  // 같은 col의 stem·branch 좌표 조회
+  const getVertex = (col: PillarCol, row: PillarRow) =>
+    octVertices.find(v => v.col === col && v.row === row)!;
+
+  // 팔각형 아웃라인 path
   const octOutline = octVertices
-    .map((v, i) => `${i === 0 ? 'M' : 'L'}${v.x},${v.y}`)
+    .map((v, i) => `${i === 0 ? 'M' : 'L'}${v.x.toFixed(1)},${v.y.toFixed(1)}`)
     .join(' ') + ' Z';
 
   const edges = interactions
@@ -444,10 +449,24 @@ function PillarsRelationBoard({
   };
   const arcs: Arc[] = [];
 
-  // 셀 외곽까지의 안전 여백 (노드에서 선이 시작하도록)
-  const NODE_PAD = 22;
+  // 노드 반경 — 선이 노드 바깥에서 시작/끝나도록
+  const NODE_R = 26;
 
-  // 같은 행 스택: 여러 관계선이 겹치지 않게 단 아래/위로 쌓기
+  // 두 점 사이 선을 양끝에서 NODE_R 만큼 줄이기
+  const shortenedLine = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    return {
+      sx: p1.x + ux * NODE_R,
+      sy: p1.y + uy * NODE_R,
+      ex: p2.x - ux * NODE_R,
+      ey: p2.y - uy * NODE_R,
+    };
+  };
+
   let stemStack = 0;
   let branchStack = 0;
   let crossStack = 0;
@@ -458,47 +477,42 @@ function PillarsRelationBoard({
       for (let j = i + 1; j < cells.length; j++) {
         const a = cells[i];
         const b = cells[j];
+        const va = getVertex(a.col, a.row);
+        const vb = getVertex(b.col, b.row);
         const sameRow = a.row === b.row;
-        const ax = colX(a.col);
-        const bx = colX(b.col);
-        const ay = cellY(a.row);
-        const by = cellY(b.row);
 
         let d: string;
         let labelX: number;
         let labelY: number;
 
         if (sameRow && a.row === 'stem') {
-          // 천간 2노드 — 위쪽 아치 (quadratic curve)
+          // 천간 2노드 — 위쪽 아치
           const colDist = Math.abs(a.col - b.col);
-          const archH = 18 + colDist * 6 + stemStack * 8;
-          const midX = (ax + bx) / 2;
-          const controlY = ay - archH;
-          const startY = ay - NODE_PAD;
-          d = `M ${ax} ${startY} Q ${midX} ${controlY} ${bx} ${startY}`;
+          const archH = 22 + colDist * 8 + stemStack * 10;
+          const midX = (va.x + vb.x) / 2;
+          const topY = Math.min(va.y, vb.y);
+          const controlY = topY - archH;
+          d = `M ${va.x.toFixed(1)} ${(va.y - NODE_R + 4).toFixed(1)} Q ${midX.toFixed(1)} ${controlY.toFixed(1)} ${vb.x.toFixed(1)} ${(vb.y - NODE_R + 4).toFixed(1)}`;
           labelX = midX;
-          labelY = controlY + (archH * 0.4);
+          labelY = controlY + archH * 0.35;
           stemStack++;
         } else if (sameRow && a.row === 'branch') {
           // 지지 2노드 — 아래쪽 아치
           const colDist = Math.abs(a.col - b.col);
-          const archH = 18 + colDist * 6 + branchStack * 8;
-          const midX = (ax + bx) / 2;
-          const controlY = ay + archH;
-          const startY = ay + NODE_PAD;
-          d = `M ${ax} ${startY} Q ${midX} ${controlY} ${bx} ${startY}`;
+          const archH = 22 + colDist * 8 + branchStack * 10;
+          const midX = (va.x + vb.x) / 2;
+          const botY = Math.max(va.y, vb.y);
+          const controlY = botY + archH;
+          d = `M ${va.x.toFixed(1)} ${(va.y + NODE_R - 4).toFixed(1)} Q ${midX.toFixed(1)} ${controlY.toFixed(1)} ${vb.x.toFixed(1)} ${(vb.y + NODE_R - 4).toFixed(1)}`;
           labelX = midX;
-          labelY = controlY - (archH * 0.4);
+          labelY = controlY - archH * 0.35;
           branchStack++;
         } else {
-          // 천간 ↔ 지지 — 노드 테두리에서 테두리로 직선
-          const startX = ax;
-          const startY = ay + NODE_PAD;
-          const endX = bx;
-          const endY = by - NODE_PAD;
-          d = `M ${startX} ${startY} L ${endX} ${endY}`;
-          const midY = (startY + endY) / 2;
-          const midX = (startX + endX) / 2;
+          // 천간 ↔ 지지 — 직선 (노드 가장자리에서 시작/끝)
+          const { sx, sy, ex, ey } = shortenedLine(va, vb);
+          d = `M ${sx.toFixed(1)} ${sy.toFixed(1)} L ${ex.toFixed(1)} ${ey.toFixed(1)}`;
+          const midX = (sx + ex) / 2;
+          const midY = (sy + ey) / 2;
           const sameCol = a.col === b.col;
           const sign = crossStack % 2 === 0 ? -1 : 1;
           const mag = sameCol
@@ -522,22 +536,26 @@ function PillarsRelationBoard({
     }
   });
 
-  // 확장 viewBox — 상하 여백 확보 (아치 튀어나오는 공간)
-  const MARGIN_TOP = 60;
-  const MARGIN_BOT = 60;
+  // 확장 viewBox — 아치 튀어나오는 공간
+  const MARGIN_TOP = 70;
+  const MARGIN_BOT = 70;
   const EXT_H = VB_H + MARGIN_TOP + MARGIN_BOT;
   const toExtY = (y: number) => y + MARGIN_TOP;
 
+  // 컬럼별 stem·branch x좌표 (각 기둥의 중앙)
+  const colCenterX: Record<PillarCol, number> = {
+    0: getVertex(0, 'stem').x,
+    1: getVertex(1, 'stem').x,
+    2: getVertex(2, 'stem').x,
+    3: getVertex(3, 'stem').x,
+  };
+
+  // 천간/지지 행 라벨 Y — 팔각형 바깥
+  const stemTopY = Math.min(...octVertices.filter(v => v.row === 'stem').map(v => v.y));
+  const branchBotY = Math.max(...octVertices.filter(v => v.row === 'branch').map(v => v.y));
+
   return (
     <div className={styles.octBoardWrap}>
-      {/* 컬럼 헤더 */}
-      <div className={styles.octColHeader}>
-        <span>시주</span>
-        <span>일주</span>
-        <span>월주</span>
-        <span>년주</span>
-      </div>
-
       <div
         className={styles.octBoardInner}
         style={{ aspectRatio: `${VB_W} / ${EXT_H}` }}
@@ -549,7 +567,7 @@ function PillarsRelationBoard({
           aria-hidden="true"
         >
           <g transform={`translate(0, ${MARGIN_TOP})`}>
-            {/* 팔각형 아웃라인 — 결속 프레임 */}
+            {/* 팔각형 아웃라인 */}
             <path
               d={octOutline}
               fill="rgba(124,92,252,0.06)"
@@ -558,13 +576,13 @@ function PillarsRelationBoard({
               strokeDasharray="5 4"
             />
 
-            {/* 꼭짓점 노드 — 글자 뒤 후광 */}
+            {/* 꼭짓점 노드 후광 */}
             {octVertices.map((v, i) => (
               <circle
                 key={`node-${i}`}
                 cx={v.x}
                 cy={v.y}
-                r={26}
+                r={NODE_R}
                 fill="rgba(20,12,38,0.85)"
                 stroke={v.unknown ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.14)'}
                 strokeWidth={1}
@@ -589,7 +607,21 @@ function PillarsRelationBoard({
           </g>
         </svg>
 
-        {/* 8글자 HTML 레이어 — 꼭짓점 위에 절대 배치 */}
+        {/* 컬럼 헤더 — 각 기둥 x 위에 절대 배치 */}
+        {(['시주', '일주', '월주', '년주'] as const).map((label, i) => (
+          <span
+            key={`colh-${i}`}
+            className={styles.octColLabel}
+            style={{
+              left: `${(colCenterX[i as PillarCol] / VB_W) * 100}%`,
+              top: `${((toExtY(stemTopY) - NODE_R - 22) / EXT_H) * 100}%`,
+            }}
+          >
+            {label}
+          </span>
+        ))}
+
+        {/* 8글자 HTML 레이어 */}
         {octVertices.map((v, i) => {
           const isStemRow = v.row === 'stem';
           const element = isStemRow ? v.pillar.ganElement : v.pillar.zhiElement;
@@ -608,7 +640,7 @@ function PillarsRelationBoard({
           );
         })}
 
-        {/* 관계 라벨 배지 */}
+        {/* 관계 라벨 */}
         {arcs.map(a => (
           <span
             key={`lab-${a.key}`}
@@ -624,11 +656,17 @@ function PillarsRelationBoard({
           </span>
         ))}
 
-        {/* 행 라벨 (천간/지지) — 왼쪽 바깥에 표시 */}
-        <span className={styles.octRowLabel} style={{ top: `${(toExtY(stemY) / EXT_H) * 100}%` }}>
+        {/* 행 라벨 */}
+        <span
+          className={styles.octRowLabel}
+          style={{ top: `${((toExtY(stemTopY) - NODE_R - 6) / EXT_H) * 100}%` }}
+        >
           천간
         </span>
-        <span className={styles.octRowLabel} style={{ top: `${(toExtY(branchY) / EXT_H) * 100}%` }}>
+        <span
+          className={styles.octRowLabel}
+          style={{ top: `${((toExtY(branchBotY) + NODE_R + 6) / EXT_H) * 100}%` }}
+        >
           지지
         </span>
       </div>

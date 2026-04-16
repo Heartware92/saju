@@ -973,17 +973,6 @@
   gap: 8px;
 }
 
-.octColHeader {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  padding: 0 12px;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-align: center;
-}
-
 .octBoardInner {
   position: relative;
   width: 100%;
@@ -1003,30 +992,52 @@
 
 .octCell {
   position: absolute;
+  width: 52px;
+  height: 52px;
   transform: translate(-50%, -50%);
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 40px;
-  min-height: 40px;
-  padding: 4px 6px;
-  font-size: 22px;
-  font-weight: 700;
   font-family: var(--font-serif);
   line-height: 1;
   z-index: 2;
   pointer-events: none;
 }
 
+.octCell .stemCell,
+.octCell .branchCell {
+  gap: 2px;
+}
+
+.octCell .pillarHanja {
+  font-size: 26px;
+}
+
+.octCell .pillarHangul {
+  font-size: 10px;
+}
+
 .octRowLabel {
   position: absolute;
-  left: 8px;
-  transform: translateY(-50%);
-  font-size: 11px;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-tertiary);
   letter-spacing: 0.08em;
   pointer-events: none;
+  z-index: 2;
+}
+
+.octColLabel {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  z-index: 2;
 }
 
 
