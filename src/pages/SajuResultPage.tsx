@@ -164,17 +164,20 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
         </defs>
 
         {/* 그리드 오각형 */}
-        {gridPolys.map((pts, i) => (
-          <polygon
-            key={i}
-            points={pts}
-            fill="none"
-            stroke="var(--border-subtle)"
-            strokeWidth={1}
-            strokeDasharray={i === gridPolys.length - 1 ? '0' : '3 3'}
-            opacity={0.5}
-          />
-        ))}
+        {gridPolys.map((pts, i) => {
+          const isOuter = i === gridPolys.length - 1;
+          return (
+            <polygon
+              key={i}
+              points={pts}
+              fill="none"
+              stroke="var(--border-subtle)"
+              strokeWidth={1}
+              strokeDasharray="3 3"
+              opacity={isOuter ? 0.25 : 0.5}
+            />
+          );
+        })}
         {/* 축 라인 */}
         {ELEMENT_ORDER.map((_, i) => {
           const p = pt(i, rMax);

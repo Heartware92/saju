@@ -264,6 +264,9 @@ function determineYongsinByTonggwan(
 
 /**
  * 오행 분포를 계산합니다
+ * - 천간 / 지지: 각 1점
+ * - 지장간: 정기(첫번째) 0.5점, 중·여기 0.25점
+ * (sajuCalculator.ts의 countElements와 동일한 가중치)
  */
 function calculateElementDistribution(saju: SajuResult): Record<OhangType, number> {
   const count: Record<OhangType, number> = {
@@ -283,6 +286,13 @@ function calculateElementDistribution(saju: SajuResult): Record<OhangType, numbe
 
     if (ganEl) count[ganEl] += 1;
     if (zhiEl) count[zhiEl] += 1;
+
+    pillar.hiddenStems.forEach((stem, idx) => {
+      const hiddenEl = STEM_ELEMENT[stem] as OhangType;
+      if (hiddenEl && count[hiddenEl] !== undefined) {
+        count[hiddenEl] += idx === 0 ? 0.5 : 0.25;
+      }
+    });
   });
 
   return count;
