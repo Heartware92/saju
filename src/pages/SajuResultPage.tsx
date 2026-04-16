@@ -600,42 +600,38 @@ function PillarsRelationBoard({
             aria-hidden="true"
           >
             {arcs.map(a => (
-              <g key={a.key}>
-                <motion.path
-                  d={a.d}
-                  stroke={a.color}
-                  strokeWidth={1.6}
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeDasharray={a.type === '충' ? '4 3' : '0'}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 0.9 }}
-                  transition={{ duration: 0.4 }}
-                />
-                <rect
-                  x={a.labelX - 9}
-                  y={a.labelY - 8}
-                  width={18}
-                  height={14}
-                  rx={4}
-                  fill="var(--space-surface)"
-                  stroke={a.color}
-                  strokeWidth={1}
-                />
-                <text
-                  x={a.labelX}
-                  y={a.labelY + 2}
-                  textAnchor="middle"
-                  fontSize={10}
-                  fontWeight={700}
-                  fill={a.color}
-                  style={{ fontFamily: 'var(--font-serif)' }}
-                >
-                  {a.type}
-                </text>
-              </g>
+              <motion.path
+                key={a.key}
+                d={a.d}
+                stroke={a.color}
+                strokeWidth={1.6}
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray={a.type === '충' ? '4 3' : '0'}
+                vectorEffect="non-scaling-stroke"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.9 }}
+                transition={{ duration: 0.4 }}
+              />
             ))}
           </svg>
+          {/* 관계 타입 배지 — HTML로 렌더해서 왜곡 방지 */}
+          <div className={styles.relationLabels} aria-hidden="true">
+            {arcs.map(a => (
+              <span
+                key={`lab-${a.key}`}
+                className={styles.relationLabelBadge}
+                style={{
+                  left: `${(a.labelX / VB_W) * 100}%`,
+                  top: `${(a.labelY / VB_H) * 100}%`,
+                  color: a.color,
+                  borderColor: a.color,
+                }}
+              >
+                {a.type}
+              </span>
+            ))}
+          </div>
         </div>
         {/* 관계 설명 리스트 */}
         {interactions.length > 0 && (
