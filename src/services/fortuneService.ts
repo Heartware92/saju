@@ -3,7 +3,6 @@
  */
 
 import { SajuResult } from '../utils/sajuCalculator';
-import { useCreditStore } from '../store/useCreditStore';
 import { sajuDB } from './supabase';
 import { auth } from './supabase';
 import {
@@ -18,7 +17,9 @@ import {
   generateLoveFortunePrompt,
   generateWealthFortunePrompt,
   generateTojeongPrompt,
-  generateZamidusuPrompt
+  generateZamidusuPrompt,
+  generatePeriodDomainsPrompt,
+  type PeriodDomainBrief
 } from '../constants/prompts';
 import type { TarotCardInfo } from './api';
 import type { TojeongResult } from '../engine/tojeong';
@@ -131,24 +132,18 @@ export const getBasicInterpretation = async (
 };
 
 /**
- * 상세 해석 (2엽전)
+ * 상세 해석 (무료 공개)
  * - 대운/세운 + 신살 + 종합 상세 분석
  */
 export const getDetailedInterpretation = async (
   result: SajuResult
 ): Promise<FortuneResponse> => {
   try {
-    // 크레딧 소비
-    const success = await useCreditStore.getState().consumeCredit('sun', 2, '사주 상세 해석');
-    if (!success) {
-      return { success: false, error: '크레딧이 부족합니다' };
-    }
-
     const prompt = generateDetailedPrompt(result);
     // 2800~3500자 본문 → 넉넉히 5500 토큰
     const content = await callGPT(prompt, 5500);
 
-    // 기록 저장
+    // 기록 저장 (로그인 유저만 — 크레딧 차감 없음)
     const user = await auth.getCurrentUser();
     if (user) {
       await sajuDB.saveRecord({
@@ -161,7 +156,7 @@ export const getDetailedInterpretation = async (
         result_data: result as any,
         interpretation_detailed: content,
         credit_type: 'sun',
-        credit_used: 2,
+        credit_used: 0,
         is_detailed: true
       });
     }
@@ -173,22 +168,15 @@ export const getDetailedInterpretation = async (
 };
 
 /**
- * 오늘의 운세 (1엽전)
+ * 오늘의 운세 (전체 무료 — 추후 크레딧 정책 결정 시 재도입)
  */
 export const getTodayFortune = async (
   result: SajuResult
 ): Promise<FortuneResponse> => {
   try {
-    // 크레딧 소비
-    const success = await useCreditStore.getState().consumeCredit('moon', 1, '오늘의 운세');
-    if (!success) {
-      return { success: false, error: '크레딧이 부족합니다' };
-    }
-
     const prompt = generateTodayFortunePrompt(result);
     const content = await callGPT(prompt, 1600);
 
-    // 기록 저장
     const user = await auth.getCurrentUser();
     if (user) {
       await sajuDB.saveRecord({
@@ -201,7 +189,7 @@ export const getTodayFortune = async (
         result_data: result as any,
         interpretation_basic: content,
         credit_type: 'moon',
-        credit_used: 1,
+        credit_used: 0,
         is_detailed: false
       });
     }
@@ -213,21 +201,14 @@ export const getTodayFortune = async (
 };
 
 /**
- * 애정운 특화 분석 (2엽전)
+ * 애정운 특화 분석 (전체 무료)
  */
 export const getLoveFortune = async (
   result: SajuResult
 ): Promise<FortuneResponse> => {
   try {
-    const success = await useCreditStore.getState().consumeCredit('sun', 2, '애정운 분석');
-    if (!success) {
-      return { success: false, error: '크레딧이 부족합니다' };
-    }
-
     const prompt = generateLoveFortunePrompt(result);
-    // 1400~1800자 → 약 3000 토큰
     const content = await callGPT(prompt, 3200);
-
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -235,20 +216,14 @@ export const getLoveFortune = async (
 };
 
 /**
- * 재물운 특화 분석 (2엽전)
+ * 재물운 특화 분석 (전체 무료)
  */
 export const getWealthFortune = async (
   result: SajuResult
 ): Promise<FortuneResponse> => {
   try {
-    const success = await useCreditStore.getState().consumeCredit('sun', 2, '재물운 분석');
-    if (!success) {
-      return { success: false, error: '크레딧이 부족합니다' };
-    }
-
     const prompt = generateWealthFortunePrompt(result);
     const content = await callGPT(prompt, 3200);
-
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -256,7 +231,7 @@ export const getWealthFortune = async (
 };
 
 /**
- * 오늘의 타로 (달 1엽전) — 하루 1장 고정
+ * 오늘의 타로 (전체 무료) — 하루 1장 고정
  * card는 UI에서 날짜 시드로 뽑아 전달.
  */
 export const getTodayTarotReading = async (
@@ -264,12 +239,7 @@ export const getTodayTarotReading = async (
   dateStr: string
 ): Promise<FortuneResponse> => {
   try {
-    const success = await useCreditStore.getState().consumeCredit('moon', 1, '오늘의 타로');
-    if (!success) {
-      return { success: false, error: '크레딧이 부족합니다' };
-    }
     const prompt = generateTodayTarotPrompt(card, dateStr);
-    // 650~850자 → 약 1800 토큰
     const content = await callGPT(prompt, 1800);
     return { success: true, content };
   } catch (error: any) {
@@ -278,19 +248,14 @@ export const getTodayTarotReading = async (
 };
 
 /**
- * 이달의 타로 (해 1엽전) — 3장 스프레드 (상/중/하순)
+ * 이달의 타로 (전체 무료) — 3장 스프레드 (상/중/하순)
  */
 export const getMonthlyTarotReading = async (
   cards: { early: TarotCardInfo; middle: TarotCardInfo; late: TarotCardInfo },
   monthStr: string
 ): Promise<FortuneResponse> => {
   try {
-    const success = await useCreditStore.getState().consumeCredit('sun', 1, '이달의 타로');
-    if (!success) {
-      return { success: false, error: '크레딧이 부족합니다' };
-    }
     const prompt = generateMonthlyTarotPrompt(cards, monthStr);
-    // 1300~1700자 → 약 3000 토큰
     const content = await callGPT(prompt, 3200);
     return { success: true, content };
   } catch (error: any) {
@@ -299,22 +264,15 @@ export const getMonthlyTarotReading = async (
 };
 
 /**
- * 타로 단독 해석 (1엽전)
+ * 타로 단독 해석 (전체 무료)
  */
 export const getTarotReading = async (
   card: TarotCardInfo,
   question?: string
 ): Promise<FortuneResponse> => {
   try {
-    const success = await useCreditStore.getState().consumeCredit('moon', 1, '타로 리딩');
-    if (!success) {
-      return { success: false, error: '크레딧이 부족합니다' };
-    }
-
     const prompt = generateTarotPrompt(card, question);
-    // 500~700자 → 약 1400 토큰
     const content = await callGPT(prompt, 1500);
-
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -322,18 +280,13 @@ export const getTarotReading = async (
 };
 
 /**
- * 토정비결 (☀️2)
+ * 토정비결 (전체 무료)
  */
 export const getTojeongReading = async (
   tj: TojeongResult
 ): Promise<FortuneResponse> => {
   try {
-    const success = await useCreditStore.getState().consumeCredit('sun', 2, '토정비결');
-    if (!success) {
-      return { success: false, error: '크레딧이 부족합니다' };
-    }
     const prompt = generateTojeongPrompt(tj);
-    // 2400~3000자 → 약 5000 토큰
     const content = await callGPT(prompt, 5200);
     return { success: true, content };
   } catch (error: any) {
@@ -342,20 +295,73 @@ export const getTojeongReading = async (
 };
 
 /**
- * 자미두수 (☀️3)
+ * 자미두수 (전체 무료)
  */
 export const getZamidusuReading = async (
   z: ZamidusuResult
 ): Promise<FortuneResponse> => {
   try {
-    const success = await useCreditStore.getState().consumeCredit('sun', 3, '자미두수');
-    if (!success) {
-      return { success: false, error: '크레딧이 부족합니다' };
-    }
     const prompt = generateZamidusuPrompt(z);
-    // 3200~4000자 → 약 6500 토큰
     const content = await callGPT(prompt, 6800);
     return { success: true, content };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * 기간 운세 영역별 상세 (무료)
+ * - 엔진이 계산한 도메인 점수/등급을 근거로 각 영역 5문장 분석 생성
+ * - 응답은 [key] 델리미터로 구분된 블록. 파싱 실패 시 전체 원문을 error 로 반환.
+ */
+const DOMAIN_KEYS: PeriodDomainBrief['key'][] = ['wealth', 'career', 'love', 'health', 'study'];
+
+export interface PeriodDomainsAIResult {
+  success: boolean;
+  descriptions?: Partial<Record<PeriodDomainBrief['key'], string>>;
+  error?: string;
+}
+
+const parsePeriodDomains = (raw: string): Partial<Record<PeriodDomainBrief['key'], string>> => {
+  const out: Partial<Record<PeriodDomainBrief['key'], string>> = {};
+  // [key] 헤더로 구간 분할 — 줄머리·공백 허용
+  const re = /^\s*\[(wealth|career|love|health|study)\]\s*$/m;
+  const parts = raw.split(/^\s*\[(wealth|career|love|health|study)\]\s*$/m);
+  // split 결과: [서문?, key1, body1, key2, body2, ...]
+  for (let i = 1; i < parts.length; i += 2) {
+    const key = parts[i] as PeriodDomainBrief['key'];
+    const body = (parts[i + 1] || '').trim();
+    if (body) out[key] = body;
+  }
+  // fallback — 한 블록도 못 찾으면 키별 검색
+  if (Object.keys(out).length === 0 && re.test(raw)) {
+    for (const k of DOMAIN_KEYS) {
+      const m = raw.match(new RegExp(`\\[${k}\\]\\s*([\\s\\S]*?)(?=\\n\\s*\\[(?:wealth|career|love|health|study)\\]|$)`));
+      if (m && m[1].trim()) out[k] = m[1].trim();
+    }
+  }
+  return out;
+};
+
+export const getPeriodDomainsDescription = async (
+  result: SajuResult,
+  opts: {
+    scopeLabel: string;
+    targetGanZhi: string;
+    overallHeadline: string;
+    domains: PeriodDomainBrief[];
+  }
+): Promise<PeriodDomainsAIResult> => {
+  try {
+    const prompt = generatePeriodDomainsPrompt(result, opts);
+    // 5 영역 × 5문장 × 5 영역 → 약 2500~3500 토큰 여유
+    const content = await callGPT(prompt, 3500);
+    const descriptions = parsePeriodDomains(content);
+
+    if (Object.keys(descriptions).length === 0) {
+      return { success: false, error: '영역별 설명 파싱 실패' };
+    }
+    return { success: true, descriptions };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -370,15 +376,8 @@ export const getHybridReading = async (
   question?: string
 ): Promise<FortuneResponse> => {
   try {
-    const success = await useCreditStore.getState().consumeCredit('sun', 3, '사주×타로 하이브리드');
-    if (!success) {
-      return { success: false, error: '크레딧이 부족합니다' };
-    }
-
     const prompt = generateHybridPrompt(sajuResult, tarotCard, question);
-    // 1200~1600자 → 약 2800 토큰
     const content = await callGPT(prompt, 3000);
-
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };

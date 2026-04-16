@@ -1,13 +1,10 @@
 'use client';
 
 /**
- * OAuth 콜백 페이지 (Google / Kakao / Naver magic-link 공용)
+ * OAuth 콜백 페이지 (Google / Kakao)
  *
  * Supabase는 OAuth 성공 시 `?code=...`를 붙여 이 페이지로 리다이렉트한다.
  * PKCE flow에서는 `exchangeCodeForSession`으로 code를 세션으로 교환한다.
- *
- * Naver 커스텀 OAuth의 경우 서버가 magic-link로 한 번 더 리다이렉트하고,
- * 그 magic-link 콜백도 이 경로로 돌아온다 (Supabase가 자동 세션 세팅).
  */
 
 import { useEffect, useState } from 'react';

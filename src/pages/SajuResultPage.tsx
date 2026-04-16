@@ -1,16 +1,17 @@
 'use client';
 
 /**
- * 사주 결과 페이지 (Paywall 통합 버전)
+ * 사주 결과 페이지 — 전체 무료 공개
  *
- * 무료 (0엽전):
- * - 사주 원국표, 오행 분포, 신강신약, 용신
- * - 기본 명리 풀이 (200-300자)
+ * 섹션:
+ * - 원국 탭: 사주 원국표, 오행 분포, 신강신약, 용신, 격국, 십성
+ * - 대운·세운 탭: 대운 10단, 세운, 신살, 합충형파해
+ * - 명리 풀이 탭: 기본 + 상세 해석 (AI 생성)
  *
- * 유료 (2엽전):
- * - 대운/세운 상세
- * - 신살, 합충형파해
- * - 상세 명리학 자문 풀이 (1500-2000자)
+ * 입력 소스 우선순위:
+ * 1. URL 쿼리 (year/month/day/hour/...)
+ * 2. 대표 프로필
+ * 3. 없으면 등록 유도
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -19,10 +20,14 @@ import { motion } from 'framer-motion';
 import { Lunar } from 'lunar-javascript';
 import { calculateSaju, SajuResult, TEN_GODS_MAP } from '../utils/sajuCalculator';
 import { getBasicInterpretation, getDetailedInterpretation } from '../services/fortuneService';
-import { PaywallModal, LockedCard } from '../features/saju/PaywallModal';
-import { useCreditStore } from '../store/useCreditStore';
+import { useProfileStore } from '../store/useProfileStore';
+import { computeSajuFromProfile } from '../utils/profileSaju';
 import { determineGyeokguk, analyzeGyeokgukStatus } from '../engine/gyeokguk';
+import { stemToHanja, zhiToHanja } from '../lib/character';
 import styles from './SajuResultPage.module.css';
+
+const formatStem = (gan: string) => `${stemToHanja(gan)}(${gan})`;
+const formatBranch = (zhi: string) => `${zhiToHanja(zhi)}(${zhi})`;
 
 const SIPSEONG_ORDER = ['비견', '겁재', '식신', '상관', '편재', '정재', '편관', '정관', '편인', '정인'] as const;
 
@@ -86,102 +91,74 @@ const ELEMENT_COLORS: Record<string, string> = {
 export default function SajuResultPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
+  const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
 
   const [activeTab, setActiveTab] = useState<TabType>('wonguk');
   const [result, setResult] = useState<SajuResult | null>(null);
 
-  // 기본 해석 (무료)
   const [basicAnalysis, setBasicAnalysis] = useState('');
   const [basicLoading, setBasicLoading] = useState(false);
 
-  // 상세 해석 (유료)
   const [detailedAnalysis, setDetailedAnalysis] = useState('');
-  const [isDetailUnlocked, setIsDetailUnlocked] = useState(false);
   const [detailedLoading, setDetailedLoading] = useState(false);
 
-  // Paywall 모달
-  const [showPaywall, setShowPaywall] = useState(false);
+  useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
-  // 크레딧 스토어
-  const { fetchBalance, sunBalance, moonBalance } = useCreditStore();
-
-  // 크레딧 잔액 로드
+  // 사주 계산 — URL 쿼리 우선, 없으면 대표 프로필 사용
   useEffect(() => {
-    console.log('[SajuResultPage] 페이지 로드, 잔액 조회 시작');
-    fetchBalance();
-  }, []);
+    const hasUrlBirth = !!(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
 
-  // 디버깅: showPaywall 상태 변화 감지
-  useEffect(() => {
-    console.log('[SajuResultPage] showPaywall 상태:', showPaywall);
-  }, [showPaywall]);
+    if (hasUrlBirth) {
+      const year = parseInt(searchParams!.get('year')!);
+      const month = parseInt(searchParams!.get('month')!);
+      const day = parseInt(searchParams!.get('day')!);
+      const hour = parseInt(searchParams!.get('hour') || '12');
+      const minute = parseInt(searchParams!.get('minute') || '0');
+      const gender = (searchParams!.get('gender') || 'male') as 'male' | 'female';
+      const calendarType = searchParams!.get('calendarType') || 'solar';
+      const unknownTime = searchParams!.get('unknownTime') === 'true';
 
-  // 디버깅: balance 변화 감지
-  useEffect(() => {
-    console.log('[SajuResultPage] 현재 잔액 - 해:', sunBalance, '달:', moonBalance);
-  }, [sunBalance, moonBalance]);
+      let solarYear = year, solarMonth = month, solarDay = day;
+      if (calendarType === 'lunar') {
+        const lunar = Lunar.fromYmdHms(year, month, day, hour, minute, 0);
+        const solar = lunar.getSolar();
+        solarYear = solar.getYear();
+        solarMonth = solar.getMonth();
+        solarDay = solar.getDay();
+      }
 
-  // LockedCard 클릭 핸들러
-  const handleLockedCardClick = () => {
-    console.log('[SajuResultPage] LockedCard 클릭됨, 모달 열기');
-    setShowPaywall(true);
-  };
+      // 한국식 30분 시프트 시진 — 점신/천을귀인 호환
+      let finalY = solarYear, finalM = solarMonth, finalD = solarDay;
+      let finalH = unknownTime ? 12 : hour;
+      let finalMin = unknownTime ? 0 : minute;
+      if (!unknownTime) {
+        const dt = new Date(solarYear, solarMonth - 1, solarDay, hour, minute);
+        const shifted = new Date(dt.getTime() - 30 * 60 * 1000);
+        finalY = shifted.getFullYear();
+        finalM = shifted.getMonth() + 1;
+        finalD = shifted.getDate();
+        finalH = shifted.getHours();
+        finalMin = shifted.getMinutes();
+      }
 
-  // 대운 탭 클릭 핸들러
-  const handleDaewoonTabClick = () => {
-    console.log('[SajuResultPage] 대운 탭 클릭됨, isDetailUnlocked:', isDetailUnlocked);
-    if (!isDetailUnlocked) {
-      console.log('[SajuResultPage] 잠김 상태 - 모달 열기');
-      setShowPaywall(true);
-    } else {
-      console.log('[SajuResultPage] 잠금 해제됨 - 대운 탭으로 전환');
-      setActiveTab('daewoon');
+      setResult(calculateSaju(finalY, finalM, finalD, finalH, finalMin, gender, unknownTime));
+    } else if (primary) {
+      setResult(computeSajuFromProfile(primary));
     }
-  };
-
-  // 사주 계산
-  useEffect(() => {
-    const year = parseInt(searchParams?.get('year') || '1990');
-    const month = parseInt(searchParams?.get('month') || '1');
-    const day = parseInt(searchParams?.get('day') || '1');
-    const hour = parseInt(searchParams?.get('hour') || '12');
-    const minute = parseInt(searchParams?.get('minute') || '0');
-    const gender = (searchParams?.get('gender') || 'male') as 'male' | 'female';
-    const calendarType = searchParams?.get('calendarType') || 'solar';
-    const unknownTime = searchParams?.get('unknownTime') === 'true';
-
-    // 1) 음력이면 양력으로 변환
-    let solarYear = year, solarMonth = month, solarDay = day;
-    if (calendarType === 'lunar') {
-      const lunar = Lunar.fromYmdHms(year, month, day, hour, minute, 0);
-      const solar = lunar.getSolar();
-      solarYear = solar.getYear();
-      solarMonth = solar.getMonth();
-      solarDay = solar.getDay();
-    }
-
-    // 2) 한국식 30분 시프트 시진 — 점신/천을귀인 호환 (오시=11:30~13:30 등)
-    let finalY = solarYear, finalM = solarMonth, finalD = solarDay;
-    let finalH = unknownTime ? 12 : hour;
-    let finalMin = unknownTime ? 0 : minute;
-    if (!unknownTime) {
-      const dt = new Date(solarYear, solarMonth - 1, solarDay, hour, minute);
-      const shifted = new Date(dt.getTime() - 30 * 60 * 1000);
-      finalY = shifted.getFullYear();
-      finalM = shifted.getMonth() + 1;
-      finalD = shifted.getDate();
-      finalH = shifted.getHours();
-      finalMin = shifted.getMinutes();
-    }
-
-    const sajuResult = calculateSaju(finalY, finalM, finalD, finalH, finalMin, gender, unknownTime);
-    setResult(sajuResult);
-  }, [searchParams]);
+  }, [searchParams, primary]);
 
   // 무료 기본 해석 자동 로드
   useEffect(() => {
     if (result && !basicAnalysis && !basicLoading) {
       loadBasicAnalysis();
+    }
+  }, [result]);
+
+  // 상세 해석 자동 로드 (전체 무료 공개)
+  useEffect(() => {
+    if (result && !detailedAnalysis && !detailedLoading) {
+      loadDetailedAnalysis();
     }
   }, [result]);
 
@@ -201,8 +178,7 @@ export default function SajuResultPage() {
     }
   };
 
-  // 상세 해석 잠금 해제
-  const handleUnlockDetail = async () => {
+  const loadDetailedAnalysis = async () => {
     if (!result) return;
 
     setDetailedLoading(true);
@@ -210,12 +186,9 @@ export default function SajuResultPage() {
       const response = await getDetailedInterpretation(result);
       if (response.success && response.content) {
         setDetailedAnalysis(response.content);
-        setIsDetailUnlocked(true);
-      } else {
-        alert(response.error || '상세 해석을 불러오는데 실패했습니다.');
       }
-    } catch (error: any) {
-      alert('오류가 발생했습니다.');
+    } catch (error) {
+      console.error('Detailed analysis error:', error);
     } finally {
       setDetailedLoading(false);
     }
@@ -233,6 +206,40 @@ export default function SajuResultPage() {
   );
 
   if (!result) {
+    const hasUrlBirth = !!(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
+    // 프로필 스토어가 아직 수화(hydrate) 중이거나 최초 fetch가 끝나지 않았으면 로딩.
+    // hydrated · lastFetchedAt · loading 세 상태를 합쳐야 "확실히 프로필이 없는 상태"를 판단할 수 있다.
+    // (이게 없으면 페이지 진입 직후 잠깐 "프로필 없음" UI가 번쩍였다 바뀌는 race가 생김.)
+    const profileStoreReady = hydrated && lastFetchedAt !== null && !profilesLoading;
+
+    if (!hasUrlBirth && !profileStoreReady) {
+      return <div className={styles.loading}>로딩 중...</div>;
+    }
+
+    if (!hasUrlBirth && !primary) {
+      return (
+        <div className={styles.container}>
+          <div className={styles.header}>
+            <button className={styles.backBtn} onClick={() => router.push('/')}>
+              ← 홈으로
+            </button>
+          </div>
+          <div className={styles.section} style={{ textAlign: 'center', padding: '48px 24px' }}>
+            <h2>대표 프로필이 없어요</h2>
+            <p style={{ margin: '16px 0 24px', color: 'var(--text-secondary)' }}>
+              사주를 분석하려면 먼저 생년월일시를 등록해주세요.
+            </p>
+            <button
+              className={styles.backBtn}
+              onClick={() => router.push('/saju/input')}
+              style={{ margin: '0 auto' }}
+            >
+              프로필 등록하기
+            </button>
+          </div>
+        </div>
+      );
+    }
     return <div className={styles.loading}>로딩 중...</div>;
   }
 
@@ -242,8 +249,8 @@ export default function SajuResultPage() {
     <div className={styles.container}>
       {/* Header */}
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={() => router.push('/saju/input')}>
-          ← 다시 입력
+        <button className={styles.backBtn} onClick={() => router.push('/')}>
+          ← 홈으로
         </button>
         <div className={styles.headerCenter}>
           <h1>사주 분석 결과</h1>
@@ -271,13 +278,13 @@ export default function SajuResultPage() {
           className={`${styles.tab} ${activeTab === 'wonguk' ? styles.active : ''}`}
           onClick={() => setActiveTab('wonguk')}
         >
-          사주 원국 (무료)
+          사주 원국
         </button>
         <button
           className={`${styles.tab} ${activeTab === 'daewoon' ? styles.active : ''}`}
-          onClick={handleDaewoonTabClick}
+          onClick={() => setActiveTab('daewoon')}
         >
-          대운·세운 {!isDetailUnlocked && '🔒'}
+          대운·세운
         </button>
         <button
           className={`${styles.tab} ${activeTab === 'analysis' ? styles.active : ''}`}
@@ -317,11 +324,11 @@ export default function SajuResultPage() {
                     className={result.hourUnknown ? styles.hourUnknownCell : ''}
                     style={result.hourUnknown ? undefined : { color: ELEMENT_COLORS[pillars.hour.ganElement] }}
                   >
-                    {result.hourUnknown ? '?' : pillars.hour.gan}
+                    {result.hourUnknown ? '?' : formatStem(pillars.hour.gan)}
                   </span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.day.ganElement] }}>{pillars.day.gan}</span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.month.ganElement] }}>{pillars.month.gan}</span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.year.ganElement] }}>{pillars.year.gan}</span>
+                  <span style={{ color: ELEMENT_COLORS[pillars.day.ganElement] }}>{formatStem(pillars.day.gan)}</span>
+                  <span style={{ color: ELEMENT_COLORS[pillars.month.ganElement] }}>{formatStem(pillars.month.gan)}</span>
+                  <span style={{ color: ELEMENT_COLORS[pillars.year.ganElement] }}>{formatStem(pillars.year.gan)}</span>
                 </div>
                 <div className={`${styles.pillarsRow} ${styles.branchRow}`}>
                   <span className={styles.label}>지지</span>
@@ -329,20 +336,20 @@ export default function SajuResultPage() {
                     className={result.hourUnknown ? styles.hourUnknownCell : ''}
                     style={result.hourUnknown ? undefined : { color: ELEMENT_COLORS[pillars.hour.zhiElement] }}
                   >
-                    {result.hourUnknown ? '?' : pillars.hour.zhi}
+                    {result.hourUnknown ? '?' : formatBranch(pillars.hour.zhi)}
                   </span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.day.zhiElement] }}>{pillars.day.zhi}</span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.month.zhiElement] }}>{pillars.month.zhi}</span>
-                  <span style={{ color: ELEMENT_COLORS[pillars.year.zhiElement] }}>{pillars.year.zhi}</span>
+                  <span style={{ color: ELEMENT_COLORS[pillars.day.zhiElement] }}>{formatBranch(pillars.day.zhi)}</span>
+                  <span style={{ color: ELEMENT_COLORS[pillars.month.zhiElement] }}>{formatBranch(pillars.month.zhi)}</span>
+                  <span style={{ color: ELEMENT_COLORS[pillars.year.zhiElement] }}>{formatBranch(pillars.year.zhi)}</span>
                 </div>
                 <div className={styles.pillarsRow}>
                   <span className={styles.label}>지장간</span>
                   <span className={`${styles.hiddenStems} ${result.hourUnknown ? styles.hourUnknownCell : ''}`}>
-                    {result.hourUnknown ? '—' : pillars.hour.hiddenStems.join(' ')}
+                    {result.hourUnknown ? '—' : pillars.hour.hiddenStems.map(stemToHanja).join(' ')}
                   </span>
-                  <span className={styles.hiddenStems}>{pillars.day.hiddenStems.join(' ')}</span>
-                  <span className={styles.hiddenStems}>{pillars.month.hiddenStems.join(' ')}</span>
-                  <span className={styles.hiddenStems}>{pillars.year.hiddenStems.join(' ')}</span>
+                  <span className={styles.hiddenStems}>{pillars.day.hiddenStems.map(stemToHanja).join(' ')}</span>
+                  <span className={styles.hiddenStems}>{pillars.month.hiddenStems.map(stemToHanja).join(' ')}</span>
+                  <span className={styles.hiddenStems}>{pillars.year.hiddenStems.map(stemToHanja).join(' ')}</span>
                 </div>
                 <div className={styles.pillarsRow}>
                   <span className={styles.label}>12운성</span>
@@ -492,17 +499,11 @@ export default function SajuResultPage() {
               </p>
             </div>
 
-            {/* 상세 분석 잠금 카드 */}
-            {!isDetailUnlocked && (
-              <div className="mt-8">
-                <LockedCard type="detailed" onClick={handleLockedCardClick} />
-              </div>
-            )}
           </motion.div>
         )}
 
-        {/* 대운세운 탭 (유료) */}
-        {activeTab === 'daewoon' && isDetailUnlocked && (
+        {/* 대운세운 탭 */}
+        {activeTab === 'daewoon' && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             {/* 대운 */}
             <div className={styles.section}>
@@ -513,8 +514,8 @@ export default function SajuResultPage() {
                   <div key={idx} className={styles.daewoonCard}>
                     <div className={styles.dwAge}>{dw.startAge}~{dw.endAge}세</div>
                     <div className={styles.dwGanZhi}>
-                      <span style={{ color: ELEMENT_COLORS[dw.ganElement] }}>{dw.gan}</span>
-                      <span style={{ color: ELEMENT_COLORS[dw.zhiElement] }}>{dw.zhi}</span>
+                      <span style={{ color: ELEMENT_COLORS[dw.ganElement] }}>{stemToHanja(dw.gan)}</span>
+                      <span style={{ color: ELEMENT_COLORS[dw.zhiElement] }}>{zhiToHanja(dw.zhi)}</span>
                     </div>
                     <div className={styles.dwInfo}>
                       <span>{dw.tenGod}</span>
@@ -534,8 +535,8 @@ export default function SajuResultPage() {
                     <div className={styles.swYear}>{sw.year}년</div>
                     <div className={styles.swAnimal}>{sw.animal}띠</div>
                     <div className={styles.swGanZhi}>
-                      <span style={{ color: ELEMENT_COLORS[sw.ganElement] }}>{sw.gan}</span>
-                      <span style={{ color: ELEMENT_COLORS[sw.zhiElement] }}>{sw.zhi}</span>
+                      <span style={{ color: ELEMENT_COLORS[sw.ganElement] }}>{stemToHanja(sw.gan)}</span>
+                      <span style={{ color: ELEMENT_COLORS[sw.zhiElement] }}>{zhiToHanja(sw.zhi)}</span>
                     </div>
                     <div className={styles.swInfo}>
                       <span>{sw.tenGod}</span>
@@ -581,9 +582,9 @@ export default function SajuResultPage() {
         {/* 명리 풀이 탭 */}
         {activeTab === 'analysis' && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            {/* 기본 해석 (무료) */}
+            {/* 기본 해석 */}
             <div className={styles.section}>
-              <h2>📜 기본 명리 풀이 (무료)</h2>
+              <h2>📜 기본 명리 풀이</h2>
               {basicLoading ? (
                 <div className={styles.analysisPlaceholder}>
                   <div className={styles.loadingSpinner}></div>
@@ -600,41 +601,27 @@ export default function SajuResultPage() {
               )}
             </div>
 
-            {/* 상세 해석 (유료) */}
-            {!isDetailUnlocked ? (
-              <div className="mt-8">
-                <LockedCard type="detailed" onClick={handleLockedCardClick} />
-              </div>
-            ) : (
-              <div className={styles.section}>
-                <h2>🔮 상세 명리학 자문 풀이 (☀️ 2)</h2>
-                {detailedLoading ? (
-                  <div className={styles.analysisPlaceholder}>
-                    <div className={styles.loadingSpinner}></div>
-                    <p>상세 분석 중...</p>
-                  </div>
-                ) : detailedAnalysis ? (
-                  <div className={styles.analysisResult}>
-                    <pre>{detailedAnalysis}</pre>
-                  </div>
-                ) : (
-                  <div className={styles.analysisPlaceholder}>
-                    <p>상세 해석을 불러오는 중...</p>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* 상세 해석 */}
+            <div className={styles.section}>
+              <h2>🔮 상세 명리학 자문 풀이</h2>
+              {detailedLoading ? (
+                <div className={styles.analysisPlaceholder}>
+                  <div className={styles.loadingSpinner}></div>
+                  <p>상세 분석 중...</p>
+                </div>
+              ) : detailedAnalysis ? (
+                <div className={styles.analysisResult}>
+                  <pre>{detailedAnalysis}</pre>
+                </div>
+              ) : (
+                <div className={styles.analysisPlaceholder}>
+                  <p>상세 해석을 불러오는 중...</p>
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
       </div>
-
-      {/* Paywall Modal */}
-      <PaywallModal
-        isOpen={showPaywall}
-        onClose={() => setShowPaywall(false)}
-        onUnlock={handleUnlockDetail}
-        type="detailed"
-      />
     </div>
   );
 }

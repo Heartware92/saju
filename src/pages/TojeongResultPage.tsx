@@ -26,7 +26,7 @@ const GRADE_COLOR: Record<GwaeGrade, string> = {
 export default function TojeongResultPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { profiles, fetchProfiles } = useProfileStore();
+  const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
@@ -59,7 +59,16 @@ export default function TojeongResultPage() {
   }, [searchParams, primary]);
 
   if (!tojeong || !reading) {
-    if (!primary && !searchParams?.get('year')) {
+    const hasUrlBirth = !!searchParams?.get('year');
+    const profileStoreReady = hydrated && lastFetchedAt !== null && !profilesLoading;
+    if (!hasUrlBirth && !profileStoreReady) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-cta border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
+    if (!primary && !hasUrlBirth) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
           <p className="text-[15px] font-semibold text-text-primary mb-2">대표 프로필이 없어요</p>

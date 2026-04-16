@@ -328,7 +328,7 @@ function SinSalGroup({ type, items }: {
 export default function ManseryeokPage() {
   const router = useRouter();
   const { user } = useUserStore();
-  const { profiles, fetchProfiles } = useProfileStore();
+  const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const daeWoonScrollRef = useRef<HTMLDivElement>(null);
   const seWoonScrollRef = useRef<HTMLDivElement>(null);
 
@@ -363,6 +363,14 @@ export default function ManseryeokPage() {
   }, [primary]);
 
   if (!primary) {
+    const profileStoreReady = hydrated && lastFetchedAt !== null && !profilesLoading;
+    if (!profileStoreReady) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-cta border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
         <p className="text-text-secondary mb-4">대표 프로필이 없어요</p>

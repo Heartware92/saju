@@ -18,6 +18,7 @@ import { useUserStore } from '../store/useUserStore';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { calculateSaju } from '../utils/sajuCalculator';
 import { calculatePeriodFortune, type FortuneScope, type FortuneGrade, type PeriodFortune } from '../engine/periodFortune';
+import { getPeriodDomainsDescription } from '../services/fortuneService';
 
 const GRADE_COLOR: Record<FortuneGrade, string> = {
   '대길': '#34D399',
@@ -142,7 +143,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUserStore();
-  const { profiles, fetchProfiles } = useProfileStore();
+  const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
 
   useEffect(() => { if (user) fetchProfiles(); }, [user, fetchProfiles]);
 
@@ -200,7 +201,57 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     : scope === 'day' ? '오늘의 운세'
     : '지정일 운세';
 
+  // 영역별 AI 상세 설명 (5문장)
+  const [domainAI, setDomainAI] = useState<Partial<Record<'wealth' | 'career' | 'love' | 'health' | 'study', string>>>({});
+  const [domainAILoading, setDomainAILoading] = useState(false);
+
+  // 기간/대상 바뀔 때마다 초기화 + AI 호출
+  useEffect(() => {
+    if (!saju || !fortune) return;
+    let cancelled = false;
+    setDomainAI({});
+    setDomainAILoading(true);
+
+    const scopeLabel =
+      scope === 'year' ? `${targetYear}년 신년운세`
+      : scope === 'day' ? `오늘(${today})`
+      : `${pickedDate} 지정일`;
+
+    const domainsBrief = fortune.domains
+      .filter(d => d.key !== 'overall')
+      .map(d => ({
+        key: d.key as 'wealth' | 'career' | 'love' | 'health' | 'study',
+        label: d.label,
+        score: d.score,
+        grade: d.grade,
+      }));
+
+    getPeriodDomainsDescription(saju, {
+      scopeLabel,
+      targetGanZhi: fortune.targetGanZhi.ganZhi,
+      overallHeadline: fortune.headline,
+      domains: domainsBrief,
+    })
+      .then(r => {
+        if (cancelled) return;
+        if (r.success && r.descriptions) setDomainAI(r.descriptions);
+      })
+      .finally(() => {
+        if (!cancelled) setDomainAILoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [saju, fortune, scope, pickedDate, targetYear, today]);
+
   if (!primary && !searchParams?.get('year')) {
+    const profileStoreReady = hydrated && lastFetchedAt !== null && !profilesLoading;
+    if (!profileStoreReady) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-cta border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
         <p className="text-text-secondary mb-4">대표 프로필이 없어요</p>
@@ -303,32 +354,47 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
         transition={{ delay: 0.15 }}
         className="space-y-2 mb-3"
       >
-        {fortune.domains.filter(d => d.key !== 'overall').map(d => (
-          <div
-            key={d.key}
-            className="rounded-xl p-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[13px] font-bold text-text-primary">{d.label}</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[12px] font-bold" style={{ color: GRADE_COLOR[d.grade] }}>{d.score}점</span>
-                <GradeBadge grade={d.grade} />
+        {fortune.domains.filter(d => d.key !== 'overall').map(d => {
+          const aiText = domainAI[d.key as 'wealth' | 'career' | 'love' | 'health' | 'study'];
+          return (
+            <div
+              key={d.key}
+              className="rounded-xl p-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[13px] font-bold text-text-primary">{d.label}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[12px] font-bold" style={{ color: GRADE_COLOR[d.grade] }}>{d.score}점</span>
+                  <GradeBadge grade={d.grade} />
+                </div>
+              </div>
+              {aiText ? (
+                <p className="text-[12px] text-text-secondary leading-relaxed mb-2 whitespace-pre-line">{aiText}</p>
+              ) : domainAILoading ? (
+                <div className="mb-2 space-y-1.5">
+                  <div className="h-2 rounded bg-white/5 animate-pulse" />
+                  <div className="h-2 rounded bg-white/5 animate-pulse w-[90%]" />
+                  <div className="h-2 rounded bg-white/5 animate-pulse w-[75%]" />
+                  <div className="h-2 rounded bg-white/5 animate-pulse w-[85%]" />
+                  <div className="h-2 rounded bg-white/5 animate-pulse w-[60%]" />
+                </div>
+              ) : (
+                <p className="text-[12px] text-text-secondary leading-relaxed mb-2">{d.summary}</p>
+              )}
+              <div className="flex flex-wrap gap-1.5">
+                {d.tips.map((t, i) => (
+                  <span
+                    key={i}
+                    className="text-[11px] px-2 py-1 rounded-md border"
+                    style={{ borderColor: `${GRADE_COLOR[d.grade]}55`, color: GRADE_COLOR[d.grade], backgroundColor: `${GRADE_COLOR[d.grade]}12` }}
+                  >
+                    {t}
+                  </span>
+                ))}
               </div>
             </div>
-            <p className="text-[12px] text-text-secondary leading-relaxed mb-2">{d.summary}</p>
-            <div className="flex flex-wrap gap-1.5">
-              {d.tips.map((t, i) => (
-                <span
-                  key={i}
-                  className="text-[11px] px-2 py-1 rounded-md border"
-                  style={{ borderColor: `${GRADE_COLOR[d.grade]}55`, color: GRADE_COLOR[d.grade], backgroundColor: `${GRADE_COLOR[d.grade]}12` }}
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </motion.section>
 
       {/* 행운 메타 */}

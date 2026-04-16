@@ -76,7 +76,6 @@ const SECONDARY_SERVICES = [
 const SUB_SERVICES = [
   { id: 'love',   title: '애정운', href: '/saju/input?category=love' },
   { id: 'wealth', title: '재물운', href: '/saju/input?category=wealth' },
-  { id: 'tarot',  title: '타로',   href: '/tarot' },
 ];
 
 const stagger = {
@@ -380,7 +379,7 @@ export default function HomePage() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="grid grid-cols-3 gap-2"
+          className="grid grid-cols-2 gap-2"
         >
           {SUB_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>
@@ -429,7 +428,7 @@ export default function HomePage() {
           className="py-6"
         >
           <p className="text-sm font-medium text-text-secondary mb-3">아직 사주를 모르시나요?</p>
-          <Link href="/saju">
+          <Link href="/saju/input">
             <Button variant="outline" size="md">
               무료 사주 계산
             </Button>

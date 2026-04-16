@@ -316,6 +316,76 @@ ${isStrong ? '신강' : '신약'} · 용신: ${yongSinElement}
 };
 
 /**
+ * 기간 운세 영역별 상세 (신년/오늘/지정일 공통)
+ * - 사주 원국 + 대상 기간 간지 + 엔진이 계산한 도메인 점수를 프롬프트에 주입
+ * - 5개 영역(재물·직업·애정·건강·학업)에 대해 각 5문장 분석 생성
+ * - 응답은 [key] 델리미터로 구분되어 프론트에서 파싱
+ */
+export interface PeriodDomainBrief {
+  key: 'wealth' | 'career' | 'love' | 'health' | 'study';
+  label: string;
+  score: number;
+  grade: string;
+}
+
+export const generatePeriodDomainsPrompt = (
+  result: SajuResult,
+  opts: {
+    scopeLabel: string;       // "2026년 신년운세" / "오늘(2026-04-16)" / "2026-05-03 지정일"
+    targetGanZhi: string;     // "을사" / "경오" 등
+    overallHeadline: string;  // 엔진이 만든 한줄 총평
+    domains: PeriodDomainBrief[];
+  }
+): string => {
+  const { pillars, elementPercent, yongSinElement, isStrong } = result;
+  const domainList = opts.domains
+    .map(d => `- ${d.label}(${d.key}): ${d.score}점 · ${d.grade}`)
+    .join('\n');
+
+  return `[내 사주 원국]
+일주: ${pillars.day.gan}${pillars.day.zhi} (${pillars.day.ganElement}일간)
+오행: 목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%
+${isStrong ? '신강' : '신약'} · 용신: ${yongSinElement}
+
+[분석 대상]
+기간: ${opts.scopeLabel}
+간지: ${opts.targetGanZhi}
+총평: ${opts.overallHeadline}
+
+[엔진이 산출한 영역별 점수]
+${domainList}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[작성 규칙]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1) 위 5개 영역 각각에 대해 정확히 5문장 설명을 작성합니다.
+2) 각 영역 설명은 다음 구조로:
+   - 1문장: 현재 기운이 어떤 자리에 놓였는지(간지·용신·십성 근거)
+   - 2문장: 이 기운이 해당 영역에서 구체적으로 어떻게 드러나는지
+   - 3문장: 유리한 조건(시간대/상대/행동 중 하나 이상 명시)
+   - 4문장: 조심할 함정 (구체적 상황/실수)
+   - 5문장: 실천 가능한 구체 행동 하나
+3) 점수가 높으면 낙관, 낮으면 비관으로 단순화하지 말고, 어떤 조건에서 유리/불리한지로 쪼개 서술합니다.
+4) 일상 장면으로 내려앉혀 서술 (회의·연락·구매·식사·운동 등). 추상적 격언 금지.
+5) 출력 형식은 반드시 아래 델리미터를 사용합니다. 다른 머리말·설명·요약 금지.
+
+[wealth]
+(재물 5문장)
+
+[career]
+(직업 5문장)
+
+[love]
+(애정 5문장)
+
+[health]
+(건강 5문장)
+
+[study]
+(학업 5문장)`;
+};
+
+/**
  * 자미두수 프롬프트 (3엽전)
  * - 12궁 + 14주성 + 명궁/신궁/오행국 + 사화 기반 종합 해석
  * - 불변 지식(주성/보좌성/사화/궁 의미)은 knowledge.ts에서 뽑아 주입

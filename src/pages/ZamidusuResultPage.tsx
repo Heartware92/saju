@@ -21,7 +21,7 @@ import { useProfileStore } from '../store/useProfileStore';
 export default function ZamidusuResultPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { profiles, fetchProfiles } = useProfileStore();
+  const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
 
   const [chart, setChart] = useState<ZamidusuResult | null>(null);
@@ -145,6 +145,14 @@ export default function ZamidusuResultPage() {
   }
 
   if (!hasUrlBirth && !primary) {
+    const profileStoreReady = hydrated && lastFetchedAt !== null && !profilesLoading;
+    if (!profileStoreReady) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-cta border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
         <p className="text-[15px] font-semibold text-text-primary mb-2">대표 프로필이 없어요</p>

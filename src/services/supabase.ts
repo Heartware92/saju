@@ -81,16 +81,6 @@ export const auth = {
     return data;
   },
 
-  /**
-   * Naver 로그인은 Supabase 네이티브 제공자가 아니므로
-   * 자체 OAuth 라우트(/api/auth/naver/start)로 넘겨 커스텀 플로우를 타게 한다.
-   */
-  signInWithNaver: () => {
-    const baseUrl =
-      process.env.NEXT_PUBLIC_BASE_URL ||
-      (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
-    window.location.href = `${baseUrl}/api/auth/naver/start`;
-  },
 };
 
 /**
@@ -344,9 +334,12 @@ export const profileDB = {
       .order('is_primary', { ascending: false })
       .order('created_at', { ascending: true });
 
+    // 에러 시 throw — 호출 측이 catch 해서 로컬 캐시를 유지하도록.
+    // 과거엔 []를 반환했으나, 그 경우 스토어가 "빈 목록"으로 오해해
+    // localStorage 까지 덮어써서 대표 프로필이 사라진 것처럼 보이는 버그가 있었음.
     if (error) {
       console.error('Error fetching profiles:', error);
-      return [];
+      throw error;
     }
     return data ?? [];
   },
