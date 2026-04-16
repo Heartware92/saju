@@ -70,17 +70,8 @@ const SECONDARY_SERVICES = [
   },
 ];
 
-/**
- * 대표 프로필 존재 여부에 따라 이동 경로를 결정한다.
- * - primary 있음: 바로 결과 페이지로 (각 결과 페이지가 primary profile 을 읽어 해석)
- * - primary 없음: 입력 화면으로 이동 (카테고리 쿼리 유지)
- * - traditional/tarot 처럼 항상 직행인 경로는 그대로
- */
-function resolveHref(id: string, direct: string, hasPrimary: boolean): string {
-  if (id === 'traditional') return direct;
-  if (hasPrimary) return direct;
-  return `/saju/input?category=${id}`;
-}
+// 모든 서비스 버튼은 결과 페이지로 직행한다.
+// 대표 프로필이 없으면 결과 페이지 자체에서 "프로필 등록" 안내가 표시된다.
 
 const SUB_SERVICES = [
   { id: 'love',   title: '애정운', href: '/saju/input?category=love' },
@@ -334,7 +325,7 @@ export default function HomePage() {
         >
           {MAIN_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>
-              <Link href={resolveHref(svc.id, svc.direct, !!primary)}>
+              <Link href={svc.direct}>
                 <div className={`
                   relative rounded-xl p-3 h-[88px]
                   bg-gradient-to-br ${svc.gradient}
@@ -363,7 +354,7 @@ export default function HomePage() {
         >
           {SECONDARY_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>
-              <Link href={resolveHref(svc.id, svc.direct, !!primary)}>
+              <Link href={svc.direct}>
                 <div className={`
                   relative rounded-xl p-3 h-[88px]
                   bg-gradient-to-br ${svc.gradient}
