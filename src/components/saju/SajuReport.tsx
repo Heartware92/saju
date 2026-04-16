@@ -467,9 +467,25 @@ function PillarsRelationBoard({
     };
   };
 
-  let stemStack = 0;
-  let branchStack = 0;
-  let crossStack = 0;
+  // 꼭짓점 인덱스 — stem 0~3 (col 0→3), branch 4~7 (col 3→0)
+  const vertexIdx = (col: PillarCol, row: PillarRow) =>
+    row === 'stem' ? col : 7 - col;
+
+  const isAdjacent = (i: number, j: number) => {
+    const diff = Math.abs(i - j);
+    return diff === 1 || diff === 7;
+  };
+
+  // 노드 중심→주어진 타깃 방향으로 NODE_R 만큼 밀어 노드 가장자리 좌표 반환
+  const edgeToward = (center: { x: number; y: number }, targetX: number, targetY: number) => {
+    const dx = targetX - center.x;
+    const dy = targetY - center.y;
+    const len = Math.hypot(dx, dy) || 1;
+    return { x: center.x + (dx / len) * NODE_R, y: center.y + (dy / len) * NODE_R };
+  };
+
+  let outsideStack = 0;
+  let insideStack = 0;
 
   edges.forEach(({ it, cells, idx }) => {
     const color = INTERACTION_COLORS[it.type];
@@ -477,50 +493,50 @@ function PillarsRelationBoard({
       for (let j = i + 1; j < cells.length; j++) {
         const a = cells[i];
         const b = cells[j];
-        const va = getVertex(a.col, a.row);
-        const vb = getVertex(b.col, b.row);
-        const sameRow = a.row === b.row;
+        const ia = vertexIdx(a.col, a.row);
+        const ib = vertexIdx(b.col, b.row);
+        const va = octVertices[ia];
+        const vb = octVertices[ib];
 
         let d: string;
         let labelX: number;
         let labelY: number;
 
-        if (sameRow && a.row === 'stem') {
-          // 천간 2노드 — 위쪽 아치
-          const colDist = Math.abs(a.col - b.col);
-          const archH = 22 + colDist * 8 + stemStack * 10;
+        if (isAdjacent(ia, ib)) {
+          // 팔각형 인접 꼭짓점 — 바깥쪽 아치 (중심에서 멀어지는 방향)
           const midX = (va.x + vb.x) / 2;
-          const topY = Math.min(va.y, vb.y);
-          const controlY = topY - archH;
-          d = `M ${va.x.toFixed(1)} ${(va.y - NODE_R + 4).toFixed(1)} Q ${midX.toFixed(1)} ${controlY.toFixed(1)} ${vb.x.toFixed(1)} ${(vb.y - NODE_R + 4).toFixed(1)}`;
-          labelX = midX;
-          labelY = controlY + archH * 0.35;
-          stemStack++;
-        } else if (sameRow && a.row === 'branch') {
-          // 지지 2노드 — 아래쪽 아치
-          const colDist = Math.abs(a.col - b.col);
-          const archH = 22 + colDist * 8 + branchStack * 10;
-          const midX = (va.x + vb.x) / 2;
-          const botY = Math.max(va.y, vb.y);
-          const controlY = botY + archH;
-          d = `M ${va.x.toFixed(1)} ${(va.y + NODE_R - 4).toFixed(1)} Q ${midX.toFixed(1)} ${controlY.toFixed(1)} ${vb.x.toFixed(1)} ${(vb.y + NODE_R - 4).toFixed(1)}`;
-          labelX = midX;
-          labelY = controlY - archH * 0.35;
-          branchStack++;
+          const midY = (va.y + vb.y) / 2;
+          const outDx = midX - cx;
+          const outDy = midY - cy;
+          const outLen = Math.hypot(outDx, outDy) || 1;
+          const ux = outDx / outLen;
+          const uy = outDy / outLen;
+          const archDepth = 40 + outsideStack * 14;
+          const ctrlX = midX + ux * archDepth;
+          const ctrlY = midY + uy * archDepth;
+          const sA = edgeToward(va, ctrlX, ctrlY);
+          const sB = edgeToward(vb, ctrlX, ctrlY);
+          d = `M ${sA.x.toFixed(1)} ${sA.y.toFixed(1)} Q ${ctrlX.toFixed(1)} ${ctrlY.toFixed(1)} ${sB.x.toFixed(1)} ${sB.y.toFixed(1)}`;
+          labelX = midX + ux * (archDepth * 0.55);
+          labelY = midY + uy * (archDepth * 0.55);
+          outsideStack++;
         } else {
-          // 천간 ↔ 지지 — 직선 (노드 가장자리에서 시작/끝)
+          // 비인접 꼭짓점 — 팔각형 내부 직선 (노드 가장자리끼리)
           const { sx, sy, ex, ey } = shortenedLine(va, vb);
           d = `M ${sx.toFixed(1)} ${sy.toFixed(1)} L ${ex.toFixed(1)} ${ey.toFixed(1)}`;
           const midX = (sx + ex) / 2;
           const midY = (sy + ey) / 2;
-          const sameCol = a.col === b.col;
-          const sign = crossStack % 2 === 0 ? -1 : 1;
-          const mag = sameCol
-            ? 24 + Math.floor(crossStack / 2) * 16
-            : Math.floor(crossStack / 2) * 18;
-          labelX = midX + sign * mag;
-          labelY = midY;
-          crossStack++;
+          // 선 수직 방향으로 라벨 오프셋 (겹침 방지)
+          const dxL = ex - sx;
+          const dyL = ey - sy;
+          const len = Math.hypot(dxL, dyL) || 1;
+          const perpX = -dyL / len;
+          const perpY = dxL / len;
+          const sign = insideStack % 2 === 0 ? 1 : -1;
+          const mag = 10 + Math.floor(insideStack / 2) * 14;
+          labelX = midX + perpX * mag * sign;
+          labelY = midY + perpY * mag * sign;
+          insideStack++;
         }
 
         arcs.push({
@@ -574,6 +590,17 @@ function PillarsRelationBoard({
               stroke="rgba(168,132,255,0.35)"
               strokeWidth={1.2}
               strokeDasharray="5 4"
+            />
+
+            {/* 천간↔지지 구분 수평선 (팔각형 너비) */}
+            <line
+              x1={cx - R * 0.924}
+              y1={cy}
+              x2={cx + R * 0.924}
+              y2={cy}
+              stroke="rgba(168,132,255,0.28)"
+              strokeWidth={1}
+              strokeDasharray="3 3"
             />
 
             {/* 꼭짓점 노드 후광 */}

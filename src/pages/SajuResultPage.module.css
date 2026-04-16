@@ -1021,10 +1021,10 @@
   position: absolute;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
-  color: var(--text-tertiary);
-  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  letter-spacing: 0.1em;
   pointer-events: none;
   z-index: 2;
 }
@@ -1032,10 +1032,10 @@
 .octColLabel {
   position: absolute;
   transform: translate(-50%, -50%);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   color: var(--text-secondary);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   pointer-events: none;
   z-index: 2;
 }
