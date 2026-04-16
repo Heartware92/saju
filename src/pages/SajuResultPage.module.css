@@ -375,6 +375,35 @@
   transition: width 0.8s ease;
 }
 
+/* 오행 크리스털 다이아몬드 (만세력 동일) */
+.ohaengHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+
+.ohaengMeta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.crystalPentagonWrap {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 8px;
+}
+
+.crystalPentagonSvg {
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  filter: drop-shadow(0 0 18px rgba(124, 92, 252, 0.16));
+}
+
 /* Element Pentagon (오행 분포 레이더) */
 .pentagonWrap {
   display: flex;
@@ -966,6 +995,15 @@
   border-bottom: none;
 }
 
+/* 크로스로우 관계 배지가 떨어질 '중간 갭' 확보 — 글자와 배지가 겹치지 않도록 */
+.relationDataWrap .pillarsRow.stemRow {
+  padding-bottom: 22px;
+}
+
+.relationDataWrap .pillarsRow.branchRow {
+  padding-top: 22px;
+}
+
 .relationOverlay {
   position: absolute;
   top: 0;
@@ -991,17 +1029,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 16px;
-  padding: 0 5px;
-  border-radius: 4px;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 5px;
   border: 1px solid;
-  background: var(--space-surface);
-  font-size: 10px;
+  background: rgba(20, 12, 38, 0.95);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  font-size: 11px;
   font-weight: 700;
   font-family: var(--font-serif);
   line-height: 1;
   white-space: nowrap;
+  z-index: 2;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 .relationLegend {
