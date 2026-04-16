@@ -269,39 +269,73 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 4px 0 8px;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .pentagonSvg {
-  max-width: 280px;
+  width: 100%;
+  max-width: 300px;
+  height: auto;
   filter: drop-shadow(0 0 14px rgba(124, 92, 252, 0.18));
+}
+
+.pentagonKey {
+  display: flex;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.pentagonKeyItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pentagonKeySwatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
 }
 
 .pentagonLegend {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
   width: 100%;
-  max-width: 380px;
+  max-width: 100%;
 }
 
 .pentagonLegendItem {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
+  min-width: 0;
 }
 
 .beaker {
   display: block;
+  width: 100%;
+  max-width: 72px;
+  height: auto;
   border-radius: 7px;
   overflow: visible;
 }
 
 .pentagonLegendLabel {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
+  font-family: var(--font-serif);
+  line-height: 1;
 }
 
 .pentagonLegendValue {
@@ -309,6 +343,7 @@
   font-weight: 700;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 /* Strength (신강/신약) */

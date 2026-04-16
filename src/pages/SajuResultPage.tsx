@@ -100,13 +100,19 @@ const ELEMENT_COLORS: Record<string, string> = {
 };
 
 const ELEMENT_ORDER = ['목', '화', '토', '금', '수'] as const;
+const ELEMENT_HANJA: Record<string, string> = {
+  '목': '木', '화': '火', '토': '土', '금': '金', '수': '水',
+};
+// 상생: 木→火→土→金→水→木 (인접 꼭짓점)
+const SHENG: Array<[number, number]> = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 0]];
+// 상극: 木剋土, 土剋水, 水剋火, 火剋金, 金剋木 (한 칸 건너뛴 꼭짓점)
+const KE: Array<[number, number]> = [[0, 2], [2, 4], [4, 1], [1, 3], [3, 0]];
 
 function ElementPentagon({ percents }: { percents: Record<string, number> }) {
-  const size = 260;
+  const size = 300;
   const cx = size / 2;
   const cy = size / 2;
-  const rMax = size * 0.36;
-  // 정오각형 꼭짓점 각도 (12시 방향 시작, 시계 방향)
+  const rMax = size * 0.3;
   const angleFor = (i: number) => -Math.PI / 2 + (i * 2 * Math.PI) / 5;
   const pt = (i: number, r: number) => ({
     x: cx + r * Math.cos(angleFor(i)),
@@ -121,7 +127,6 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
     }).join(' ')
   );
 
-  // 최대값 기준 스케일 (최대 퍼센트가 40% 이하여도 칸이 꽉 차도록)
   const maxPct = Math.max(...ELEMENT_ORDER.map((e) => percents[e] ?? 0), 1);
   const scale = 1 / Math.max(maxPct, 20) * 100;
 
@@ -132,9 +137,43 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
   });
   const dataPolygon = dataPoints.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
 
+  // 상생 호 — 외곽 Q 커브
+  const shengArcD = (a: number, b: number) => {
+    const pa = pt(a, rMax + 4);
+    const pb = pt(b, rMax + 4);
+    const mx = (pa.x + pb.x) / 2;
+    const my = (pa.y + pb.y) / 2;
+    const dx = mx - cx;
+    const dy = my - cy;
+    const len = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+    const cpx = cx + (dx / len) * (rMax + 36);
+    const cpy = cy + (dy / len) * (rMax + 36);
+    return `M ${pa.x.toFixed(1)} ${pa.y.toFixed(1)} Q ${cpx.toFixed(1)} ${cpy.toFixed(1)} ${pb.x.toFixed(1)} ${pb.y.toFixed(1)}`;
+  };
+
+  // 상극 라인 — 내부 직선 (양 끝 안쪽으로 당겨 꼭짓점 닷과 겹치지 않게)
+  const keLineD = (a: number, b: number) => {
+    const pa = pt(a, rMax - 10);
+    const pb = pt(b, rMax - 10);
+    return `M ${pa.x.toFixed(1)} ${pa.y.toFixed(1)} L ${pb.x.toFixed(1)} ${pb.y.toFixed(1)}`;
+  };
+
   return (
     <div className={styles.pentagonWrap}>
-      <svg viewBox={`0 0 ${size} ${size}`} width="100%" className={styles.pentagonSvg}>
+      <svg viewBox={`0 0 ${size} ${size}`} className={styles.pentagonSvg}>
+        <defs>
+          <radialGradient id="pentagonFill" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(124,92,252,0.35)" />
+            <stop offset="100%" stopColor="rgba(124,92,252,0.08)" />
+          </radialGradient>
+          <marker id="shengHead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M0 0 L10 5 L0 10 Z" fill="#34D399" opacity="0.9" />
+          </marker>
+          <marker id="keHead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto">
+            <path d="M0 0 L10 5 L0 10 Z" fill="#F43F5E" opacity="0.9" />
+          </marker>
+        </defs>
+
         {/* 그리드 오각형 */}
         {gridPolys.map((pts, i) => (
           <polygon
@@ -144,7 +183,7 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
             stroke="var(--border-subtle)"
             strokeWidth={1}
             strokeDasharray={i === gridPolys.length - 1 ? '0' : '3 3'}
-            opacity={0.6}
+            opacity={0.5}
           />
         ))}
         {/* 축 라인 */}
@@ -154,11 +193,29 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
             <line
               key={i}
               x1={cx} y1={cy} x2={p.x} y2={p.y}
-              stroke="var(--border-subtle)" strokeWidth={1} opacity={0.4}
+              stroke="var(--border-subtle)" strokeWidth={1} opacity={0.3}
             />
           );
         })}
-        {/* 데이터 폴리곤 — 중심에서 확장 */}
+
+        {/* 상극 — 내부 펜타그램 (데이터 폴리곤 아래) */}
+        {KE.map(([a, b], i) => (
+          <motion.path
+            key={`ke-${i}`}
+            d={keLineD(a, b)}
+            stroke="#F43F5E"
+            strokeWidth={1}
+            fill="none"
+            strokeDasharray="3 3"
+            opacity={0.42}
+            markerEnd="url(#keHead)"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 0.42 }}
+            transition={{ duration: 0.7, delay: 1.1 + i * 0.1 }}
+          />
+        ))}
+
+        {/* 데이터 폴리곤 */}
         <motion.polygon
           points={dataPolygon}
           fill="url(#pentagonFill)"
@@ -170,7 +227,25 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
           style={{ transformOrigin: `${cx}px ${cy}px` }}
         />
-        {/* 데이터 꼭짓점 닷 — 반짝이는 할로 + 코어 */}
+
+        {/* 상생 — 외곽 호 */}
+        {SHENG.map(([a, b], i) => (
+          <motion.path
+            key={`sheng-${i}`}
+            d={shengArcD(a, b)}
+            stroke="#34D399"
+            strokeWidth={1.5}
+            fill="none"
+            opacity={0.65}
+            strokeLinecap="round"
+            markerEnd="url(#shengHead)"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 0.65 }}
+            transition={{ duration: 0.6, delay: 0.9 + i * 0.1 }}
+          />
+        ))}
+
+        {/* 데이터 꼭짓점 — 반짝이는 할로 + 코어 */}
         {dataPoints.map((p, i) => {
           const color = ELEMENT_COLORS[ELEMENT_ORDER[i]];
           return (
@@ -217,9 +292,10 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
             </g>
           );
         })}
-        {/* 라벨 */}
+
+        {/* 라벨 — 한자 */}
         {ELEMENT_ORDER.map((el, i) => {
-          const lp = pt(i, rMax + 22);
+          const lp = pt(i, rMax + 26);
           return (
             <text
               key={el}
@@ -227,28 +303,40 @@ function ElementPentagon({ percents }: { percents: Record<string, number> }) {
               y={lp.y}
               textAnchor="middle"
               dominantBaseline="middle"
-              fontSize={14}
+              fontSize={18}
               fontWeight={700}
               fill={ELEMENT_COLORS[el]}
+              style={{ fontFamily: 'var(--font-serif)' }}
             >
-              {el}
+              {ELEMENT_HANJA[el]}
             </text>
           );
         })}
-        <defs>
-          <radialGradient id="pentagonFill" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(124,92,252,0.35)" />
-            <stop offset="100%" stopColor="rgba(124,92,252,0.08)" />
-          </radialGradient>
-        </defs>
       </svg>
 
-      {/* 하단 비커 — 오행 분량만큼 액체가 채워지고 넘실거림 */}
+      {/* 생·극 범례 */}
+      <div className={styles.pentagonKey}>
+        <span className={styles.pentagonKeyItem}>
+          <span className={styles.pentagonKeySwatch} style={{ backgroundColor: '#34D399' }} />
+          相生
+        </span>
+        <span className={styles.pentagonKeyItem}>
+          <span
+            className={styles.pentagonKeySwatch}
+            style={{ backgroundColor: '#F43F5E', backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px)' }}
+          />
+          相剋
+        </span>
+      </div>
+
+      {/* 하단 비커 */}
       <div className={styles.pentagonLegend}>
         {ELEMENT_ORDER.map((el, i) => (
           <div key={el} className={styles.pentagonLegendItem}>
             <ElementBeaker pct={percents[el] ?? 0} color={ELEMENT_COLORS[el]} />
-            <span className={styles.pentagonLegendLabel} style={{ color: ELEMENT_COLORS[el] }}>{el}</span>
+            <span className={styles.pentagonLegendLabel} style={{ color: ELEMENT_COLORS[el] }}>
+              {ELEMENT_HANJA[el]}
+            </span>
             <motion.span
               className={styles.pentagonLegendValue}
               initial={{ opacity: 0, y: 4 }}
@@ -286,7 +374,7 @@ function ElementBeaker({ pct, color }: { pct: number; color: string }) {
   const clipId = `bk-${color.replace('#', '')}`;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className={styles.beaker}>
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" className={styles.beaker}>
       <defs>
         <clipPath id={clipId}>
           <rect x="1" y="1" width={W - 2} height={H - 2} rx="6" />
