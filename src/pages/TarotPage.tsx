@@ -329,7 +329,7 @@ export default function TarotPage() {
             )}
 
             {(qState === 'shuffling' || qState === 'spread') && (
-              <div className="relative flex justify-center items-center flex-wrap gap-1 py-8">
+              <div className="relative flex justify-center items-center flex-wrap gap-1" style={{ minHeight: 220, marginTop: 40 }}>
                 {(qState === 'shuffling'
                   ? Array.from({ length: 22 })
                   : qSpread
