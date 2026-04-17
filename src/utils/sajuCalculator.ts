@@ -525,13 +525,13 @@ const calculateSinSals = (
     sinSals.push({ name: '천을귀인', type: 'good', description: '위기 시 귀인의 도움을 받는 최고의 길신', pillars: guiRenCols });
   }
 
-  // 태극귀인 (太極貴人) — 일간 기준
+  // 태극귀인 (太極貴人) — 일간의 장생지 + 건록지
   const taegeukGuiIn: Record<string, string[]> = {
-    '갑': ['자', '오'], '기': ['자', '오'],
-    '을': ['축', '미'], '경': ['축', '미'],
-    '병': ['인', '유'], '신': ['인', '유'],
-    '정': ['묘', '해'], '임': ['묘', '해'],
-    '무': ['진', '술'], '계': ['진', '술'],
+    '갑': ['인', '해'], '을': ['신', '해'],
+    '병': ['사', '인'], '정': ['해', '인'],
+    '무': ['사', '인'], '기': ['해', '인'],
+    '경': ['신', '사'], '신': ['인', '사'],
+    '임': ['해', '신'], '계': ['사', '신'],
   };
   const tgCols = branches.filter(b => (taegeukGuiIn[dayGan] || []).includes(b.zhi)).map(b => b.col);
   if (tgCols.length > 0) {
@@ -692,11 +692,18 @@ const calculateSinSals = (
     sinSals.push({ name: '홍염살', type: 'neutral', description: '강한 이성 매력, 연애/결혼에 영향', pillars: hyCols });
   }
 
-  // 현침살 (懸針殺) — 천간 글자 형태 (甲/辛/壬/癸)
+  // 현침살 (懸針殺) — 천간 형태(甲/辛/壬/癸) + 일간 기준 지지 (일간 자신 제외)
   const hyeonchimSet = new Set(['갑', '신', '임', '계']);
-  const hcCols = stems.filter(s => hyeonchimSet.has(s.gan)).map(s => s.col);
-  if (hcCols.length > 0) {
-    sinSals.push({ name: '현침살', type: 'neutral', description: '날카로운 지성과 분석력, 예민한 감수성', pillars: hcCols });
+  const hcStemCols = stems.filter(s => hyeonchimSet.has(s.gan) && s.col !== 1).map(s => s.col);
+  const hyeonchimZhi: Record<string, string> = {
+    '갑': '유', '을': '신', '병': '사', '정': '해',
+    '무': '유', '기': '신', '경': '사', '신': '해',
+    '임': '유', '계': '미',
+  };
+  const hcZhiCols = findCols(hyeonchimZhi[dayGan] || '');
+  const hcAllCols = [...new Set([...hcStemCols, ...hcZhiCols])];
+  if (hcAllCols.length > 0) {
+    sinSals.push({ name: '현침살', type: 'neutral', description: '날카로운 지성과 분석력, 예민한 감수성', pillars: hcAllCols });
   }
 
   // 양인살 (羊刃殺) — 일간 기준
@@ -750,6 +757,40 @@ const calculateSinSals = (
   const jsCols = findCols(jangSeong[yearBranch] || '');
   if (jsCols.length > 0) {
     sinSals.push({ name: '장성', type: 'good', description: '리더십과 권위, 승진/출세운', pillars: jsCols });
+  }
+
+  // 관귀학관 (官貴學館) — 정관 천간의 장생지
+  const gwanGwiHakGwan: Record<string, string> = {
+    '갑': '사', '을': '사', '병': '신', '정': '신', '무': '해',
+    '기': '해', '경': '인', '신': '인', '임': '신', '계': '신',
+  };
+  const ghCols = findCols(gwanGwiHakGwan[dayGan] || '');
+  if (ghCols.length > 0) {
+    sinSals.push({ name: '관귀학관', type: 'good', description: '관직/시험운이 좋고 학문적 성취', pillars: ghCols });
+  }
+
+  // 원진살 (元嗔殺) — 서로 밀어내는 지지 조합
+  const wonJin: [string, string][] = [
+    ['자', '미'], ['축', '오'], ['인', '사'], ['묘', '진'],
+    ['신', '해'], ['유', '술'],
+  ];
+  wonJin.forEach(([a, b]) => {
+    const hasBoth = branches.some(br => br.zhi === a) && branches.some(br => br.zhi === b);
+    if (hasBoth) {
+      const cols = branches.filter(br => br.zhi === a || br.zhi === b).map(br => br.col);
+      sinSals.push({ name: '원진살', type: 'bad', description: '서로 밀어내는 기운, 인간관계 갈등 주의', pillars: cols });
+    }
+  });
+
+  // 백호대살 (白虎大殺) — 일간 기준 특정 지지
+  const baekho: Record<string, string> = {
+    '갑': '진', '을': '사', '병': '오', '정': '미',
+    '무': '신', '기': '유', '경': '술', '신': '해',
+    '임': '자', '계': '축',
+  };
+  const bhCols = findCols(baekho[dayGan] || '');
+  if (bhCols.length > 0) {
+    sinSals.push({ name: '백호대살', type: 'bad', description: '사고/수술/혈액 관련 주의, 결단력', pillars: bhCols });
   }
 
   // ── 삼형 ──
