@@ -1047,6 +1047,8 @@
 
 .octCell .pillarHangul {
   font-size: 11px;
+  position: static;
+  margin: 0;
 }
 
 .octRowLabel {
