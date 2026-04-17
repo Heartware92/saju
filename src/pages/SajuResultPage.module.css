@@ -315,8 +315,13 @@
 .pillarsRow.branchRow {
   font-size: 34px;
   font-weight: 700;
-  padding: 14px 4px;
+  padding: 10px 4px;
   font-family: var(--font-serif);
+}
+
+.pillarsRow.stemRow > .label,
+.pillarsRow.branchRow > .label {
+  margin-bottom: 15px;
 }
 
 .stemCell,

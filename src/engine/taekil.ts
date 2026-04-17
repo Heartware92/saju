@@ -11,6 +11,10 @@ import {
   BRANCH_ELEMENT,
   TEN_GODS_MAP,
   BRANCH_HIDDEN_STEMS,
+  EARTHLY_BRANCHES,
+  HEAVENLY_STEMS,
+  STEM_YINYANG,
+  TWELVE_STAGE_NAMES,
   normalizeGan,
   normalizeZhi,
   type SajuResult,
@@ -119,6 +123,56 @@ const ELEMENT_TIMES: Record<string, string> = {
   '수': '밤 9~11시 (해·자시)',
 };
 
+// 지장간 가중치: 정기/중기/여기
+const HIDDEN_STEM_WEIGHTS = [0.6, 0.3, 0.1];
+
+// 12운성 점수
+const STAGE_POINTS: Record<string, number> = {
+  '장생': 12, '목욕': 8, '관대': 12, '건록': 18, '제왕': 20,
+  '쇠': 8, '병': 4, '사': 2, '묘': 8, '절': 0, '태': 2, '양': 6,
+};
+
+// 삼합
+const SAMHAP: [string, string, string, string][] = [
+  ['신', '자', '진', '수'],
+  ['사', '유', '축', '금'],
+  ['인', '오', '술', '화'],
+  ['해', '묘', '미', '목'],
+];
+
+// 시작 행사 카테고리 (공망 감점이 큰 카테고리)
+const START_CATEGORIES: TaekilCategory[] = ['marriage', 'moving', 'business', 'contract', 'vehicle'];
+
+// ============================================
+// 헬퍼 함수
+// ============================================
+
+function getTwelveStage(dayGan: string, branch: string): string {
+  const branchIndex = EARTHLY_BRANCHES.indexOf(branch);
+  if (branchIndex === -1) return '';
+  const isYang = STEM_YINYANG[dayGan] === '양';
+  const element = STEM_ELEMENT[dayGan];
+  const startPositions: Record<string, number> = {
+    '목': 11, '화': 2, '토': 2, '금': 5, '수': 8,
+  };
+  const startPos = startPositions[element] || 0;
+  if (isYang) {
+    return TWELVE_STAGE_NAMES[(branchIndex - startPos + 12) % 12];
+  } else {
+    return TWELVE_STAGE_NAMES[(startPos - branchIndex + 12) % 12];
+  }
+}
+
+function getKongmangZhis(dayGan: string, dayZhi: string): [string, string] | null {
+  const ganIdx = HEAVENLY_STEMS.indexOf(dayGan);
+  const zhiIdx = EARTHLY_BRANCHES.indexOf(dayZhi);
+  if (ganIdx < 0 || zhiIdx < 0) return null;
+  const sunStart = (zhiIdx - ganIdx + 12) % 12;
+  const k1 = (sunStart + 10) % 12;
+  const k2 = (sunStart + 11) % 12;
+  return [EARTHLY_BRANCHES[k1], EARTHLY_BRANCHES[k2]];
+}
+
 // ============================================
 // 메인 계산
 // ============================================
@@ -149,8 +203,7 @@ function scoreOneDay(
 
   const dayMaster = saju.dayMaster;
   const tenGodGan = TEN_GODS_MAP[dayMaster]?.[dayGan] || '';
-  const mainHidden = (BRANCH_HIDDEN_STEMS as Record<string, string[]>)[dayZhi]?.[0] || '';
-  const tenGodZhi = TEN_GODS_MAP[dayMaster]?.[mainHidden] || '';
+  const hiddenStems = (BRANCH_HIDDEN_STEMS as Record<string, string[]>)[dayZhi] || [];
 
   const reasons: string[] = [];
   let base = 50;
@@ -159,11 +212,22 @@ function scoreOneDay(
   const ganScore = TEN_GOD_SCORE[tenGodGan] ?? 0;
   base += ganScore * 0.6;
 
-  // 2) 카테고리별 십신 보정
+  // 2) 지장간 full — 정기/중기/여기 가중 분석
   const catBoost = CATEGORY_BOOST[category];
+  let hiddenStemBonus = 0;
+  hiddenStems.forEach((stem, idx) => {
+    const w = HIDDEN_STEM_WEIGHTS[idx] ?? 0.1;
+    const tenGod = TEN_GODS_MAP[dayMaster]?.[stem] || '';
+    const godScore = TEN_GOD_SCORE[tenGod] ?? 0;
+    hiddenStemBonus += godScore * w * 0.4;
+    const catB = catBoost[tenGod] ?? 0;
+    hiddenStemBonus += catB * w * 0.3;
+  });
+  base += hiddenStemBonus;
+
+  // 3) 카테고리별 천간 십신 보정
   const catGanBoost = catBoost[tenGodGan] ?? 0;
-  const catZhiBoost = catBoost[tenGodZhi] ?? 0;
-  base += catGanBoost * 0.5 + catZhiBoost * 0.3;
+  base += catGanBoost * 0.5;
   if (catGanBoost > 0) reasons.push(`${tenGodGan} — ${category === 'general' ? '기운 상승' : '행사에 유리'}`);
   if (catGanBoost < 0) reasons.push(`${tenGodGan} — 행사에 불리`);
 
@@ -219,7 +283,47 @@ function scoreOneDay(
     reasons.push('천덕귀인일 — 재앙 해소, 대길');
   }
 
-  // 7) clamp + grade
+  // 7) 12운성 — 일간 기준으로 일진 지지의 운성 판단
+  const stage = getTwelveStage(dayMaster, dayZhi);
+  if (stage) {
+    const stageScore = STAGE_POINTS[stage] ?? 0;
+    const stageBonus = (stageScore - 8) * 0.4;
+    base += stageBonus;
+    if (stageScore >= 18) {
+      reasons.push(`12운성 ${stage} — 강한 기운, 시작에 유리`);
+    } else if (stageScore <= 2) {
+      reasons.push(`12운성 ${stage} — 기운 약함, 주의 필요`);
+    }
+  }
+
+  // 8) 공망 — 일주 기준 공망 지지가 일진 지지와 일치하면 감점
+  const natalDayGan = saju.pillars.day.gan;
+  const natalDayZhi = saju.pillars.day.zhi;
+  const kongmang = getKongmangZhis(natalDayGan, natalDayZhi);
+  if (kongmang && kongmang.includes(dayZhi)) {
+    const isStartEvent = START_CATEGORIES.includes(category);
+    const penalty = isStartEvent ? -10 : -5;
+    base += penalty;
+    reasons.push(`공망일(${kongmang.join('·')}) — ${isStartEvent ? '시작 행사 크게 불리' : '허한 기운 주의'}`);
+  }
+
+  // 9) 삼합 — 원국 지지 + 일진 지지로 삼합 완성 시 보너스
+  const natalZhis = pillars.map(p => p.zhi);
+  for (const [b1, b2, b3, element] of SAMHAP) {
+    const trio = [b1, b2, b3];
+    if (!trio.includes(dayZhi)) continue;
+    const remaining = trio.filter(b => b !== dayZhi);
+    if (remaining.every(b => natalZhis.includes(b))) {
+      base += 8;
+      reasons.push(`삼합 완성(${trio.join('')}→${element}) — 강한 조화`);
+      if (element === saju.yongSinElement) {
+        base += 5;
+        reasons.push(`삼합 오행(${element})이 용신과 일치 — 대길`);
+      }
+    }
+  }
+
+  // 10) clamp + grade
   const score = Math.max(5, Math.min(95, Math.round(base)));
   const grade = gradeFromScore(score);
   if (reasons.length === 0) {
