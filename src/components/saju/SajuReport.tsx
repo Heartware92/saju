@@ -1092,25 +1092,31 @@ export default function SajuReport({ result }: { result: SajuResult }) {
 
         <div className={styles.subheading}>대운 (10년 주기)</div>
         <div className={styles.daewoonScroll}>
-          {daeWoon.slice(0, 10).map((dw, idx) => (
-            <div key={idx} className={styles.daewoonCard}>
-              <div className={styles.dwAge}>{dw.startAge}~{dw.endAge}세</div>
-              <div className={styles.dwGanZhi}>
-                <span style={{ color: ELEMENT_COLORS[dw.ganElement] }}>{stemToHanja(dw.gan)}</span>
-                <span style={{ color: ELEMENT_COLORS[dw.zhiElement] }}>{zhiToHanja(dw.zhi)}</span>
+          {daeWoon.slice(0, 10).map((dw, idx) => {
+            const age = result.daeWoonStartAge + idx * 10;
+            const birthYear = parseInt(result.solarDate.split('-')[0]);
+            const currentAge = new Date().getFullYear() - birthYear;
+            const isCurrent = currentAge >= age && currentAge < age + 10;
+            return (
+              <div key={idx} className={`${styles.daewoonCard} ${isCurrent ? styles.current : ''}`}>
+                <div className={styles.dwAge}>{age}세</div>
+                <div className={styles.dwGanZhi}>
+                  <span style={{ color: ELEMENT_COLORS[dw.ganElement] }}>{stemToHanja(dw.gan)}</span>
+                  <span style={{ color: ELEMENT_COLORS[dw.zhiElement] }}>{zhiToHanja(dw.zhi)}</span>
+                </div>
+                <div className={styles.dwInfo}>
+                  <span>{dw.tenGod}</span>
+                  <span>{dw.twelveStage}</span>
+                </div>
               </div>
-              <div className={styles.dwInfo}>
-                <span>{dw.tenGod}</span>
-                <span>{dw.twelveStage}</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className={styles.subheading} style={{ marginTop: 16 }}>세운 (연운)</div>
         <div className={styles.sewoonGrid}>
           {seWoon.map((sw, idx) => (
-            <div key={idx} className={`${styles.sewoonCard} ${idx === 0 ? styles.current : ''}`}>
+            <div key={idx} className={`${styles.sewoonCard} ${sw.year === new Date().getFullYear() ? styles.current : ''}`}>
               <div className={styles.swYear}>{sw.year}년</div>
               <div className={styles.swAnimal}>{sw.animal}띠</div>
               <div className={styles.swGanZhi}>

@@ -290,7 +290,6 @@
   display: grid;
   grid-template-columns: 56px repeat(4, 1fr);
   align-items: center;
-  justify-items: center;
   text-align: center;
   padding: 10px 4px;
   border-bottom: 1px solid var(--border-subtle);
@@ -1248,11 +1247,19 @@
   text-align: center;
   border: 1px solid var(--border-subtle);
   flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.daewoonCard.current {
+  border-color: var(--cta-primary);
+  background: rgba(124, 92, 252, 0.15);
+  box-shadow: 0 0 14px rgba(124, 92, 252, 0.25);
 }
 
 .dwAge {
-  font-size: 11px;
-  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
   margin-bottom: 4px;
 }
 
