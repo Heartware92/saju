@@ -20,9 +20,12 @@ import {
   generateZamidusuPrompt,
   generatePeriodDomainsPrompt,
   generateNewyearReportPrompt,
+  generateJungtongsajuPrompt,
   NEWYEAR_SECTION_KEYS,
+  JUNGTONGSAJU_SECTION_KEYS,
   type PeriodDomainBrief,
   type NewyearSectionKey,
+  type JungtongsajuSectionKey,
 } from '../constants/prompts';
 import type { PeriodFortune } from '../engine/periodFortune';
 import type { TarotCardInfo } from './api';
@@ -366,6 +369,44 @@ export const getPeriodDomainsDescription = async (
       return { success: false, error: '영역별 설명 파싱 실패' };
     }
     return { success: true, descriptions };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * 정통사주 종합 리포트 (원국 기반 9섹션 분석)
+ */
+export interface JungtongsajuAIResult {
+  success: boolean;
+  sections?: Partial<Record<JungtongsajuSectionKey, string>>;
+  rawText?: string;
+  error?: string;
+}
+
+const parseJungtongsaju = (raw: string): Partial<Record<JungtongsajuSectionKey, string>> => {
+  const out: Partial<Record<JungtongsajuSectionKey, string>> = {};
+  const keysPattern = JUNGTONGSAJU_SECTION_KEYS.join('|');
+  const parts = raw.split(new RegExp(`^\\s*\\[(${keysPattern})\\]\\s*$`, 'm'));
+  for (let i = 1; i < parts.length; i += 2) {
+    const key = parts[i] as JungtongsajuSectionKey;
+    const body = (parts[i + 1] || '').trim();
+    if (body) out[key] = body;
+  }
+  return out;
+};
+
+export const getJungtongsajuReport = async (result: SajuResult): Promise<JungtongsajuAIResult> => {
+  try {
+    const prompt = generateJungtongsajuPrompt(result);
+    // 9섹션 × 평균 300자 ≈ 2700자 → 넉넉히 5500 토큰
+    const content = await callGPT(prompt, 5500);
+    const sections = parseJungtongsaju(content);
+
+    if (Object.keys(sections).length === 0) {
+      return { success: true, rawText: content };
+    }
+    return { success: true, sections };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

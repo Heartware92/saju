@@ -787,8 +787,10 @@ function SinSalBoard({
       </div>
       {sinSals.length > 0 && (
         <ul className={styles.sinsalDescList}>
-          {sinSals.map((s, i) => (
-            <li key={`${s.name}-${i}`} className={styles.sinsalDescItem}>
+          {sinSals
+            .filter((s, i, arr) => arr.findIndex(x => x.name === s.name) === i)
+            .map((s) => (
+            <li key={s.name} className={styles.sinsalDescItem}>
               <span
                 className={styles.sinsalDescName}
                 style={{ color: SINSAL_TYPE_COLORS[s.type] }}

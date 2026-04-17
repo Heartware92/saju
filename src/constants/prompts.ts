@@ -316,6 +316,123 @@ ${isStrong ? '신강' : '신약'} · 용신: ${yongSinElement}
 };
 
 /**
+ * 정통사주 종합 리포트 프롬프트
+ * - 원국 전체 분석: 격국·용신·성격·직업·재물·애정·건강·인간관계·대운·처방
+ * - 9개 섹션, [key] 구분자 출력
+ */
+export const JUNGTONGSAJU_SECTION_KEYS = [
+  'general', 'character', 'career', 'wealth', 'love', 'health', 'relation', 'luck', 'advice'
+] as const;
+export type JungtongsajuSectionKey = typeof JUNGTONGSAJU_SECTION_KEYS[number];
+
+export const JUNGTONGSAJU_SECTION_LABELS: Record<JungtongsajuSectionKey, string> = {
+  general:   '사주 총론',
+  character: '성격·기질',
+  career:    '직업·적성',
+  wealth:    '재물운',
+  love:      '애정·결혼운',
+  health:    '건강운',
+  relation:  '인간관계·가족',
+  luck:      '대운·세운 흐름',
+  advice:    '용신 처방',
+};
+
+export const generateJungtongsajuPrompt = (result: SajuResult): string => {
+  const { pillars, elementPercent, isStrong, yongSinElement, yongSin, sinSals, interactions, daeWoon, seWoon, gender, hourUnknown } = result;
+  const gyeokguk = determineGyeokguk(result);
+  const sipseong = formatSipseongCounts(computeSipseongCounts(result));
+
+  const sinSalStr = sinSals.length > 0 ? sinSals.map(s => `${s.name}(${s.type === 'good' ? '길' : s.type === 'bad' ? '흉' : '중'})`).join(' ') : '없음';
+  const interactionStr = interactions.length > 0 ? interactions.map(i => `${i.type}: ${i.description}`).join(' / ') : '없음';
+
+  const daeWoonStr = daeWoon
+    .filter(d => d.gan && d.zhi)
+    .slice(0, 8)
+    .map(d => `${d.startAge}~${d.endAge}세 ${d.gan}${d.zhi}(${d.ganElement}${d.zhiElement}·${d.tenGod}·${d.twelveStage})`)
+    .join(' | ');
+
+  const ageNow = new Date().getFullYear() - new Date(result.solarDate).getFullYear();
+  const currentDaeWoon = daeWoon.find(d => d.gan && d.zhi && ageNow >= d.startAge && ageNow <= d.endAge);
+  const currentDaeWoonStr = currentDaeWoon
+    ? `${currentDaeWoon.startAge}~${currentDaeWoon.endAge}세 ${currentDaeWoon.gan}${currentDaeWoon.zhi}(${currentDaeWoon.ganElement}${currentDaeWoon.zhiElement}·${currentDaeWoon.tenGod}·${currentDaeWoon.twelveStage})`
+    : '대운 시작 전';
+
+  const currentYear = new Date().getFullYear();
+  const recentSeWoon = seWoon
+    .filter(s => s.year >= currentYear && s.year <= currentYear + 2)
+    .map(s => `${s.year}년 ${s.gan}${s.zhi}(${s.ganElement}${s.zhiElement}·${s.tenGod}·${s.twelveStage})`)
+    .join(' | ');
+
+  const pillarLine = hourUnknown
+    ? `년: ${pillars.year.gan}${pillars.year.zhi}  월: ${pillars.month.gan}${pillars.month.zhi}  일: ${pillars.day.gan}${pillars.day.zhi}  시: 미상(삼주추명)`
+    : `년: ${pillars.year.gan}${pillars.year.zhi}  월: ${pillars.month.gan}${pillars.month.zhi}  일: ${pillars.day.gan}${pillars.day.zhi}  시: ${pillars.hour.gan}${pillars.hour.zhi}`;
+
+  const hourNote = hourUnknown
+    ? '\n출생 시간 미상 — 삼주추명 원칙: 자녀궁·말년·시간대별 상세는 간략히만 처리.'
+    : '';
+
+  return `[사주 원국]
+${pillarLine}
+일간: ${pillars.day.gan}(${pillars.day.ganElement})
+오행: 목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%
+신강신약: ${isStrong ? '신강' : '신약'}
+용신: ${yongSinElement}(${yongSin})  희신: ${result.heeSin}  기신: ${result.giSin}
+격국: ${gyeokguk.name}
+십성 분포: ${sipseong}
+신살·길성: ${sinSalStr}
+합충형파해: ${interactionStr}
+성별: ${gender === 'male' ? '남성' : '여성'}
+현재 나이(계산): ${ageNow}세
+현재 대운: ${currentDaeWoonStr}
+대운 전체(최대 8개): ${daeWoonStr}
+최근·향후 세운(3년): ${recentSeWoon}${hourNote}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[작성 규칙 — 절대 준수]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1) Markdown 절대 금지. 별표(**), 헤딩(#), 이모지 전부 금지.
+2) 불릿은 "- " 또는 "· " 형식만 허용.
+3) AI 자기소개 문구("분석 결과", "데이터에 따르면") 금지.
+4) 위에 주어진 격국·용신·신강약·오행%·십성·신살·합충·대운·세운 수치를 뒤집거나 임의 변경 금지.
+5) 전문 용어 첫 등장 시 괄호로 쉬운 말 병기.
+6) "~일 수 있습니다" 흐린 표현은 전체 답변에서 2회 이하. 단정적 어투 유지.
+7) 각 섹션 첫 문장에서 결론 먼저, 근거를 이어붙이는 방식.
+8) 출력은 [general] 마커부터 시작. 마커 이전 텍스트 없어야 함.
+9) 아래 9개 마커를 정확히 사용. 마커는 줄 처음에 단독으로 위치.
+
+[섹션 지침]
+
+[general] — 280~360자
+격국(${gyeokguk.name})의 본질 + 용신(${yongSinElement}) 역할 + 신강신약(${isStrong ? '신강' : '신약'})이 삶 전반에 만드는 기조. 오행 분포의 가장 두드러진 특징 1개 포함.
+
+[character] — 300~380자
+일간 ${pillars.day.gan}(${pillars.day.ganElement}) + 격국 + 십성 분포 상위 2개로 본 타고난 성향. 강점 2가지와 그림자(약점) 2가지를 균형 있게 서술.
+
+[career] — 280~350자
+격국 기반 적합 직군 3~4개. 피해야 할 직군 1~2개. 조직형·프리랜서 판단. 용신 오행과 연관된 업계 키워드.
+
+[wealth] — 260~330자
+재성(편재·정재) 강약으로 본 돈 버는 스타일. 월급형·사업형·투자형 중 근거 포함해 판단. 피해야 할 금전 함정 1가지.
+
+[love] — 260~330자
+관성(여성의 배우자)·재성(남성의 배우자) 기준으로 이상형 톤과 관계 패턴. 유리한 대운 구간 명시. 반복되는 갈등 패턴 1개.
+
+[health] — 200~260자
+약한 오행·충을 받은 오행 기준 취약 장부. 일상 챙겨야 할 습관 2가지. 이 사주의 건강 함정 1가지.
+
+[relation] — 240~300자
+비겁·식상·관성 배치로 본 인맥 형성 스타일. 부모·형제·자녀 관계의 특성 간략히. 의지할 사람 유형 1개·거리 둘 유형 1개.
+
+[luck] — 380~460자
+현재 대운(${currentDaeWoonStr})의 십성·오행·12운성이 지금 이 나이대에 어떻게 작용하는지 3~4문장. 전환 대운 1개를 "몇 살~몇 살 구간에 어떤 방향" 으로 명시. 최근 세운 각 연도 3~4문장씩 구체 서술.
+
+[advice] — 200~260자
+용신(${yongSinElement}) 보강 방법: 색(2개)·방향(1개)·숫자(1개)·시간대·계절·식재료. 이번 달 안에 실천 가능한 구체 행동 3가지를 불릿(- )으로.
+
+출력은 [general] 마커부터 시작. 마커 이전 텍스트 없어야 함.`;
+};
+
+/**
  * 기간 운세 영역별 상세 (신년/오늘/지정일 공통)
  * - 사주 원국 + 대상 기간 간지 + 엔진이 계산한 도메인 점수를 프롬프트에 주입
  * - 5개 영역(재물·직업·애정·건강·학업)에 대해 각 5문장 분석 생성
