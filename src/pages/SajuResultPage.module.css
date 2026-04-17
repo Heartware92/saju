@@ -315,13 +315,15 @@
 .pillarsRow.branchRow {
   font-size: 34px;
   font-weight: 700;
-  padding: 10px 4px;
   font-family: var(--font-serif);
 }
 
-.pillarsRow.stemRow > .label,
-.pillarsRow.branchRow > .label {
-  margin-bottom: 15px;
+.pillarsRow.stemRow {
+  padding: 24px 4px 10px;
+}
+
+.pillarsRow.branchRow {
+  padding: 10px 4px 24px;
 }
 
 .stemCell,
@@ -330,7 +332,7 @@
   flex-direction: column;
   align-items: center;
   line-height: 1;
-  gap: 4px;
+  position: relative;
 }
 
 .pillarHanja {
@@ -345,6 +347,17 @@
   font-family: var(--font-sans);
   opacity: 0.7;
   line-height: 1;
+  position: absolute;
+}
+
+.stemCell .pillarHangul {
+  bottom: 100%;
+  margin-bottom: 4px;
+}
+
+.branchCell .pillarHangul {
+  top: 100%;
+  margin-top: 4px;
 }
 
 .pillarsRow .highlight {
@@ -1090,13 +1103,12 @@
   border-bottom: none;
 }
 
-/* 크로스로우 관계 배지가 떨어질 '중간 갭' 확보 — 글자와 배지가 겹치지 않도록 */
 .relationDataWrap .pillarsRow.stemRow {
-  padding-bottom: 22px;
+  padding: 24px 4px 22px;
 }
 
 .relationDataWrap .pillarsRow.branchRow {
-  padding-top: 22px;
+  padding: 22px 4px 24px;
 }
 
 .relationOverlay {
