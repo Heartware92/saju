@@ -281,8 +281,8 @@
   background: rgba(124, 92, 252, 0.08);
   border-radius: 10px;
   margin-bottom: 4px;
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 700;
+  font-size: 14px;
   color: var(--cta-primary);
 }
 
@@ -290,10 +290,11 @@
   display: grid;
   grid-template-columns: 56px repeat(4, 1fr);
   align-items: center;
+  justify-items: center;
   text-align: center;
   padding: 10px 4px;
   border-bottom: 1px solid var(--border-subtle);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-primary);
 }
 
@@ -302,16 +303,18 @@
 }
 
 .pillarsRow .label {
-  font-size: 11px;
-  color: var(--text-tertiary);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
   text-align: left;
+  justify-self: start;
   display: flex;
   align-items: center;
 }
 
 .pillarsRow.stemRow,
 .pillarsRow.branchRow {
-  font-size: 32px;
+  font-size: 34px;
   font-weight: 700;
   padding: 14px 4px;
   font-family: var(--font-serif);
@@ -1003,8 +1006,8 @@
 
 .octCell {
   position: absolute;
-  width: 52px;
-  height: 52px;
+  width: 60px;
+  height: 60px;
   transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
@@ -1017,25 +1020,26 @@
 
 .octCell .stemCell,
 .octCell .branchCell {
-  gap: 2px;
+  gap: 1px;
 }
 
 .octCell .pillarHanja {
-  font-size: 26px;
+  font-size: 32px;
+  font-weight: 700;
 }
 
 .octCell .pillarHangul {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .octRowLabel {
   position: absolute;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--text-secondary);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   pointer-events: none;
   z-index: 2;
 }
@@ -1043,7 +1047,7 @@
 .octColLabel {
   position: absolute;
   transform: translate(-50%, -50%);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-secondary);
   letter-spacing: 0.06em;

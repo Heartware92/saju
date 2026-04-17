@@ -387,11 +387,11 @@ function PillarsRelationBoard({
 }) {
   // 정팔각형 배치 — 45° 간격으로 8꼭짓점
   // 위쪽 4개: 천간 (시·일·월·년 ←→), 아래쪽 4개: 지지 (시·일·월·년 ←→)
-  const VB_W = 320;
-  const VB_H = 280;
+  const VB_W = 340;
+  const VB_H = 310;
   const cx = VB_W / 2;
   const cy = VB_H / 2;
-  const R = 100;
+  const R = 115;
 
   const vertexAt = (angleDeg: number) => {
     const rad = (angleDeg * Math.PI) / 180;
@@ -450,7 +450,7 @@ function PillarsRelationBoard({
   const arcs: Arc[] = [];
 
   // 노드 반경 — 선이 노드 바깥에서 시작/끝나도록
-  const NODE_R = 26;
+  const NODE_R = 30;
 
   // 두 점 사이 선을 양끝에서 NODE_R 만큼 줄이기
   const shortenedLine = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {
@@ -538,8 +538,8 @@ function PillarsRelationBoard({
   });
 
   // 확장 viewBox — 상단 컬럼 헤더 + 행 라벨 여유
-  const MARGIN_TOP = 50;
-  const MARGIN_BOT = 30;
+  const MARGIN_TOP = 70;
+  const MARGIN_BOT = 50;
   const EXT_H = VB_H + MARGIN_TOP + MARGIN_BOT;
   const toExtY = (y: number) => y + MARGIN_TOP;
 
@@ -626,7 +626,7 @@ function PillarsRelationBoard({
             className={styles.octColLabel}
             style={{
               left: `${(colCenterX[i as PillarCol] / VB_W) * 100}%`,
-              top: `${((toExtY(stemTopY) - NODE_R - 22) / EXT_H) * 100}%`,
+              top: `${((toExtY(stemTopY) - NODE_R - 40) / EXT_H) * 100}%`,
             }}
           >
             {label}
@@ -671,13 +671,13 @@ function PillarsRelationBoard({
         {/* 행 라벨 */}
         <span
           className={styles.octRowLabel}
-          style={{ top: `${((toExtY(stemTopY) - NODE_R - 6) / EXT_H) * 100}%` }}
+          style={{ top: `${((toExtY(stemTopY) - NODE_R - 18) / EXT_H) * 100}%` }}
         >
           천간
         </span>
         <span
           className={styles.octRowLabel}
-          style={{ top: `${((toExtY(branchBotY) + NODE_R + 6) / EXT_H) * 100}%` }}
+          style={{ top: `${((toExtY(branchBotY) + NODE_R + 18) / EXT_H) * 100}%` }}
         >
           지지
         </span>
