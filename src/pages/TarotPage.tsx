@@ -1,18 +1,38 @@
 'use client';
 
 /**
- * 타로 상담 — 78장 풀덱 기반, AI·크레딧 없이 결정론적 리딩
+ * 타로 상담 — 78장 풀덱 기반, 사주 × 타로 AI 융합 리딩
  * 모드: 오늘 1장 / 이달 3장 / 질문 1장
+ * 대표 프로필 사주 데이터를 AI에 함께 전달하여 개인화된 해석 제공
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { TAROT_DECK, ELEMENT_COLORS, SUIT_SYMBOL, type TarotCard } from '../engine/tarot/deck';
 import { buildTarotReading, type DrawnCard, type TarotReading, type TarotSpread } from '../engine/tarot/reading';
 import { drawOne, drawMany, getTodayKey, getMonthKey, formatTodayString, formatMonthString } from '../utils/tarotSeed';
+import { useProfileStore } from '../store/useProfileStore';
+import { useUserStore } from '../store/useUserStore';
+import { computeSajuFromProfile } from '../utils/profileSaju';
+import { getHybridReading } from '../services/fortuneService';
+import type { TarotCardInfo } from '../services/api';
+import type { SajuResult } from '../utils/sajuCalculator';
 
 type TarotMode = 'today' | 'monthly' | 'question';
 type QuestionState = 'select' | 'shuffling' | 'spread' | 'revealed';
+
+function drawnToCardInfo(drawn: DrawnCard): TarotCardInfo {
+  const dir = drawn.isReversed ? 'reversed' : 'upright';
+  return {
+    name: drawn.card.name,
+    nameKr: drawn.card.nameKr,
+    element: drawn.card.element,
+    isReversed: drawn.isReversed,
+    keywords: drawn.card.keywords[drawn.isReversed ? 'reversed' : 'upright'],
+    meaning: drawn.card[dir].overall,
+  };
+}
 
 function CardFace({ drawn, width = 120 }: { drawn: DrawnCard; width?: number }) {
   const { card, isReversed, position } = drawn;
@@ -76,7 +96,6 @@ function ContextBlock({ block, color }: { block: TarotReading['contexts'][number
 function ReadingView({ reading, color }: { reading: TarotReading; color: string }) {
   return (
     <div className="space-y-3">
-      {/* 헤드라인 */}
       <section
         className="rounded-2xl p-5 text-center"
         style={{ backgroundColor: `${color}12`, border: `1px solid ${color}55` }}
@@ -88,7 +107,6 @@ function ReadingView({ reading, color }: { reading: TarotReading; color: string 
         <div className="text-[13px] text-text-secondary">{reading.subhead}</div>
       </section>
 
-      {/* 키워드 */}
       <section className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
         <div className="text-[13px] font-semibold text-text-secondary mb-2 uppercase tracking-wider">키워드</div>
         <div className="flex flex-wrap gap-1.5">
@@ -104,7 +122,6 @@ function ReadingView({ reading, color }: { reading: TarotReading; color: string 
         </div>
       </section>
 
-      {/* 종합 서사 */}
       <section className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
         <div className="text-[13px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">종합 해석</div>
         <div className="space-y-3">
@@ -114,7 +131,6 @@ function ReadingView({ reading, color }: { reading: TarotReading; color: string 
         </div>
       </section>
 
-      {/* 맥락별 */}
       <section className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
         <div className="text-[13px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">맥락별 풀이</div>
         <div className="space-y-2">
@@ -124,7 +140,6 @@ function ReadingView({ reading, color }: { reading: TarotReading; color: string 
         </div>
       </section>
 
-      {/* 조언 */}
       <section className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
         <div className="text-[13px] font-semibold mb-2" style={{ color: '#34D399' }}>카드의 조언</div>
         <ul className="space-y-1.5">
@@ -140,8 +155,114 @@ function ReadingView({ reading, color }: { reading: TarotReading; color: string 
   );
 }
 
+function AIReadingView({ content, color }: { content: string; color: string }) {
+  const paragraphs = content.split('\n\n').filter(Boolean);
+  return (
+    <div className="space-y-3">
+      <section
+        className="rounded-2xl p-5 text-center"
+        style={{ backgroundColor: `${color}12`, border: `1px solid ${color}55` }}
+      >
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary mb-2">
+          사주 × 타로 AI 리딩
+        </div>
+        <div className="text-[16px] font-bold" style={{ color, fontFamily: 'var(--font-serif)' }}>
+          당신의 사주와 카드가 만나는 순간
+        </div>
+      </section>
+
+      <section className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
+        <div className="space-y-3">
+          {paragraphs.map((p, i) => {
+            const trimmed = p.trim();
+            if (trimmed.startsWith('-') || trimmed.startsWith('·')) {
+              const lines = trimmed.split('\n');
+              return (
+                <ul key={i} className="space-y-1.5">
+                  {lines.map((line, j) => (
+                    <li key={j} className="text-[13px] text-text-secondary leading-relaxed flex gap-2">
+                      <span style={{ color }} className="shrink-0">·</span>
+                      <span>{line.replace(/^[-·]\s*/, '')}</span>
+                    </li>
+                  ))}
+                </ul>
+              );
+            }
+            return (
+              <p key={i} className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
+                {trimmed}
+              </p>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function LoadingSpinner({ color }: { color: string }) {
+  return (
+    <div className="flex flex-col items-center gap-4 py-10">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+        style={{
+          width: 40,
+          height: 40,
+          border: `3px solid ${color}33`,
+          borderTop: `3px solid ${color}`,
+          borderRadius: '50%',
+        }}
+      />
+      <p className="text-[13px] text-text-tertiary">사주와 타로를 융합하여 해석하는 중...</p>
+    </div>
+  );
+}
+
+function NoPrimaryModal({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="rounded-2xl p-6 max-w-sm w-full bg-[rgba(20,12,38,0.95)] border border-[var(--border-subtle)]"
+      >
+        <div className="text-center">
+          <div className="text-[32px] mb-3">✦</div>
+          <h3 className="text-[17px] font-bold text-text-primary mb-2">대표 프로필이 필요합니다</h3>
+          <p className="text-[13px] text-text-secondary leading-relaxed mb-5">
+            사주와 타로를 융합한 AI 리딩을 위해<br />
+            대표 프로필을 먼저 등록해 주세요.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl border border-[var(--border-subtle)] text-[13px] text-text-secondary"
+            >
+              닫기
+            </button>
+            <button
+              onClick={() => router.push('/saju/input')}
+              className="flex-1 py-2.5 rounded-xl font-bold text-white text-[13px]"
+              style={{ background: 'var(--cta-primary)' }}
+            >
+              프로필 등록하기
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function TarotPage() {
+  const router = useRouter();
+  const { user } = useUserStore();
+  const { profiles, fetchProfiles, hydrated } = useProfileStore();
+
   const [mode, setMode] = useState<TarotMode>('today');
+  const [showNoPrimaryModal, setShowNoPrimaryModal] = useState(false);
 
   // 오늘/이달 공통
   const [autoDrawn, setAutoDrawn] = useState<DrawnCard[]>([]);
@@ -152,6 +273,25 @@ export default function TarotPage() {
   const [qSpread, setQSpread] = useState<number[]>([]);
   const [qDrawn, setQDrawn] = useState<DrawnCard | null>(null);
 
+  // AI 리딩
+  const [aiContent, setAiContent] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) fetchProfiles();
+  }, [user, fetchProfiles]);
+
+  const primary = useMemo(
+    () => profiles.find((p) => p.is_primary) ?? null,
+    [profiles],
+  );
+
+  const sajuResult = useMemo<SajuResult | null>(() => {
+    if (!primary) return null;
+    return computeSajuFromProfile(primary);
+  }, [primary]);
+
   // 모드 전환 시 초기화
   useEffect(() => {
     setAutoDrawn([]);
@@ -159,39 +299,99 @@ export default function TarotPage() {
     setQState('select');
     setQSpread([]);
     setQDrawn(null);
+    setAiContent(null);
+    setAiLoading(false);
+    setAiError(null);
   }, [mode]);
+
+  const callAI = async (drawnCards: DrawnCard[], currentMode: TarotMode) => {
+    if (!sajuResult) {
+      setShowNoPrimaryModal(true);
+      return;
+    }
+
+    setAiLoading(true);
+    setAiError(null);
+    setAiContent(null);
+
+    try {
+      if (currentMode === 'today') {
+        const cardInfo = drawnToCardInfo(drawnCards[0]);
+        const res = await getHybridReading(sajuResult, cardInfo);
+        if (res.success && res.content) {
+          setAiContent(res.content);
+        } else {
+          setAiError(res.error || '해석을 불러오지 못했습니다.');
+        }
+      } else if (currentMode === 'monthly') {
+        const cardInfo = drawnToCardInfo(drawnCards[0]);
+        const res = await getHybridReading(sajuResult, cardInfo, '이달의 전체적인 흐름');
+        if (res.success && res.content) {
+          setAiContent(res.content);
+        } else {
+          setAiError(res.error || '해석을 불러오지 못했습니다.');
+        }
+      } else {
+        const cardInfo = drawnToCardInfo(drawnCards[0]);
+        const res = await getHybridReading(sajuResult, cardInfo, '질문에 대한 답');
+        if (res.success && res.content) {
+          setAiContent(res.content);
+        } else {
+          setAiError(res.error || '해석을 불러오지 못했습니다.');
+        }
+      }
+    } catch (e: any) {
+      setAiError(e.message || '네트워크 오류가 발생했습니다.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const runToday = () => {
     if (autoStarted) return;
+    if (!sajuResult) {
+      setShowNoPrimaryModal(true);
+      return;
+    }
     setAutoStarted(true);
     const key = getTodayKey();
     const { cardIndex, isReversed } = drawOne(key, TAROT_DECK.length, 0.35);
-    setAutoDrawn([{ card: TAROT_DECK[cardIndex], isReversed, position: '오늘' }]);
+    const drawn: DrawnCard[] = [{ card: TAROT_DECK[cardIndex], isReversed, position: '오늘' }];
+    setAutoDrawn(drawn);
+    callAI(drawn, 'today');
   };
 
   const runMonthly = () => {
     if (autoStarted) return;
+    if (!sajuResult) {
+      setShowNoPrimaryModal(true);
+      return;
+    }
     setAutoStarted(true);
     const key = getMonthKey();
     const draws = drawMany(key, 3, TAROT_DECK.length, 0.35);
     const labels = ['상순', '중순', '하순'];
-    setAutoDrawn(
-      draws.map((d, i) => ({
-        card: TAROT_DECK[d.cardIndex],
-        isReversed: d.isReversed,
-        position: labels[i],
-      }))
-    );
+    const drawn: DrawnCard[] = draws.map((d, i) => ({
+      card: TAROT_DECK[d.cardIndex],
+      isReversed: d.isReversed,
+      position: labels[i],
+    }));
+    setAutoDrawn(drawn);
+    callAI(drawn, 'monthly');
   };
 
   const shuffleForQuestion = () => {
+    if (!sajuResult) {
+      setShowNoPrimaryModal(true);
+      return;
+    }
     setQState('shuffling');
     const indices = Array.from({ length: TAROT_DECK.length }, (_, i) => i);
     for (let i = indices.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
-    setQSpread(indices.slice(0, 22)); // 화면에 표시할 스프레드
+    setQSpread(indices.slice(0, 22));
     setTimeout(() => setQState('spread'), 1200);
   };
 
@@ -199,8 +399,10 @@ export default function TarotPage() {
     if (qState !== 'spread') return;
     const cardIndex = qSpread[idxInSpread];
     const reversed = Math.random() < 0.35;
-    setQDrawn({ card: TAROT_DECK[cardIndex], isReversed: reversed, position: '질문' });
+    const drawn: DrawnCard = { card: TAROT_DECK[cardIndex], isReversed: reversed, position: '질문' };
+    setQDrawn(drawn);
     setQState('revealed');
+    callAI([drawn], 'question');
   };
 
   const reading: TarotReading | null = useMemo(() => {
@@ -229,11 +431,15 @@ export default function TarotPage() {
 
   return (
     <div className="w-full px-4 pt-4 pb-10">
+      {showNoPrimaryModal && (
+        <NoPrimaryModal onClose={() => setShowNoPrimaryModal(false)} />
+      )}
+
       <div className="text-center mb-4">
         <h1 className="text-[22px] font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
           타로 상담
         </h1>
-        <p className="text-[13px] text-text-tertiary mt-1">78장 라이더-웨이트 풀덱 · 무료</p>
+        <p className="text-[13px] text-text-tertiary mt-1">78장 라이더-웨이트 풀덱 · 사주 융합 AI 리딩</p>
       </div>
 
       {/* 모드 탭 */}
@@ -272,8 +478,8 @@ export default function TarotPage() {
                 </p>
                 <p className="text-[14px] text-text-secondary leading-relaxed mb-5">
                   {mode === 'today'
-                    ? '오늘 당신에게 정해진 한 장 — 같은 날짜에는 같은 카드가 나타납니다.'
-                    : '이달의 흐름을 상순·중순·하순 세 장으로 짚어드립니다.'}
+                    ? '오늘 당신에게 정해진 한 장 — 사주와 융합하여 AI가 해석합니다.'
+                    : '이달의 흐름을 세 장으로 짚고, 사주와 융합하여 AI가 해석합니다.'}
                 </p>
                 <motion.button
                   onClick={mode === 'today' ? runToday : runMonthly}
@@ -292,9 +498,24 @@ export default function TarotPage() {
                     <CardFace key={i} drawn={d} width={mode === 'monthly' ? 100 : 140} />
                   ))}
                 </div>
-                {reading && <ReadingView reading={reading} color={primaryColor} />}
+                {aiLoading && <LoadingSpinner color={primaryColor} />}
+                {aiError && (
+                  <div className="rounded-2xl p-4 text-center bg-[rgba(248,113,113,0.1)] border border-[rgba(248,113,113,0.3)]">
+                    <p className="text-[13px] text-[#F87171] mb-3">{aiError}</p>
+                    <button
+                      onClick={() => callAI(autoDrawn, mode)}
+                      className="text-[12px] text-text-secondary underline"
+                    >
+                      다시 시도
+                    </button>
+                  </div>
+                )}
+                {aiContent && <AIReadingView content={aiContent} color={primaryColor} />}
+                {!aiLoading && !aiContent && !aiError && reading && (
+                  <ReadingView reading={reading} color={primaryColor} />
+                )}
                 <button
-                  onClick={() => { setAutoStarted(false); setAutoDrawn([]); }}
+                  onClick={() => { setAutoStarted(false); setAutoDrawn([]); setAiContent(null); setAiError(null); }}
                   className="w-full mt-4 py-3 rounded-xl border border-[var(--border-subtle)] text-[13px] text-text-secondary"
                 >
                   다시 펼치기
@@ -314,7 +535,8 @@ export default function TarotPage() {
                 className="rounded-2xl p-6 text-center bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
               >
                 <p className="text-[14px] text-text-secondary leading-relaxed mb-5">
-                  마음속 질문 하나를 떠올리고, 카드를 섞어 직접 선택하세요.
+                  마음속 질문 하나를 떠올리고, 카드를 섞어 직접 선택하세요.<br />
+                  사주와 융합하여 AI가 깊은 해석을 드립니다.
                 </p>
                 <motion.button
                   onClick={shuffleForQuestion}
@@ -366,14 +588,29 @@ export default function TarotPage() {
               </div>
             )}
 
-            {qState === 'revealed' && qDrawn && reading && (
+            {qState === 'revealed' && qDrawn && (
               <>
                 <div className="flex justify-center mb-5">
                   <CardFace drawn={qDrawn} width={160} />
                 </div>
-                <ReadingView reading={reading} color={primaryColor} />
+                {aiLoading && <LoadingSpinner color={primaryColor} />}
+                {aiError && (
+                  <div className="rounded-2xl p-4 text-center bg-[rgba(248,113,113,0.1)] border border-[rgba(248,113,113,0.3)]">
+                    <p className="text-[13px] text-[#F87171] mb-3">{aiError}</p>
+                    <button
+                      onClick={() => callAI([qDrawn], 'question')}
+                      className="text-[12px] text-text-secondary underline"
+                    >
+                      다시 시도
+                    </button>
+                  </div>
+                )}
+                {aiContent && <AIReadingView content={aiContent} color={primaryColor} />}
+                {!aiLoading && !aiContent && !aiError && reading && (
+                  <ReadingView reading={reading} color={primaryColor} />
+                )}
                 <button
-                  onClick={() => { setQState('select'); setQDrawn(null); setQSpread([]); }}
+                  onClick={() => { setQState('select'); setQDrawn(null); setQSpread([]); setAiContent(null); setAiError(null); }}
                   className="w-full mt-4 py-3 rounded-xl border border-[var(--border-subtle)] text-[13px] text-text-secondary"
                 >
                   다른 질문 · 다시 뽑기
