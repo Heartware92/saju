@@ -919,7 +919,7 @@ export const calculateSaju = (
     interactions,
     sinSals,
     daeWoon,
-    daeWoonStartAge: yun.getStartYear(),
+    daeWoonStartAge: Math.round(yun.getStartYear() + yun.getStartMonth() / 12),
     seWoon,
     currentSeWoon
   };
