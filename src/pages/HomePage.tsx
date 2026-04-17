@@ -55,6 +55,13 @@ const MAIN_SERVICES = [
 
 const SECONDARY_SERVICES = [
   {
+    id: 'taekil',
+    title: '택일 운세',
+    desc: '행사 길일 찾기',
+    direct: '/saju/taekil',
+    gradient: 'from-teal-500/20 to-emerald-500/10',
+  },
+  {
     id: 'tojeong',
     title: '토정비결',
     desc: '한 해 길흉화복',
