@@ -87,15 +87,6 @@ export default function ManageProfilesPage() {
     }
   };
 
-  // 도시 카테고리별 그룹
-  const citiesByCategory = Object.entries(CITY_COORDINATES).reduce((acc, [key, value]) => {
-    const cat = value.category || '기타';
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push({ key, name: value.name });
-    return acc;
-  }, {} as Record<string, { key: string; name: string }[]>);
-  const categoryOrder = ['대한민국', '북한', '아시아', '북미', '유럽', '오세아니아'];
-
   const handleDelete = async () => {
     if (!confirmDelete) return;
     await deleteProfile(confirmDelete.id);
@@ -313,27 +304,6 @@ export default function ManageProfilesPage() {
                     onChange={(e) => setEditForm({ ...editForm, birth_date: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] text-sm text-text-primary focus:border-cta/50 outline-none"
                   />
-                </div>
-
-                <div>
-                  <label className="text-[11px] text-text-tertiary block mb-1">
-                    출생지
-                  </label>
-                  <select
-                    value={editForm.birth_place}
-                    onChange={(e) => setEditForm({ ...editForm, birth_place: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] text-sm text-text-primary focus:border-cta/50 outline-none"
-                  >
-                    {categoryOrder.map((cat) =>
-                      citiesByCategory[cat] ? (
-                        <optgroup key={cat} label={cat}>
-                          {citiesByCategory[cat].map((c) => (
-                            <option key={c.key} value={c.key}>{c.name}</option>
-                          ))}
-                        </optgroup>
-                      ) : null,
-                    )}
-                  </select>
                 </div>
 
                 <div>
