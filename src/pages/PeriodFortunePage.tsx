@@ -18,7 +18,8 @@ import { useUserStore } from '../store/useUserStore';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { calculateSaju } from '../utils/sajuCalculator';
 import { calculatePeriodFortune, type FortuneScope, type FortuneGrade, type PeriodFortune } from '../engine/periodFortune';
-import { getPeriodDomainsDescription } from '../services/fortuneService';
+import { getPeriodDomainsDescription, getNewyearReport, type NewyearReportAIResult } from '../services/fortuneService';
+import { NEWYEAR_SECTION_KEYS, NEWYEAR_SECTION_LABELS } from '../constants/prompts';
 
 const GRADE_COLOR: Record<FortuneGrade, string> = {
   '대길': '#34D399',
@@ -205,16 +206,31 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
   const [domainAI, setDomainAI] = useState<Partial<Record<'wealth' | 'career' | 'love' | 'health' | 'study', string>>>({});
   const [domainAILoading, setDomainAILoading] = useState(false);
 
+  // 신년운세 종합 리포트 (scope='year'에서만 사용)
+  const [newyearReport, setNewyearReport] = useState<NewyearReportAIResult | null>(null);
+  const [newyearReportLoading, setNewyearReportLoading] = useState(false);
+
   // 기간/대상 바뀔 때마다 초기화 + AI 호출
   useEffect(() => {
     if (!saju || !fortune) return;
     let cancelled = false;
+
+    // scope=year: 신년운세 종합 리포트 호출 (도메인 상세는 패스)
+    if (scope === 'year') {
+      setNewyearReport(null);
+      setNewyearReportLoading(true);
+      getNewyearReport(saju, fortune, targetYear)
+        .then(r => { if (!cancelled) setNewyearReport(r); })
+        .finally(() => { if (!cancelled) setNewyearReportLoading(false); });
+      return () => { cancelled = true; };
+    }
+
+    // scope=day/date: 영역별 5문장 상세
     setDomainAI({});
     setDomainAILoading(true);
 
     const scopeLabel =
-      scope === 'year' ? `${targetYear}년 신년운세`
-      : scope === 'day' ? `오늘(${today})`
+      scope === 'day' ? `오늘(${today})`
       : `${pickedDate} 지정일`;
 
     const domainsBrief = fortune.domains
@@ -269,6 +285,39 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-cta border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // 신년운세: 리포트 응답 오기 전까지 전체 로딩 화면
+  if (scope === 'year' && newyearReportLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 gap-6">
+        <motion.div
+          animate={{ opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          className="text-center"
+        >
+          <div className="text-[32px] mb-4" style={{ fontFamily: 'var(--font-serif)' }}>
+            {fortune.targetGanZhi.ganZhi}년
+          </div>
+          <div className="text-[16px] font-semibold text-text-primary mb-2">
+            {targetYear}년 신년운세 풀이중
+          </div>
+          <div className="text-[13px] text-text-tertiary">
+            사주 원국과 세운을 분석하고 있습니다
+          </div>
+        </motion.div>
+        <div className="flex gap-1.5">
+          {[0, 1, 2].map(i => (
+            <motion.div
+              key={i}
+              className="w-2 h-2 rounded-full bg-cta"
+              animate={{ opacity: [0.2, 1, 0.2] }}
+              transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
+            />
+          ))}
+        </div>
       </div>
     );
   }
@@ -493,6 +542,59 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
               </div>
             ))}
           </div>
+        </motion.section>
+      )}
+
+      {/* 신년운세 종합 리포트 (scope=year 전용 — 로딩 완료 후 표시) */}
+      {scope === 'year' && !newyearReportLoading && newyearReport && (
+        <motion.section
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="mb-3"
+        >
+          <div className="text-[13px] font-semibold text-text-secondary mb-2 px-1 uppercase tracking-wider">
+            {targetYear}년 종합 리포트
+          </div>
+
+          {newyearReport.error && (
+            <div className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
+              <p className="text-[12px] text-text-secondary">{newyearReport.error}</p>
+            </div>
+          )}
+
+          {newyearReport.rawText && (
+            <div className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
+              <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
+                {newyearReport.rawText}
+              </p>
+            </div>
+          )}
+
+          {newyearReport.sections && (
+            <div className="space-y-2">
+              {NEWYEAR_SECTION_KEYS.map((key, idx) => {
+                const text = newyearReport.sections?.[key];
+                if (!text) return null;
+                return (
+                  <motion.div
+                    key={key}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.06 * idx }}
+                    className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
+                  >
+                    <div className="text-[13px] font-bold text-text-primary mb-2">
+                      {NEWYEAR_SECTION_LABELS[key]}
+                    </div>
+                    <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
+                      {text}
+                    </p>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </motion.section>
       )}
     </motion.div>

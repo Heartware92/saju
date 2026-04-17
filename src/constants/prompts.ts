@@ -3,7 +3,7 @@
  * 엽전 크레딧 시스템에 맞춘 무료/유료 구분
  */
 
-import { SajuResult, TEN_GODS_MAP } from '../utils/sajuCalculator';
+import { SajuResult, TEN_GODS_MAP, type SeWoon, type DaeWoon } from '../utils/sajuCalculator';
 import { determineGyeokguk, analyzeGyeokgukStatus } from '../engine/gyeokguk';
 import type { TarotCardInfo } from '../services/api';
 
@@ -383,6 +383,146 @@ ${domainList}
 
 [study]
 (학업 5문장)`;
+};
+
+/**
+ * 신년운세 종합 리포트 프롬프트
+ * - 원국 + 세운 + 대운 + 월별흐름 + 도메인 점수를 통합해 8개 섹션 내러티브 생성
+ * - AI 티 없는 자연스러운 한국어 서술, 마크다운·이모지 금지
+ */
+
+export const NEWYEAR_SECTION_KEYS = ['general', 'wealth', 'career', 'love', 'health', 'relation', 'monthly', 'lucky'] as const;
+export type NewyearSectionKey = typeof NEWYEAR_SECTION_KEYS[number];
+
+export const NEWYEAR_SECTION_LABELS: Record<NewyearSectionKey, string> = {
+  general: '총운',
+  wealth: '재물운',
+  career: '직장·사업운',
+  love: '연애·결혼운',
+  health: '건강운',
+  relation: '인간관계운',
+  monthly: '월별 흐름',
+  lucky: '행운 포인트',
+};
+
+export const generateNewyearReportPrompt = (
+  result: SajuResult,
+  opts: {
+    year: number;
+    seWoon: SeWoon;
+    currentDaeWoon: DaeWoon | null;
+    monthlyFlow: { month: number; grade: string; keyword: string }[];
+    domains: { key: string; label: string; score: number; grade: string }[];
+    overallScore: number;
+    overallGrade: string;
+  }
+): string => {
+  const { pillars, elementPercent, isStrong, yongSinElement, yongSin, hourUnknown, gender, dayMasterYinYang } = result;
+  const { year, seWoon, currentDaeWoon, monthlyFlow, domains, overallScore, overallGrade } = opts;
+  const gyeokguk = determineGyeokguk(result);
+  const sipseong = formatSipseongCounts(computeSipseongCounts(result));
+
+  const pillarLine = hourUnknown
+    ? `년주: ${pillars.year.gan}${pillars.year.zhi}  월주: ${pillars.month.gan}${pillars.month.zhi}  일주: ${pillars.day.gan}${pillars.day.zhi}  시주: 미상`
+    : `년주: ${pillars.year.gan}${pillars.year.zhi}  월주: ${pillars.month.gan}${pillars.month.zhi}  일주: ${pillars.day.gan}${pillars.day.zhi}  시주: ${pillars.hour.gan}${pillars.hour.zhi}`;
+
+  const daeWoonLine = currentDaeWoon
+    ? `${currentDaeWoon.startAge}~${currentDaeWoon.endAge}세  ${currentDaeWoon.gan}${currentDaeWoon.zhi}(${currentDaeWoon.ganElement}·${currentDaeWoon.zhiElement})  십성: ${currentDaeWoon.tenGod}  12운성: ${currentDaeWoon.twelveStage}`
+    : '아직 대운 시작 전';
+
+  const monthlyLine = monthlyFlow
+    .map(m => `${m.month}월: ${m.grade}(${m.keyword})`)
+    .join(' / ');
+
+  const domainLine = domains
+    .filter(d => d.key !== 'overall')
+    .map(d => `${d.label} ${d.score}점·${d.grade}`)
+    .join(' / ');
+
+  const wealthDomain = domains.find(d => d.key === 'wealth');
+  const hourNote = hourUnknown
+    ? '\n출생 시간 미상 — 시주(時柱) 관련 자녀운·말년운·시간대 해석은 간략히 처리.'
+    : '';
+
+  return `[내 사주 원국]
+${pillarLine}
+일간: ${pillars.day.gan}(${pillars.day.ganElement} · ${dayMasterYinYang})
+오행: 목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%
+신강신약: ${isStrong ? '신강' : '신약'}
+용신: ${yongSinElement}(${yongSin})  희신: ${result.heeSin}  기신: ${result.giSin}
+격국: ${gyeokguk.name}
+십성 분포: ${sipseong}
+성별: ${gender === 'male' ? '남성' : '여성'}${hourNote}
+
+[${year}년 세운 — ${seWoon.gan}${seWoon.zhi}(${seWoon.animal}년)]
+세운 천간: ${seWoon.gan}(${seWoon.ganElement}) — 일간 ${pillars.day.gan} 기준 십성: ${seWoon.tenGod}
+세운 지지: ${seWoon.zhi}(${seWoon.zhiElement})
+세운 12운성: ${seWoon.twelveStage}
+
+[현재 대운]
+${daeWoonLine}
+
+[엔진 계산 점수 — 이 방향성 유지 필수]
+총운: ${overallScore}점·${overallGrade}
+${domainLine}
+
+[${year}년 월별 흐름]
+${monthlyLine}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[작성 규칙 — 절대 준수]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1) Markdown 절대 금지. 별표(**), 헤딩(#), 이모지 전부 금지.
+2) 불릿은 "- " 또는 "· " 형식만 허용.
+3) AI임을 드러내는 문구("분석 결과", "데이터에 따르면", "제가 보기에") 금지.
+4) 위 엔진 점수의 길흉 방향성을 뒤집지 말 것. 해석은 허용, 등급 변경은 금지.
+5) 각 섹션 첫 문장에서 결론을 먼저 말하고 근거를 이어붙이는 방식.
+6) 전문 용어(십성·격국·용신·대운 등)는 첫 등장 시 괄호로 쉬운 말 병기.
+7) "~일 수 있습니다" "혹시" 같은 흐린 표현은 전체 답변에서 2회 이하. 단정적 어투 유지.
+8) 출력은 [general] 마커부터 시작. 마커 이전에 어떤 텍스트도 없어야 함.
+9) 아래 8개 마커를 정확히 사용. 마커는 줄 처음에 단독으로 위치. 마커 뒤 바로 내용 시작.
+
+[섹션별 지침]
+
+[general]
+${year}년 전체 기조 — 300~400자
+세운 ${seWoon.gan}${seWoon.zhi}이 일간 ${pillars.day.gan}에 어떤 십성(${seWoon.tenGod})으로 작용하는지, 대운과 겹쳐 어떤 국면이 열리는지 1단락. 이 해에 특히 어떤 축(재물·직장·관계·건강)이 도드라지는가를 2단락으로.
+
+[wealth]
+재물운 — 250~330자
+세운 십신(${seWoon.tenGod})과 용신(${yongSinElement})의 관계로 수입·지출 방향 풀이. 조심할 금전 결정 한 가지. 엔진 점수 ${wealthDomain?.score ?? '?'}점(${wealthDomain?.grade ?? '?'}) 방향성 유지.
+
+[career]
+직장·사업운 — 250~330자
+직장인·사업자에게 공통으로 해당되는 커리어 기운. 세운과 원국의 관성·재성 관계로 승진·계약·파트너십 기운 풀이. 결정 내리기 좋은 시기 명시.
+
+[love]
+연애·결혼운 — 250~330자
+관성·재성 기준으로 인연·관계 기운 풀이. 이 해 가장 좋은 인연 시기를 월별 흐름 참고해 명시. 관계 갈등 패턴과 해소 방향.
+
+[health]
+건강운 — 200~270자
+오행 분포와 세운 오행으로 취약 장부 판단. 일상에서 챙겨야 할 구체 습관 2가지. "이 해의 건강 함정" 한 가지.
+
+[relation]
+인간관계운 — 200~270자
+비겁·식상·관성 배치로 본 ${year}년 인간관계 기운. 의지할 관계 유형 한 가지. 멀리해야 할 관계 유형 한 가지.
+
+[monthly]
+월별 흐름 — 총 400~500자, 각 월 2~3문장
+1월부터 12월까지 순서대로. 위 월별 등급·키워드를 근거로 각 월의 핵심 기운 서술.
+포맷 예시: "1월(중길·축적): 새해 시작은..."
+
+[lucky]
+행운 포인트 — 150~200자
+용신(${yongSinElement}) 기준 불릿(- ) 형식으로:
+- 행운색 2가지
+- 행운 방위 1가지
+- 행운 숫자 2개
+- 에너지 가장 좋은 시간대
+- ${year}년에 어울리는 환경·공간 키워드
+
+출력은 [general] 마커부터 시작. 마커 이전에 어떤 텍스트도 없어야 함.`;
 };
 
 /**

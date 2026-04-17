@@ -19,8 +19,12 @@ import {
   generateTojeongPrompt,
   generateZamidusuPrompt,
   generatePeriodDomainsPrompt,
-  type PeriodDomainBrief
+  generateNewyearReportPrompt,
+  NEWYEAR_SECTION_KEYS,
+  type PeriodDomainBrief,
+  type NewyearSectionKey,
 } from '../constants/prompts';
+import type { PeriodFortune } from '../engine/periodFortune';
 import type { TarotCardInfo } from './api';
 import type { TojeongResult } from '../engine/tojeong';
 import type { ZamidusuResult } from '../engine/zamidusu';
@@ -362,6 +366,76 @@ export const getPeriodDomainsDescription = async (
       return { success: false, error: '영역별 설명 파싱 실패' };
     }
     return { success: true, descriptions };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * 신년운세 종합 리포트 (연도별 8섹션 내러티브)
+ * - 원국 + 해당 연도 세운/대운/월별흐름을 통합해 자연스러운 한국어 리포트 생성
+ */
+
+export interface NewyearReportAIResult {
+  success: boolean;
+  sections?: Partial<Record<NewyearSectionKey, string>>;
+  rawText?: string;
+  error?: string;
+}
+
+const parseNewyearReport = (raw: string): Partial<Record<NewyearSectionKey, string>> => {
+  const out: Partial<Record<NewyearSectionKey, string>> = {};
+  const keysPattern = NEWYEAR_SECTION_KEYS.join('|');
+  const parts = raw.split(new RegExp(`^\\s*\\[(${keysPattern})\\]\\s*$`, 'm'));
+  for (let i = 1; i < parts.length; i += 2) {
+    const key = parts[i] as NewyearSectionKey;
+    const body = (parts[i + 1] || '').trim();
+    if (body) out[key] = body;
+  }
+  return out;
+};
+
+export const getNewyearReport = async (
+  result: SajuResult,
+  fortune: PeriodFortune,
+  year: number,
+): Promise<NewyearReportAIResult> => {
+  try {
+    const seWoon = result.seWoon.find(s => s.year === year);
+    if (!seWoon) throw new Error(`${year}년 세운 데이터가 없습니다.`);
+
+    const birthYear = new Date(result.solarDate).getFullYear();
+    const ageAtYear = year - birthYear;
+    const currentDaeWoon = result.daeWoon.find(
+      d => d.gan && d.zhi && ageAtYear >= d.startAge && ageAtYear <= d.endAge
+    ) ?? null;
+
+    const domains = fortune.domains.map(d => ({
+      key: d.key,
+      label: d.label,
+      score: d.score,
+      grade: d.grade as string,
+    }));
+
+    const prompt = generateNewyearReportPrompt(result, {
+      year,
+      seWoon,
+      currentDaeWoon,
+      monthlyFlow: fortune.monthlyFlow ?? [],
+      domains,
+      overallScore: fortune.overallScore,
+      overallGrade: fortune.overallGrade as string,
+    });
+
+    // 8섹션 × 평균 300자 ≈ 2400자 → 여유있게 4500 토큰
+    const content = await callGPT(prompt, 4500);
+    const sections = parseNewyearReport(content);
+
+    if (Object.keys(sections).length === 0) {
+      // 파싱 실패 시 원문 반환 — UI에서 단일 텍스트로 표시
+      return { success: true, rawText: content };
+    }
+    return { success: true, sections };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
