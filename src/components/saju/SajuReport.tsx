@@ -6,7 +6,7 @@
  * (AI 풀이 섹션은 정통사주 페이지에만 붙임)
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { SajuResult, TEN_GODS_MAP, type Interaction, type SinSal } from '../../utils/sajuCalculator';
 import { determineGyeokguk, analyzeGyeokgukStatus } from '../../engine/gyeokguk';
@@ -804,6 +804,97 @@ function SinSalBoard({
   );
 }
 
+function DaeWoonSection({
+  daeWoon,
+  seWoon,
+  result,
+}: {
+  daeWoon: SajuResult['daeWoon'];
+  seWoon: SajuResult['seWoon'];
+  result: SajuResult;
+}) {
+  const dwScrollRef = useRef<HTMLDivElement>(null);
+  const swScrollRef = useRef<HTMLDivElement>(null);
+  const currentDwRef = useRef<HTMLDivElement>(null);
+  const currentSwRef = useRef<HTMLDivElement>(null);
+
+  const birthYear = parseInt(result.solarDate.split('-')[0]);
+  const currentYear = new Date().getFullYear();
+  const currentAge = currentYear - birthYear;
+
+  useEffect(() => {
+    if (currentDwRef.current && dwScrollRef.current) {
+      const container = dwScrollRef.current;
+      const card = currentDwRef.current;
+      const offset = card.offsetLeft - container.offsetLeft - container.clientWidth / 2 + card.clientWidth / 2;
+      container.scrollLeft = Math.max(0, offset);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentSwRef.current && swScrollRef.current) {
+      const container = swScrollRef.current;
+      const card = currentSwRef.current;
+      const offset = card.offsetLeft - container.offsetLeft - container.clientWidth / 2 + card.clientWidth / 2;
+      container.scrollLeft = Math.max(0, offset);
+    }
+  }, []);
+
+  return (
+    <>
+      <div className={styles.subheading}>대운 (10년 주기)</div>
+      <div className={styles.daewoonScroll} ref={dwScrollRef}>
+        {daeWoon.slice(0, 10).map((dw, idx) => {
+          const age = result.daeWoonStartAge + idx * 10;
+          const isCurrent = currentAge >= age && currentAge < age + 10;
+          return (
+            <div
+              key={idx}
+              ref={isCurrent ? currentDwRef : undefined}
+              className={`${styles.daewoonCard} ${isCurrent ? styles.current : ''}`}
+            >
+              <div className={styles.dwAge}>{age}세</div>
+              <div className={styles.dwGanZhi}>
+                <span style={{ color: ELEMENT_COLORS[dw.ganElement] }}>{stemToHanja(dw.gan)}</span>
+                <span style={{ color: ELEMENT_COLORS[dw.zhiElement] }}>{zhiToHanja(dw.zhi)}</span>
+              </div>
+              <div className={styles.dwInfo}>
+                <span>{dw.tenGod}</span>
+                <span>{dw.twelveStage}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className={styles.subheading} style={{ marginTop: 16 }}>세운 (연운)</div>
+      <div className={styles.daewoonScroll} ref={swScrollRef}>
+        {seWoon.map((sw, idx) => {
+          const isCurrent = sw.year === currentYear;
+          return (
+            <div
+              key={idx}
+              ref={isCurrent ? currentSwRef : undefined}
+              className={`${styles.sewoonCard} ${isCurrent ? styles.current : ''}`}
+            >
+              <div className={styles.swYear}>{sw.year}년</div>
+              <div className={styles.swAnimal}>{sw.animal}띠</div>
+              <div className={styles.swGanZhi}>
+                <span style={{ color: ELEMENT_COLORS[sw.ganElement] }}>{stemToHanja(sw.gan)}</span>
+                <span style={{ color: ELEMENT_COLORS[sw.zhiElement] }}>{zhiToHanja(sw.zhi)}</span>
+              </div>
+              <div className={styles.swInfo}>
+                <span>{sw.tenGod}</span>
+                <span>{sw.twelveStage}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
 export default function SajuReport({ result }: { result: SajuResult }) {
   const { pillars, elementCount, daeWoon, seWoon, sinSals, interactions } = result;
 
@@ -1090,46 +1181,7 @@ export default function SajuReport({ result }: { result: SajuResult }) {
         </div>
         <p className={styles.subInfo}>대운 시작: {result.daeWoonStartAge}세</p>
 
-        <div className={styles.subheading}>대운 (10년 주기)</div>
-        <div className={styles.daewoonScroll}>
-          {daeWoon.slice(0, 10).map((dw, idx) => {
-            const age = result.daeWoonStartAge + idx * 10;
-            const birthYear = parseInt(result.solarDate.split('-')[0]);
-            const currentAge = new Date().getFullYear() - birthYear;
-            const isCurrent = currentAge >= age && currentAge < age + 10;
-            return (
-              <div key={idx} className={`${styles.daewoonCard} ${isCurrent ? styles.current : ''}`}>
-                <div className={styles.dwAge}>{age}세</div>
-                <div className={styles.dwGanZhi}>
-                  <span style={{ color: ELEMENT_COLORS[dw.ganElement] }}>{stemToHanja(dw.gan)}</span>
-                  <span style={{ color: ELEMENT_COLORS[dw.zhiElement] }}>{zhiToHanja(dw.zhi)}</span>
-                </div>
-                <div className={styles.dwInfo}>
-                  <span>{dw.tenGod}</span>
-                  <span>{dw.twelveStage}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className={styles.subheading} style={{ marginTop: 16 }}>세운 (연운)</div>
-        <div className={styles.sewoonGrid}>
-          {seWoon.map((sw, idx) => (
-            <div key={idx} className={`${styles.sewoonCard} ${sw.year === new Date().getFullYear() ? styles.current : ''}`}>
-              <div className={styles.swYear}>{sw.year}년</div>
-              <div className={styles.swAnimal}>{sw.animal}띠</div>
-              <div className={styles.swGanZhi}>
-                <span style={{ color: ELEMENT_COLORS[sw.ganElement] }}>{stemToHanja(sw.gan)}</span>
-                <span style={{ color: ELEMENT_COLORS[sw.zhiElement] }}>{zhiToHanja(sw.zhi)}</span>
-              </div>
-              <div className={styles.swInfo}>
-                <span>{sw.tenGod}</span>
-                <span>{sw.twelveStage}</span>
-              </div>
-            </div>
-          ))}
-        </div>
+        <DaeWoonSection daeWoon={daeWoon} seWoon={seWoon} result={result} />
       </div>
     </>
   );

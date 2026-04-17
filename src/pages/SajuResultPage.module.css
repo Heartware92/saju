@@ -1279,18 +1279,14 @@
 }
 
 /* Sewoon (세운) */
-.sewoonGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
 .sewoonCard {
+  min-width: 80px;
   padding: 12px 8px;
   background: var(--space-elevated);
   border-radius: 12px;
   text-align: center;
   border: 1px solid var(--border-subtle);
+  flex-shrink: 0;
   transition: all 0.2s;
 }
 
