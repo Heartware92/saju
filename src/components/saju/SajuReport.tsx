@@ -764,7 +764,7 @@ function SinSalBoard({
           ))}
         </div>
         <div className={`${styles.pillarsRow} ${styles.sinsalRow}`}>
-          <span className={styles.label}>신살</span>
+          <span className={styles.label}>신살/길성</span>
           {columns.map(({ col }) => (
             <span key={`st-${col}`} className={styles.sinsalTagCell}>
               {byCol[col].length === 0 ? (

@@ -494,67 +494,265 @@ const calculateSinSals = (
   pillars: { year: Pillar; month: Pillar; day: Pillar; hour: Pillar }
 ): SinSal[] => {
   const sinSals: SinSal[] = [];
-  // 내부 배열 인덱스 → 표시 기둥 인덱스(시0/일1/월2/년3)
   const branches: Array<{ zhi: string; col: number }> = [
     { zhi: pillars.year.zhi, col: 3 },
     { zhi: pillars.month.zhi, col: 2 },
     { zhi: pillars.day.zhi, col: 1 },
     { zhi: pillars.hour.zhi, col: 0 },
   ];
+  const stems: Array<{ gan: string; col: number }> = [
+    { gan: pillars.year.gan, col: 3 },
+    { gan: pillars.month.gan, col: 2 },
+    { gan: pillars.day.gan, col: 1 },
+    { gan: pillars.hour.gan, col: 0 },
+  ];
   const findCols = (target: string): number[] =>
     branches.filter(b => b.zhi === target).map(b => b.col);
+  const yearBranch = pillars.year.zhi;
+  const dayBranch = pillars.day.zhi;
 
+  // ── 길성 (貴人) ──
+
+  // 천을귀인 (天乙貴人) — 일간 기준
   const tianYiGuiRen: Record<string, string[]> = {
     '갑': ['축', '미'], '을': ['자', '신'], '병': ['해', '유'], '정': ['해', '유'],
     '무': ['축', '미'], '기': ['자', '신'], '경': ['축', '미'], '신': ['인', '오'],
-    '임': ['묘', '사'], '계': ['묘', '사']
+    '임': ['묘', '사'], '계': ['묘', '사'],
   };
-
   const guiRenBranches = tianYiGuiRen[dayGan] || [];
   const guiRenCols = branches.filter(b => guiRenBranches.includes(b.zhi)).map(b => b.col);
   if (guiRenCols.length > 0) {
     sinSals.push({ name: '천을귀인', type: 'good', description: '위기 시 귀인의 도움을 받는 최고의 길신', pillars: guiRenCols });
   }
 
-  const yeokMa: Record<string, string> = {
-    '인': '신', '신': '인', '사': '해', '해': '사',
-    '오': '자', '자': '오', '묘': '유', '유': '묘',
-    '진': '술', '술': '진', '축': '미', '미': '축'
+  // 태극귀인 (太極貴人) — 일간 기준
+  const taegeukGuiIn: Record<string, string[]> = {
+    '갑': ['자', '오'], '기': ['자', '오'],
+    '을': ['축', '미'], '경': ['축', '미'],
+    '병': ['인', '유'], '신': ['인', '유'],
+    '정': ['묘', '해'], '임': ['묘', '해'],
+    '무': ['진', '술'], '계': ['진', '술'],
   };
-
-  const yearBranch = pillars.year.zhi;
-  const yeokMaBranch = yeokMa[yearBranch];
-  const yeokMaCols = findCols(yeokMaBranch);
-  if (yeokMaCols.length > 0) {
-    sinSals.push({ name: '역마살', type: 'neutral', description: '이동수가 많음, 해외/여행/무역 관련 기회', pillars: yeokMaCols });
+  const tgCols = branches.filter(b => (taegeukGuiIn[dayGan] || []).includes(b.zhi)).map(b => b.col);
+  if (tgCols.length > 0) {
+    sinSals.push({ name: '태극귀인', type: 'good', description: '위기를 기회로 바꾸는 길성, 큰 변화 속 행운', pillars: tgCols });
   }
 
+  // 천복귀인 (天福貴人) — 일간의 합 상대 건록지
+  const cheonbokGuiIn: Record<string, string> = {
+    '갑': '오', '을': '신', '병': '유', '정': '해', '무': '자',
+    '기': '인', '경': '묘', '신': '사', '임': '오', '계': '사',
+  };
+  const cbCols = findCols(cheonbokGuiIn[dayGan] || '');
+  if (cbCols.length > 0) {
+    sinSals.push({ name: '천복귀인', type: 'good', description: '하늘이 내린 복덕, 의식주 풍족', pillars: cbCols });
+  }
+
+  // 문곡귀인 (文曲貴人) — 일간 기준
+  const mungokGuiIn: Record<string, string> = {
+    '갑': '인', '기': '인', '을': '사', '경': '사',
+    '병': '신', '신': '신', '정': '해', '임': '해',
+    '무': '유', '계': '유',
+  };
+  const mgCols = findCols(mungokGuiIn[dayGan] || '');
+  if (mgCols.length > 0) {
+    sinSals.push({ name: '문곡귀인', type: 'good', description: '학문과 문서에 뛰어난 재능, 시험운', pillars: mgCols });
+  }
+
+  // 학당귀인 (學堂貴人) — 일간 오행의 장생지
+  const hakdang: Record<string, string> = {
+    '갑': '해', '을': '오', '병': '인', '정': '유',
+    '무': '인', '기': '유', '경': '사', '신': '자',
+    '임': '신', '계': '묘',
+  };
+  const hdCols = findCols(hakdang[dayGan] || '');
+  if (hdCols.length > 0) {
+    sinSals.push({ name: '학당귀인', type: 'good', description: '학업과 지적 활동에 유리한 재능', pillars: hdCols });
+  }
+
+  // 금여록 (金輿祿) — 일간 기준, 배우자복
+  const geumYeo: Record<string, string> = {
+    '갑': '진', '을': '사', '병': '미', '정': '신',
+    '무': '미', '기': '신', '경': '술', '신': '해',
+    '임': '축', '계': '인',
+  };
+  const gyCols = findCols(geumYeo[dayGan] || '');
+  if (gyCols.length > 0) {
+    sinSals.push({ name: '금여록', type: 'good', description: '배우자복이 좋고 물질적 풍요', pillars: gyCols });
+  }
+
+  // 천의성 (天醫星) — 월지 기준
+  const cheonUi: Record<string, string> = {
+    '자': '해', '축': '자', '인': '축', '묘': '인',
+    '진': '묘', '사': '진', '오': '사', '미': '오',
+    '신': '미', '유': '신', '술': '유', '해': '술',
+  };
+  const cuCols = findCols(cheonUi[pillars.month.zhi] || '');
+  if (cuCols.length > 0) {
+    sinSals.push({ name: '천의성', type: 'good', description: '의학/치유 관련 재능, 건강 회복력', pillars: cuCols });
+  }
+
+  // 천덕귀인 (天德貴人) — 월지 기준 천간
+  const cheondukMap: Record<string, string> = {
+    '인': '정', '묘': '신', '진': '임', '사': '경',
+    '오': '해', '미': '갑', '신': '계', '유': '임',
+    '술': '병', '해': '을', '자': '기', '축': '경',
+  };
+  const cdGan = cheondukMap[pillars.month.zhi];
+  if (cdGan) {
+    const cdCols = stems.filter(s => s.gan === cdGan).map(s => s.col);
+    if (cdCols.length > 0) {
+      sinSals.push({ name: '천덕귀인', type: 'good', description: '하늘의 덕으로 재앙 해소, 흉을 길로', pillars: cdCols });
+    }
+  }
+
+  // 월덕귀인 (月德貴人) — 월지 기준 천간
+  const woldukMap: Record<string, string> = {
+    '인': '병', '오': '병', '술': '병',
+    '사': '임', '유': '임', '축': '임',
+    '신': '임', '자': '임', '진': '임',
+    '해': '갑', '묘': '갑', '미': '갑',
+  };
+  const wdGan = woldukMap[pillars.month.zhi];
+  if (wdGan) {
+    const wdCols = stems.filter(s => s.gan === wdGan).map(s => s.col);
+    if (wdCols.length > 0) {
+      sinSals.push({ name: '월덕귀인', type: 'good', description: '월덕의 은혜, 관재·질병 해소', pillars: wdCols });
+    }
+  }
+
+  // ── 살 (殺) ──
+
+  // 역마살 (驛馬殺) — 년지 + 일지 기준
+  const yeokMa: Record<string, string> = {
+    '인': '신', '오': '신', '술': '신',
+    '사': '해', '유': '해', '축': '해',
+    '신': '인', '자': '인', '진': '인',
+    '해': '사', '묘': '사', '미': '사',
+  };
+  const addYeokMa = (refBranch: string) => {
+    const target = yeokMa[refBranch];
+    if (!target) return;
+    const cols = findCols(target);
+    if (cols.length > 0 && !sinSals.some(s => s.name === '역마살' && s.pillars.some(c => cols.includes(c)))) {
+      sinSals.push({ name: '역마살', type: 'neutral', description: '이동수가 많음, 해외/여행/무역 기회', pillars: cols });
+    }
+  };
+  addYeokMa(yearBranch);
+  addYeokMa(dayBranch);
+
+  // 도화살 (桃花殺) — 년지 + 일지 기준
   const doHwa: Record<string, string> = {
     '인': '묘', '오': '묘', '술': '묘',
     '사': '오', '유': '오', '축': '오',
     '신': '유', '자': '유', '진': '유',
-    '해': '자', '묘': '자', '미': '자'
+    '해': '자', '묘': '자', '미': '자',
   };
+  const doHwaAdded = new Set<number>();
+  const addDoHwa = (refBranch: string) => {
+    const target = doHwa[refBranch];
+    if (!target) return;
+    const cols = findCols(target).filter(c => !doHwaAdded.has(c));
+    if (cols.length > 0) {
+      cols.forEach(c => doHwaAdded.add(c));
+      sinSals.push({ name: '도화살', type: 'neutral', description: '인기와 매력, 연예/예술/대인관계에 유리', pillars: cols });
+    }
+  };
+  addDoHwa(yearBranch);
+  addDoHwa(dayBranch);
 
-  const doHwaBranch = doHwa[yearBranch];
-  const doHwaCols = findCols(doHwaBranch);
-  if (doHwaCols.length > 0) {
-    sinSals.push({ name: '도화살', type: 'neutral', description: '인기와 매력, 연예/예술/대인관계에 유리', pillars: doHwaCols });
-  }
-
+  // 화개살 (華蓋殺) — 년지 + 일지 기준
   const hwaGae: Record<string, string> = {
     '인': '술', '오': '술', '술': '술',
     '사': '축', '유': '축', '축': '축',
     '신': '진', '자': '진', '진': '진',
-    '해': '미', '묘': '미', '미': '미'
+    '해': '미', '묘': '미', '미': '미',
   };
+  const hgAdded = new Set<number>();
+  const addHwaGae = (refBranch: string) => {
+    const target = hwaGae[refBranch];
+    if (!target) return;
+    const cols = findCols(target).filter(c => !hgAdded.has(c));
+    if (cols.length > 0) {
+      cols.forEach(c => hgAdded.add(c));
+      sinSals.push({ name: '화개살', type: 'neutral', description: '종교/학문/예술적 재능, 고독한 탐구자', pillars: cols });
+    }
+  };
+  addHwaGae(yearBranch);
+  addHwaGae(dayBranch);
 
-  const hwaGaeBranch = hwaGae[yearBranch];
-  const hwaGaeCols = findCols(hwaGaeBranch);
-  if (hwaGaeCols.length > 0) {
-    sinSals.push({ name: '화개살', type: 'neutral', description: '종교/학문/예술적 재능, 고독한 탐구자', pillars: hwaGaeCols });
+  // 홍염살 (紅艶殺) — 일간 기준
+  const hongYeom: Record<string, string> = {
+    '갑': '오', '을': '신', '병': '인', '정': '미',
+    '무': '진', '기': '진', '경': '술', '신': '유',
+    '임': '자', '계': '신',
+  };
+  const hyCols = findCols(hongYeom[dayGan] || '');
+  if (hyCols.length > 0) {
+    sinSals.push({ name: '홍염살', type: 'neutral', description: '강한 이성 매력, 연애/결혼에 영향', pillars: hyCols });
   }
 
+  // 현침살 (懸針殺) — 천간 글자 형태 (甲/辛/壬/癸)
+  const hyeonchimSet = new Set(['갑', '신', '임', '계']);
+  const hcCols = stems.filter(s => hyeonchimSet.has(s.gan)).map(s => s.col);
+  if (hcCols.length > 0) {
+    sinSals.push({ name: '현침살', type: 'neutral', description: '날카로운 지성과 분석력, 예민한 감수성', pillars: hcCols });
+  }
+
+  // 양인살 (羊刃殺) — 일간 기준
+  const yangIn: Record<string, string> = {
+    '갑': '묘', '을': '인', '병': '오', '정': '사',
+    '무': '오', '기': '사', '경': '유', '신': '신',
+    '임': '자', '계': '해',
+  };
+  const yiCols = findCols(yangIn[dayGan] || '');
+  if (yiCols.length > 0) {
+    sinSals.push({ name: '양인살', type: 'bad', description: '강한 승부욕과 결단력, 수술/사고 주의', pillars: yiCols });
+  }
+
+  // 괴강살 (魁罡殺) — 특정 일주
+  const gwaegangSet = new Set(['경진', '경술', '임진', '임술']);
+  if (gwaegangSet.has(pillars.day.gan + pillars.day.zhi)) {
+    sinSals.push({ name: '괴강살', type: 'neutral', description: '강한 카리스마와 리더십, 결단력', pillars: [1] });
+  }
+
+  // 겁살 (劫殺) — 년지 기준
+  const geopSal: Record<string, string> = {
+    '인': '해', '오': '해', '술': '해',
+    '사': '인', '유': '인', '축': '인',
+    '신': '사', '자': '사', '진': '사',
+    '해': '신', '묘': '신', '미': '신',
+  };
+  const gsCols = findCols(geopSal[yearBranch] || '');
+  if (gsCols.length > 0) {
+    sinSals.push({ name: '겁살', type: 'bad', description: '갑작스러운 재물 손실, 도난 주의', pillars: gsCols });
+  }
+
+  // 망신살 (亡神殺) — 년지 기준
+  const mangSin: Record<string, string> = {
+    '인': '사', '오': '사', '술': '사',
+    '사': '신', '유': '신', '축': '신',
+    '신': '해', '자': '해', '진': '해',
+    '해': '인', '묘': '인', '미': '인',
+  };
+  const msCols = findCols(mangSin[yearBranch] || '');
+  if (msCols.length > 0) {
+    sinSals.push({ name: '망신살', type: 'bad', description: '실수나 망신을 당할 수 있는 기운', pillars: msCols });
+  }
+
+  // 장성살 (將星殺) — 년지 기준
+  const jangSeong: Record<string, string> = {
+    '인': '오', '오': '오', '술': '오',
+    '사': '유', '유': '유', '축': '유',
+    '신': '자', '자': '자', '진': '자',
+    '해': '묘', '묘': '묘', '미': '묘',
+  };
+  const jsCols = findCols(jangSeong[yearBranch] || '');
+  if (jsCols.length > 0) {
+    sinSals.push({ name: '장성', type: 'good', description: '리더십과 권위, 승진/출세운', pillars: jsCols });
+  }
+
+  // ── 삼형 ──
   const hasInSaSin = ['인', '사', '신'].every(b => branches.some(br => br.zhi === b));
   const hasChukSulMi = ['축', '술', '미'].every(b => branches.some(br => br.zhi === b));
 
@@ -567,14 +765,14 @@ const calculateSinSals = (
     sinSals.push({ name: '축술미 삼형', type: 'bad', description: '무은지형 - 가족 갈등, 건강 주의', pillars: cols });
   }
 
+  // 귀문관살 (鬼門關殺)
   const guiMun: string[][] = [
-    ['자', '유'], ['축', '오'], ['인', '미'], ['묘', '신'], ['진', '사'], ['술', '해']
+    ['자', '유'], ['축', '오'], ['인', '미'], ['묘', '신'], ['진', '사'], ['술', '해'],
   ];
-
   guiMun.forEach(pair => {
-    const cols = branches.filter(b => pair.includes(b.zhi)).map(b => b.col);
     const hasBoth = pair.every(p => branches.some(br => br.zhi === p));
     if (hasBoth) {
+      const cols = branches.filter(b => pair.includes(b.zhi)).map(b => b.col);
       sinSals.push({ name: '귀문관살', type: 'neutral', description: '영적 감수성, 직관력 강함, 예술/종교적 재능', pillars: cols });
     }
   });
