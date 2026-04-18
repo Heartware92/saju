@@ -21,6 +21,7 @@ import {
   type TaekilDay,
   type TaekilResult,
 } from '../engine/taekil';
+import { getTaekilAdvice } from '../services/fortuneService';
 import styles from './SajuResultPage.module.css';
 
 const GRADE_COLOR: Record<TaekilGrade, string> = {
@@ -78,6 +79,10 @@ export default function TaekilPage() {
   const [result, setResult] = useState<TaekilResult | null>(null);
   const [selectedDay, setSelectedDay] = useState<TaekilDay | null>(null);
 
+  // AI 추천
+  const [aiAdvice, setAiAdvice] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
   // 월 변경 시 자동 계산
   const compute = useCallback(() => {
     if (!saju) return;
@@ -87,7 +92,19 @@ export default function TaekilPage() {
     const r = calculateTaekil(saju, category, start, end);
     setResult(r);
     setSelectedDay(null);
+    setAiAdvice(null);
   }, [saju, viewYear, viewMonth, category]);
+
+  // 결과 나오면 AI 추천 자동 호출
+  useEffect(() => {
+    if (!saju || !result || aiAdvice || aiLoading) return;
+    let cancelled = false;
+    setAiLoading(true);
+    getTaekilAdvice(saju, result)
+      .then(r => { if (!cancelled && r.success) setAiAdvice(r.advice ?? null); })
+      .finally(() => { if (!cancelled) setAiLoading(false); });
+    return () => { cancelled = true; };
+  }, [result, saju]);
 
   useEffect(() => {
     compute();
@@ -415,6 +432,54 @@ export default function TaekilPage() {
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* AI 추천 내러티브 */}
+          {(aiLoading || aiAdvice) && (
+            <div style={{ marginTop: '20px' }}>
+              <div style={{
+                fontSize: '13px', fontWeight: 700,
+                color: 'var(--text-primary)', marginBottom: '10px',
+              }}>
+                AI 길일 추천
+              </div>
+              {aiLoading ? (
+                <div style={{
+                  padding: '16px',
+                  background: 'rgba(20,12,38,0.55)',
+                  borderRadius: '16px',
+                  border: '1px solid var(--border-subtle)',
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                }}>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {[0, 1, 2].map(i => (
+                      <motion.div
+                        key={i}
+                        style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--cta-primary)' }}
+                        animate={{ opacity: [0.2, 1, 0.2] }}
+                        transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
+                      />
+                    ))}
+                  </div>
+                  <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                    명리 기반 추천 분석중
+                  </span>
+                </div>
+              ) : aiAdvice ? (
+                <div style={{
+                  padding: '16px',
+                  background: 'rgba(20,12,38,0.55)',
+                  borderRadius: '16px',
+                  border: '1px solid var(--border-subtle)',
+                  fontSize: '13px',
+                  color: 'var(--text-secondary)',
+                  lineHeight: 1.7,
+                  whiteSpace: 'pre-line',
+                }}>
+                  {aiAdvice}
+                </div>
+              ) : null}
             </div>
           )}
 

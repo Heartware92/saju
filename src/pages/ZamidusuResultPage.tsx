@@ -17,6 +17,7 @@ import {
 import { buildZamidusuReading, type ZamidusuReading } from '../engine/zamidusu/reading';
 import styles from './ZamidusuResultPage.module.css';
 import { useProfileStore } from '../store/useProfileStore';
+import { getZamidusuReading } from '../services/fortuneService';
 
 export default function ZamidusuResultPage() {
   const searchParams = useSearchParams();
@@ -27,6 +28,10 @@ export default function ZamidusuResultPage() {
   const [chart, setChart] = useState<ZamidusuResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedPalace, setSelectedPalace] = useState<number | null>(null);
+
+  // AI 내러티브
+  const [aiContent, setAiContent] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const hasUrlBirth = !!(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
   const primaryHourUnknown = !!primary && !primary.birth_time;
@@ -70,6 +75,17 @@ export default function ZamidusuResultPage() {
 
   const reading: ZamidusuReading | null = useMemo(() => {
     return chart ? buildZamidusuReading(chart) : null;
+  }, [chart]);
+
+  // 명반 계산 완료되면 AI 호출
+  useEffect(() => {
+    if (!chart || aiContent || aiLoading) return;
+    let cancelled = false;
+    setAiLoading(true);
+    getZamidusuReading(chart)
+      .then(r => { if (!cancelled && r.success) setAiContent(r.content ?? null); })
+      .finally(() => { if (!cancelled) setAiLoading(false); });
+    return () => { cancelled = true; };
   }, [chart]);
 
   // 12궁을 지지 기준으로 4x4 그리드 셀 매핑 (가운데 2x2는 정보 영역)
@@ -508,6 +524,32 @@ export default function ZamidusuResultPage() {
               </ul>
             </div>
           </>
+        )}
+
+        {/* AI 명반 해석 */}
+        {(aiLoading || aiContent) && (
+          <div className={styles.section}>
+            <h2>AI 명반 해석</h2>
+            {aiLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {[0, 1, 2].map(i => (
+                    <motion.div
+                      key={i}
+                      style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--cta-primary)' }}
+                      animate={{ opacity: [0.2, 1, 0.2] }}
+                      transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
+                    />
+                  ))}
+                </div>
+                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>자미두수 명반 해석 생성중…</span>
+              </div>
+            ) : aiContent ? (
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.75, whiteSpace: 'pre-line', margin: 0 }}>
+                {aiContent}
+              </p>
+            ) : null}
+          </div>
         )}
       </motion.div>
     </div>

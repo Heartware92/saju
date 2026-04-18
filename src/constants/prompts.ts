@@ -7,6 +7,7 @@ import { SajuResult, TEN_GODS_MAP, type SeWoon, type DaeWoon } from '../utils/sa
 import { determineGyeokguk, analyzeGyeokgukStatus } from '../engine/gyeokguk';
 import { getDayPillarTraits } from './gapjaTraits';
 import type { TarotCardInfo } from '../services/api';
+import type { TaekilResult, TaekilDay } from '../engine/taekil';
 
 /**
  * 십성 분포 계산 (프롬프트용)
@@ -1315,4 +1316,68 @@ export const generateWealthFortunePrompt = (result: SajuResult): string => {
 - 용신(${yongSinElement}) 기운의 돈 관련 색 1
 - 행운 방향 1 · 금고·지갑 보관법 1
 - 이번 달 실천 가능한 저축·투자 습관 1`;
+};
+
+// ══════════════════════════════════════════════════════
+// 택일 운세 AI 추천 프롬프트
+// ══════════════════════════════════════════════════════
+
+/**
+ * 택일 AI 추천 프롬프트
+ * - 엔진이 계산한 길흉 날 목록 → AI가 명리 이유를 담아 추천 내러티브 생성
+ * - 짧고 실용적 (350~450자)
+ */
+export const generateTaekilAdvicePrompt = (
+  saju: SajuResult,
+  taekil: TaekilResult,
+): string => {
+  const bestDays = taekil.bestDays.slice(0, 5);
+  const worstDays = taekil.days
+    .filter(d => d.grade === '흉')
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 3);
+
+  const formatDay = (d: TaekilDay) =>
+    `${d.date}(${d.lunarLabel.split(' ')[2] ?? d.lunarLabel}) ${d.dayGan}${d.dayZhi} ${d.grade}(${d.score}점) — ${d.reasons.slice(0, 2).join(', ')}${d.luckyTime ? ` / 길시: ${d.luckyTime}` : ''}`;
+
+  const bestList = bestDays.length > 0
+    ? bestDays.map(formatDay).join('\n')
+    : '없음';
+  const worstList = worstDays.length > 0
+    ? worstDays.map(formatDay).join('\n')
+    : '없음';
+
+  const elPct = saju.elementPercent;
+
+  return `[사주 원국]
+일간: ${saju.dayMaster}(${saju.dayMasterElement}) / 일주: ${saju.pillars.day.gan}${saju.pillars.day.zhi}
+오행: 목${elPct.목}% 화${elPct.화}% 토${elPct.토}% 금${elPct.금}% 수${elPct.수}%
+용신: ${saju.yongSinElement} / 기신: ${saju.giSin}
+
+[택일 검색 정보]
+카테고리: ${taekil.categoryLabel}
+기간: ${taekil.startDate} ~ ${taekil.endDate}
+
+[엔진 계산 — 길일 상위]
+${bestList}
+
+[엔진 계산 — 흉일]
+${worstList}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[작성 규칙]
+1) Markdown 절대 금지. 이모지 금지.
+2) 총 350~450자. 짧고 실용적으로.
+3) 추천일은 위 엔진 계산 결과(길일)에서만 고를 것. 임의로 다른 날 추천 금지.
+4) 명리 이유(십성·12운성·신살 중 1~2개)를 근거로 왜 좋은지 설명.
+5) 피해야 할 날도 반드시 언급.
+6) 출력은 [taekil_advice] 마커부터 시작. 마커 이전 텍스트 없어야 함.
+
+[taekil_advice]
+${taekil.categoryLabel} 택일 추천을 아래 구조로 작성하세요:
+- 최고 추천일 1~2개: 날짜 + 명리 이유 1~2문장
+- 차선 추천일 1개 (있으면): 날짜 + 한 문장
+- 피해야 할 날 1개: 날짜 + 이유 한 문장
+- 길시 안내: 추천일 중 길시가 있으면 1문장으로 안내
+- 주의사항 1문장: ${taekil.categoryLabel}에 특화된 명리 조언`;
 };

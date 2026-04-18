@@ -12,6 +12,7 @@ import { calculateTojeong, type TojeongResult } from '../engine/tojeong';
 import { buildTojeongReading, type TojeongReading } from '../engine/tojeong/reading';
 import type { GwaeGrade } from '../engine/tojeong/gwae-table';
 import { useProfileStore } from '../store/useProfileStore';
+import { getTojeongReading } from '../services/fortuneService';
 
 const GRADE_COLOR: Record<GwaeGrade, string> = {
   '대길': '#34D399',
@@ -28,6 +29,10 @@ export default function TojeongResultPage() {
   const router = useRouter();
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
+
+  // AI 내러티브
+  const [aiContent, setAiContent] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
@@ -57,6 +62,17 @@ export default function TojeongResultPage() {
       return { tojeong: null, reading: null };
     }
   }, [searchParams, primary]);
+
+  // 토정비결 계산 완료되면 AI 호출
+  useEffect(() => {
+    if (!tojeong || aiContent || aiLoading) return;
+    let cancelled = false;
+    setAiLoading(true);
+    getTojeongReading(tojeong)
+      .then(r => { if (!cancelled && r.success) setAiContent(r.content ?? null); })
+      .finally(() => { if (!cancelled) setAiLoading(false); });
+    return () => { cancelled = true; };
+  }, [tojeong]);
 
   if (!tojeong || !reading) {
     const hasUrlBirth = !!searchParams?.get('year');
@@ -239,6 +255,32 @@ export default function TojeongResultPage() {
           </ul>
         </section>
       </div>
+
+      {/* AI 심층 풀이 */}
+      {(aiLoading || aiContent) && (
+        <section className="mt-3 rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
+          <div className="text-[13px] font-semibold text-text-primary mb-3">AI 심층 풀이</div>
+          {aiLoading ? (
+            <div className="flex items-center gap-3 py-2">
+              <div className="flex gap-1">
+                {[0, 1, 2].map(i => (
+                  <motion.div
+                    key={i}
+                    className="w-1.5 h-1.5 rounded-full bg-cta"
+                    animate={{ opacity: [0.2, 1, 0.2] }}
+                    transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
+                  />
+                ))}
+              </div>
+              <span className="text-[12px] text-text-tertiary">토정비결 풀이 생성중…</span>
+            </div>
+          ) : aiContent ? (
+            <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
+              {aiContent}
+            </p>
+          ) : null}
+        </section>
+      )}
     </motion.div>
   );
 }

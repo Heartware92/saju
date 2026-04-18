@@ -21,6 +21,7 @@ import {
   generatePeriodDomainsPrompt,
   generateNewyearReportPrompt,
   generateJungtongsajuPrompt,
+  generateTaekilAdvicePrompt,
   NEWYEAR_SECTION_KEYS,
   JUNGTONGSAJU_SECTION_KEYS,
   TODAY_SECTION_KEYS,
@@ -30,6 +31,7 @@ import {
   type TodaySectionKey,
   type TodayGanZhi,
 } from '../constants/prompts';
+import type { TaekilResult } from '../engine/taekil';
 import { Solar } from 'lunar-javascript';
 import {
   TEN_GODS_MAP,
@@ -529,6 +531,30 @@ export const getTodayFortuneReport = async (
       return { success: true, rawText: content, todayGz, isoDate: date };
     }
     return { success: true, sections, todayGz, isoDate: date };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
+
+// ── 택일 AI 추천 ─────────────────────────────────────────────
+
+export interface TaekilAdviceResult {
+  success: boolean;
+  advice?: string;
+  error?: string;
+}
+
+export const getTaekilAdvice = async (
+  saju: SajuResult,
+  taekil: TaekilResult,
+): Promise<TaekilAdviceResult> => {
+  try {
+    const prompt = generateTaekilAdvicePrompt(saju, taekil);
+    const raw = await callGPT(prompt, 1200);
+    // [taekil_advice] 마커 제거하고 본문만 추출
+    const match = raw.match(/\[taekil_advice\]\s*([\s\S]+)/);
+    const advice = match ? match[1].trim() : raw.trim();
+    return { success: true, advice };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

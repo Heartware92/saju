@@ -9,11 +9,74 @@ import { calculateSaju, type SajuResult } from '../utils/sajuCalculator';
 import { getTodayFortuneReport, type TodayFortuneAIResult } from '../services/fortuneService';
 import { TODAY_SECTION_KEYS, TODAY_SECTION_LABELS } from '../constants/prompts';
 
-export default function TodayFortunePage() {
+// 날짜 피커 (지정일 모드용)
+function DatePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [viewDate, setViewDate] = useState(() => {
+    const d = value ? new Date(value) : new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const toIso = (d: number) =>
+    `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const isSelected = (d: number) => toIso(d) === value;
+  const isToday = (d: number) => toIso(d) === new Date().toISOString().slice(0, 10);
+
+  return (
+    <div className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] mb-4">
+      <div className="flex items-center justify-between mb-3">
+        <button
+          onClick={() => setViewDate(new Date(year, month - 1, 1))}
+          className="w-8 h-8 rounded-lg text-text-secondary hover:bg-white/5 text-lg"
+        >‹</button>
+        <span className="text-[14px] font-bold text-text-primary">{year}년 {month + 1}월</span>
+        <button
+          onClick={() => setViewDate(new Date(year, month + 1, 1))}
+          className="w-8 h-8 rounded-lg text-text-secondary hover:bg-white/5 text-lg"
+        >›</button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-text-tertiary mb-1">
+        {['일', '월', '화', '수', '목', '금', '토'].map(d => <div key={d}>{d}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((d, i) => (
+          <button
+            key={i}
+            disabled={!d}
+            onClick={() => d && onChange(toIso(d))}
+            className={`aspect-square rounded-lg text-[12px] font-medium
+              ${!d ? 'opacity-0 pointer-events-none' : ''}
+              ${d && isSelected(d) ? 'bg-cta text-white' : ''}
+              ${d && isToday(d) && !isSelected(d) ? 'border border-cta/50 text-cta' : ''}
+              ${d && !isSelected(d) && !isToday(d) ? 'text-text-primary hover:bg-white/5' : ''}`}
+          >
+            {d ?? ''}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 'date' }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  // 지정일 모드: 날짜 피커 상태 (기본값 = 오늘)
+  const [pickedDate, setPickedDate] = useState(todayIso);
+  // 지정일 모드: 날짜 확정 상태 (날짜 선택 후 "이 날 운세 보기" 버튼 클릭)
+  const [confirmedDate, setConfirmedDate] = useState<string | null>(
+    mode === 'today' ? todayIso : null
+  );
 
   const [result, setResult] = useState<SajuResult | null>(null);
   const [report, setReport] = useState<TodayFortuneAIResult | null>(null);
@@ -38,16 +101,17 @@ export default function TodayFortunePage() {
     }
   }, [searchParams, primary]);
 
-  // 사주 계산 되면 AI 호출
+  // 날짜 확정되면 AI 호출 (날짜 바뀔 때마다 리셋)
   useEffect(() => {
-    if (!result || report || reportLoading) return;
+    if (!result || !confirmedDate) return;
     let cancelled = false;
+    setReport(null);
     setReportLoading(true);
-    getTodayFortuneReport(result)
+    getTodayFortuneReport(result, confirmedDate)
       .then(r => { if (!cancelled) setReport(r); })
       .finally(() => { if (!cancelled) setReportLoading(false); });
     return () => { cancelled = true; };
-  }, [result]);
+  }, [result, confirmedDate]);
 
   // ── 로딩·빈 상태 ───────────────────────────────────────────
   if (!result) {
@@ -83,8 +147,11 @@ export default function TodayFortunePage() {
 
   // ── AI 분석중 로딩 스크린 ──────────────────────────────────
   if (reportLoading) {
-    const today = new Date();
-    const dateStr = today.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' });
+    const targetDateStr = (() => {
+      const d = new Date(confirmedDate ?? todayIso);
+      return d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' });
+    })();
+    const loadingLabel = mode === 'date' ? '해당일 기운 분석중' : '오늘의 기운 분석중';
 
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 gap-6">
@@ -99,10 +166,8 @@ export default function TodayFortunePage() {
           >
             {result.pillars.day.gan}{result.pillars.day.zhi}일주
           </div>
-          <div className="text-[13px] text-text-tertiary mb-4">{dateStr}</div>
-          <div className="text-[16px] font-semibold text-text-primary mb-1">
-            오늘의 기운 분석중
-          </div>
+          <div className="text-[13px] text-text-tertiary mb-4">{targetDateStr}</div>
+          <div className="text-[16px] font-semibold text-text-primary mb-1">{loadingLabel}</div>
           <div className="text-[12px] text-text-tertiary">
             일진과 원국의 흐름을 읽고 있습니다
           </div>
@@ -123,11 +188,12 @@ export default function TodayFortunePage() {
 
   // ── 일진 표시용 ────────────────────────────────────────────
   const todayGz = report?.todayGz;
-  const todayDateStr = (() => {
-    const iso = report?.isoDate ?? new Date().toISOString().slice(0, 10);
+  const reportDateStr = (() => {
+    const iso = report?.isoDate ?? confirmedDate ?? todayIso;
     const d = new Date(iso);
     return d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' });
   })();
+  const pageTitle = mode === 'date' ? '지정일 운세' : '오늘의 운세';
 
   // ── 메인 결과 화면 ─────────────────────────────────────────
   return (
@@ -139,7 +205,15 @@ export default function TodayFortunePage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-4 px-1">
         <button
-          onClick={() => router.back()}
+          onClick={() => {
+            if (mode === 'date' && report) {
+              // 결과 화면에서 뒤로 → 날짜 피커로
+              setReport(null);
+              setConfirmedDate(null);
+            } else {
+              router.back();
+            }
+          }}
           className="w-9 h-9 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary"
           aria-label="뒤로"
         >
@@ -148,10 +222,26 @@ export default function TodayFortunePage() {
           </svg>
         </button>
         <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
-          오늘의 운세
+          {pageTitle}
         </h1>
         <div className="w-9" />
       </div>
+
+      {/* 지정일 모드 — 날짜 미선택 상태: 피커 표시 */}
+      {mode === 'date' && !confirmedDate && (
+        <>
+          <DatePicker value={pickedDate} onChange={setPickedDate} />
+          <button
+            onClick={() => setConfirmedDate(pickedDate)}
+            className="w-full py-3 rounded-2xl bg-cta text-white font-semibold text-[15px]"
+          >
+            {(() => {
+              const d = new Date(pickedDate);
+              return `${d.getMonth() + 1}월 ${d.getDate()}일 운세 보기`;
+            })()}
+          </button>
+        </>
+      )}
 
       {/* 일진 헤더 카드 */}
       <motion.div
@@ -161,7 +251,7 @@ export default function TodayFortunePage() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-[12px] text-text-tertiary mb-1">{todayDateStr}</div>
+            <div className="text-[12px] text-text-tertiary mb-1">{reportDateStr}</div>
             <div className="text-[13px] font-semibold text-text-secondary">
               내 일주: <span className="text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
                 {result.pillars.day.gan}{result.pillars.day.zhi}
@@ -170,7 +260,7 @@ export default function TodayFortunePage() {
           </div>
           {todayGz && (
             <div className="text-right">
-              <div className="text-[11px] text-text-tertiary mb-0.5">오늘 일진</div>
+              <div className="text-[11px] text-text-tertiary mb-0.5">{mode === 'date' ? '일진' : '오늘 일진'}</div>
               <div
                 className="text-[26px] font-bold text-text-primary leading-none"
                 style={{ fontFamily: 'var(--font-serif)' }}
