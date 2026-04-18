@@ -154,6 +154,36 @@
   margin-bottom: 0;
 }
 
+/* Collapsible section */
+.collapsibleHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.collapsibleTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collapsibleTitle h2 {
+  margin-bottom: 0;
+}
+
+.collapsibleChevron {
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .sectionHelpWrap {
   position: relative;
   display: inline-flex;

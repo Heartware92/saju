@@ -7,11 +7,65 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { SajuResult, TEN_GODS_MAP, type Interaction, type SinSal } from '../../utils/sajuCalculator';
 import { determineGyeokguk, analyzeGyeokgukStatus } from '../../engine/gyeokguk';
 import { stemToHanja, zhiToHanja } from '../../lib/character';
 import styles from '../../pages/SajuResultPage.module.css';
+
+function CollapsibleSection({
+  title,
+  helpText,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  helpText?: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className={styles.section}>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className={styles.collapsibleHeader}
+        aria-expanded={open}
+      >
+        <div className={styles.collapsibleTitle}>
+          <h2>{title}</h2>
+          {helpText && <SectionHelp text={helpText} />}
+        </div>
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className={styles.collapsibleChevron}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{ paddingTop: 12 }}>
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 const SectionHelp = ({ text }: { text: string }) => {
   const [open, setOpen] = useState(false);
@@ -979,12 +1033,7 @@ export default function SajuReport({ result }: { result: SajuResult }) {
 
       {/* 2. 사주 관계 */}
       {(interactions.length > 0 || sinSals.length > 0) && (
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h2>사주 관계</h2>
-            <SectionHelp text={SECTION_HELP_TEXT.relation} />
-          </div>
-
+        <CollapsibleSection title="사주 관계" helpText={SECTION_HELP_TEXT.relation}>
           <div className={styles.subheading}>천간과 지지</div>
           {interactions.length > 0 ? (
             <PillarsRelationBoard
@@ -1015,16 +1064,11 @@ export default function SajuReport({ result }: { result: SajuResult }) {
             합·충·형·파·해는 천간과 지지 사이의 기운이 끌어당기거나 부딪히는 방식이에요.
             신살과 길성은 특정 기둥에서 발동하는 특수한 성격·사건의 단서예요.
           </p>
-        </div>
+        </CollapsibleSection>
       )}
 
       {/* 3. 오행과 십성 */}
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2>오행과 십성</h2>
-          <SectionHelp text={SECTION_HELP_TEXT.ohaeng} />
-        </div>
-
+      <CollapsibleSection title="오행과 십성" helpText={SECTION_HELP_TEXT.ohaeng}>
         <div className={styles.ohaengHeader}>
           <span className={styles.subheading}>오행 분포</span>
           <span className={styles.ohaengMeta}>
@@ -1061,15 +1105,10 @@ export default function SajuReport({ result }: { result: SajuResult }) {
         <p className={styles.sectionHint}>
           오행은 내 사주에 깃든 자연의 기운 비율이고, 십성은 일간을 기준으로 다른 간지가 어떤 역할(관성·재성·인성 등)을 하는지 보여줘요.
         </p>
-      </div>
+      </CollapsibleSection>
 
       {/* 4. 신강신약 */}
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2>신강신약</h2>
-          <SectionHelp text={SECTION_HELP_TEXT.strength} />
-        </div>
-
+      <CollapsibleSection title="신강신약 · 용신 · 격국" helpText={SECTION_HELP_TEXT.strength}>
         <div className={styles.strengthBox}>
           <div className={styles.strengthBadge} data-strong={result.isStrong}>
             {result.strengthStatus} ({result.strengthScore}점)
@@ -1173,18 +1212,13 @@ export default function SajuReport({ result }: { result: SajuResult }) {
         <p className={styles.sectionHint}>
           신강·신약은 내 일간이 얼마나 힘 있게 버티고 있는지 판정한 결과예요. 그에 따라 필요한 용신과 주된 성격 유형(격국)이 결정돼요.
         </p>
-      </div>
+      </CollapsibleSection>
 
       {/* 5. 대운수 */}
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2>대운수</h2>
-          <SectionHelp text={SECTION_HELP_TEXT.daewoon} />
-        </div>
+      <CollapsibleSection title="대운수" helpText={SECTION_HELP_TEXT.daewoon}>
         <p className={styles.subInfo}>대운 시작: {result.daeWoonStartAge}세</p>
-
         <DaeWoonSection daeWoon={daeWoon} seWoon={seWoon} result={result} />
-      </div>
+      </CollapsibleSection>
     </>
   );
 }
