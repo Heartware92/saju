@@ -45,15 +45,22 @@ const MAIN_SERVICES = [
     gradient: 'from-amber-500/20 to-orange-500/10',
   },
   {
+    id: 'gunghap',
+    title: '궁합',
+    desc: '연인·친구·가족 케미',
+    direct: '/saju/gunghap',
+    gradient: 'from-rose-500/20 to-fuchsia-500/10',
+  },
+];
+
+const SECONDARY_SERVICES = [
+  {
     id: 'date',
     title: '지정일 운세',
     desc: '특정 날짜의 운세',
     direct: '/saju/date',
     gradient: 'from-blue-500/20 to-cyan-500/10',
   },
-];
-
-const SECONDARY_SERVICES = [
   {
     id: 'taekil',
     title: '택일 운세',

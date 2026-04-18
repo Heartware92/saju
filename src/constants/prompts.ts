@@ -3,11 +3,191 @@
  * 엽전 크레딧 시스템에 맞춘 무료/유료 구분
  */
 
-import { SajuResult, TEN_GODS_MAP, type SeWoon, type DaeWoon } from '../utils/sajuCalculator';
+import { SajuResult, TEN_GODS_MAP, STEM_ELEMENT, BRANCH_ELEMENT, type SeWoon, type DaeWoon } from '../utils/sajuCalculator';
 import { determineGyeokguk, analyzeGyeokgukStatus } from '../engine/gyeokguk';
 import { getDayPillarTraits } from './gapjaTraits';
 import type { TarotCardInfo } from '../services/api';
 import type { TaekilResult, TaekilDay } from '../engine/taekil';
+
+// ── 오행 상생/상극 (프롬프트 유틸용)
+const EL_GEN: Record<string, string> = { '목':'화', '화':'토', '토':'금', '금':'수', '수':'목' };
+const EL_CON: Record<string, string> = { '목':'토', '화':'금', '토':'수', '금':'목', '수':'화' };
+
+// ── 오행 속성 매핑
+const EL_ORGAN: Record<string, string> = {
+  '목':'간·담낭', '화':'심장·소장', '토':'비장·위장·췌장', '금':'폐·대장', '수':'신장·방광·생식기'
+};
+const EL_COLOR: Record<string, string> = {
+  '목':'초록·파란', '화':'빨간·주황', '토':'노란·황토', '금':'흰·회색·금색', '수':'검정·진청'
+};
+const EL_DIR: Record<string, string> = {
+  '목':'동쪽', '화':'남쪽', '토':'중앙', '금':'서쪽', '수':'북쪽'
+};
+const EL_NUM: Record<string, string> = {
+  '목':'3·8', '화':'2·7', '토':'5·10', '금':'4·9', '수':'1·6'
+};
+const EL_SEASON: Record<string, string> = {
+  '목':'봄(3~5월)', '화':'여름(6~8월)', '토':'환절기(3·6·9·12월)', '금':'가을(9~11월)', '수':'겨울(12~2월)'
+};
+const EL_FOOD: Record<string, string> = {
+  '목':'신맛(식초·레몬·매실), 녹색 채소, 새싹류',
+  '화':'쓴맛(커피·여주·쑥), 붉은 채소·과일, 열성 음식',
+  '토':'단맛(고구마·호박·대추), 황색 음식, 뿌리채소',
+  '금':'매운맛(생강·고추·마늘), 흰색 음식, 폐 강화 식품',
+  '수':'짠맛(미역·다시마·된장), 검은색 음식, 신장 강화 식품'
+};
+const EL_ENV: Record<string, string> = {
+  '목':'숲·공원 산책, 원예, 등산, 글쓰기, 동쪽 방향 자리',
+  '화':'밝고 따뜻한 공간, 사교 활동, 남쪽 방향 자리, 조명 밝게',
+  '토':'안정된 중심 공간, 명상, 도자기·흙 관련 취미, 중앙 자리',
+  '금':'정돈된 공간, 음악(현악·금속악기), 금속 소품, 서쪽 방향 자리',
+  '수':'물 근처 환경, 독서, 수영, 북쪽 방향 자리'
+};
+
+/** 기둥별 십성 위치 정리 (천간 기준) */
+function getSipseongByPillar(result: SajuResult): string {
+  const { pillars, hourUnknown } = result;
+  const lines = [
+    `년간 ${pillars.year.gan}: ${pillars.year.tenGodGan || '일간'} / 년지 ${pillars.year.zhi}: ${pillars.year.tenGodZhi}`,
+    `월간 ${pillars.month.gan}: ${pillars.month.tenGodGan} / 월지 ${pillars.month.zhi}: ${pillars.month.tenGodZhi}`,
+    `일간 ${pillars.day.gan}: 비견(일간 본인) / 일지 ${pillars.day.zhi}: ${pillars.day.tenGodZhi}`,
+    hourUnknown ? '시주: 미상' : `시간 ${pillars.hour.gan}: ${pillars.hour.tenGodGan} / 시지 ${pillars.hour.zhi}: ${pillars.hour.tenGodZhi}`,
+  ];
+  return lines.join('\n');
+}
+
+/** 재고(財庫) 유무 — 辰戌丑未 지지에 재성 지장간이 있는지 */
+function checkJaeGo(result: SajuResult): string {
+  const { pillars, hourUnknown, dayMaster } = result;
+  const dayEl = STEM_ELEMENT[dayMaster] || '';
+  const reseongEl = EL_CON[dayEl]; // 일간이 극하는 오행 = 재성 오행
+  const goZhis = ['진', '술', '축', '미'];
+  const allPillars = [
+    { label: '년지', p: pillars.year },
+    { label: '월지', p: pillars.month },
+    { label: '일지', p: pillars.day },
+    ...(!hourUnknown ? [{ label: '시지', p: pillars.hour }] : []),
+  ];
+  const found: string[] = [];
+  allPillars.forEach(({ label, p }) => {
+    if (goZhis.includes(p.zhi)) {
+      const hasReseong = p.hiddenStems.some(h => STEM_ELEMENT[h] === reseongEl);
+      if (hasReseong) found.push(`${label} ${p.zhi}(재고)`);
+    }
+  });
+  return found.length > 0
+    ? `있음 — ${found.join(', ')} → 재물 저장·축적 능력 보유`
+    : '없음 — 재물이 들어와도 쌓이기 어려운 구조, 현금 흐름형';
+}
+
+/** 일지 관련 지지합·충 필터 */
+function getDayZhiInteractions(result: SajuResult): string {
+  const dayZhi = result.pillars.day.zhi;
+  const related = result.interactions.filter(i =>
+    i.description.toLowerCase().includes(dayZhi) || i.elements.includes(dayZhi)
+  );
+  return related.length > 0
+    ? related.map(i => `${i.type}: ${i.description}`).join(' / ')
+    : '없음';
+}
+
+/** 오행 상생 흐름 단절 분석 */
+function analyzeElFlow(result: SajuResult): string {
+  const els = ['목', '화', '토', '금', '수'];
+  const present = new Set<string>();
+  const { pillars, hourUnknown } = result;
+  [pillars.year, pillars.month, pillars.day, ...(hourUnknown ? [] : [pillars.hour])].forEach(p => {
+    present.add(p.ganElement);
+    present.add(p.zhiElement);
+  });
+  const missing = els.filter(e => !present.has(e));
+  if (missing.length === 0) return '오행 상생 흐름 완전 연결 — 에너지 순환 원활';
+  const broken: string[] = [];
+  missing.forEach(m => {
+    const prev = els[(els.indexOf(m) - 1 + 5) % 5];
+    const next = EL_GEN[m];
+    broken.push(`${prev}→${m}(결핍)→${next} 흐름 단절`);
+  });
+  return broken.join(' / ');
+}
+
+// 천간 합 (甲己합→土, 乙庚합→金, 丙辛합→水, 丁壬합→木, 戊癸합→火)
+const GAN_COMBINE: Record<string, { partner: string; result: string }> = {
+  '갑':{ partner:'기', result:'토' }, '기':{ partner:'갑', result:'토' },
+  '을':{ partner:'경', result:'금' }, '경':{ partner:'을', result:'금' },
+  '병':{ partner:'신', result:'수' }, '신':{ partner:'병', result:'수' },
+  '정':{ partner:'임', result:'목' }, '임':{ partner:'정', result:'목' },
+  '무':{ partner:'계', result:'화' }, '계':{ partner:'무', result:'화' },
+};
+// 천간 충 (甲庚, 乙辛, 丙壬, 丁癸)
+const GAN_CLASH: Record<string, string> = {
+  '갑':'경', '경':'갑', '을':'신', '신':'을',
+  '병':'임', '임':'병', '정':'계', '계':'정',
+};
+
+/** 기둥 천간↔지지 오행 관계 한 줄 문자열 */
+function pillarRelation(ganEl: string, zhiEl: string): string {
+  if (!ganEl || !zhiEl) return '해당없음';
+  if (ganEl === zhiEl) return '비화(같은 오행·내부 안정)';
+  if (EL_GEN[zhiEl] === ganEl) return `지지→천간 상생(${zhiEl}生${ganEl}·지지가 천간을 키움)`;
+  if (EL_GEN[ganEl] === zhiEl) return `천간→지지 상생(${ganEl}生${zhiEl}·천간이 지지를 키움)`;
+  if (EL_CON[zhiEl] === ganEl) return `지지가 천간 상극(${zhiEl}克${ganEl}·내부 긴장·억압)`;
+  if (EL_CON[ganEl] === zhiEl) return `천간이 지지 상극(${ganEl}克${zhiEl}·천간이 지지를 제어)`;
+  return '무관계';
+}
+
+/** 사주 4천간 중 특정 오행이 있는 기둥 위치 반환 */
+function findElementInGans(result: SajuResult, el: string): string[] {
+  const labels: string[] = [];
+  const { year, month, day, hour } = result.pillars;
+  if (STEM_ELEMENT[year.gan] === el) labels.push('년주 천간');
+  if (STEM_ELEMENT[month.gan] === el) labels.push('월주 천간');
+  if (STEM_ELEMENT[day.gan] === el) labels.push('일주 천간(일간)');
+  if (!result.hourUnknown && STEM_ELEMENT[hour.gan] === el) labels.push('시주 천간');
+  if (BRANCH_ELEMENT[year.zhi] === el) labels.push('년주 지지');
+  if (BRANCH_ELEMENT[month.zhi] === el) labels.push('월주 지지');
+  if (BRANCH_ELEMENT[day.zhi] === el) labels.push('일주 지지');
+  if (!result.hourUnknown && BRANCH_ELEMENT[hour.zhi] === el) labels.push('시주 지지');
+  return labels;
+}
+
+/** 월지 지장간이 사주 천간에 투출(透出)되었는지 확인 */
+function checkTouchul(result: SajuResult): string {
+  const monthHidden = result.pillars.month.hiddenStems;
+  const gans = [
+    result.pillars.year.gan,
+    result.pillars.month.gan,
+    result.pillars.day.gan,
+    ...(!result.hourUnknown ? [result.pillars.hour.gan] : []),
+  ];
+  const found = monthHidden.filter(h => gans.includes(h));
+  if (found.length === 0) return '없음 (월지 지장간이 천간에 투출되지 않아 격국 에너지가 내면에 잠재)';
+  return `${found.join('·')} 투출 → 격국 에너지가 천간에 드러나 사회적으로 발현됨`;
+}
+
+/** 천간 합·충 분석 */
+function analyzeGanInteractions(result: SajuResult): string {
+  const gans = [
+    result.pillars.year.gan,
+    result.pillars.month.gan,
+    result.pillars.day.gan,
+    ...(!result.hourUnknown ? [result.pillars.hour.gan] : []),
+  ];
+  const pillarNames = ['년', '월', '일', '시'];
+  const results: string[] = [];
+
+  for (let i = 0; i < gans.length; i++) {
+    for (let j = i + 1; j < gans.length; j++) {
+      const a = gans[i], b = gans[j];
+      if (GAN_COMBINE[a]?.partner === b) {
+        results.push(`${pillarNames[i]}간 ${a}·${pillarNames[j]}간 ${b} → 천간합(${GAN_COMBINE[a].result}화)`);
+      } else if (GAN_CLASH[a] === b) {
+        results.push(`${pillarNames[i]}간 ${a}·${pillarNames[j]}간 ${b} → 천간충(상호 제어)`);
+      }
+    }
+  }
+  return results.length > 0 ? results.join(' / ') : '없음';
+}
 
 /**
  * 십성 분포 계산 (프롬프트용)
@@ -20,13 +200,16 @@ function computeSipseongCounts(result: SajuResult): Record<string, number> {
   const counts: Record<string, number> = {};
   order.forEach(s => { counts[s] = 0; });
 
-  [result.pillars.year.gan, result.pillars.month.gan, result.pillars.hour.gan].forEach(gan => {
+  const nonDayGans = [result.pillars.year.gan, result.pillars.month.gan];
+  if (!result.hourUnknown) nonDayGans.push(result.pillars.hour.gan);
+  nonDayGans.forEach(gan => {
     const s = map[gan];
     if (s && counts[s] !== undefined) counts[s] += 1;
   });
 
-  [result.pillars.year.hiddenStems, result.pillars.month.hiddenStems,
-   result.pillars.day.hiddenStems, result.pillars.hour.hiddenStems].forEach(hidden => {
+  const hiddenStemsArr = [result.pillars.year.hiddenStems, result.pillars.month.hiddenStems, result.pillars.day.hiddenStems];
+  if (!result.hourUnknown) hiddenStemsArr.push(result.pillars.hour.hiddenStems);
+  hiddenStemsArr.forEach(hidden => {
     hidden.forEach(gan => {
       const s = map[gan];
       if (s && counts[s] !== undefined) counts[s] += 0.5;
@@ -140,22 +323,29 @@ export const generateDetailedPrompt = (result: SajuResult): string => {
     ? interactions.map(i => `${i.type}: ${i.description}`).join(', ')
     : '없음';
 
-  // 대운: 각 칸에 간지·오행·십성·12운성·나이구간까지 실어 보냄 → AI가 실제 해석을 쓸 재료를 확보
-  const daeWoonStr = daeWoon
-    .filter(d => d.gan && d.zhi) // lunar-javascript의 첫 엔트리(pre-daewoon)는 빈값이라 제외
-    .slice(0, 8)
-    .map(d =>
-      `${d.startAge}~${d.endAge}세 ${d.gan}${d.zhi}(${d.ganElement}${d.zhiElement}·${d.tenGod}·${d.twelveStage})`
-    ).join(' | ');
-
-  // 현재 대운(나이로 판정) — AI가 "지금 대운"을 놓치지 않도록 명시
-  const ageNow = new Date().getFullYear() - new Date(result.solarDate).getFullYear();
-  const currentDaeWoon = daeWoon.find(d => d.gan && d.zhi && ageNow >= d.startAge && ageNow <= d.endAge);
-  const currentDaeWoonStr = currentDaeWoon
-    ? `${currentDaeWoon.startAge}~${currentDaeWoon.endAge}세 ${currentDaeWoon.gan}${currentDaeWoon.zhi}(${currentDaeWoon.ganElement}${currentDaeWoon.zhiElement}·${currentDaeWoon.tenGod}·${currentDaeWoon.twelveStage})`
-    : '아직 대운이 시작되지 않음';
-
+  // daeWoon.startAge/endAge 는 연도(e.g. 2020)임 — 나이 비교 아닌 연도 비교
+  const birthYear_detailed = result.solarDate ? new Date(result.solarDate).getFullYear() : 0;
   const currentYear = new Date().getFullYear();
+  const ageNow = birthYear_detailed > 0 ? currentYear - birthYear_detailed : 0;
+
+  const fmtDWDetailed = (d: DaeWoon) => {
+    const as = birthYear_detailed > 0 ? d.startAge - birthYear_detailed : d.startAge;
+    const ae = birthYear_detailed > 0 ? d.endAge - birthYear_detailed : d.endAge;
+    return `${d.startAge}~${d.endAge}년(${as}~${ae}세) ${d.gan}${d.zhi}(${d.ganElement}${d.zhiElement}·${d.tenGod}·${d.twelveStage})`;
+  };
+
+  // 대운: 각 칸에 간지·오행·십성·12운성·나이구간까지 실어 보냄
+  const daeWoonStr = daeWoon
+    .filter(d => d.gan && d.zhi)
+    .slice(0, 8)
+    .map(d => fmtDWDetailed(d))
+    .join(' | ');
+
+  // 현재 대운 — startAge/endAge 가 연도이므로 currentYear 로 비교
+  const currentDaeWoon = daeWoon.find(d => d.gan && d.zhi && currentYear >= d.startAge && currentYear <= d.endAge);
+  const currentDaeWoonStr = currentDaeWoon
+    ? fmtDWDetailed(currentDaeWoon)
+    : '아직 대운이 시작되지 않음';
   const recentSeWoon = seWoon
     .filter(s => s.year >= currentYear && s.year <= currentYear + 2)
     .map(s =>
@@ -309,9 +499,9 @@ export const generateTodayFortunePrompt = (
     .filter(([, v]) => v === 0).map(([k]) => k);
   const missingEl = zeroEls.length > 0 ? `결핍: ${zeroEls.join('·')}` : '';
 
-  // 현재 대운
-  const ageNow = new Date().getFullYear() - new Date(result.solarDate).getFullYear();
-  const curDW = daeWoon.find(d => d.gan && d.zhi && ageNow >= d.startAge && ageNow <= d.endAge);
+  // 현재 대운 — startAge/endAge는 연도(e.g.2020)이므로 currentYear로 비교
+  const _curYear = new Date().getFullYear();
+  const curDW = daeWoon.find(d => d.gan && d.zhi && _curYear >= d.startAge && _curYear <= d.endAge);
   const daeWoonStr = curDW
     ? `${curDW.gan}${curDW.zhi}(${curDW.ganElement}${curDW.zhiElement}·${curDW.tenGod}·${curDW.twelveStage})`
     : '없음';
@@ -443,19 +633,26 @@ export const generateJungtongsajuPrompt = (result: SajuResult): string => {
   const sinSalStr = sinSals.length > 0 ? sinSals.map(s => `${s.name}(${s.type === 'good' ? '길' : s.type === 'bad' ? '흉' : '중'})`).join(' ') : '없음';
   const interactionStr = interactions.length > 0 ? interactions.map(i => `${i.type}: ${i.description}`).join(' / ') : '없음';
 
+  const currentYear = new Date().getFullYear();
+  const birthYearJT = result.solarDate ? new Date(result.solarDate).getFullYear() : 0;
+  const ageNow = birthYearJT > 0 ? currentYear - birthYearJT : 0;
+
+  const fmtDWJT = (d: DaeWoon) => {
+    const as = birthYearJT > 0 ? d.startAge - birthYearJT : d.startAge;
+    const ae = birthYearJT > 0 ? d.endAge - birthYearJT : d.endAge;
+    return `${d.startAge}~${d.endAge}년(${as}~${ae}세) ${d.gan}${d.zhi}(${d.ganElement}${d.zhiElement}·${d.tenGod}·${d.twelveStage})`;
+  };
+
   const daeWoonStr = daeWoon
     .filter(d => d.gan && d.zhi)
     .slice(0, 8)
-    .map(d => `${d.startAge}~${d.endAge}세 ${d.gan}${d.zhi}(${d.ganElement}${d.zhiElement}·${d.tenGod}·${d.twelveStage})`)
+    .map(d => fmtDWJT(d))
     .join(' | ');
 
-  const ageNow = new Date().getFullYear() - new Date(result.solarDate).getFullYear();
-  const currentDaeWoon = daeWoon.find(d => d.gan && d.zhi && ageNow >= d.startAge && ageNow <= d.endAge);
+  const currentDaeWoon = daeWoon.find(d => d.gan && d.zhi && currentYear >= d.startAge && currentYear <= d.endAge);
   const currentDaeWoonStr = currentDaeWoon
-    ? `${currentDaeWoon.startAge}~${currentDaeWoon.endAge}세 ${currentDaeWoon.gan}${currentDaeWoon.zhi}(${currentDaeWoon.ganElement}${currentDaeWoon.zhiElement}·${currentDaeWoon.tenGod}·${currentDaeWoon.twelveStage})`
+    ? fmtDWJT(currentDaeWoon)
     : '대운 시작 전';
-
-  const currentYear = new Date().getFullYear();
   const recentSeWoon = seWoon
     .filter(s => s.year >= currentYear && s.year <= currentYear + 2)
     .map(s => `${s.year}년 ${s.gan}${s.zhi}(${s.ganElement}${s.zhiElement}·${s.tenGod}·${s.twelveStage})`)
@@ -655,7 +852,7 @@ export const generateNewyearReportPrompt = (
     : `년주: ${pillars.year.gan}${pillars.year.zhi}  월주: ${pillars.month.gan}${pillars.month.zhi}  일주: ${pillars.day.gan}${pillars.day.zhi}  시주: ${pillars.hour.gan}${pillars.hour.zhi}`;
 
   const daeWoonLine = currentDaeWoon
-    ? `${currentDaeWoon.startAge}~${currentDaeWoon.endAge}세  ${currentDaeWoon.gan}${currentDaeWoon.zhi}(${currentDaeWoon.ganElement}·${currentDaeWoon.zhiElement})  십성: ${currentDaeWoon.tenGod}  12운성: ${currentDaeWoon.twelveStage}`
+    ? `${currentDaeWoon.startAge}~${currentDaeWoon.endAge}년  ${currentDaeWoon.gan}${currentDaeWoon.zhi}(${currentDaeWoon.ganElement}·${currentDaeWoon.zhiElement})  십성: ${currentDaeWoon.tenGod}  12운성: ${currentDaeWoon.twelveStage}`
     : '아직 대운 시작 전';
 
   const monthlyLine = monthlyFlow
@@ -1211,7 +1408,7 @@ ${question ? `[질문]\n${question}\n` : '[질문]\n(자유 질문)\n'}
 export const generateLoveFortunePrompt = (result: SajuResult): string => {
   const { pillars, gender, elementPercent, yongSinElement, yongSin, isStrong, daeWoon } = result;
   const sipseong = formatSipseongCounts(computeSipseongCounts(result));
-  const nextDaewoon = daeWoon.slice(0, 5).map(d => `${d.startAge}세 ${d.gan}${d.zhi}(${d.tenGod})`).join(', ');
+  const nextDaewoon = daeWoon.slice(0, 5).map(d => `${d.startAge}년 ${d.gan}${d.zhi}(${d.tenGod})`).join(', ');
 
   return `[내 사주 — 애정 분석용 추출]
 일주: ${pillars.day.gan}${pillars.day.zhi} (${pillars.day.ganElement}일간)
@@ -1272,7 +1469,7 @@ export const generateLoveFortunePrompt = (result: SajuResult): string => {
 export const generateWealthFortunePrompt = (result: SajuResult): string => {
   const { pillars, elementPercent, yongSinElement, yongSin, isStrong, daeWoon } = result;
   const sipseong = formatSipseongCounts(computeSipseongCounts(result));
-  const upcomingDaewoon = daeWoon.slice(0, 5).map(d => `${d.startAge}세 ${d.gan}${d.zhi}(${d.tenGod})`).join(', ');
+  const upcomingDaewoon = daeWoon.slice(0, 5).map(d => `${d.startAge}년 ${d.gan}${d.zhi}(${d.tenGod})`).join(', ');
 
   return `[내 사주 — 재물 분석용 추출]
 일주: ${pillars.day.gan}${pillars.day.zhi} (${pillars.day.ganElement}일간) · ${isStrong ? '신강' : '신약'}
@@ -1387,4 +1584,1294 @@ ${taekil.categoryLabel} 택일 추천을 아래 구조로 작성하세요:
 - 피해야 할 날 1개: 날짜 + 이유 한 문장
 - 길시 안내: 추천일 중 길시가 있으면 1문장으로 안내
 - 주의사항 1문장: ${taekil.categoryLabel}에 특화된 명리 조언`;
+};
+
+// ============================================================
+// 섹션별 독립 프롬프트 (A안: 11개 개별 API 호출)
+// ============================================================
+
+/**
+ * [1/11] 사주 총론 전용 프롬프트
+ *
+ * 입력 데이터:
+ * - 격국 + 성패판정
+ * - 신강신약 5단계 + 득령/득지/득세 + 세부 점수(비겁/인성 vs 식상/재/관)
+ * - 용신·희신·기신 + 용신 오행 기둥 위치
+ * - 오행% + 결핍(0%)·과다 오행
+ * - 일간 음양·오행 + 일주 60갑자 특성(키워드·traits·sinsal)
+ * - 기둥별 천간↔지지 오행 관계(상생/상극/비화)
+ * - 지장간 투출 여부
+ * - 공망 기둥
+ * - 천간 합·충
+ */
+export const generateGeneralSectionPrompt = (result: SajuResult, name: string): string => {
+  const { pillars, elementPercent, yongSinElement, yongSin, heeSin, giSin, hourUnknown } = result;
+  const gyeokguk = determineGyeokguk(result);
+  const gyeokgukStatus = analyzeGyeokgukStatus(result, gyeokguk);
+  const dayTraits = getDayPillarTraits(pillars.day.gan, pillars.day.zhi);
+
+  // ── 1. 신강신약 블록
+  const strengthBlock = [
+    `판정: ${result.strengthStatus} (점수 ${result.strengthScore}/100)`,
+    `득령(得令): ${result.deukRyeong ? 'O — 월지가 일간을 생하거나 같은 오행' : 'X — 월지가 일간에 비협조적'}`,
+    `득지(得地): ${result.deukJi ? 'O — 일지가 일간을 생하거나 같은 오행' : 'X — 일지가 일간에 비협조적'}`,
+    `득세(得勢): ${result.deukSe ? 'O — 비겁·인성 세력이 식상·재성·관성보다 강함' : 'X — 식상·재성·관성 세력이 우세'}`,
+    `세부 점수 — 강화(비겁+인성+득령보너스): ${result.strengthDetail.supportTotal} / 약화(식상+재성+관성): ${result.strengthDetail.weakenTotal}`,
+  ].join('\n');
+
+  // ── 2. 용신 블록 + 기둥 위치
+  const yongsinPositions = findElementInGans(result, yongSinElement);
+  const yongsinPosStr = yongsinPositions.length > 0
+    ? yongsinPositions.join(', ')
+    : '사주 원국 내 없음 — 외부(직업·환경·배우자)에서 용신 기운을 채워야 함';
+  const yongsinBlock = [
+    `용신: ${yongSinElement}(${yongSin})`,
+    `희신: ${heeSin} / 기신: ${giSin}`,
+    `용신 기둥 위치: ${yongsinPosStr}`,
+  ].join('\n');
+
+  // ── 3. 오행 블록
+  const elEntries = Object.entries(elementPercent) as [string, number][];
+  const zeroEls = elEntries.filter(([, v]) => v === 0).map(([k]) => k);
+  const maxEl = elEntries.reduce((a, b) => a[1] > b[1] ? a : b);
+  const elementBlock = [
+    `오행 분포: 목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%`,
+    `결핍 오행: ${zeroEls.length > 0 ? zeroEls.join('·') + ' (해당 오행의 삶의 영역이 취약)' : '없음'}`,
+    `과다 오행: ${maxEl[0]}(${maxEl[1]}%) — 이 기운이 성격·행동 전반에 편향`,
+  ].join('\n');
+
+  // ── 4. 기둥별 천간↔지지 오행 관계
+  const pillarRelBlock = [
+    `년주 ${pillars.year.gan}(${pillars.year.ganElement})↔${pillars.year.zhi}(${pillars.year.zhiElement}): ${pillarRelation(pillars.year.ganElement, pillars.year.zhiElement)}`,
+    `월주 ${pillars.month.gan}(${pillars.month.ganElement})↔${pillars.month.zhi}(${pillars.month.zhiElement}): ${pillarRelation(pillars.month.ganElement, pillars.month.zhiElement)}`,
+    `일주 ${pillars.day.gan}(${pillars.day.ganElement})↔${pillars.day.zhi}(${pillars.day.zhiElement}): ${pillarRelation(pillars.day.ganElement, pillars.day.zhiElement)}`,
+    hourUnknown ? '시주: 미상' : `시주 ${pillars.hour.gan}(${pillars.hour.ganElement})↔${pillars.hour.zhi}(${pillars.hour.zhiElement}): ${pillarRelation(pillars.hour.ganElement, pillars.hour.zhiElement)}`,
+  ].join('\n');
+
+  // ── 5. 공망 기둥
+  const kongmangPillars: string[] = [];
+  if (pillars.year.isKongmang) kongmangPillars.push('년주(조상·뿌리 영역이 허함)');
+  if (pillars.month.isKongmang) kongmangPillars.push('월주(사회·직업 노력이 허사가 되는 경향)');
+  if (pillars.day.isKongmang) kongmangPillars.push('일주(배우자궁·자기 자신이 허함)');
+  if (!hourUnknown && pillars.hour.isKongmang) kongmangPillars.push('시주(자녀·말년이 허함)');
+  const kongmangStr = kongmangPillars.length > 0 ? kongmangPillars.join(' / ') : '없음';
+
+  // ── 6. 천간 합·충
+  const ganInteractionStr = analyzeGanInteractions(result);
+
+  // ── 7. 지장간 투출
+  const touchulStr = checkTouchul(result);
+
+  // ── 8. 일주 60갑자 특성
+  const dayTraitsBlock = dayTraits
+    ? [
+        `일주: ${dayTraits.name}(${dayTraits.hanja})`,
+        `키워드: ${dayTraits.keywords.join(', ')}`,
+        `특성: ${dayTraits.traits}`,
+        `특수신살: ${dayTraits.sinsal.length > 0 ? dayTraits.sinsal.join(', ') : '없음'}`,
+      ].join('\n')
+    : `일주: ${pillars.day.gan}${pillars.day.zhi}`;
+
+  // ── 9. 격국
+  const gyeokgukBlock = [
+    `격국: ${gyeokguk.name}${gyeokguk.nameHanja ? `(${gyeokguk.nameHanja})` : ''} — ${gyeokguk.type}`,
+    `성패: ${gyeokgukStatus.isSuccessful ? '성격(成格) — 격국 에너지가 온전히 발휘됨' : '패격(敗格) — 격국이 손상되어 좌절·반전 패턴 반복'}`,
+    `성패 근거: ${gyeokgukStatus.analysis}`,
+  ].join('\n');
+
+  return `당신은 사주명리 전문가입니다. 아래 확정 데이터를 바탕으로 "${name}" 님의 사주 총론을 작성하세요.
+
+[절대 규칙]
+- Markdown(#·*·**·>·\`) 완전 금지. 이모지 금지.
+- 불릿은 "- " 또는 "· " 만 허용.
+- AI 자기소개 문구 금지("분석 결과", "데이터에 따르면" 등).
+- 아래 모든 수치·판정을 뒤집거나 임의 변경 금지. 해석만 허용.
+- 전문 용어 첫 등장 시 괄호로 일상어 병기.
+- "~일 수 있습니다" 흐린 표현 전체 2회 이하. 단정적으로 쓸 것.
+- 출력은 [general] 마커 한 줄로 시작. 마커 이전 텍스트 없어야 함.
+- 분량: 380~460자.
+
+[확정 데이터]
+
+▶ 격국·성패
+${gyeokgukBlock}
+
+▶ 신강신약
+${strengthBlock}
+
+▶ 용신·희신·기신
+${yongsinBlock}
+
+▶ 오행 분포
+${elementBlock}
+
+▶ 일간 정보
+일간: ${pillars.day.gan}(${pillars.day.ganElement}·${result.dayMasterYinYang})
+
+▶ 일주 60갑자 특성
+${dayTraitsBlock}
+
+▶ 기둥별 천간↔지지 오행 관계
+${pillarRelBlock}
+
+▶ 지장간 투출
+${touchulStr}
+
+▶ 공망
+${kongmangStr}
+
+▶ 천간 합·충
+${ganInteractionStr}
+
+[작성 지침]
+사주 총론은 이 사람의 "삶 전체를 관통하는 하나의 문장"으로 시작해야 합니다.
+격국(${gyeokguk.name})의 성패 판정이 삶의 기조를 어떻게 결정하는지 먼저 선언하고,
+득령·득지·득세 조합으로 신강한 이유(또는 신약한 이유)가 이 사람의 에너지 운용 방식에
+어떻게 드러나는지 구체적으로 연결하세요.
+일주 60갑자 특성과 기둥별 천간↔지지 관계에서 발견되는 내·외부의 긴장 또는 조화를
+한 가지 메타포나 구체적 장면으로 녹여 쓰세요.
+용신(${yongSinElement})이 이 사람에게 어떤 국면에서 결정적 역할을 하는지,
+기신(${giSin})이 어떤 식으로 반복적 장애가 되는지 마지막에 1~2문장으로 마무리하세요.
+
+[general]`;
+};
+
+// ─────────────────────────────────────────────
+// [2/11] 일주 해석
+// ─────────────────────────────────────────────
+export const generateDaymasterSectionPrompt = (result: SajuResult, name: string): string => {
+  const { pillars, hourUnknown } = result;
+  const dayTraits = getDayPillarTraits(pillars.day.gan, pillars.day.zhi);
+
+  const dayTraitsBlock = dayTraits
+    ? `일주: ${dayTraits.name}(${dayTraits.hanja})
+키워드: ${dayTraits.keywords.join(', ')}
+특성: ${dayTraits.traits}
+특수신살: ${dayTraits.sinsal.length > 0 ? dayTraits.sinsal.join(', ') : '없음'}`
+    : `일주: ${pillars.day.gan}${pillars.day.zhi}`;
+
+  // 일주 내 천간↔지지 관계
+  const dayRelation = pillarRelation(pillars.day.ganElement, pillars.day.zhiElement);
+
+  // 일지 관련 지지합·충
+  const dayZhiInteraction = getDayZhiInteractions(result);
+
+  // 일간 관련 천간합·충
+  const ganInteraction = analyzeGanInteractions(result);
+
+  // 지장간 구성
+  const hiddenBlock = [
+    `년지 ${pillars.year.zhi} 지장간: ${pillars.year.hiddenStems.join('·') || '없음'}`,
+    `월지 ${pillars.month.zhi} 지장간: ${pillars.month.hiddenStems.join('·') || '없음'}`,
+    `일지 ${pillars.day.zhi} 지장간: ${pillars.day.hiddenStems.join('·') || '없음'}`,
+    hourUnknown ? '시주: 미상' : `시지 ${pillars.hour.zhi} 지장간: ${pillars.hour.hiddenStems.join('·') || '없음'}`,
+  ].join('\n');
+
+  return `당신은 사주명리 전문가입니다. 아래 확정 데이터를 바탕으로 "${name}" 님의 일주 해석을 작성하세요.
+
+[절대 규칙]
+- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- AI 자기소개 문구 금지. 수치·판정 변경 금지.
+- 전문 용어 첫 등장 시 괄호로 일상어 병기.
+- 흐린 표현 2회 이하. 단정적으로.
+- 출력은 [daymaster] 마커 한 줄로 시작. 분량: 340~420자.
+
+[확정 데이터]
+
+▶ 일주 60갑자 특성
+${dayTraitsBlock}
+
+▶ 일주 12운성
+${pillars.day.twelveStage} — 일주 에너지 상태
+
+▶ 일주 천간↔지지 오행 관계
+일간 ${pillars.day.gan}(${pillars.day.ganElement}) ↔ 일지 ${pillars.day.zhi}(${pillars.day.zhiElement}): ${dayRelation}
+
+▶ 일간 음양
+${result.dayMasterYinYang}간 — ${result.dayMasterYinYang === '양' ? '적극·외향·주도적' : '유연·내향·수용적'} 성질
+
+▶ 일지 지장간 (배우자궁 내부 에너지)
+${pillars.day.zhi} 지장간: ${pillars.day.hiddenStems.join('·') || '없음'}
+(지장간 십성: ${pillars.day.hiddenStems.map(h => {
+    const map = (TEN_GODS_MAP as Record<string, Record<string, string>>)[result.dayMaster] || {};
+    return `${h}=${map[h] || '?'}`;
+  }).join('·') || '없음'})
+
+▶ 지장간 전체 구성
+${hiddenBlock}
+
+▶ 일지 관련 지지 합·충
+${dayZhiInteraction}
+
+▶ 일지 12신살
+${pillars.day.sinSal12 || '없음'}
+
+▶ 공망
+${pillars.day.isKongmang ? '일주 공망 — 배우자궁·자기 자신이 허(虛)함' : '일주 공망 없음'}
+
+▶ 천간 합·충
+${ganInteraction}
+
+[작성 지침]
+일주 ${pillars.day.gan}${pillars.day.zhi}(${dayTraits?.hanja ?? ''})가 이 사람에게 어떤 삶의 방식을 부여하는지를
+"이 일주를 타고난 사람은 ~한 방식으로 세상을 경험한다"는 관점에서 시작하세요.
+일주 12운성(${pillars.day.twelveStage})이 지금 이 일주의 에너지 상태를 어떻게 규정하는지 1~2문장.
+일간↔일지 관계(${dayRelation})에서 오는 내부 긴장 또는 조화를 구체적 장면으로 묘사하세요.
+60갑자 키워드(${dayTraits?.keywords?.join(', ') ?? ''})는 나열하지 말고 이야기 흐름에 녹여 쓰세요.
+특수신살(${dayTraits?.sinsal?.join(', ') || '없음'})이 있다면 실생활 의미로 풀어 1~2문장.
+
+[daymaster]`;
+};
+
+// ─────────────────────────────────────────────
+// [3/11] 오행 분포
+// ─────────────────────────────────────────────
+export const generateElementSectionPrompt = (result: SajuResult, name: string): string => {
+  const { pillars, elementPercent, hourUnknown } = result;
+
+  // 기둥별 오행 배치
+  const pillarElBlock = [
+    `년주: 천간 ${pillars.year.gan}(${pillars.year.ganElement}) / 지지 ${pillars.year.zhi}(${pillars.year.zhiElement})`,
+    `월주: 천간 ${pillars.month.gan}(${pillars.month.ganElement}) / 지지 ${pillars.month.zhi}(${pillars.month.zhiElement})`,
+    `일주: 천간 ${pillars.day.gan}(${pillars.day.ganElement}) / 지지 ${pillars.day.zhi}(${pillars.day.zhiElement})`,
+    hourUnknown ? '시주: 미상' : `시주: 천간 ${pillars.hour.gan}(${pillars.hour.ganElement}) / 지지 ${pillars.hour.zhi}(${pillars.hour.zhiElement})`,
+  ].join('\n');
+
+  // 결핍·과다 분석
+  const elEntries = Object.entries(elementPercent) as [string, number][];
+  const zeroEls = elEntries.filter(([, v]) => v === 0).map(([k]) => k);
+  const overEls = elEntries.filter(([, v]) => v >= 35).map(([k, v]) => `${k}(${v}%)`);
+  const maxEl = elEntries.reduce((a, b) => a[1] > b[1] ? a : b);
+
+  // 오행 흐름 단절
+  const flowAnalysis = analyzeElFlow(result);
+
+  // 지장간 포함 숨은 오행
+  const allPillars = [pillars.year, pillars.month, pillars.day, ...(hourUnknown ? [] : [pillars.hour])];
+  const hiddenElCount: Record<string, number> = { '목':0, '화':0, '토':0, '금':0, '수':0 };
+  allPillars.forEach(p => p.hiddenStems.forEach((h, idx) => {
+    const el = STEM_ELEMENT[h];
+    if (el && hiddenElCount[el] !== undefined) hiddenElCount[el] += idx === 0 ? 0.5 : 0.25;
+  }));
+  const hiddenElStr = Object.entries(hiddenElCount)
+    .filter(([, v]) => v > 0)
+    .map(([k, v]) => `${k}+${v}`)
+    .join(' ') || '없음';
+
+  return `당신은 사주명리 전문가입니다. 아래 확정 데이터를 바탕으로 "${name}" 님의 오행 분포를 해석하세요.
+
+[절대 규칙]
+- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- 수치 변경 금지. 흐린 표현 2회 이하.
+- 출력은 [element] 마커 한 줄로 시작. 분량: 320~400자.
+
+[확정 데이터]
+
+▶ 오행 분포 (표면 8글자 기준)
+목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%
+결핍 오행: ${zeroEls.length > 0 ? zeroEls.join('·') : '없음'}
+과다 오행: ${overEls.length > 0 ? overEls.join('·') : '없음 (비교적 균형)'}
+최다 오행: ${maxEl[0]}(${maxEl[1]}%)
+
+▶ 지장간 숨은 오행 (추가 가중치)
+${hiddenElStr}
+
+▶ 기둥별 오행 배치
+${pillarElBlock}
+
+▶ 오행 상생 흐름 분석
+${flowAnalysis}
+
+▶ 신강신약 (오행 균형 결과)
+${result.strengthStatus} — 강화 합계 ${result.strengthDetail.supportTotal} / 약화 합계 ${result.strengthDetail.weakenTotal}
+
+[작성 지침]
+오행 분포를 단순 수치 나열이 아닌 "이 에너지 지형이 삶에서 어떻게 느껴지는가"로 풀어 쓰세요.
+결핍 오행(${zeroEls.join('·') || '없음'})이 있다면 그 오행이 관장하는 삶의 영역(
+목=성장·계획, 화=표현·열정, 토=안정·신뢰, 금=결단·정밀, 수=지혜·감성)에서
+구체적으로 어떤 약점·패턴으로 나타나는지 1~2가지 장면으로 묘사하세요.
+과다 오행(${maxEl[0]})의 편향이 일상 행동에서 어떻게 드러나는지 1문장.
+오행 흐름 단절(${flowAnalysis})이 있다면 에너지가 어디서 막히는지 설명하고,
+이를 일상에서 보완할 방법 1가지(식습관·환경·행동)를 구체적으로 제안하세요.
+
+[element]`;
+};
+
+// ─────────────────────────────────────────────
+// [4/11] 성격·기질
+// ─────────────────────────────────────────────
+export const generateCharacterSectionPrompt = (result: SajuResult, name: string): string => {
+  const { pillars, elementPercent, hourUnknown } = result;
+  const gyeokguk = determineGyeokguk(result);
+  const dayTraits = getDayPillarTraits(pillars.day.gan, pillars.day.zhi);
+  const sipseong = getSipseongByPillar(result);
+
+  // 십성 분포 상위 2개
+  const counts = computeSipseongCounts(result);
+  const top2 = Object.entries(counts)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([k, v]) => `${k}(${v})`).join('·');
+
+  // 합·충 전체
+  const interactionStr = result.interactions.length > 0
+    ? result.interactions.map(i => `${i.type}: ${i.description}`).join(' / ')
+    : '없음';
+
+  // 기둥별 관계 요약
+  const pillarRelBlock = [
+    `년주 ${pillars.year.gan}↔${pillars.year.zhi}: ${pillarRelation(pillars.year.ganElement, pillars.year.zhiElement)}`,
+    `월주 ${pillars.month.gan}↔${pillars.month.zhi}: ${pillarRelation(pillars.month.ganElement, pillars.month.zhiElement)}`,
+    `일주 ${pillars.day.gan}↔${pillars.day.zhi}: ${pillarRelation(pillars.day.ganElement, pillars.day.zhiElement)}`,
+    hourUnknown ? '시주: 미상' : `시주 ${pillars.hour.gan}↔${pillars.hour.zhi}: ${pillarRelation(pillars.hour.ganElement, pillars.hour.zhiElement)}`,
+  ].join('\n');
+
+  return `당신은 사주명리 전문가입니다. 아래 확정 데이터를 바탕으로 "${name}" 님의 성격·기질을 해석하세요.
+
+[절대 규칙]
+- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- 수치·판정 변경 금지. 흐린 표현 2회 이하.
+- 출력은 [character] 마커 한 줄로 시작. 분량: 380~460자.
+
+[확정 데이터]
+
+▶ 일간 정보
+일간: ${pillars.day.gan}(${pillars.day.ganElement}·${result.dayMasterYinYang})
+일주 특성: ${dayTraits?.traits ?? ''}
+키워드: ${dayTraits?.keywords?.join(', ') ?? ''}
+
+▶ 격국
+${gyeokguk.name} — ${gyeokguk.type}
+
+▶ 신강신약
+${result.strengthStatus} — 득령(${result.deukRyeong ? 'O' : 'X'}) 득지(${result.deukJi ? 'O' : 'X'}) 득세(${result.deukSe ? 'O' : 'X'})
+
+▶ 기둥별 십성 위치
+${sipseong}
+
+▶ 십성 분포 상위 2개
+${top2}
+
+▶ 오행 과·부족
+목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%
+
+▶ 기둥별 천간↔지지 관계
+${pillarRelBlock}
+
+▶ 합·충·형·파·해
+${interactionStr}
+
+▶ 천간 합·충
+${analyzeGanInteractions(result)}
+
+▶ 신살
+${result.sinSals.length > 0 ? result.sinSals.map(s => `${s.name}(${s.type === 'good' ? '길' : s.type === 'bad' ? '흉' : '중'})`).join(' ') : '없음'}
+
+[작성 지침]
+"처음 만났을 때 보이는 모습"과 "친해진 뒤 드러나는 본모습"을 구분해 각각 2~3문장씩 서술하세요.
+일간(${pillars.day.gan}·${pillars.day.ganElement})과 격국(${gyeokguk.name}) + 십성 상위 2개(${top2})를 근거로
+타고난 강점 2가지·반복되는 그림자 2가지를 균형 있게 묘사하세요.
+기둥별 천간↔지지 관계에서 가장 눈에 띄는 긴장·조화를 성격 서술에 하나의 메타포로 녹여 쓰세요.
+마지막 문장: "이 기질이 삶의 선택에서 어떻게 반복되는가" 1문장으로 정리.
+
+[character]`;
+};
+
+// ─────────────────────────────────────────────
+// [5/11] 직업·적성
+// ─────────────────────────────────────────────
+export const generateCareerSectionPrompt = (result: SajuResult, name: string): string => {
+  const { pillars, yongSinElement, yongSin, hourUnknown } = result;
+  const gyeokguk = determineGyeokguk(result);
+  const sipseong = getSipseongByPillar(result);
+
+  // 용신 기둥 위치
+  const yongsinPos = findElementInGans(result, yongSinElement);
+  const yongsinPosStr = yongsinPos.length > 0 ? yongsinPos.join(', ') : '원국 내 없음 — 외부 환경에서 채워야';
+
+  // 조직형 vs 독립형
+  const orgType = result.isStrong
+    ? '독립·프리랜서형 유리 (신강 → 자기 주도 에너지 강)'
+    : '조직·협업형 유리 (신약 → 외부 지원받을 때 최대 발휘)';
+
+  // 관성·식상·인성 위치 집중 분석
+  const counts = computeSipseongCounts(result);
+  const gwanseong = (counts['편관'] || 0) + (counts['정관'] || 0);
+  const siksang = (counts['식신'] || 0) + (counts['상관'] || 0);
+  const inseong = (counts['편인'] || 0) + (counts['정인'] || 0);
+
+  return `당신은 사주명리 전문가입니다. 아래 확정 데이터를 바탕으로 "${name}" 님의 직업·적성을 해석하세요.
+
+[절대 규칙]
+- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- 수치·판정 변경 금지. 흐린 표현 2회 이하.
+- 출력은 [career] 마커 한 줄로 시작. 분량: 360~440자.
+
+[확정 데이터]
+
+▶ 격국
+${gyeokguk.name}(${gyeokguk.type}) — 격국 특성: ${gyeokguk.traits.slice(0, 2).join(', ')}
+격국 추천 직군: ${gyeokguk.careers.slice(0, 4).join(', ')}
+
+▶ 용신
+${yongSinElement}(${yongSin}) / 기둥 위치: ${yongsinPosStr}
+
+▶ 신강신약 + 근무 형태
+${result.strengthStatus} → ${orgType}
+
+▶ 기둥별 십성 위치 (직업 핵심 십성 집중)
+${sipseong}
+관성 합계: ${gwanseong} / 식상 합계: ${siksang} / 인성 합계: ${inseong}
+
+▶ 오행 결핍 (직업 제한 요소)
+${Object.entries(result.elementPercent).filter(([, v]) => v === 0).map(([k]) => `${k}=0% → 해당 오행 직군 불리`).join(' / ') || '결핍 없음'}
+
+▶ 천간 합·충 (직업 변화 요인)
+${analyzeGanInteractions(result)}
+
+▶ 시주 정보 (말년·커리어 후반)
+${hourUnknown ? '미상' : `시간 ${pillars.hour.gan}(${pillars.hour.tenGodGan}) / 시지 ${pillars.hour.zhi}(${pillars.hour.tenGodZhi})`}
+
+[작성 지침]
+격국(${gyeokguk.name})과 용신(${yongSinElement})을 근거로 적합한 직군 4~5개를 구체적으로 제시하세요.
+단순 직종 나열 금지 — 각 직군마다 "왜 이 격국·용신이 이 분야에 맞는가" 한 문장씩 근거를 다세요.
+조직 내 역할(리더형·참모형·독립형)과 커리어 성장 패턴을 1~2문장으로 서술하세요.
+피해야 할 직군 1~2개와 그 이유(결핍 오행 또는 기신 기준)를 명시하세요.
+용신 오행(${yongSinElement})이 원국에 없다면 "어떤 환경에서 일해야 용신 기운을 채울 수 있는가"로 마무리.
+
+[career]`;
+};
+
+// ─────────────────────────────────────────────
+// [6/11] 재물운
+// ─────────────────────────────────────────────
+export const generateWealthSectionPrompt = (result: SajuResult, name: string): string => {
+  const { pillars, yongSinElement, giSin, hourUnknown } = result;
+
+  // 재성 위치 (편재·정재)
+  const allPillars = [
+    { label: '년간', gan: pillars.year.gan, god: pillars.year.tenGodGan },
+    { label: '년지', gan: pillars.year.zhi, god: pillars.year.tenGodZhi },
+    { label: '월간', gan: pillars.month.gan, god: pillars.month.tenGodGan },
+    { label: '월지', gan: pillars.month.zhi, god: pillars.month.tenGodZhi },
+    { label: '일지', gan: pillars.day.zhi, god: pillars.day.tenGodZhi },
+    ...(!hourUnknown ? [
+      { label: '시간', gan: pillars.hour.gan, god: pillars.hour.tenGodGan },
+      { label: '시지', gan: pillars.hour.zhi, god: pillars.hour.tenGodZhi },
+    ] : []),
+  ];
+  const reseongPillars = allPillars.filter(p => p.god === '편재' || p.god === '정재');
+  const reseongStr = reseongPillars.length > 0
+    ? reseongPillars.map(p => `${p.label} ${p.gan}(${p.god})`).join(' · ')
+    : '재성 없음 — 재물 인연이 약하거나 배우자 통해 재물 유입';
+
+  // 재고
+  const jaegoStr = checkJaeGo(result);
+
+  // 신강신약 → 재물 스타일
+  const wealthStyle = result.isStrong
+    ? '적극적 재물 창출형 — 신강하여 재성을 직접 다루는 힘이 강함'
+    : '의존·협력 재물형 — 신약하여 파트너·조직을 통한 재물 유입이 유리';
+
+  // 천간합 재물 영향
+  const ganInteraction = analyzeGanInteractions(result);
+
+  // 지지합 재물 영향
+  const reseongInteractions = result.interactions.filter(i =>
+    reseongPillars.some(p => i.description.includes(p.gan))
+  );
+
+  return `당신은 사주명리 전문가입니다. 아래 확정 데이터를 바탕으로 "${name}" 님의 재물운을 해석하세요.
+
+[절대 규칙]
+- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- 수치·판정 변경 금지. 흐린 표현 2회 이하.
+- 출력은 [wealth] 마커 한 줄로 시작. 분량: 340~420자.
+
+[확정 데이터]
+
+▶ 재성 위치 (편재·정재)
+${reseongStr}
+
+▶ 재고(財庫) 유무
+${jaegoStr}
+
+▶ 신강신약 → 재물 운용 스타일
+${wealthStyle}
+
+▶ 신강신약 세부
+${result.strengthStatus}(점수 ${result.strengthScore}) / 득령(${result.deukRyeong ? 'O' : 'X'}) 득지(${result.deukJi ? 'O' : 'X'}) 득세(${result.deukSe ? 'O' : 'X'})
+
+▶ 용신·기신
+용신: ${yongSinElement} / 기신: ${giSin}
+용신 기둥 위치: ${findElementInGans(result, yongSinElement).join(', ') || '원국 내 없음'}
+
+▶ 천간 합·충 (재물 변동 요인)
+${ganInteraction}
+
+▶ 재성 관련 지지 합·충
+${reseongInteractions.length > 0 ? reseongInteractions.map(i => `${i.type}: ${i.description}`).join(' / ') : '없음'}
+
+▶ 오행 분포
+목${result.elementPercent.목}% 화${result.elementPercent.화}% 토${result.elementPercent.토}% 금${result.elementPercent.금}% 수${result.elementPercent.수}%
+
+[작성 지침]
+재성(편재·정재)의 위치(${reseongStr})와 강약을 근거로 돈 버는 스타일을 먼저 단정적으로 선언하세요.
+월급형·사업형·투자형 중 어느 쪽이 유리한지 반드시 근거(십성·격국·신강신약)를 붙여 명시하세요.
+재고(${jaegoStr.split('—')[0].trim()}) 여부로 재물 축적 능력을 1문장으로 서술하세요.
+기신(${giSin}) 오행이 재물에 어떤 손재 패턴을 반복적으로 만드는지 구체적 상황 1가지로 묘사하고 예방법 1문장.
+천간합이 있다면 그것이 재물 유입 또는 손실과 어떻게 연결되는지 언급하세요.
+
+[wealth]`;
+};
+
+// ─────────────────────────────────────────────
+// [7/11] 애정·결혼운
+// ─────────────────────────────────────────────
+export const generateLoveSectionPrompt = (result: SajuResult, name: string): string => {
+  const { pillars, gender, daeWoon, hourUnknown } = result;
+
+  // 성별에 따라 배우자성 구분
+  const spouseGod = gender === 'male' ? ['편재', '정재'] : ['편관', '정관'];
+  const spouseLabel = gender === 'male' ? '재성(배우자)' : '관성(배우자)';
+
+  const allPositions = [
+    { label: '년간', god: pillars.year.tenGodGan, gan: pillars.year.gan },
+    { label: '년지', god: pillars.year.tenGodZhi, gan: pillars.year.zhi },
+    { label: '월간', god: pillars.month.tenGodGan, gan: pillars.month.gan },
+    { label: '월지', god: pillars.month.tenGodZhi, gan: pillars.month.zhi },
+    { label: '일지', god: pillars.day.tenGodZhi, gan: pillars.day.zhi },
+    ...(!hourUnknown ? [
+      { label: '시간', god: pillars.hour.tenGodGan, gan: pillars.hour.gan },
+      { label: '시지', god: pillars.hour.tenGodZhi, gan: pillars.hour.zhi },
+    ] : []),
+  ];
+  const spousePillars = allPositions.filter(p => spouseGod.includes(p.god));
+  const spouseStr = spousePillars.length > 0
+    ? spousePillars.map(p => `${p.label} ${p.gan}(${p.god})`).join(' · ')
+    : `${spouseLabel} 없음 — 배우자 인연 약하거나 늦은 결혼 경향`;
+
+  // 도화살 위치
+  const dowhaSinsal = result.sinSals.filter(s => s.name.includes('도화'));
+  const dowhaStr = dowhaSinsal.length > 0
+    ? dowhaSinsal.map(s => s.name).join(', ')
+    : '없음';
+
+  // 식상 (애정 표현력)
+  const counts = computeSipseongCounts(result);
+  const siksangTotal = (counts['식신'] || 0) + (counts['상관'] || 0);
+
+  // 유리한 대운 구간 (배우자성 오행 대운)
+  const spouseEl = gender === 'male'
+    ? EL_CON[STEM_ELEMENT[result.dayMaster] || ''] // 재성 오행
+    : Object.entries(EL_CON).find(([, v]) => v === (STEM_ELEMENT[result.dayMaster] || ''))?.[0] || ''; // 관성 오행
+
+  const loveBirthYear = result.solarDate ? new Date(result.solarDate).getFullYear() : 0;
+  const favorableDaeWoon = daeWoon
+    .filter(d => d.gan && d.zhi && (d.ganElement === spouseEl || d.zhiElement === spouseEl))
+    .slice(0, 2)
+    .map(d => {
+      const as = loveBirthYear > 0 ? d.startAge - loveBirthYear : d.startAge;
+      const ae = loveBirthYear > 0 ? d.endAge - loveBirthYear : d.endAge;
+      return `${d.startAge}~${d.endAge}년(${as}~${ae}세) ${d.gan}${d.zhi}`;
+    })
+    .join(', ') || '대운표에서 해당 구간 미발견';
+
+  return `당신은 사주명리 전문가입니다. 아래 확정 데이터를 바탕으로 "${name}" 님의 애정·결혼운을 해석하세요.
+
+[절대 규칙]
+- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- 수치·판정 변경 금지. 흐린 표현 2회 이하.
+- 출력은 [love] 마커 한 줄로 시작. 분량: 340~420자.
+
+[확정 데이터]
+
+▶ 성별
+${gender === 'male' ? '남성' : '여성'} — ${spouseLabel} 기준 분석
+
+▶ 배우자성 위치
+${spouseStr}
+
+▶ 일지 (배우자궁)
+${pillars.day.zhi}(${pillars.day.zhiElement}) / 십성: ${pillars.day.tenGodZhi} / 12운성: ${pillars.day.twelveStage}
+일지 지장간: ${pillars.day.hiddenStems.join('·') || '없음'}
+일지 관련 합·충: ${getDayZhiInteractions(result)}
+
+▶ 도화살 (이성 매력)
+${dowhaStr}
+
+▶ 식상 합계 (애정 표현력)
+${siksangTotal > 0 ? `식상 ${siksangTotal}개 — 감정 표현 가능` : '식상 없음 — 감정 표현 서툴고 로맨틱 어필 약함'}
+
+▶ 천간합 (애정 관계 변동)
+${analyzeGanInteractions(result)}
+
+▶ 유리한 대운 구간 (배우자성 오행 강화 시기)
+${favorableDaeWoon}
+
+▶ 합·충 전체
+${result.interactions.length > 0 ? result.interactions.map(i => `${i.type}: ${i.description}`).join(' / ') : '없음'}
+
+[작성 지침]
+${spouseLabel}의 위치(${spouseStr})를 근거로 이 사람이 무의식적으로 끌리는 상대 유형을
+"어떤 분위기·말투·에너지의 사람에게 반응하는가"로 구체적으로 묘사하세요.
+일지 12운성(${pillars.day.twelveStage})이 배우자궁에 미치는 영향 1~2문장.
+유리한 대운 구간(${favorableDaeWoon})을 언급하며 연애·결혼 기회가 어떻게 열리는지 서술하세요.
+식상(${siksangTotal > 0 ? '있음' : '없음'})과 도화살(${dowhaStr}) 기준으로 사랑 표현 방식을 묘사하세요.
+관계에서 반복되는 갈등 패턴 1개와 개선 포인트를 마지막에 제시하세요.
+
+[love]`;
+};
+
+// ─────────────────────────────────────────────
+// [8/11] 건강운
+// ─────────────────────────────────────────────
+export const generateHealthSectionPrompt = (result: SajuResult, name: string): string => {
+  const { pillars, elementPercent, giSin, hourUnknown } = result;
+
+  // 결핍 오행 → 취약 장부
+  const elEntries = Object.entries(elementPercent) as [string, number][];
+  const weakEls = elEntries.filter(([, v]) => v <= 10).map(([k]) => k);
+  const weakOrganStr = weakEls.length > 0
+    ? weakEls.map(el => `${el}(결핍) → ${EL_ORGAN[el]} 취약`).join(' / ')
+    : '뚜렷한 결핍 없음';
+
+  // 충 받는 기둥 → 장부 약화
+  const chungInteractions = result.interactions.filter(i => i.type === '충');
+  const chungOrganStr = chungInteractions.length > 0
+    ? chungInteractions.map(i => {
+        const els = i.elements.map(e => BRANCH_ELEMENT[e] || STEM_ELEMENT[e] || e);
+        return `${i.description} → ${els.map(el => EL_ORGAN[el] || el).join('·')} 주의`;
+      }).join(' / ')
+    : '지지충 없음';
+
+  // 기둥별 12운성 (사·절·병 기둥)
+  const stageWarning = [
+    { label: '년주', stage: pillars.year.twelveStage },
+    { label: '월주', stage: pillars.month.twelveStage },
+    { label: '일주', stage: pillars.day.twelveStage },
+    ...(!hourUnknown ? [{ label: '시주', stage: pillars.hour.twelveStage }] : []),
+  ].filter(p => ['사', '절', '병', '묘'].includes(p.stage))
+    .map(p => `${p.label} 12운성 ${p.stage} → 해당 시기 건강 주의`)
+    .join(' / ') || '사·절·병 기둥 없음 — 건강 에너지 비교적 안정';
+
+  // 기신 오행 → 건강 리스크
+  const gisinOrgan = EL_ORGAN[giSin] || '';
+
+  return `당신은 사주명리 전문가입니다. 아래 확정 데이터를 바탕으로 "${name}" 님의 건강운을 해석하세요.
+
+[절대 규칙]
+- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- 수치·판정 변경 금지. 흐린 표현 2회 이하.
+- 출력은 [health] 마커 한 줄로 시작. 분량: 300~370자.
+
+[확정 데이터]
+
+▶ 결핍 오행 → 취약 장부
+${weakOrganStr}
+(오행-장부: 목=간·담낭 / 화=심장·소장 / 토=비장·위장·췌장 / 금=폐·대장 / 수=신장·방광)
+
+▶ 충 받는 오행 → 장부 약화
+${chungOrganStr}
+
+▶ 기둥별 12운성 건강 경고
+${stageWarning}
+
+▶ 기신(${giSin}) → 건강 리스크
+기신 오행 ${giSin} → 관련 장부: ${gisinOrgan}
+기신이 강해지는 계절·환경에서 이 장부 집중 관리 필요
+
+▶ 신강신약
+${result.strengthStatus} → ${result.isStrong ? '기운이 넘쳐 과로·번아웃 주의' : '기운 부족 → 면역력 관리, 과한 지출 주의'}
+
+▶ 오행 분포
+목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%
+
+[작성 지침]
+취약 장부(${weakOrganStr.split('→').slice(-1)[0]?.trim() || '없음'})를 먼저 명시하고,
+스트레스 상황에서 그 장부가 실제로 어떤 증상으로 나타날 수 있는지 1~2가지 구체적으로 묘사하세요.
+일상에서 챙겨야 할 습관 2가지(수면·식습관·운동 유형 중)와 하지 말아야 할 것 1가지를 제시하세요.
+이 사주 기질이 만드는 건강 리스크(예: 신강 → 과로 번아웃, 신약 → 만성 피로) 1가지로 마무리하세요.
+
+[health]`;
+};
+
+// ─────────────────────────────────────────────
+// [9/11] 인간관계·가족
+// ─────────────────────────────────────────────
+export const generateRelationSectionPrompt = (result: SajuResult, name: string): string => {
+  const { pillars, gender, yongSinElement, giSin, hourUnknown } = result;
+
+  // 십성별 위치 전체
+  const sipseong = getSipseongByPillar(result);
+
+  // 인성(모친) 위치
+  const allPos = [
+    { label: '년간', god: pillars.year.tenGodGan, gan: pillars.year.gan },
+    { label: '년지', god: pillars.year.tenGodZhi, gan: pillars.year.zhi },
+    { label: '월간', god: pillars.month.tenGodGan, gan: pillars.month.gan },
+    { label: '월지', god: pillars.month.tenGodZhi, gan: pillars.month.zhi },
+    { label: '일지', god: pillars.day.tenGodZhi, gan: pillars.day.zhi },
+    ...(!hourUnknown ? [
+      { label: '시간', god: pillars.hour.tenGodGan, gan: pillars.hour.gan },
+      { label: '시지', god: pillars.hour.tenGodZhi, gan: pillars.hour.zhi },
+    ] : []),
+  ];
+  const inseongPos = allPos.filter(p => p.god === '정인' || p.god === '편인');
+  const bijeopPos = allPos.filter(p => p.god === '비견' || p.god === '겁재');
+  const siksangPos = allPos.filter(p => p.god === '식신' || p.god === '상관');
+  const gwanseongPos = allPos.filter(p => p.god === '정관' || p.god === '편관');
+
+  const inseongStr = inseongPos.length > 0
+    ? inseongPos.map(p => `${p.label} ${p.gan}(${p.god})`).join(' · ')
+    : '인성 없음 — 모친 인연 약하거나 독립적 성장';
+
+  const bijeopStr = bijeopPos.length > 0
+    ? bijeopPos.map(p => `${p.label} ${p.gan}(${p.god})`).join(' · ')
+    : '비겁 약함 — 형제·경쟁자 인연 적음';
+
+  // 자녀성 (남성=관성, 여성=식상)
+  const childGod = gender === 'male' ? gwanseongPos : siksangPos;
+  const childStr = childGod.length > 0
+    ? childGod.map(p => `${p.label} ${p.gan}(${p.god})`).join(' · ')
+    : '자녀성 약함 — 자녀 인연 적거나 늦음';
+
+  // 용신 귀인 오행
+  const yongsinEl = yongSinElement;
+
+  return `당신은 사주명리 전문가입니다. 아래 확정 데이터를 바탕으로 "${name}" 님의 인간관계·가족운을 해석하세요.
+
+[절대 규칙]
+- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- 수치·판정 변경 금지. 흐린 표현 2회 이하.
+- 출력은 [relation] 마커 한 줄로 시작. 분량: 320~400자.
+
+[확정 데이터]
+
+▶ 기둥별 십성 전체
+${sipseong}
+
+▶ 인성 위치 (모친·학습)
+${inseongStr}
+${inseongPos.length >= 2 ? '→ 인성 과다: 모친 과보호·의존 패턴, 지식 집착 경향' : ''}
+
+▶ 비겁 위치 (형제·경쟁자·동료)
+${bijeopStr}
+
+▶ 자녀성 위치 (${gender === 'male' ? '남성: 관성=자녀' : '여성: 식상=자녀'})
+${childStr}
+
+▶ 용신 귀인 오행
+${yongsinEl} 기운 강한 사람이 귀인 — ${EL_DIR[yongsinEl]} 방향, ${yongsinEl} 오행 해당 띠(
+목=인묘, 화=사오, 토=진술축미, 금=신유, 수=자해)
+
+▶ 기신 주의 오행
+${giSin} 기운 강한 사람 주의 — 겉은 친해도 에너지 소진 관계
+
+▶ 합·충 (인간관계 변동)
+${result.interactions.length > 0 ? result.interactions.map(i => `${i.type}: ${i.description}`).join(' / ') : '없음'}
+
+▶ 신살 (인간관계)
+${result.sinSals.length > 0 ? result.sinSals.map(s => s.name).join(', ') : '없음'}
+
+[작성 지침]
+비겁·식상·관성 배치로 본 인맥 형성 스타일을 "처음 만난 자리 행동"과 "오래 유지되는 관계 특징"으로 나눠 서술하세요.
+인성(모친) 위치로 부모와의 관계 패턴 1문장, 자녀성으로 자녀 관계 특징 1문장을 각각 넣으세요.
+용신(${yongsinEl}) 오행 귀인 유형과 기신(${giSin}) 오행 주의 인물 유형을 구체적으로(직업·성향·에너지) 제시하세요.
+마지막에 이 사람이 가장 오래 지속하는 관계 유형과 이유를 1문장으로 정리하세요.
+
+[relation]`;
+};
+
+// ─────────────────────────────────────────────
+// [10/11] 대운·세운 흐름
+// ─────────────────────────────────────────────
+export const generateDaeunSectionPrompt = (result: SajuResult, name: string): string => {
+  const { daeWoon, seWoon, yongSinElement, giSin } = result;
+
+  // daeWoon.startAge/endAge 는 실제 "연도"(e.g. 2020)를 담고 있음 — 필드명 주의
+  const birthYear = result.solarDate ? new Date(result.solarDate).getFullYear() : 0;
+  const currentYear = new Date().getFullYear();
+  const ageNow = birthYear > 0 ? currentYear - birthYear : 0;
+
+  // 나이 표시 헬퍼: startAge(연도) → "2020~2029년(28~37세)"
+  const fmtDW = (d: DaeWoon) => {
+    const ageStart = birthYear > 0 ? d.startAge - birthYear : d.startAge;
+    const ageEnd = birthYear > 0 ? d.endAge - birthYear : d.endAge;
+    return `${d.startAge}~${d.endAge}년(${ageStart}~${ageEnd}세) ${d.gan}${d.zhi}(${d.ganElement}${d.zhiElement}·${d.tenGod}·${d.twelveStage})`;
+  };
+  const fmtDWShort = (d: DaeWoon) => {
+    const ageStart = birthYear > 0 ? d.startAge - birthYear : d.startAge;
+    const ageEnd = birthYear > 0 ? d.endAge - birthYear : d.endAge;
+    return `${d.startAge}~${d.endAge}년(${ageStart}~${ageEnd}세) ${d.gan}${d.zhi}`;
+  };
+
+  // 현재 대운: startAge/endAge는 연도이므로 currentYear와 비교
+  const currentDW = daeWoon.find(d => d.gan && d.zhi && currentYear >= d.startAge && currentYear <= d.endAge);
+  const currentDWStr = currentDW ? fmtDW(currentDW) : '대운 시작 전';
+
+  // 이전 대운
+  const prevDW = currentDW
+    ? daeWoon.find(d => d.gan && d.zhi && d.endAge === currentDW.startAge - 1)
+    : null;
+  const prevDWStr = prevDW ? fmtDW(prevDW) : '없음(초년 대운 이전)';
+
+  // 다음 대운
+  const nextDW = currentDW
+    ? daeWoon.find(d => d.gan && d.zhi && d.startAge === currentDW.endAge + 1)
+    : daeWoon.find(d => d.gan && d.zhi);
+  const nextDWStr = nextDW ? fmtDW(nextDW) : '없음';
+
+  // 대운 전체
+  const daeWoonAll = daeWoon
+    .filter(d => d.gan && d.zhi)
+    .slice(0, 8)
+    .map(d => fmtDW(d))
+    .join(' | ');
+
+  // 용신 유리·기신 불리 대운
+  const favorDW = daeWoon
+    .filter(d => d.gan && d.zhi && (d.ganElement === yongSinElement || d.zhiElement === yongSinElement))
+    .slice(0, 1)
+    .map(d => fmtDWShort(d))
+    .join('') || '해당 구간 없음';
+  const badDW = daeWoon
+    .filter(d => d.gan && d.zhi && (d.ganElement === giSin || d.zhiElement === giSin))
+    .slice(0, 1)
+    .map(d => fmtDWShort(d))
+    .join('') || '해당 구간 없음';
+  const recentSW = seWoon
+    .filter(s => s.year >= currentYear && s.year <= currentYear + 2)
+    .map(s => `${s.year}년 ${s.gan}${s.zhi}(${s.ganElement}${s.zhiElement}·${s.tenGod}·${s.twelveStage})`)
+    .join(' | ');
+
+  return `당신은 사주명리 전문가입니다. 아래 확정 데이터를 바탕으로 "${name}" 님의 대운·세운 흐름을 해석하세요.
+
+[절대 규칙]
+- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- 수치·판정 변경 금지. 흐린 표현 2회 이하.
+- 출력은 [daeun] 마커 한 줄로 시작. 분량: 440~540자.
+
+[확정 데이터]
+
+▶ 현재 나이
+${ageNow}세
+
+▶ 현재 대운 (가장 중요)
+${currentDWStr}
+
+▶ 이전 대운 (과거에서 이월된 숙제)
+${prevDWStr}
+
+▶ 다음 대운 (다가올 관문)
+${nextDWStr}
+
+▶ 대운 전체 흐름 (8개)
+${daeWoonAll}
+
+▶ 용신(${yongSinElement}) 유리 대운
+${favorDW}
+
+▶ 기신(${giSin}) 조심 대운
+${badDW}
+
+▶ 세운 (올해~내후년)
+${recentSW}
+
+▶ 용신·기신
+용신: ${yongSinElement} / 기신: ${giSin}
+
+[작성 지침]
+현재 대운(${currentDWStr})을 먼저 지목하고, 그 간지·오행·십성·12운성이
+지금 이 나이대의 일·관계·재물에 어떻게 작용하는지 3~4문장으로 단정적으로 서술하세요.
+이전 대운에서 이월된 숙제와 다음 대운의 관문을 각각 2~3문장으로 서술하세요.
+세운 3년(올해·내년·내후년)을 각각 균형 있게 서술하세요 — 한 해만 길게 쓰지 마세요.
+포맷 예: "올해(XXXX년 XX): 십성 XX가 들어오면서 ~ 국면. 구체적으로 어떤 행동이 유리/불리."
+용신(${yongSinElement}) 유리 대운과 기신(${giSin}) 조심 대운을 각 1개씩 짚어주세요.
+
+[daeun]`;
+};
+
+// ─────────────────────────────────────────────
+// [11/11] 용신 처방
+// ─────────────────────────────────────────────
+export const generateAdviceSectionPrompt = (result: SajuResult, name: string): string => {
+  const { yongSinElement, yongSin, heeSin, giSin } = result;
+
+  const yongsinPos = findElementInGans(result, yongSinElement);
+  const heeSinPos = findElementInGans(result, heeSin);
+
+  return `당신은 사주명리 전문가입니다. 아래 확정 데이터를 바탕으로 "${name}" 님의 용신 처방을 작성하세요.
+
+[절대 규칙]
+- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- 수치·판정 변경 금지. 흐린 표현 2회 이하.
+- 출력은 [advice] 마커 한 줄로 시작. 분량: 260~340자.
+
+[확정 데이터]
+
+▶ 용신
+${yongSinElement}(${yongSin}) / 원국 기둥 위치: ${yongsinPos.length > 0 ? yongsinPos.join(', ') : '없음 — 외부에서 채워야'}
+
+▶ 희신
+${heeSin} / 원국 기둥 위치: ${heeSinPos.length > 0 ? heeSinPos.join(', ') : '없음'}
+
+▶ 기신
+${giSin} — 회피 오행
+
+▶ 용신(${yongSinElement}) 속성 처방
+색상: ${EL_COLOR[yongSinElement]}
+방위: ${EL_DIR[yongSinElement]}
+숫자: ${EL_NUM[yongSinElement]}
+계절: ${EL_SEASON[yongSinElement]}
+식재료: ${EL_FOOD[yongSinElement]}
+환경·취미: ${EL_ENV[yongSinElement]}
+
+▶ 희신(${heeSin}) 방위
+${EL_DIR[heeSin]} 방향 활용 권장
+
+▶ 기신(${giSin}) 회피
+색상: ${EL_COLOR[giSin]} 과다 피하기
+방위: ${EL_DIR[giSin]} 방향 주의
+
+[작성 지침]
+용신(${yongSinElement})을 보강하는 색·방향·숫자·계절·식재료·직업환경을 항목별로 자연스럽게 문장에 녹여 쓰세요.
+나열식 금지 — "용신 ${yongSinElement}의 기운은 ~에서 가장 잘 충전되며, ~이 삶에 활력을 줍니다" 흐름으로.
+기신(${giSin}) 오행이 왜 독이 되는지 1문장 이유 설명 후 구체적 회피법 1문장.
+마지막에 이번 달 안에 실천 가능한 구체 행동 3가지를 "- " 형식으로 제시하세요.
+
+[advice]`;
+};
+
+// ============================================================
+// 궁합 (관계별 독립 프롬프트)
+// ============================================================
+
+export type GunghapCategory = 'lover' | 'friend' | 'family' | 'work' | 'general';
+
+/** 두 사람 사주 공통 요약 블록 생성 */
+function buildPersonBlock(result: SajuResult, name: string): string {
+  const p = result.pillars;
+  const lines = [
+    `이름: ${name}`,
+    `일주: ${p.day.gan}${p.day.zhi}(${p.day.ganElement}·${result.dayMasterYinYang}간) / 12운성: ${p.day.twelveStage}`,
+    `오행: 목${result.elementPercent.목}% 화${result.elementPercent.화}% 토${result.elementPercent.토}% 금${result.elementPercent.금}% 수${result.elementPercent.수}%`,
+    `신강신약: ${result.strengthStatus} / 용신: ${result.yongSinElement}(${result.yongSin}) / 기신: ${result.giSin}`,
+    `격국: ${determineGyeokguk(result).name} / ${result.strengthStatus}`,
+    `일지 합·충: ${result.interactions.filter(i => i.description.includes(p.day.zhi)).map(i => `${i.type}:${i.description}`).join(' / ') || '없음'}`,
+  ];
+  return lines.join('\n');
+}
+
+/** 두 일간 사이 오행 관계 */
+function twoPersonElRelation(elA: string, elB: string): string {
+  if (elA === elB) return '비화(같은 오행 — 공명·경쟁 공존)';
+  if (EL_GEN[elA] === elB) return `A→B 상생(${elA}生${elB} — A가 B를 키움)`;
+  if (EL_GEN[elB] === elA) return `B→A 상생(${elB}生${elA} — B가 A를 키움)`;
+  if (EL_CON[elA] === elB) return `A→B 상극(${elA}克${elB} — A가 B를 제어·부담)`;
+  if (EL_CON[elB] === elA) return `B→A 상극(${elB}克${elA} — B가 A를 제어·부담)`;
+  return '무관계';
+}
+
+/** 일지 음양합 여부 (子丑·寅亥·卯戌·辰酉·巳申·午未) */
+function checkEumYangHap(zhiA: string, zhiB: string): string {
+  const pairs: [string, string][] = [
+    ['자','축'], ['인','해'], ['묘','술'], ['진','유'], ['사','신'], ['오','미']
+  ];
+  const found = pairs.find(([a, b]) => (zhiA === a && zhiB === b) || (zhiA === b && zhiB === a));
+  return found ? `일지 음양합(${found[0]}·${found[1]}) — 자연스럽게 당기는 인연` : '없음';
+}
+
+// ─────────────────────────────────────────────
+// 연인·배우자 궁합
+// ─────────────────────────────────────────────
+export const generateLoverGunghapPrompt = (
+  me: SajuResult, other: SajuResult,
+  myName: string, otherName: string
+): string => {
+  const myEl = me.pillars.day.ganElement;
+  const otherEl = other.pillars.day.ganElement;
+  const elRel = twoPersonElRelation(myEl, otherEl);
+  const eumYangHap = checkEumYangHap(me.pillars.day.zhi, other.pillars.day.zhi);
+
+  // 내가 상대 배우자성에 해당하는지 (남성 기준: 상대 여성의 관성=나 / 여성 기준: 상대 남성의 재성=나)
+  const mySpouseCheck = (() => {
+    if (other.gender === 'female') {
+      // 상대(여) 관성 오행 = 상대 일간을 극하는 오행
+      const otherGuanEl = Object.entries(EL_CON).find(([, v]) => v === other.pillars.day.ganElement)?.[0] || '';
+      return myEl === otherGuanEl ? `${myName}의 오행(${myEl})이 ${otherName}의 관성 오행 — 배우자 인연 강함` : `배우자성 오행 불일치(관성 ${otherGuanEl} vs ${myName} ${myEl})`;
+    } else {
+      const otherJaeEl = EL_CON[other.pillars.day.ganElement] || '';
+      return myEl === otherJaeEl ? `${myName}의 오행(${myEl})이 ${otherName}의 재성 오행 — 배우자 인연 강함` : `배우자성 오행 불일치(재성 ${otherJaeEl} vs ${myName} ${myEl})`;
+    }
+  })();
+
+  return `당신은 사주명리 전문가입니다. 두 사람의 연인·배우자 궁합을 해석하세요.
+
+[절대 규칙]
+- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- 수치·판정 변경 금지. 흐린 표현 2회 이하.
+- 출력은 [lover_gunghap] 마커 한 줄로 시작. 분량: 440~540자.
+
+[${myName} 사주]
+${buildPersonBlock(me, myName)}
+
+[${otherName} 사주]
+${buildPersonBlock(other, otherName)}
+
+▶ 일간 오행 관계
+${elRel}
+
+▶ 일지 음양합
+${eumYangHap}
+
+▶ 배우자성 오행 대응
+${mySpouseCheck}
+
+▶ 두 사람 용신·기신 충돌 여부
+${myName} 용신(${me.yongSinElement}) vs ${otherName} 기신(${other.giSin}): ${me.yongSinElement === other.giSin ? '충돌 — 에너지 소진 위험' : '충돌 없음'}
+${otherName} 용신(${other.yongSinElement}) vs ${myName} 기신(${me.giSin}): ${other.yongSinElement === me.giSin ? '충돌 — 에너지 소진 위험' : '충돌 없음'}
+
+[작성 지침]
+두 일간 오행 관계(${elRel})에서 연애 역학 구조(누가 리드하고 누가 지지하는지)를 먼저 선언하세요.
+일지 음양합(${eumYangHap})과 배우자성 오행 대응을 근거로 인연의 강도를 1~2문장으로 서술하세요.
+두 사람의 용신·기신 충돌이 실제 연애에서 어떤 갈등 패턴으로 나타날지 구체 장면 1가지로 묘사하세요.
+오행 보완 관계에서 서로에게 어떤 성장을 주는지 1문장, 주의해야 할 반복 패턴 1문장으로 마무리하세요.
+
+[lover_gunghap]`;
+};
+
+// ─────────────────────────────────────────────
+// 친구 궁합
+// ─────────────────────────────────────────────
+export const generateFriendGunghapPrompt = (
+  me: SajuResult, other: SajuResult,
+  myName: string, otherName: string
+): string => {
+  const myEl = me.pillars.day.ganElement;
+  const otherEl = other.pillars.day.ganElement;
+  const elRel = twoPersonElRelation(myEl, otherEl);
+
+  // 비겁 개수 (동류 에너지 공명 여부)
+  const myBijeop = (computeSipseongCounts(me)['비견'] || 0) + (computeSipseongCounts(me)['겁재'] || 0);
+  const otherBijeop = (computeSipseongCounts(other)['비견'] || 0) + (computeSipseongCounts(other)['겁재'] || 0);
+
+  // 오행 보완 (결핍 오행 상호 충족)
+  const myMissing = Object.entries(me.elementPercent).filter(([, v]) => v === 0).map(([k]) => k);
+  const complement = myMissing.filter(el => other.elementPercent[el as keyof typeof other.elementPercent] > 20);
+  const complementStr = complement.length > 0
+    ? `${myName}의 결핍 오행(${complement.join('·')})을 ${otherName}이 채워줌 — 보완 관계`
+    : '오행 결핍 상호보완 없음';
+
+  return `당신은 사주명리 전문가입니다. 두 사람의 친구 궁합을 해석하세요.
+
+[절대 규칙]
+- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- 수치·판정 변경 금지. 흐린 표현 2회 이하.
+- 출력은 [friend_gunghap] 마커 한 줄로 시작. 분량: 380~460자.
+
+[${myName} 사주]
+${buildPersonBlock(me, myName)}
+
+[${otherName} 사주]
+${buildPersonBlock(other, otherName)}
+
+▶ 일간 오행 관계
+${elRel}
+
+▶ 비겁 에너지 (동류 공명)
+${myName} 비겁: ${myBijeop}개 / ${otherName} 비겁: ${otherBijeop}개
+${myBijeop + otherBijeop >= 4 ? '비겁 과다 — 경쟁·질투 주의, 이해관계 충돌 가능' : '비겁 적정 — 균형 잡힌 관계'}
+
+▶ 오행 보완
+${complementStr}
+
+▶ 용신·기신 에너지
+${myName} 용신: ${me.yongSinElement} / ${otherName} 용신: ${other.yongSinElement}
+${me.yongSinElement === other.yongSinElement ? '동일 용신 — 같은 방향으로 함께 성장 가능' : '다른 용신 — 서로 다른 강점으로 보완 관계 형성 가능'}
+
+[작성 지침]
+일간 오행 관계(${elRel})를 근거로 두 사람이 함께 있을 때의 에너지 흐름을 "누가 활력을 주고 누가 안정을 주는지"로 묘사하세요.
+오행 보완 관계를 실제 우정에서 어떻게 나타나는지(공부·취미·위기 상황에서 어떻게 도움이 되는지) 1~2가지 장면으로 서술하세요.
+비겁 에너지 분석으로 경쟁 vs 협력의 밸런스를 1문장으로 짚고, 우정이 오래 유지되려면 무엇을 조심해야 하는지 마무리하세요.
+
+[friend_gunghap]`;
+};
+
+// ─────────────────────────────────────────────
+// 가족(부모자식) 궁합
+// ─────────────────────────────────────────────
+export const generateFamilyGunghapPrompt = (
+  me: SajuResult, other: SajuResult,
+  myName: string, otherName: string,
+  relation: string // '부모-자녀', '형제자매', '조부모-손자'
+): string => {
+  const myEl = me.pillars.day.ganElement;
+  const otherEl = other.pillars.day.ganElement;
+  const elRel = twoPersonElRelation(myEl, otherEl);
+
+  // 년주(조상·뿌리) 연결
+  const yearRel = twoPersonElRelation(me.pillars.year.ganElement, other.pillars.year.ganElement);
+
+  // 부모자식 관계에서의 십성 분석
+  // 부모 입장: 자녀 = 남자는 관성, 여자는 식상
+  // 자녀 입장: 부모 = 인성
+  const parentChildAnalysis = (() => {
+    const myCounts = computeSipseongCounts(me);
+    const otherCounts = computeSipseongCounts(other);
+    const myInseong = (myCounts['정인'] || 0) + (myCounts['편인'] || 0);
+    const otherInseong = (otherCounts['정인'] || 0) + (otherCounts['편인'] || 0);
+    return `${myName} 인성: ${myInseong}개 / ${otherName} 인성: ${otherInseong}개`;
+  })();
+
+  // 오행 세대 흐름
+  const generationFlow = EL_GEN[myEl] === otherEl
+    ? `${myEl}→${otherEl} 상생 흐름 — 윗 세대가 아랫 세대 에너지를 기름`
+    : EL_GEN[otherEl] === myEl
+    ? `${otherEl}→${myEl} 상생 흐름 — 아랫 세대 오행이 윗 세대를 보완`
+    : elRel;
+
+  return `당신은 사주명리 전문가입니다. 두 사람의 가족 궁합(${relation})을 해석하세요.
+
+[절대 규칙]
+- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- 수치·판정 변경 금지. 흐린 표현 2회 이하.
+- 출력은 [family_gunghap] 마커 한 줄로 시작. 분량: 380~460자.
+
+[${myName} 사주]
+${buildPersonBlock(me, myName)}
+
+[${otherName} 사주]
+${buildPersonBlock(other, otherName)}
+
+▶ 관계 유형: ${relation}
+
+▶ 일간 오행 관계 (세대 흐름)
+${generationFlow}
+
+▶ 년주 오행 연결 (뿌리·조상 기운)
+${yearRel}
+
+▶ 인성 분포 (양육·돌봄 에너지)
+${parentChildAnalysis}
+
+▶ 신강신약 상호작용
+${myName}: ${me.strengthStatus} / ${otherName}: ${other.strengthStatus}
+${me.isStrong && other.isStrong ? '두 사람 모두 신강 — 독립적, 주도권 갈등 주의' : !me.isStrong && !other.isStrong ? '두 사람 모두 신약 — 상호 의존, 외부 지원 중요' : '신강·신약 조합 — 한쪽이 리드·다른쪽이 지지하는 구조'}
+
+[작성 지침]
+${relation} 관계에서 오행 세대 흐름(${generationFlow})이 가족 역학에 어떤 구조를 만드는지 먼저 서술하세요.
+신강·신약 조합에서 두 사람의 에너지 역할(누가 이끌고 누가 따르는지)을 가족 상황에 맞게 묘사하세요.
+갈등이 생기는 구체 패턴 1가지와 관계를 강화하는 행동 처방 1가지로 마무리하세요.
+
+[family_gunghap]`;
+};
+
+// ─────────────────────────────────────────────
+// 직장동료 궁합
+// ─────────────────────────────────────────────
+export const generateWorkGunghapPrompt = (
+  me: SajuResult, other: SajuResult,
+  myName: string, otherName: string
+): string => {
+  const myEl = me.pillars.day.ganElement;
+  const otherEl = other.pillars.day.ganElement;
+  const elRel = twoPersonElRelation(myEl, otherEl);
+
+  // 관성·식상 비교 (업무 스타일)
+  const myCounts = computeSipseongCounts(me);
+  const otherCounts = computeSipseongCounts(other);
+  const myGwan = (myCounts['정관'] || 0) + (myCounts['편관'] || 0);
+  const otherGwan = (otherCounts['정관'] || 0) + (otherCounts['편관'] || 0);
+  const mySiksang = (myCounts['식신'] || 0) + (myCounts['상관'] || 0);
+  const otherSiksang = (otherCounts['식신'] || 0) + (otherCounts['상관'] || 0);
+
+  const workStyleA = myGwan >= 2 ? '규칙·체계 중심형' : mySiksang >= 2 ? '아이디어·표현 주도형' : '유연 협력형';
+  const workStyleB = otherGwan >= 2 ? '규칙·체계 중심형' : otherSiksang >= 2 ? '아이디어·표현 주도형' : '유연 협력형';
+
+  // 격국 보완 (업무 역할 분담)
+  const complementRoles = workStyleA === workStyleB
+    ? '동일 스타일 — 같은 업무 방식, 협업 부드럽지만 맹점 공유'
+    : `${workStyleA} + ${workStyleB} 조합 — 역할 분담 명확, 서로 보완 가능`;
+
+  return `당신은 사주명리 전문가입니다. 두 사람의 직장동료 궁합을 해석하세요.
+
+[절대 규칙]
+- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- 수치·판정 변경 금지. 흐린 표현 2회 이하.
+- 출력은 [work_gunghap] 마커 한 줄로 시작. 분량: 380~460자.
+
+[${myName} 사주]
+${buildPersonBlock(me, myName)}
+
+[${otherName} 사주]
+${buildPersonBlock(other, otherName)}
+
+▶ 일간 오행 관계 (업무 에너지)
+${elRel}
+
+▶ 업무 스타일
+${myName}: 관성 ${myGwan}개·식상 ${mySiksang}개 → ${workStyleA}
+${otherName}: 관성 ${otherGwan}개·식상 ${otherSiksang}개 → ${workStyleB}
+조합: ${complementRoles}
+
+▶ 신강신약 (업무 주도권)
+${myName}: ${me.strengthStatus}(${me.isStrong ? '주도·독립 성향' : '협력·지원 성향'})
+${otherName}: ${other.strengthStatus}(${other.isStrong ? '주도·독립 성향' : '협력·지원 성향'})
+
+▶ 용신·기신 에너지 충돌
+${me.yongSinElement === other.giSin ? `${myName} 용신이 ${otherName} 기신 — 업무 협력 시 에너지 소진 주의` : `용신·기신 충돌 없음 — 에너지 방해 적음`}
+
+[작성 지침]
+업무 스타일(${workStyleA} + ${workStyleB}) 조합이 프로젝트에서 어떻게 작동하는지 먼저 서술하세요.
+일간 오행 관계(${elRel})가 회의·의사결정·갈등 상황에서 어떻게 나타나는지 구체 장면 1가지로 묘사하세요.
+두 사람이 최대 시너지를 내는 업무 분담 방식 1가지와 주의해야 할 상황 1가지로 마무리하세요.
+
+[work_gunghap]`;
+};
+
+// ─────────────────────────────────────────────
+// 범용 인간관계 궁합
+// ─────────────────────────────────────────────
+export const generateGeneralGunghapPrompt = (
+  me: SajuResult, other: SajuResult,
+  myName: string, otherName: string,
+  relationLabel: string
+): string => {
+  const myEl = me.pillars.day.ganElement;
+  const otherEl = other.pillars.day.ganElement;
+  const elRel = twoPersonElRelation(myEl, otherEl);
+  const eumYangHap = checkEumYangHap(me.pillars.day.zhi, other.pillars.day.zhi);
+
+  return `당신은 사주명리 전문가입니다. 두 사람의 인간관계 궁합(${relationLabel})을 해석하세요.
+
+[절대 규칙]
+- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- 수치·판정 변경 금지. 흐린 표현 2회 이하.
+- 출력은 [general_gunghap] 마커 한 줄로 시작. 분량: 360~440자.
+
+[${myName} 사주]
+${buildPersonBlock(me, myName)}
+
+[${otherName} 사주]
+${buildPersonBlock(other, otherName)}
+
+▶ 일간 오행 관계
+${elRel}
+
+▶ 일지 음양합·충
+${eumYangHap}
+일지 충: ${me.interactions.filter(i => i.type === '충' && i.description.includes(me.pillars.day.zhi)).length > 0 && other.interactions.filter(i => i.type === '충' && i.description.includes(other.pillars.day.zhi)).length > 0 ? '양쪽 일지에 충 — 내부 긴장 상태에서 만남, 상호 영향 큼' : '없음'}
+
+▶ 용신·기신 에너지
+${myName} 용신(${me.yongSinElement}) + ${otherName} 오행: 나에게 ${Object.entries(me.elementPercent).some(([k]) => k === other.pillars.day.ganElement && other.elementPercent[k as keyof typeof other.elementPercent] > 0) ? '도움' : '영향 미미'}
+${other.yongSinElement === me.giSin ? `${otherName}의 용신이 ${myName}에게 기신 — 장기 관계 에너지 주의` : '에너지 충돌 없음'}
+
+[작성 지침]
+${relationLabel} 관계에서 두 오행(${myEl}·${otherEl}) 관계(${elRel})가 일상적 상호작용에 어떤 패턴을 만드는지 먼저 서술하세요.
+서로에게 자연스럽게 끌리는 이유와 마찰이 생기는 이유를 각 1문장씩 제시하세요.
+이 관계를 오래 유지하기 위한 핵심 조언 2가지로 마무리하세요.
+
+[general_gunghap]`;
 };
