@@ -35,13 +35,12 @@ export const useUserStore = create<UserState>()(
         try {
           set({ loading: true });
 
-          // 현재 세션 확인
+          // 현재 세션 확인 → 크레딧 병렬 로드 (userId 전달로 중복 getUser 제거)
           const { data: { session } } = await supabase.auth.getSession();
 
           if (session?.user) {
             set({ user: session.user, loading: false });
-            // 크레딧 정보 로드
-            useCreditStore.getState().fetchBalance();
+            useCreditStore.getState().fetchBalance(session.user.id);
           } else {
             set({ user: null, loading: false });
           }
@@ -50,7 +49,7 @@ export const useUserStore = create<UserState>()(
           supabase.auth.onAuthStateChange((_event, session) => {
             if (session?.user) {
               set({ user: session.user });
-              useCreditStore.getState().fetchBalance();
+              useCreditStore.getState().fetchBalance(session.user.id);
             } else {
               set({ user: null });
               useCreditStore.getState().reset();
@@ -72,9 +71,9 @@ export const useUserStore = create<UserState>()(
           const response = await auth.signInWithEmail(email, password);
 
           set({ user: response.user, loading: false });
-
-          // 크레딧 정보 로드
-          useCreditStore.getState().fetchBalance();
+          if (response.user) {
+            useCreditStore.getState().fetchBalance(response.user.id);
+          }
         } catch (error: any) {
           console.error('Login error:', error);
           set({
