@@ -13,29 +13,82 @@ import {
   generateFamilyGunghapPrompt,
   generateWorkGunghapPrompt,
   generateGeneralGunghapPrompt,
+  generateSomGunghapPrompt,
+  generateSpouseGunghapPrompt,
+  generateExRelationGunghapPrompt,
+  generateBusinessGunghapPrompt,
+  generateSecretCrushGunghapPrompt,
+  generateSoulmateGunghapPrompt,
+  generateRivalGunghapPrompt,
+  generateMentorGunghapPrompt,
+  injectRoleContext,
   type GunghapCategory,
 } from '../constants/prompts';
 import { sanitizeAIOutput } from '../services/fortuneService';
 import Link from 'next/link';
 
 // ──────────────────────────────────────────────
-// 카테고리 정의
+// 카테고리 그룹 정의
 // ──────────────────────────────────────────────
-const CATEGORIES: {
+type CategoryItem = {
   id: GunghapCategory;
   label: string;
   desc: string;
-  color: string;
   icon: string;
-}[] = [
-  { id: 'lover',   label: '연인·배우자', desc: '사랑의 케미와 장기 궁합', color: 'from-rose-500/25 to-pink-500/15',   icon: '♡' },
-  { id: 'friend',  label: '친구',        desc: '우정의 오행 에너지',       color: 'from-amber-500/25 to-yellow-500/15', icon: '★' },
-  { id: 'family',  label: '가족',        desc: '혈연 관계의 사주 흐름',    color: 'from-teal-500/25 to-emerald-500/15', icon: '◎' },
-  { id: 'work',    label: '직장동료',    desc: '업무 시너지와 갈등 예방',   color: 'from-blue-500/25 to-indigo-500/15',  icon: '▲' },
-  { id: 'general', label: '기타 관계',  desc: '모든 인간관계 궁합',        color: 'from-purple-500/25 to-violet-500/15', icon: '◆' },
+  accent: string;
+};
+
+type CategoryGroup = {
+  groupLabel: string;
+  groupColor: string;
+  items: CategoryItem[];
+};
+
+const CATEGORY_GROUPS: CategoryGroup[] = [
+  {
+    groupLabel: '연애',
+    groupColor: 'text-rose-400',
+    items: [
+      { id: 'secret_crush', label: '짝사랑', desc: '혼자만 마음이 있는 상대', icon: '✦', accent: 'from-rose-600/30 to-pink-500/15' },
+      { id: 'som', label: '썸남·썸녀', desc: '아직 고백 전, 설레는 감정', icon: '♡', accent: 'from-rose-500/25 to-pink-400/15' },
+      { id: 'lover', label: '연인', desc: '사귀는 남자친구·여자친구', icon: '♡', accent: 'from-pink-500/25 to-rose-400/15' },
+      { id: 'spouse', label: '배우자', desc: '함께 사는 남편·아내', icon: '◎', accent: 'from-rose-400/25 to-amber-400/15' },
+      { id: 'ex_lover', label: 'X여친·X남친', desc: '헤어진 연인', icon: '◇', accent: 'from-slate-500/25 to-rose-500/15' },
+      { id: 'ex_spouse', label: 'X남편·X아내', desc: '이혼한 배우자', icon: '◇', accent: 'from-slate-500/25 to-violet-500/15' },
+    ],
+  },
+  {
+    groupLabel: '특별한 인연',
+    groupColor: 'text-violet-400',
+    items: [
+      { id: 'soulmate', label: '소울메이트', desc: '설명 못하는 특별한 연결감', icon: '◉', accent: 'from-violet-500/30 to-indigo-400/15' },
+      { id: 'rival', label: '라이벌', desc: '경쟁하며 서로 자극하는 관계', icon: '▲', accent: 'from-orange-500/25 to-amber-400/15' },
+      { id: 'mentor', label: '멘토·멘티', desc: '성장과 배움의 파트너십', icon: '◆', accent: 'from-teal-500/25 to-emerald-400/15' },
+    ],
+  },
+  {
+    groupLabel: '인간관계',
+    groupColor: 'text-blue-400',
+    items: [
+      { id: 'friend', label: '친구', desc: '가까운 벗, 오랜 친구', icon: '★', accent: 'from-amber-500/25 to-yellow-400/15' },
+      { id: 'parent_child', label: '부모와 자녀', desc: '세대를 잇는 혈연 관계', icon: '▲', accent: 'from-teal-500/25 to-emerald-400/15' },
+      { id: 'sibling', label: '형제·자매', desc: '같은 뿌리의 형제자매', icon: '▲', accent: 'from-green-500/25 to-teal-400/15' },
+      { id: 'work', label: '직장 동료', desc: '함께 일하는 동료·상사', icon: '▲', accent: 'from-blue-500/25 to-indigo-400/15' },
+      { id: 'business', label: '사업 파트너', desc: '공동 창업·사업 파트너', icon: '◆', accent: 'from-indigo-500/25 to-blue-400/15' },
+    ],
+  },
+  {
+    groupLabel: '재미로 보기',
+    groupColor: 'text-amber-400',
+    items: [
+      { id: 'idol_fan', label: '아이돌과 팬', desc: '스타와 팬의 사주 인연', icon: '★', accent: 'from-yellow-500/25 to-amber-400/15' },
+      { id: 'pet', label: '나와 반려동물', desc: '나와 반려묘·강아지', icon: '◆', accent: 'from-amber-500/25 to-orange-400/15' },
+      { id: 'custom', label: '직접 입력', desc: '원하는 관계를 직접 입력', icon: '✎', accent: 'from-purple-500/25 to-violet-400/15' },
+    ],
+  },
 ];
 
-const FAMILY_RELATIONS = ['부모-자녀', '형제자매', '조부모-손자녀', '고부·장서'];
+const ALL_CATEGORIES = CATEGORY_GROUPS.flatMap(g => g.items);
 
 // ──────────────────────────────────────────────
 // 상대방 입력 폼 상태
@@ -56,6 +109,15 @@ const defaultOther: OtherInput = {
   calendar_type: 'solar',
 };
 
+type Step = 'category' | 'role' | 'input' | 'result';
+
+const STEP_LABELS: Record<Step, string> = {
+  category: '관계 선택',
+  role: '역할 입력',
+  input: '상대 정보',
+  result: '결과',
+};
+
 // ──────────────────────────────────────────────
 // GPT 호출
 // ──────────────────────────────────────────────
@@ -63,7 +125,7 @@ async function callGunghapGPT(prompt: string): Promise<string> {
   const res = await fetch('/api/ai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, maxTokens: 800, systemPrompt: SYSTEM_PROMPT }),
+    body: JSON.stringify({ prompt, maxTokens: 900, systemPrompt: SYSTEM_PROMPT }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || '분석 실패');
@@ -77,9 +139,11 @@ export default function GunghapPage() {
   const { user } = useUserStore();
   const { profiles } = useProfileStore();
 
-  const [step, setStep] = useState<'category' | 'input' | 'result'>('category');
+  const [step, setStep] = useState<Step>('category');
   const [category, setCategory] = useState<GunghapCategory>('lover');
-  const [familyRelation, setFamilyRelation] = useState(FAMILY_RELATIONS[0]);
+  const [customLabel, setCustomLabel] = useState('');
+  const [myRole, setMyRole] = useState('');
+  const [otherRole, setOtherRole] = useState('');
   const [myProfileId, setMyProfileId] = useState<string>('');
   const [other, setOther] = useState<OtherInput>(defaultOther);
   const [loading, setLoading] = useState(false);
@@ -91,9 +155,13 @@ export default function GunghapPage() {
     () => profiles.find(p => p.id === myProfileId) ?? primaryProfile,
     [profiles, myProfileId, primaryProfile],
   );
-  const selectedCat = CATEGORIES.find(c => c.id === category)!;
-
+  const selectedCat = ALL_CATEGORIES.find(c => c.id === category)!;
   const isOtherValid = other.name.trim() && other.birth_date && other.gender;
+
+  const getCategoryDisplayLabel = () => {
+    if (category === 'custom' && customLabel.trim()) return customLabel.trim();
+    return selectedCat?.label ?? '';
+  };
 
   const handleAnalyze = async () => {
     if (!selectedProfile || !isOtherValid) return;
@@ -124,29 +192,66 @@ export default function GunghapPage() {
       let prompt = '';
 
       switch (category) {
+        case 'secret_crush':
+          prompt = generateSecretCrushGunghapPrompt(myResult, otherResult, myName, otherName);
+          break;
+        case 'som':
+          prompt = generateSomGunghapPrompt(myResult, otherResult, myName, otherName);
+          break;
         case 'lover':
           prompt = generateLoverGunghapPrompt(myResult, otherResult, myName, otherName);
+          break;
+        case 'spouse':
+          prompt = generateSpouseGunghapPrompt(myResult, otherResult, myName, otherName);
+          break;
+        case 'ex_lover':
+          prompt = generateExRelationGunghapPrompt(myResult, otherResult, myName, otherName, 'X여친·X남친');
+          break;
+        case 'ex_spouse':
+          prompt = generateExRelationGunghapPrompt(myResult, otherResult, myName, otherName, 'X남편·X아내');
+          break;
+        case 'soulmate':
+          prompt = generateSoulmateGunghapPrompt(myResult, otherResult, myName, otherName);
+          break;
+        case 'rival':
+          prompt = generateRivalGunghapPrompt(myResult, otherResult, myName, otherName);
           break;
         case 'friend':
           prompt = generateFriendGunghapPrompt(myResult, otherResult, myName, otherName);
           break;
-        case 'family':
-          prompt = generateFamilyGunghapPrompt(myResult, otherResult, myName, otherName, familyRelation);
+        case 'mentor':
+          prompt = generateMentorGunghapPrompt(myResult, otherResult, myName, otherName);
+          break;
+        case 'parent_child':
+          prompt = generateFamilyGunghapPrompt(myResult, otherResult, myName, otherName, '부모-자녀');
+          break;
+        case 'sibling':
+          prompt = generateFamilyGunghapPrompt(myResult, otherResult, myName, otherName, '형제자매');
           break;
         case 'work':
           prompt = generateWorkGunghapPrompt(myResult, otherResult, myName, otherName);
           break;
+        case 'business':
+          prompt = generateBusinessGunghapPrompt(myResult, otherResult, myName, otherName);
+          break;
         default:
-          prompt = generateGeneralGunghapPrompt(myResult, otherResult, myName, otherName, selectedCat.label);
+          prompt = generateGeneralGunghapPrompt(
+            myResult, otherResult, myName, otherName,
+            getCategoryDisplayLabel()
+          );
       }
 
+      // 역할 컨텍스트 주입
+      prompt = injectRoleContext(prompt, myName, myRole, otherName, otherRole);
+
       const text = await callGunghapGPT(prompt);
-      // 마커 제거
-      const cleaned = text.replace(/^\[(?:lover|friend|family|work|general)_gunghap\]\s*/m, '').trim();
+      const cleaned = text
+        .replace(/^\[(?:secret_crush|som|lover|spouse|ex|soulmate|rival|friend|mentor|family|work|business|general)_gunghap\]\s*/m, '')
+        .trim();
       setResult(cleaned);
       setStep('result');
-    } catch (e: any) {
-      setError(e.message || '분석 중 오류가 발생했습니다.');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '분석 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -157,6 +262,9 @@ export default function GunghapPage() {
     setResult('');
     setError('');
     setOther(defaultOther);
+    setMyRole('');
+    setOtherRole('');
+    setCustomLabel('');
   };
 
   // 비로그인 처리
@@ -178,8 +286,11 @@ export default function GunghapPage() {
     );
   }
 
+  const stepOrder: Step[] = ['category', 'role', 'input', 'result'];
+  const stepIdx = stepOrder.indexOf(step);
+
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-24">
       {/* 헤더 */}
       <div className="px-5 pt-8 pb-4">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
@@ -192,14 +303,22 @@ export default function GunghapPage() {
 
       {/* 스텝 인디케이터 */}
       <div className="px-5 mb-6">
-        <div className="flex items-center gap-2">
-          {(['category', 'input', 'result'] as const).map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold
-                ${step === s ? 'bg-cta text-white' : i < ['category','input','result'].indexOf(step) ? 'bg-cta/40 text-white' : 'bg-white/10 text-text-tertiary'}`}>
-                {i + 1}
+        <div className="flex items-center gap-1.5">
+          {stepOrder.map((s, i) => (
+            <div key={s} className="flex items-center gap-1.5 flex-1">
+              <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all
+                  ${step === s ? 'bg-cta text-white scale-110' : i < stepIdx ? 'bg-cta/50 text-white' : 'bg-white/10 text-text-tertiary'}`}>
+                  {i + 1}
+                </div>
+                <span className={`text-[9px] font-medium whitespace-nowrap transition-colors
+                  ${step === s ? 'text-cta' : i < stepIdx ? 'text-text-secondary' : 'text-text-tertiary'}`}>
+                  {STEP_LABELS[s]}
+                </span>
               </div>
-              {i < 2 && <div className="flex-1 h-px bg-white/10" />}
+              {i < stepOrder.length - 1 && (
+                <div className={`flex-1 h-px transition-colors ${i < stepIdx ? 'bg-cta/40' : 'bg-white/10'}`} />
+              )}
             </div>
           ))}
         </div>
@@ -207,78 +326,146 @@ export default function GunghapPage() {
 
       <AnimatePresence mode="wait">
 
-        {/* ── STEP 1: 카테고리 선택 ── */}
+        {/* ── STEP 1: 관계 유형 선택 ── */}
         {step === 'category' && (
-          <motion.div key="category" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="px-5">
-            <h2 className="text-[13px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">관계 유형 선택</h2>
-            <div className="flex flex-col gap-2.5">
-              {CATEGORIES.map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => setCategory(cat.id)}
-                  className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left
-                    bg-gradient-to-br ${cat.color}
-                    ${category === cat.id ? 'border-cta/60 ring-1 ring-cta/30' : 'border-[var(--border-subtle)] hover:border-white/20'}`}
-                >
-                  <span className="text-2xl w-8 text-center">{cat.icon}</span>
-                  <div className="flex-1">
-                    <p className="text-[15px] font-bold text-text-primary">{cat.label}</p>
-                    <p className="text-[12px] text-text-secondary mt-0.5">{cat.desc}</p>
-                  </div>
-                  {category === cat.id && (
-                    <div className="w-5 h-5 rounded-full bg-cta flex items-center justify-center">
-                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="2,6 5,9 10,3" />
-                      </svg>
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* 가족 서브관계 */}
-            {category === 'family' && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3">
-                <p className="text-[12px] font-medium text-text-secondary mb-2">가족 관계 세부 선택</p>
+          <motion.div key="category" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="px-5 space-y-5">
+            {CATEGORY_GROUPS.map(group => (
+              <div key={group.groupLabel}>
+                <p className={`text-[11px] font-bold mb-2.5 uppercase tracking-wider ${group.groupColor}`}>
+                  {group.groupLabel}
+                </p>
                 <div className="grid grid-cols-2 gap-2">
-                  {FAMILY_RELATIONS.map(rel => (
+                  {group.items.map(cat => (
                     <button
-                      key={rel}
-                      onClick={() => setFamilyRelation(rel)}
-                      className={`py-2.5 px-3 rounded-xl text-[13px] font-medium border transition-all
-                        ${familyRelation === rel ? 'bg-cta/20 border-cta/50 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
+                      key={cat.id}
+                      onClick={() => setCategory(cat.id)}
+                      className={`flex items-start gap-3 p-3.5 rounded-2xl border transition-all text-left
+                        bg-gradient-to-br ${cat.accent}
+                        ${category === cat.id ? 'border-cta/70 ring-1 ring-cta/30 shadow-[0_0_12px_rgba(139,92,246,0.15)]' : 'border-[var(--border-subtle)] hover:border-white/25'}`}
                     >
-                      {rel}
+                      <span className="text-lg leading-tight mt-0.5 w-5 text-center flex-shrink-0">{cat.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-bold text-text-primary leading-tight">{cat.label}</p>
+                        <p className="text-[10px] text-text-secondary mt-0.5 leading-tight">{cat.desc}</p>
+                      </div>
                     </button>
                   ))}
                 </div>
-              </motion.div>
-            )}
+              </div>
+            ))}
+
+            {/* 직접 입력 커스텀 라벨 */}
+            <AnimatePresence>
+              {category === 'custom' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <input
+                    type="text"
+                    value={customLabel}
+                    onChange={e => setCustomLabel(e.target.value)}
+                    placeholder="관계를 직접 입력 (예: 전생의 연인, 인터넷 친구)"
+                    maxLength={30}
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-text-primary text-[14px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none transition"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <button
-              onClick={() => setStep('input')}
-              className="w-full mt-6 py-3.5 rounded-2xl bg-cta text-white font-bold text-[15px] active:scale-[0.98] transition-all"
+              onClick={() => setStep('role')}
+              disabled={category === 'custom' && !customLabel.trim()}
+              className="w-full py-3.5 rounded-2xl bg-cta text-white font-bold text-[15px] active:scale-[0.98] transition-all disabled:opacity-40"
             >
-              다음 — 상대방 정보 입력
+              다음 — 역할 입력
             </button>
           </motion.div>
         )}
 
-        {/* ── STEP 2: 상대방 정보 입력 ── */}
+        {/* ── STEP 2: 역할 입력 ── */}
+        {step === 'role' && (
+          <motion.div key="role" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="px-5">
+
+            {/* 선택된 관계 배지 */}
+            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5 bg-gradient-to-r ${selectedCat.accent} border border-white/15`}>
+              <span className="text-sm">{selectedCat.icon}</span>
+              <span className="text-[13px] font-semibold text-text-primary">{getCategoryDisplayLabel()}</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] space-y-4">
+              <div>
+                <p className="text-[13px] font-bold text-text-primary mb-0.5">
+                  각자의 역할을 입력해주세요
+                </p>
+                <p className="text-[11px] text-text-tertiary">선택사항 · 입력할수록 분석이 더 개인화됩니다</p>
+              </div>
+
+              {/* 내 역할 */}
+              <div>
+                <label className="text-[11px] font-medium text-text-tertiary mb-1.5 block">
+                  {selectedProfile?.name}의 역할
+                </label>
+                <input
+                  type="text"
+                  value={myRole}
+                  onChange={e => setMyRole(e.target.value)}
+                  placeholder="예: 남자친구, 엄마, 팬, 직속 상사"
+                  maxLength={50}
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[14px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none transition"
+                />
+              </div>
+
+              {/* 상대 역할 */}
+              <div>
+                <label className="text-[11px] font-medium text-text-tertiary mb-1.5 block">
+                  상대방의 역할
+                </label>
+                <input
+                  type="text"
+                  value={otherRole}
+                  onChange={e => setOtherRole(e.target.value)}
+                  placeholder="예: 여자친구, 딸, 아이돌, 팀장"
+                  maxLength={50}
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[14px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none transition"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => setStep('category')}
+                className="px-5 py-3.5 rounded-2xl border border-white/15 text-text-secondary font-medium text-[14px] active:scale-[0.98] transition-all"
+              >
+                이전
+              </button>
+              <button
+                onClick={() => setStep('input')}
+                className="flex-1 py-3.5 rounded-2xl bg-cta text-white font-bold text-[15px] active:scale-[0.98] transition-all"
+              >
+                {myRole.trim() || otherRole.trim() ? '역할 입력 완료' : '건너뛰기'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── STEP 3: 상대방 정보 입력 ── */}
         {step === 'input' && (
           <motion.div key="input" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="px-5">
 
             {/* 내 프로필 선택 */}
             {profiles.length > 1 && (
-              <div className="mb-5">
-                <p className="text-[12px] font-semibold text-text-secondary mb-2 uppercase tracking-wider">내 프로필</p>
+              <div className="mb-4">
+                <p className="text-[11px] font-semibold text-text-secondary mb-2 uppercase tracking-wider">내 프로필</p>
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {profiles.map(p => (
                     <button
                       key={p.id}
                       onClick={() => setMyProfileId(p.id)}
                       className={`flex-shrink-0 px-3.5 py-2 rounded-xl text-[13px] font-medium border transition-all
-                        ${(selectedProfile?.id === p.id) ? 'bg-cta/20 border-cta/50 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
+                        ${selectedProfile?.id === p.id ? 'bg-cta/20 border-cta/50 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
                     >
                       {p.name}
                     </button>
@@ -287,12 +474,22 @@ export default function GunghapPage() {
               </div>
             )}
 
-            {/* 선택된 내 정보 요약 */}
+            {/* 내 정보 요약 */}
             {selectedProfile && (
-              <div className="mb-5 p-3.5 rounded-xl bg-white/5 border border-white/10">
-                <p className="text-[11px] text-text-tertiary mb-1">나</p>
-                <p className="text-[14px] font-bold text-text-primary">{selectedProfile.name}</p>
-                <p className="text-[12px] text-text-secondary">{selectedProfile.birth_date} · {selectedProfile.gender === 'male' ? '남' : '여'}</p>
+              <div className="mb-4 p-3 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${selectedCat.accent} flex items-center justify-center text-sm border border-white/15 flex-shrink-0`}>
+                  {selectedCat.icon}
+                </div>
+                <div>
+                  <p className="text-[13px] font-bold text-text-primary">{selectedProfile.name}</p>
+                  <p className="text-[11px] text-text-secondary">{selectedProfile.birth_date} · {selectedProfile.gender === 'male' ? '남' : '여'}</p>
+                </div>
+                {(myRole.trim() || otherRole.trim()) && (
+                  <div className="ml-auto text-[10px] text-text-tertiary text-right">
+                    {myRole.trim() && <div>내 역할: {myRole}</div>}
+                    {otherRole.trim() && <div>상대 역할: {otherRole}</div>}
+                  </div>
+                )}
               </div>
             )}
 
@@ -300,7 +497,6 @@ export default function GunghapPage() {
             <div className="p-4 rounded-2xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] space-y-4">
               <p className="text-[13px] font-bold text-text-primary">상대방 정보</p>
 
-              {/* 이름 */}
               <div>
                 <label className="text-[11px] font-medium text-text-tertiary mb-1.5 block">이름</label>
                 <input
@@ -312,7 +508,6 @@ export default function GunghapPage() {
                 />
               </div>
 
-              {/* 생년월일 */}
               <div>
                 <label className="text-[11px] font-medium text-text-tertiary mb-1.5 block">생년월일</label>
                 <input
@@ -323,10 +518,9 @@ export default function GunghapPage() {
                 />
               </div>
 
-              {/* 출생시간 (선택) */}
               <div>
                 <label className="text-[11px] font-medium text-text-tertiary mb-1.5 block">
-                  출생시간 <span className="text-text-tertiary">(모르면 비워두세요)</span>
+                  출생시간 <span className="text-text-tertiary/60">(모르면 비워두세요)</span>
                 </label>
                 <input
                   type="time"
@@ -336,7 +530,6 @@ export default function GunghapPage() {
                 />
               </div>
 
-              {/* 성별 */}
               <div>
                 <label className="text-[11px] font-medium text-text-tertiary mb-1.5 block">성별</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -353,7 +546,6 @@ export default function GunghapPage() {
                 </div>
               </div>
 
-              {/* 양력/음력 */}
               <div>
                 <label className="text-[11px] font-medium text-text-tertiary mb-1.5 block">역법</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -379,7 +571,7 @@ export default function GunghapPage() {
 
             <div className="flex gap-2 mt-5">
               <button
-                onClick={() => setStep('category')}
+                onClick={() => setStep('role')}
                 className="px-5 py-3.5 rounded-2xl border border-white/15 text-text-secondary font-medium text-[14px] active:scale-[0.98] transition-all"
               >
                 이전
@@ -403,21 +595,25 @@ export default function GunghapPage() {
           </motion.div>
         )}
 
-        {/* ── STEP 3: 결과 ── */}
+        {/* ── STEP 4: 결과 ── */}
         {step === 'result' && (
           <motion.div key="result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="px-5">
 
             {/* 결과 헤더 */}
-            <div className={`p-4 rounded-2xl mb-4 bg-gradient-to-br ${selectedCat.color} border border-white/10`}>
+            <div className={`p-4 rounded-2xl mb-4 bg-gradient-to-br ${selectedCat.accent} border border-white/15`}>
               <div className="flex items-center gap-3">
                 <span className="text-3xl">{selectedCat.icon}</span>
-                <div>
-                  <p className="text-[12px] text-text-tertiary">{selectedCat.label} 궁합</p>
-                  <p className="text-[16px] font-bold text-text-primary">
+                <div className="flex-1">
+                  <p className="text-[11px] text-text-tertiary uppercase tracking-wider">{getCategoryDisplayLabel()} 궁합</p>
+                  <p className="text-[16px] font-bold text-text-primary mt-0.5">
                     {selectedProfile?.name} · {other.name}
                   </p>
-                  {category === 'family' && (
-                    <p className="text-[12px] text-text-secondary mt-0.5">{familyRelation}</p>
+                  {(myRole.trim() || otherRole.trim()) && (
+                    <p className="text-[11px] text-text-secondary mt-0.5">
+                      {myRole.trim() && `${selectedProfile?.name}: ${myRole}`}
+                      {myRole.trim() && otherRole.trim() && ' / '}
+                      {otherRole.trim() && `${other.name}: ${otherRole}`}
+                    </p>
                   )}
                 </div>
               </div>
@@ -425,9 +621,9 @@ export default function GunghapPage() {
 
             {/* 결과 본문 */}
             <div className="p-5 rounded-2xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-              <pre className="text-[14px] text-text-primary leading-relaxed whitespace-pre-wrap font-sans">
+              <div className="text-[14px] text-text-primary leading-[1.85] whitespace-pre-wrap">
                 {result}
-              </pre>
+              </div>
             </div>
 
             {/* 액션 버튼 */}
@@ -436,10 +632,10 @@ export default function GunghapPage() {
                 onClick={reset}
                 className="flex-1 py-3.5 rounded-2xl border border-white/15 text-text-secondary font-medium text-[14px] active:scale-[0.98] transition-all"
               >
-                다시 보기
+                처음으로
               </button>
               <button
-                onClick={() => { setStep('input'); setResult(''); }}
+                onClick={() => { setStep('input'); setResult(''); setError(''); }}
                 className="flex-1 py-3.5 rounded-2xl bg-cta/20 border border-cta/40 text-cta font-bold text-[14px] active:scale-[0.98] transition-all"
               >
                 다른 상대 분석
