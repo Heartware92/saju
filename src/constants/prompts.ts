@@ -5,6 +5,7 @@
 
 import { SajuResult, TEN_GODS_MAP, type SeWoon, type DaeWoon } from '../utils/sajuCalculator';
 import { determineGyeokguk, analyzeGyeokgukStatus } from '../engine/gyeokguk';
+import { getDayPillarTraits } from './gapjaTraits';
 import type { TarotCardInfo } from '../services/api';
 
 /**
@@ -321,12 +322,14 @@ ${isStrong ? '신강' : '신약'} · 용신: ${yongSinElement}
  * - 9개 섹션, [key] 구분자 출력
  */
 export const JUNGTONGSAJU_SECTION_KEYS = [
-  'general', 'character', 'career', 'wealth', 'love', 'health', 'relation', 'luck', 'advice'
+  'general', 'daymaster', 'element', 'character', 'career', 'wealth', 'love', 'health', 'relation', 'luck', 'advice'
 ] as const;
 export type JungtongsajuSectionKey = typeof JUNGTONGSAJU_SECTION_KEYS[number];
 
 export const JUNGTONGSAJU_SECTION_LABELS: Record<JungtongsajuSectionKey, string> = {
   general:   '사주 총론',
+  daymaster: '일주 해석',
+  element:   '오행 분포',
   character: '성격·기질',
   career:    '직업·적성',
   wealth:    '재물운',
@@ -341,6 +344,51 @@ export const generateJungtongsajuPrompt = (result: SajuResult): string => {
   const { pillars, elementPercent, isStrong, yongSinElement, yongSin, sinSals, interactions, daeWoon, seWoon, gender, hourUnknown } = result;
   const gyeokguk = determineGyeokguk(result);
   const sipseong = formatSipseongCounts(computeSipseongCounts(result));
+
+  // ── 60갑자 일주 특성 (DB 조회)
+  const dayTraits = getDayPillarTraits(pillars.day.gan, pillars.day.zhi);
+  const dayTraitsBlock = dayTraits
+    ? `[일주 60갑자 특성 — DB 조회값, 검증된 데이터]
+일주: ${dayTraits.name}(${dayTraits.hanja})
+키워드: ${dayTraits.keywords.join(', ')}
+특성: ${dayTraits.traits}
+특수신살: ${dayTraits.sinsal.length > 0 ? dayTraits.sinsal.join(', ') : '없음'}`
+    : '';
+
+  // ── 기둥별 상세 (12운성·지장간·12신살·공망)
+  const formatPillar = (label: string, p: typeof pillars.year, isMissing = false) => {
+    if (isMissing) return `${label}: 미상(삼주추명)`;
+    const kong = p.isKongmang ? '·공망' : '';
+    const hidden = p.hiddenStems.length > 0 ? `지장간(${p.hiddenStems.join(',')})` : '';
+    const sinsal12 = p.sinSal12 ? `12신살(${p.sinSal12})` : '';
+    const parts = [
+      `${p.gan}(${p.ganElement}·${p.tenGodGan})`,
+      `${p.zhi}(${p.zhiElement}·${p.tenGodZhi})`,
+      `12운성(${p.twelveStage})${kong}`,
+      hidden,
+      sinsal12,
+    ].filter(Boolean);
+    return `${label}: ${parts.join(' / ')}`;
+  };
+
+  const pillarDetailBlock = [
+    formatPillar('년주', pillars.year),
+    formatPillar('월주', pillars.month),
+    formatPillar('일주', pillars.day),
+    hourUnknown ? formatPillar('시주', pillars.hour, true) : formatPillar('시주', pillars.hour),
+  ].join('\n');
+
+  // ── 신강신약 5단계 + 득령득지득세
+  const strengthBlock = `신강신약: ${result.strengthStatus}(점수 ${result.strengthScore}) — 득령(${result.deukRyeong ? 'O' : 'X'}) 득지(${result.deukJi ? 'O' : 'X'}) 득세(${result.deukSe ? 'O' : 'X'})`;
+
+  // ── 오행 부족·과다 분석
+  const elementEntries = Object.entries(elementPercent) as [string, number][];
+  const zeroElements = elementEntries.filter(([, v]) => v === 0).map(([k]) => k);
+  const maxEl = elementEntries.reduce((a, b) => a[1] > b[1] ? a : b);
+  const elementNoteBlock = [
+    zeroElements.length > 0 ? `결핍 오행: ${zeroElements.join('·')}` : '결핍 오행: 없음',
+    `과다 오행: ${maxEl[0]}(${maxEl[1]}%)`,
+  ].join(' / ');
 
   const sinSalStr = sinSals.length > 0 ? sinSals.map(s => `${s.name}(${s.type === 'good' ? '길' : s.type === 'bad' ? '흉' : '중'})`).join(' ') : '없음';
   const interactionStr = interactions.length > 0 ? interactions.map(i => `${i.type}: ${i.description}`).join(' / ') : '없음';
@@ -363,19 +411,17 @@ export const generateJungtongsajuPrompt = (result: SajuResult): string => {
     .map(s => `${s.year}년 ${s.gan}${s.zhi}(${s.ganElement}${s.zhiElement}·${s.tenGod}·${s.twelveStage})`)
     .join(' | ');
 
-  const pillarLine = hourUnknown
-    ? `년: ${pillars.year.gan}${pillars.year.zhi}  월: ${pillars.month.gan}${pillars.month.zhi}  일: ${pillars.day.gan}${pillars.day.zhi}  시: 미상(삼주추명)`
-    : `년: ${pillars.year.gan}${pillars.year.zhi}  월: ${pillars.month.gan}${pillars.month.zhi}  일: ${pillars.day.gan}${pillars.day.zhi}  시: ${pillars.hour.gan}${pillars.hour.zhi}`;
-
   const hourNote = hourUnknown
     ? '\n출생 시간 미상 — 삼주추명 원칙: 자녀궁·말년·시간대별 상세는 간략히만 처리.'
     : '';
 
-  return `[사주 원국]
-${pillarLine}
-일간: ${pillars.day.gan}(${pillars.day.ganElement})
+  return `[사주 원국 — 기둥별 상세]
+${pillarDetailBlock}
+
+일간: ${pillars.day.gan}(${pillars.day.ganElement}·${result.dayMasterYinYang})
 오행: 목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%
-신강신약: ${isStrong ? '신강' : '신약'}
+${elementNoteBlock}
+${strengthBlock}
 용신: ${yongSinElement}(${yongSin})  희신: ${result.heeSin}  기신: ${result.giSin}
 격국: ${gyeokguk.name}
 십성 분포: ${sipseong}
@@ -387,23 +433,31 @@ ${pillarLine}
 대운 전체(최대 8개): ${daeWoonStr}
 최근·향후 세운(3년): ${recentSeWoon}${hourNote}
 
+${dayTraitsBlock}
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [작성 규칙 — 절대 준수]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1) Markdown 절대 금지. 별표(**), 헤딩(#), 이모지 전부 금지.
 2) 불릿은 "- " 또는 "· " 형식만 허용.
 3) AI 자기소개 문구("분석 결과", "데이터에 따르면") 금지.
-4) 위에 주어진 격국·용신·신강약·오행%·십성·신살·합충·대운·세운 수치를 뒤집거나 임의 변경 금지.
+4) 위에 주어진 모든 수치(격국·용신·신강약·오행%·십성·신살·합충·대운·세운·12운성·지장간)를 뒤집거나 임의 변경 금지.
 5) 전문 용어 첫 등장 시 괄호로 쉬운 말 병기.
 6) "~일 수 있습니다" 흐린 표현은 전체 답변에서 2회 이하. 단정적 어투 유지.
 7) 각 섹션 첫 문장에서 결론 먼저, 근거를 이어붙이는 방식.
 8) 출력은 [general] 마커부터 시작. 마커 이전 텍스트 없어야 함.
-9) 아래 9개 마커를 정확히 사용. 마커는 줄 처음에 단독으로 위치.
+9) 아래 11개 마커를 정확히 사용. 마커는 줄 처음에 단독으로 위치.
 
 [섹션 지침]
 
 [general] — 280~360자
-격국(${gyeokguk.name})의 본질 + 용신(${yongSinElement}) 역할 + 신강신약(${isStrong ? '신강' : '신약'})이 삶 전반에 만드는 기조. 오행 분포의 가장 두드러진 특징 1개 포함.
+격국(${gyeokguk.name})의 본질 + 용신(${yongSinElement}) 역할 + ${result.strengthStatus}(신강신약)이 삶 전반에 만드는 기조. 오행 분포의 가장 두드러진 특징(결핍/과다) 1개 포함.
+
+[daymaster] — 260~340자
+일주 ${pillars.day.gan}${pillars.day.zhi}(${dayTraits?.hanja ?? ''})의 60갑자 특성 해석. DB에 주어진 키워드와 특성을 바탕으로 이 일주가 삶에서 만들어내는 고유한 에너지와 패턴을 서술. 특수신살이 있다면 그 의미를 일상 언어로 풀어서 1~2문장 추가.
+
+[element] — 240~300자
+오행 분포(목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%) 분석. 결핍 오행이 야기하는 구체적 생활 패턴 약점 2가지. 과다 오행이 만드는 강점 1가지. 결핍 오행을 일상에서 보완하는 방법 1가지 실용 제안.
 
 [character] — 300~380자
 일간 ${pillars.day.gan}(${pillars.day.ganElement}) + 격국 + 십성 분포 상위 2개로 본 타고난 성향. 강점 2가지와 그림자(약점) 2가지를 균형 있게 서술.
@@ -412,10 +466,10 @@ ${pillarLine}
 격국 기반 적합 직군 3~4개. 피해야 할 직군 1~2개. 조직형·프리랜서 판단. 용신 오행과 연관된 업계 키워드.
 
 [wealth] — 260~330자
-재성(편재·정재) 강약으로 본 돈 버는 스타일. 월급형·사업형·투자형 중 근거 포함해 판단. 피해야 할 금전 함정 1가지.
+재성(편재·정재) 강약 + 일지 재성 여부로 본 돈 버는 스타일. 월급형·사업형·투자형 중 근거 포함해 판단. 피해야 할 금전 함정 1가지.
 
 [love] — 260~330자
-관성(여성의 배우자)·재성(남성의 배우자) 기준으로 이상형 톤과 관계 패턴. 유리한 대운 구간 명시. 반복되는 갈등 패턴 1개.
+관성(여성의 배우자)·재성(남성의 배우자) 기준으로 이상형 톤과 관계 패턴. 일주 12운성이 배우자궁에 미치는 영향. 유리한 대운 구간 명시. 반복되는 갈등 패턴 1개.
 
 [health] — 200~260자
 약한 오행·충을 받은 오행 기준 취약 장부. 일상 챙겨야 할 습관 2가지. 이 사주의 건강 함정 1가지.

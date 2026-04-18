@@ -242,16 +242,20 @@ const getTwelveStage = (dayGan: string, branch: string): string => {
   const isYang = STEM_YINYANG[dayGan] === '양';
   const element = STEM_ELEMENT[dayGan];
 
-  const startPositions: Record<string, number> = {
+  // 음양이행(전통): 양간은 亥·寅·巳·申에서 장생 순행, 음간은 午·酉·子·卯에서 장생 역행
+  const yangStartPos: Record<string, number> = {
     '목': 11, '화': 2, '토': 2, '금': 5, '수': 8
   };
-
-  const startPos = startPositions[element] || 0;
+  const yinStartPos: Record<string, number> = {
+    '목': 6, '화': 9, '토': 9, '금': 0, '수': 3
+  };
 
   if (isYang) {
+    const startPos = yangStartPos[element] ?? 0;
     const idx = (branchIndex - startPos + 12) % 12;
     return TWELVE_STAGE_NAMES[idx];
   } else {
+    const startPos = yinStartPos[element] ?? 0;
     const idx = (startPos - branchIndex + 12) % 12;
     return TWELVE_STAGE_NAMES[idx];
   }

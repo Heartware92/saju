@@ -399,8 +399,8 @@ const parseJungtongsaju = (raw: string): Partial<Record<JungtongsajuSectionKey, 
 export const getJungtongsajuReport = async (result: SajuResult): Promise<JungtongsajuAIResult> => {
   try {
     const prompt = generateJungtongsajuPrompt(result);
-    // 9섹션 × 평균 300자 ≈ 2700자 → 넉넉히 5500 토큰
-    const content = await callGPT(prompt, 5500);
+    // 11섹션 × 평균 300자 ≈ 3300자 → 넉넉히 6500 토큰
+    const content = await callGPT(prompt, 6500);
     const sections = parseJungtongsaju(content);
 
     if (Object.keys(sections).length === 0) {
