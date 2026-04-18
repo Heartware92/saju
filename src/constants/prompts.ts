@@ -266,54 +266,103 @@ ${isStrong ? '신강' : '신약'}, 용신: ${yongSinElement}(${yongSin})
 반드시 "### 1. ~ ### 11." 헤더 포맷을 그대로 유지하세요.`;
 };
 
+// ── 오늘의 운세 섹션 정의 ──────────────────────────────────
+export const TODAY_SECTION_KEYS = [
+  'today_energy', 'today_work', 'today_love', 'today_caution', 'today_lucky'
+] as const;
+export type TodaySectionKey = typeof TODAY_SECTION_KEYS[number];
+
+export const TODAY_SECTION_LABELS: Record<TodaySectionKey, string> = {
+  today_energy:   '오늘의 기운',
+  today_work:     '일·활동',
+  today_love:     '관계·소통',
+  today_caution:  '주의할 점',
+  today_lucky:    '행운 처방',
+};
+
+export interface TodayGanZhi {
+  gan: string;
+  zhi: string;
+  hanja: string;          // e.g. "甲子"
+  ganElement: string;
+  zhiElement: string;
+  tenGodGan: string;      // 일진 천간이 내 일간에 대해 갖는 십성
+  tenGodZhi: string;      // 일진 지지 주기신(主氣神)이 내 일간에 대해 갖는 십성
+  interactions: string[]; // 일진과 원국 간 합충형파 목록 (짧은 문자열)
+}
+
 /**
- * 오늘의 운세 프롬프트 (1엽전)
- * - 오늘 일진(日辰) × 내 사주 상호작용
+ * 오늘의 운세 프롬프트 v2
+ * - 오늘 일진(日辰) 간지를 핵심 인풋으로 사용
+ * - 가볍고 읽기 쉬운 5섹션 [key] 구분자 출력
  */
-export const generateTodayFortunePrompt = (result: SajuResult): string => {
-  const today = new Date();
-  const todayStr = today.toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long'
-  });
+export const generateTodayFortunePrompt = (
+  result: SajuResult,
+  todayGz: TodayGanZhi,
+  isoDate: string,   // "2026-04-18"
+): string => {
+  const { pillars, elementPercent, yongSinElement, isStrong, daeWoon } = result;
 
-  const { pillars, elementPercent, yongSinElement, isStrong } = result;
-  const todaySewoon = result.currentSeWoon;
+  // 결핍 오행
+  const zeroEls = (Object.entries(elementPercent) as [string, number][])
+    .filter(([, v]) => v === 0).map(([k]) => k);
+  const missingEl = zeroEls.length > 0 ? `결핍: ${zeroEls.join('·')}` : '';
 
-  return `[내 사주]
-일주: ${pillars.day.gan}${pillars.day.zhi} (${pillars.day.ganElement}일간)
-오행 분포: 목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%
-${isStrong ? '신강' : '신약'} · 용신: ${yongSinElement}
+  // 현재 대운
+  const ageNow = new Date().getFullYear() - new Date(result.solarDate).getFullYear();
+  const curDW = daeWoon.find(d => d.gan && d.zhi && ageNow >= d.startAge && ageNow <= d.endAge);
+  const daeWoonStr = curDW
+    ? `${curDW.gan}${curDW.zhi}(${curDW.ganElement}${curDW.zhiElement}·${curDW.tenGod}·${curDW.twelveStage})`
+    : '없음';
 
-[오늘]
-날짜: ${todayStr}
-올해 세운: ${todaySewoon.gan}${todaySewoon.zhi} (${todaySewoon.animal}띠 해, ${todaySewoon.ganElement}·${todaySewoon.zhiElement})
+  const seWoon = result.currentSeWoon;
+  const interStr = todayGz.interactions.length > 0 ? todayGz.interactions.join(' / ') : '없음';
+
+  const dateLabel = (() => {
+    const d = new Date(isoDate);
+    return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+  })();
+
+  return `[내 원국]
+일간: ${pillars.day.gan}(${pillars.day.ganElement}) / 일주: ${pillars.day.gan}${pillars.day.zhi}
+오행: 목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}% ${missingEl}
+용신: ${yongSinElement} / ${isStrong ? '신강' : '신약'}
+현재 대운: ${daeWoonStr}
+올해 세운: ${seWoon.gan}${seWoon.zhi}(${seWoon.ganElement}${seWoon.zhiElement}·${seWoon.tenGod})
+
+[오늘 일진 — 핵심 인풋]
+날짜: ${dateLabel}
+일진: ${todayGz.gan}${todayGz.zhi}(${todayGz.hanja}) — ${todayGz.ganElement}·${todayGz.zhiElement}
+일진 천간의 십성: ${todayGz.tenGodGan} / 일진 지지의 십성: ${todayGz.tenGodZhi}
+일진×원국 합충: ${interStr}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[작성 규칙]
+[작성 규칙 — 절대 준수]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1) 총 600~800자. 섹션 헤더는 아래 5개를 그대로 유지.
-2) 오늘 하루에만 적용되는 구체적 조언. "장기적으로는~" 같은 일반론 금지.
-3) 일간(${pillars.day.gan})과 오늘 천간·지지의 합/충/극 관점으로 근거 제시.
-4) 이모지 금지. 신비주의적 과장 금지. 단정적·실용적 톤.
-5) 금지 표현: "운이 좋은 날" "모든 것이 잘 풀립니다" "큰일이 납니다" — 반드시 무엇이/왜/어떻게를 명시.
+1) Markdown 절대 금지. 이모지 전부 금지.
+2) 각 섹션 분량 지침 준수. 총 550~700자.
+3) 오늘 하루에만 적용되는 구체 조언. "장기적으로는~" 일반론 금지.
+4) 일진 십성·합충이 주는 영향을 근거로 제시. 근거 없는 단순 격려 금지.
+5) 금지 표현: "운이 좋은 날" "모든 일이 잘 풀립니다" "대형 사고" — 구체 상황+이유로 대체.
+6) 출력은 [today_energy] 마커부터 시작. 마커 이전 텍스트 없어야 함.
+7) 아래 5개 마커를 정확히 사용. 마커는 줄 처음에 단독으로 위치.
 
-### 오늘의 한줄 기운 (40~60자)
-- 오늘 내 사주가 놓인 자리 한 문장 + 이어서 체감 톤 한 문장
+[today_energy] — 70~100자
+오늘 일진(${todayGz.gan}${todayGz.zhi})이 내 일간(${pillars.day.gan})에 미치는 십성(${todayGz.tenGodGan}) 에너지로 오늘 하루의 기운을 단정적으로 한 문단. 어떤 상황에서 유리/불리한지 핵심 1개 포함.
 
-### 일의 흐름 (120~170자)
-- 집중 잘 되는 영역과 막히는 영역을 근거와 함께. 회의·결재·제안서 같은 구체 행동 2개
+[today_work] — 140~180자
+일진 기운을 바탕으로 집중이 잘 되는 업무 유형과 막히는 유형을 구체적으로. 오늘 하면 좋은 행동 1개(회의·기획·제출·연락 등)와 피해야 할 행동 1개.
 
-### 관계·소통 (120~170자)
-- 오늘 잘 통하는 관계 유형, 조심할 말 실수, 연락하면 좋은 사람 1명(관계성으로 표현)
+[today_love] — 120~160자
+오늘 잘 통하는 관계 유형(일진 십성 기준). 조심할 말투나 상황 1가지. 연인·가족·동료 중 관계가 부드러워지는 유형 1개 짧게.
 
-### 주의할 함정 (100~140자)
-- 오늘 사주 배치상 실수 유발 구간 1개 — 시간대·상황·감정 중 하나로 구체화
+[today_caution] — 100~130자
+오늘 사주 배치상(일진×원국 합충: ${interStr}) 실수 유발 상황 1가지. 시간대·감정·환경 중 1개로 구체화. 대처 방법 1문장.
 
-### 행운 처방 (140~180자)
-- 용신(${yongSinElement}) 기운을 기르는 색 1개, 시간대 1구간, 섭취 식재료 1개, 오늘의 숫자 1개, 실천 행동 1개`;
+[today_lucky] — 80~100자
+용신(${yongSinElement}) 기운을 채우는 오늘의 행운 요소를 짧게: 색 1개, 시간대 1구간, 숫자 1개, 식재료 또는 음식 1개.
+
+출력은 [today_energy] 마커부터 시작. 마커 이전 텍스트 없어야 함.`;
 };
 
 /**

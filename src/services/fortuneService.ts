@@ -23,10 +23,24 @@ import {
   generateJungtongsajuPrompt,
   NEWYEAR_SECTION_KEYS,
   JUNGTONGSAJU_SECTION_KEYS,
+  TODAY_SECTION_KEYS,
   type PeriodDomainBrief,
   type NewyearSectionKey,
   type JungtongsajuSectionKey,
+  type TodaySectionKey,
+  type TodayGanZhi,
 } from '../constants/prompts';
+import { Solar } from 'lunar-javascript';
+import {
+  TEN_GODS_MAP,
+  BRANCH_HIDDEN_STEMS,
+  STEM_ELEMENT,
+  BRANCH_ELEMENT,
+  normalizeGan,
+  normalizeZhi,
+  EARTHLY_BRANCHES,
+  HEAVENLY_STEMS,
+} from '../utils/sajuCalculator';
 import type { PeriodFortune } from '../engine/periodFortune';
 import type { TarotCardInfo } from './api';
 import type { TojeongResult } from '../engine/tojeong';
@@ -181,7 +195,9 @@ export const getTodayFortune = async (
   result: SajuResult
 ): Promise<FortuneResponse> => {
   try {
-    const prompt = generateTodayFortunePrompt(result);
+    const isoDate = new Date().toISOString().slice(0, 10);
+    const todayGz = calcTodayGanZhi(result, isoDate);
+    const prompt = generateTodayFortunePrompt(result, todayGz, isoDate);
     const content = await callGPT(prompt, 1600);
 
     const user = await auth.getCurrentUser();
@@ -407,6 +423,112 @@ export const getJungtongsajuReport = async (result: SajuResult): Promise<Jungton
       return { success: true, rawText: content };
     }
     return { success: true, sections };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
+
+// ── 오늘의 운세 ──────────────────────────────────────────────
+
+export interface TodayFortuneAIResult {
+  success: boolean;
+  sections?: Partial<Record<TodaySectionKey, string>>;
+  rawText?: string;
+  error?: string;
+  todayGz?: TodayGanZhi;
+  isoDate?: string;
+}
+
+/** 한자 매핑 */
+const GAN_HANJA: Record<string, string> = {
+  갑:'甲', 을:'乙', 병:'丙', 정:'丁', 무:'戊', 기:'己', 경:'庚', 신:'辛', 임:'壬', 계:'癸'
+};
+const ZHI_HANJA: Record<string, string> = {
+  자:'子', 축:'丑', 인:'寅', 묘:'卯', 진:'辰', 사:'巳', 오:'午', 미:'未', 신:'申', 유:'酉', 술:'戌', 해:'亥'
+};
+
+/** 오늘 일진(日辰) 간지 계산 + 원국과의 합충 분석 */
+function calcTodayGanZhi(result: SajuResult, isoDate: string): TodayGanZhi {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const solar = Solar.fromYmd(y, m, d);
+  const lunar = solar.getLunar();
+  const dayGz = lunar.getDayInGanZhi();
+
+  const todayGan = normalizeGan(dayGz[0]);
+  const todayZhi = normalizeZhi(dayGz[1]);
+  const dayMaster = result.dayMaster;
+  const map = TEN_GODS_MAP[dayMaster] || {};
+
+  const ganElement = STEM_ELEMENT[todayGan] || '';
+  const zhiElement = BRANCH_ELEMENT[todayZhi] || '';
+  const tenGodGan = map[todayGan] || '';
+  const mainHidden = BRANCH_HIDDEN_STEMS[todayZhi]?.[0] || '';
+  const tenGodZhi = mainHidden ? (map[mainHidden] || '') : '';
+
+  // 원국 지지들과의 합충 간단 분석
+  const origZhis = [
+    result.pillars.year.zhi,
+    result.pillars.month.zhi,
+    result.pillars.day.zhi,
+    ...(result.hourUnknown ? [] : [result.pillars.hour.zhi]),
+  ];
+  const interactions: string[] = [];
+  const todayIdx = EARTHLY_BRANCHES.indexOf(todayZhi);
+  origZhis.forEach(oz => {
+    const oIdx = EARTHLY_BRANCHES.indexOf(oz);
+    if (oIdx < 0 || todayIdx < 0) return;
+    const diff = Math.abs(todayIdx - oIdx);
+    const minDiff = Math.min(diff, 12 - diff);
+    if (minDiff === 6) interactions.push(`일진${todayZhi}×${oz} 충(沖)`);
+    else if (minDiff === 0) interactions.push(`일진${todayZhi}×${oz} 동(同)`);
+    // 육합 쌍: 자축, 인해, 묘술, 진유, 사신, 오미
+    const hexCombos: [string, string][] = [['자','축'],['인','해'],['묘','술'],['진','유'],['사','신'],['오','미']];
+    hexCombos.forEach(([a, b]) => {
+      if ((todayZhi === a && oz === b) || (todayZhi === b && oz === a))
+        interactions.push(`일진${todayZhi}×${oz} 합(合)`);
+    });
+  });
+
+  return {
+    gan: todayGan,
+    zhi: todayZhi,
+    hanja: `${GAN_HANJA[todayGan] ?? todayGan}${ZHI_HANJA[todayZhi] ?? todayZhi}`,
+    ganElement,
+    zhiElement,
+    tenGodGan,
+    tenGodZhi,
+    interactions,
+  };
+}
+
+const parseTodayFortune = (raw: string): Partial<Record<TodaySectionKey, string>> => {
+  const out: Partial<Record<TodaySectionKey, string>> = {};
+  const keysPattern = TODAY_SECTION_KEYS.join('|');
+  const parts = raw.split(new RegExp(`^\\s*\\[(${keysPattern})\\]\\s*$`, 'm'));
+  for (let i = 1; i < parts.length; i += 2) {
+    const key = parts[i] as TodaySectionKey;
+    const body = (parts[i + 1] || '').trim();
+    if (body) out[key] = body;
+  }
+  return out;
+};
+
+export const getTodayFortuneReport = async (
+  result: SajuResult,
+  isoDate?: string,
+): Promise<TodayFortuneAIResult> => {
+  try {
+    const date = isoDate ?? new Date().toISOString().slice(0, 10);
+    const todayGz = calcTodayGanZhi(result, date);
+    const prompt = generateTodayFortunePrompt(result, todayGz, date);
+    // 5섹션 × 평균 120자 ≈ 600자 → 2000 토큰으로 충분
+    const content = await callGPT(prompt, 2000);
+    const sections = parseTodayFortune(content);
+
+    if (Object.keys(sections).length === 0) {
+      return { success: true, rawText: content, todayGz, isoDate: date };
+    }
+    return { success: true, sections, todayGz, isoDate: date };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

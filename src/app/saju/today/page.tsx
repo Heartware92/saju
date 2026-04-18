@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import Layout from '@/components/Layout';
-import PeriodFortunePage from '@/pages/PeriodFortunePage';
+import TodayFortunePage from '@/pages/TodayFortunePage';
 
 function LoadingSpinner() {
   return (
@@ -14,7 +14,7 @@ export default function TodayFortune() {
   return (
     <Layout>
       <Suspense fallback={<LoadingSpinner />}>
-        <PeriodFortunePage scope="day" />
+        <TodayFortunePage />
       </Suspense>
     </Layout>
   );
