@@ -153,6 +153,23 @@ export interface Interaction {
   description: string;
 }
 
+/** 간여지동(干與支同) — 천간과 지지의 오행이 동일한 기둥 */
+export interface GanYeojidong {
+  pillar: 'year' | 'month' | 'day' | 'hour';
+  gan: string;
+  zhi: string;
+  element: string;
+}
+
+/** 병존(竝存) / 삼존(三存) — 같은 천간이 2개(병존) 또는 3개 이상(삼존) */
+export interface ByeongjOn {
+  gan: string;
+  element: string;
+  count: number;
+  positions: string[];
+  isSamjon: boolean;
+}
+
 export interface DaeWoon {
   startAge: number;
   endAge: number;
@@ -215,6 +232,8 @@ export interface SajuResult {
   yongSinElement: string;
   interactions: Interaction[];
   sinSals: SinSal[];
+  ganYeojidong: GanYeojidong[];
+  byeongjOn: ByeongjOn[];
   daeWoon: DaeWoon[];
   daeWoonStartAge: number;
   seWoon: SeWoon[];
@@ -1006,6 +1025,57 @@ const calculateSeWoon = (dayGan: string, currentYear: number): SeWoon[] => {
 };
 
 // ============================================
+// 간여지동 · 병존 · 삼존 계산
+// ============================================
+
+const calculateGanYeojidong = (
+  pillars: { year: Pillar; month: Pillar; day: Pillar; hour: Pillar },
+  hourUnknown: boolean
+): GanYeojidong[] => {
+  const result: GanYeojidong[] = [];
+  const entries: Array<['year' | 'month' | 'day' | 'hour', Pillar]> = [
+    ['year', pillars.year],
+    ['month', pillars.month],
+    ['day', pillars.day],
+    ...(!hourUnknown ? [['hour', pillars.hour] as ['hour', Pillar]] : []),
+  ];
+  for (const [key, p] of entries) {
+    if (p.ganElement && p.zhiElement && p.ganElement === p.zhiElement) {
+      result.push({ pillar: key, gan: p.gan, zhi: p.zhi, element: p.ganElement });
+    }
+  }
+  return result;
+};
+
+const calculateByeongjOn = (
+  pillars: { year: Pillar; month: Pillar; day: Pillar; hour: Pillar },
+  hourUnknown: boolean
+): ByeongjOn[] => {
+  const ganMap: Record<string, { count: number; positions: string[] }> = {};
+  const entries: [string, string][] = [
+    [pillars.year.gan, '년간'],
+    [pillars.month.gan, '월간'],
+    [pillars.day.gan, '일간'],
+    ...(!hourUnknown && pillars.hour.gan ? [[pillars.hour.gan, '시간'] as [string, string]] : []),
+  ];
+  for (const [gan, pos] of entries) {
+    if (!gan) continue;
+    if (!ganMap[gan]) ganMap[gan] = { count: 0, positions: [] };
+    ganMap[gan].count++;
+    ganMap[gan].positions.push(pos);
+  }
+  return Object.entries(ganMap)
+    .filter(([, v]) => v.count >= 2)
+    .map(([gan, v]) => ({
+      gan,
+      element: STEM_ELEMENT[gan] || '',
+      count: v.count,
+      positions: v.positions,
+      isSamjon: v.count >= 3,
+    }));
+};
+
+// ============================================
 // 메인 계산 함수
 // ============================================
 
@@ -1107,6 +1177,8 @@ export const calculateSaju = (
   const yongSinResult = determineYongSin(dayMasterElement, strengthResult.isStrong, elementCount, monthZhiNorm);
   const sinSals = calculateSinSals(dayGan, pillars);
   const interactions = analyzeInteractions(pillars);
+  const ganYeojidong = calculateGanYeojidong(pillars, hourUnknown);
+  const byeongjOn = calculateByeongjOn(pillars, hourUnknown);
 
   const daeWoon: DaeWoon[] = daewoonRaw.map((dw: any) => {
     const ganZhi = dw.getGanZhi();
@@ -1161,6 +1233,8 @@ export const calculateSaju = (
     yongSinElement: yongSinResult.element,
     interactions,
     sinSals,
+    ganYeojidong,
+    byeongjOn,
     daeWoon,
     daeWoonStartAge: Math.round(yun.getStartYear() + yun.getStartMonth() / 12),
     seWoon,
