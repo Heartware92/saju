@@ -205,17 +205,33 @@ export default function SajuResultPage() {
             const text = report.sections?.[key];
             if (!text) return null;
             const isAdvice = key === 'advice';
+
+            // 첫 줄 = 은유 제목, 나머지 = 본문
+            const lines = text.trim().split('\n');
+            const metaphorTitle = lines[0].trim();
+            const bodyText = lines.slice(1).join('\n').trim();
+
             return (
               <motion.div
                 key={key}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.06 * idx }}
-                className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
+                className="rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
               >
-                <div className="text-[13px] font-bold text-text-primary mb-3">
+                {/* 은유 제목 — 최상단, 크고 강조 */}
+                <div
+                  className="text-[19px] font-bold leading-snug text-text-primary mb-1"
+                  style={{ fontFamily: 'var(--font-serif)' }}
+                >
+                  {metaphorTitle}
+                </div>
+
+                {/* 섹션 레이블 — 작은 서브태그 */}
+                <div className="text-[11px] font-medium text-text-tertiary tracking-widest uppercase mb-4">
                   {JUNGTONGSAJU_SECTION_LABELS[key]}
                 </div>
+
                 {isAdvice && report.adviceMeta ? (
                   <AdviceCard
                     yongSinElement={result.yongSinElement}
@@ -223,7 +239,7 @@ export default function SajuResultPage() {
                   />
                 ) : (
                   <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
-                    {text}
+                    {bodyText}
                   </p>
                 )}
               </motion.div>

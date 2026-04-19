@@ -109,13 +109,6 @@ export function AdviceCard({ yongSinElement, meta }: AdviceCardProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 은유 제목 */}
-      {meta.title && (
-        <p className="text-[13px] text-text-tertiary italic leading-relaxed">
-          {meta.title}
-        </p>
-      )}
-
       {/* 시각 정보 그리드: 나침반 + 색상 */}
       <div className="flex items-center justify-around py-3 px-2 rounded-2xl bg-white/5 border border-white/10">
         {/* 나침반 */}
