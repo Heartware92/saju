@@ -39,7 +39,7 @@ async function callClaude(
 // ── Gemini API ──────────────────────────────────────────────────────────────
 // gemini-2.0-flash 는 무료 티어에서 15 RPM / 1,500 RPD 제공 (2.5-flash 무료 20 RPD 대비 훨씬 높음)
 const GEMINI_API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 async function callGemini(
   prompt: string,
