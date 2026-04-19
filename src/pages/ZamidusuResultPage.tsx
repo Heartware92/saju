@@ -18,6 +18,7 @@ import { buildZamidusuReading, type ZamidusuReading } from '../engine/zamidusu/r
 import styles from './ZamidusuResultPage.module.css';
 import { useProfileStore } from '../store/useProfileStore';
 import { getZamidusuReading } from '../services/fortuneService';
+import { AILoadingBar } from '../components/AILoadingBar';
 
 export default function ZamidusuResultPage() {
   const searchParams = useSearchParams();
@@ -531,19 +532,14 @@ export default function ZamidusuResultPage() {
           <div className={styles.section}>
             <h2>AI 명반 해석</h2>
             {aiLoading ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {[0, 1, 2].map(i => (
-                    <motion.div
-                      key={i}
-                      style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--cta-primary)' }}
-                      animate={{ opacity: [0.2, 1, 0.2] }}
-                      transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
-                    />
-                  ))}
-                </div>
-                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>자미두수 명반 해석 생성중…</span>
-              </div>
+              <AILoadingBar
+                inline
+                label="자미두수 명반 해석중"
+                minLabel="15초"
+                maxLabel="40초"
+                estimatedSeconds={25}
+                messages={['12궁 배치와 사화를 분석하는 중입니다', '명주의 격국과 대한을 읽는 중입니다', '명반 해석을 종합하는 중입니다']}
+              />
             ) : aiContent ? (
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.75, whiteSpace: 'pre-line', margin: 0 }}>
                 {aiContent}

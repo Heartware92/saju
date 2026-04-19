@@ -13,6 +13,7 @@ import { buildTojeongReading, type TojeongReading } from '../engine/tojeong/read
 import type { GwaeGrade } from '../engine/tojeong/gwae-table';
 import { useProfileStore } from '../store/useProfileStore';
 import { getTojeongReading } from '../services/fortuneService';
+import { AILoadingBar } from '../components/AILoadingBar';
 
 const GRADE_COLOR: Record<GwaeGrade, string> = {
   '대길': '#34D399',
@@ -261,19 +262,14 @@ export default function TojeongResultPage() {
         <section className="mt-3 rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
           <div className="text-[13px] font-semibold text-text-primary mb-3">AI 심층 풀이</div>
           {aiLoading ? (
-            <div className="flex items-center gap-3 py-2">
-              <div className="flex gap-1">
-                {[0, 1, 2].map(i => (
-                  <motion.div
-                    key={i}
-                    className="w-1.5 h-1.5 rounded-full bg-cta"
-                    animate={{ opacity: [0.2, 1, 0.2] }}
-                    transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
-                  />
-                ))}
-              </div>
-              <span className="text-[12px] text-text-tertiary">토정비결 풀이 생성중…</span>
-            </div>
+            <AILoadingBar
+              inline
+              label="토정비결 풀이중"
+              minLabel="10초"
+              maxLabel="30초"
+              estimatedSeconds={20}
+              messages={['괘의 의미를 해석하는 중입니다', '월별 흐름을 분석하는 중입니다', '한 해 운세를 종합하는 중입니다']}
+            />
           ) : aiContent ? (
             <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
               {aiContent}

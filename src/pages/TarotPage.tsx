@@ -18,6 +18,7 @@ import { computeSajuFromProfile } from '../utils/profileSaju';
 import { getHybridReading } from '../services/fortuneService';
 import type { TarotCardInfo } from '../services/api';
 import type { SajuResult } from '../utils/sajuCalculator';
+import { AILoadingBar } from '../components/AILoadingBar';
 
 type TarotMode = 'today' | 'monthly' | 'question';
 type QuestionState = 'select' | 'shuffling' | 'spread' | 'revealed';
@@ -200,22 +201,16 @@ function AIReadingView({ content, color }: { content: string; color: string }) {
   );
 }
 
-function LoadingSpinner({ color }: { color: string }) {
+function LoadingSpinner() {
   return (
-    <div className="flex flex-col items-center gap-4 py-10">
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
-        style={{
-          width: 40,
-          height: 40,
-          border: `3px solid ${color}33`,
-          borderTop: `3px solid ${color}`,
-          borderRadius: '50%',
-        }}
-      />
-      <p className="text-[13px] text-text-tertiary">사주와 타로를 융합하여 해석하는 중...</p>
-    </div>
+    <AILoadingBar
+      inline
+      label="타로 해석중"
+      minLabel="8초"
+      maxLabel="25초"
+      estimatedSeconds={15}
+      messages={['카드의 상징을 읽는 중입니다', '사주와 타로를 융합하는 중입니다', '해석을 정리하는 중입니다']}
+    />
   );
 }
 
@@ -498,7 +493,7 @@ export default function TarotPage() {
                     <CardFace key={i} drawn={d} width={mode === 'monthly' ? 100 : 140} />
                   ))}
                 </div>
-                {aiLoading && <LoadingSpinner color={primaryColor} />}
+                {aiLoading && <LoadingSpinner />}
                 {aiError && (
                   <div className="rounded-2xl p-4 text-center bg-[rgba(248,113,113,0.1)] border border-[rgba(248,113,113,0.3)]">
                     <p className="text-[13px] text-[#F87171] mb-3">{aiError}</p>
@@ -593,7 +588,7 @@ export default function TarotPage() {
                 <div className="flex justify-center mb-5">
                   <CardFace drawn={qDrawn} width={160} />
                 </div>
-                {aiLoading && <LoadingSpinner color={primaryColor} />}
+                {aiLoading && <LoadingSpinner />}
                 {aiError && (
                   <div className="rounded-2xl p-4 text-center bg-[rgba(248,113,113,0.1)] border border-[rgba(248,113,113,0.3)]">
                     <p className="text-[13px] text-[#F87171] mb-3">{aiError}</p>

@@ -20,6 +20,14 @@ import { calculateSaju } from '../utils/sajuCalculator';
 import { calculatePeriodFortune, type FortuneScope, type FortuneGrade, type PeriodFortune } from '../engine/periodFortune';
 import { getPeriodDomainsDescription, getNewyearReport, type NewyearReportAIResult } from '../services/fortuneService';
 import { NEWYEAR_SECTION_KEYS, NEWYEAR_SECTION_LABELS } from '../constants/prompts';
+import { AILoadingBar } from '../components/AILoadingBar';
+
+const NEWYEAR_MESSAGES = [
+  '세운과 원국의 합충을 분석하는 중입니다',
+  '재물·직업·애정 기운을 읽는 중입니다',
+  '월별 흐름과 대운 맥락을 종합하는 중입니다',
+  '신년 전체 운세를 정리하는 중입니다',
+];
 
 const GRADE_COLOR: Record<FortuneGrade, string> = {
   '대길': '#34D399',
@@ -292,33 +300,23 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
   // 신년운세: 리포트 응답 오기 전까지 전체 로딩 화면
   if (scope === 'year' && newyearReportLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 gap-6">
-        <motion.div
-          animate={{ opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          className="text-center"
-        >
-          <div className="text-[32px] mb-4" style={{ fontFamily: 'var(--font-serif)' }}>
-            {fortune.targetGanZhi.ganZhi}년
-          </div>
-          <div className="text-[16px] font-semibold text-text-primary mb-2">
-            {targetYear}년 신년운세 풀이중
-          </div>
-          <div className="text-[13px] text-text-tertiary">
-            사주 원국과 세운을 분석하고 있습니다
-          </div>
-        </motion.div>
-        <div className="flex gap-1.5">
-          {[0, 1, 2].map(i => (
-            <motion.div
-              key={i}
-              className="w-2 h-2 rounded-full bg-cta"
-              animate={{ opacity: [0.2, 1, 0.2] }}
-              transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
-            />
-          ))}
-        </div>
-      </div>
+      <AILoadingBar
+        label={`${targetYear}년 신년운세 풀이중`}
+        minLabel="20초"
+        maxLabel="1분"
+        estimatedSeconds={40}
+        messages={NEWYEAR_MESSAGES}
+        topContent={
+          <motion.div
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <div className="text-[32px] mb-1" style={{ fontFamily: 'var(--font-serif)' }}>
+              {fortune.targetGanZhi.ganZhi}년
+            </div>
+          </motion.div>
+        }
+      />
     );
   }
 

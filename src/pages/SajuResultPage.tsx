@@ -10,6 +10,16 @@ import { JUNGTONGSAJU_SECTION_KEYS, JUNGTONGSAJU_SECTION_LABELS } from '../const
 import { useProfileStore } from '../store/useProfileStore';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import SajuReport from '../components/saju/SajuReport';
+import { AILoadingBar } from '../components/AILoadingBar';
+
+const JUNGTONGSAJU_MESSAGES = [
+  '격국과 용신을 계산하는 중입니다',
+  '오행 분포와 신강신약을 분석하는 중입니다',
+  '대운·세운의 흐름을 읽는 중입니다',
+  '십성 분포와 일주 특성을 해석하는 중입니다',
+  '재물·직업·건강 운세를 종합하는 중입니다',
+  '신살과 합충형파를 검토하는 중입니다',
+];
 
 export default function SajuResultPage() {
   const searchParams = useSearchParams();
@@ -111,36 +121,26 @@ export default function SajuResultPage() {
   // ── 리포트 로딩 중 전체 화면 ──────────────────────────
   if (reportLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 gap-6">
-        <motion.div
-          animate={{ opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          className="text-center"
-        >
-          <div
-            className="text-[30px] mb-4"
-            style={{ fontFamily: 'var(--font-serif)' }}
+      <AILoadingBar
+        label="정통사주 분석중"
+        minLabel="30초"
+        maxLabel="1분 30초"
+        estimatedSeconds={70}
+        messages={JUNGTONGSAJU_MESSAGES}
+        topContent={
+          <motion.div
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
           >
-            {result.pillars.year.gan}{result.pillars.year.zhi}년생
-          </div>
-          <div className="text-[16px] font-semibold text-text-primary mb-2">
-            정통사주 분석중
-          </div>
-          <div className="text-[13px] text-text-tertiary">
-            원국·격국·용신·대운을 종합하고 있습니다
-          </div>
-        </motion.div>
-        <div className="flex gap-1.5">
-          {[0, 1, 2].map(i => (
-            <motion.div
-              key={i}
-              className="w-2 h-2 rounded-full bg-cta"
-              animate={{ opacity: [0.2, 1, 0.2] }}
-              transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
-            />
-          ))}
-        </div>
-      </div>
+            <div className="text-[30px] mb-1" style={{ fontFamily: 'var(--font-serif)' }}>
+              {result.pillars.year.gan}{result.pillars.year.zhi}년생
+            </div>
+            <div className="text-[13px] text-text-tertiary">
+              {result.pillars.year.gan}{result.pillars.year.zhi} {result.pillars.month.gan}{result.pillars.month.zhi} {result.pillars.day.gan}{result.pillars.day.zhi}
+            </div>
+          </motion.div>
+        }
+      />
     );
   }
 

@@ -23,6 +23,7 @@ import {
 } from '../engine/taekil';
 import { getTaekilAdvice } from '../services/fortuneService';
 import styles from './SajuResultPage.module.css';
+import { AILoadingBar } from '../components/AILoadingBar';
 
 const GRADE_COLOR: Record<TaekilGrade, string> = {
   '대길': '#34D399',
@@ -445,26 +446,15 @@ export default function TaekilPage() {
                 AI 길일 추천
               </div>
               {aiLoading ? (
-                <div style={{
-                  padding: '16px',
-                  background: 'rgba(20,12,38,0.55)',
-                  borderRadius: '16px',
-                  border: '1px solid var(--border-subtle)',
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                }}>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    {[0, 1, 2].map(i => (
-                      <motion.div
-                        key={i}
-                        style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--cta-primary)' }}
-                        animate={{ opacity: [0.2, 1, 0.2] }}
-                        transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
-                      />
-                    ))}
-                  </div>
-                  <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                    명리 기반 추천 분석중
-                  </span>
+                <div style={{ padding: '4px 0' }}>
+                  <AILoadingBar
+                    inline
+                    label="길일 명리 분석중"
+                    minLabel="10초"
+                    maxLabel="30초"
+                    estimatedSeconds={20}
+                    messages={['날짜별 오행 기운을 계산하는 중입니다', '원국과의 합충을 분석하는 중입니다', '최적의 길일을 선별하는 중입니다']}
+                  />
                 </div>
               ) : aiAdvice ? (
                 <div style={{

@@ -8,6 +8,14 @@ import { computeSajuFromProfile } from '../utils/profileSaju';
 import { calculateSaju, type SajuResult } from '../utils/sajuCalculator';
 import { getTodayFortuneReport, type TodayFortuneAIResult } from '../services/fortuneService';
 import { TODAY_SECTION_KEYS, TODAY_SECTION_LABELS } from '../constants/prompts';
+import { AILoadingBar } from '../components/AILoadingBar';
+
+const TODAY_MESSAGES = [
+  '일진과 원국의 오행을 대조하는 중입니다',
+  '오늘의 합충 관계를 분석하는 중입니다',
+  '재물·직업·건강 기운을 읽는 중입니다',
+  '오늘 하루의 흐름을 정리하는 중입니다',
+];
 
 // 날짜 피커 (지정일 모드용)
 function DatePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -151,38 +159,27 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
       const d = new Date(confirmedDate ?? todayIso);
       return d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' });
     })();
-    const loadingLabel = mode === 'date' ? '해당일 기운 분석중' : '오늘의 기운 분석중';
+    const loadingLabel = mode === 'date' ? '지정일 기운 분석중' : '오늘의 기운 분석중';
 
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 gap-6">
-        <motion.div
-          animate={{ opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          className="text-center"
-        >
-          <div
-            className="text-[28px] mb-3 tracking-widest"
-            style={{ fontFamily: 'var(--font-serif)' }}
+      <AILoadingBar
+        label={loadingLabel}
+        minLabel="10초"
+        maxLabel="40초"
+        estimatedSeconds={25}
+        messages={TODAY_MESSAGES}
+        topContent={
+          <motion.div
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
           >
-            {result.pillars.day.gan}{result.pillars.day.zhi}일주
-          </div>
-          <div className="text-[13px] text-text-tertiary mb-4">{targetDateStr}</div>
-          <div className="text-[16px] font-semibold text-text-primary mb-1">{loadingLabel}</div>
-          <div className="text-[12px] text-text-tertiary">
-            일진과 원국의 흐름을 읽고 있습니다
-          </div>
-        </motion.div>
-        <div className="flex gap-1.5">
-          {[0, 1, 2].map(i => (
-            <motion.div
-              key={i}
-              className="w-2 h-2 rounded-full bg-cta"
-              animate={{ opacity: [0.2, 1, 0.2] }}
-              transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
-            />
-          ))}
-        </div>
-      </div>
+            <div className="text-[28px] mb-1 tracking-widest" style={{ fontFamily: 'var(--font-serif)' }}>
+              {result.pillars.day.gan}{result.pillars.day.zhi}일주
+            </div>
+            <div className="text-[13px] text-text-tertiary">{targetDateStr}</div>
+          </motion.div>
+        }
+      />
     );
   }
 

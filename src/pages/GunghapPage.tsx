@@ -26,6 +26,7 @@ import {
 } from '../constants/prompts';
 import { sanitizeAIOutput } from '../services/fortuneService';
 import Link from 'next/link';
+import { AILoadingBar } from '../components/AILoadingBar';
 
 // ──────────────────────────────────────────────
 // 카테고리 그룹 정의
@@ -266,6 +267,29 @@ export default function GunghapPage() {
     setOtherRole('');
     setCustomLabel('');
   };
+
+  // 궁합 분석 로딩 전체화면
+  if (loading) {
+    return (
+      <AILoadingBar
+        label="궁합 분석중"
+        minLabel="25초"
+        maxLabel="1분"
+        estimatedSeconds={40}
+        messages={[
+          '두 사람의 원국을 비교하는 중입니다',
+          '합충 관계와 오행 조화를 분석하는 중입니다',
+          '십성으로 본 관계 패턴을 읽는 중입니다',
+          '대운 흐름과 인연의 타이밍을 보는 중입니다',
+        ]}
+        topContent={
+          <div className="text-[15px] font-semibold text-text-primary">
+            {getCategoryDisplayLabel()} 궁합
+          </div>
+        }
+      />
+    );
+  }
 
   // 비로그인 처리
   if (!user) {
