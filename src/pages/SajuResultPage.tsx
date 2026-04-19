@@ -10,6 +10,7 @@ import { JUNGTONGSAJU_SECTION_KEYS, JUNGTONGSAJU_SECTION_LABELS } from '../const
 import { useProfileStore } from '../store/useProfileStore';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import SajuReport from '../components/saju/SajuReport';
+import { AdviceCard } from '../components/saju/AdviceCard';
 import { AILoadingBar } from '../components/AILoadingBar';
 
 const JUNGTONGSAJU_MESSAGES = [
@@ -203,6 +204,7 @@ export default function SajuResultPage() {
           {JUNGTONGSAJU_SECTION_KEYS.map((key, idx) => {
             const text = report.sections?.[key];
             if (!text) return null;
+            const isAdvice = key === 'advice';
             return (
               <motion.div
                 key={key}
@@ -211,12 +213,19 @@ export default function SajuResultPage() {
                 transition={{ delay: 0.06 * idx }}
                 className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
               >
-                <div className="text-[13px] font-bold text-text-primary mb-2">
+                <div className="text-[13px] font-bold text-text-primary mb-3">
                   {JUNGTONGSAJU_SECTION_LABELS[key]}
                 </div>
-                <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
-                  {text}
-                </p>
+                {isAdvice && report.adviceMeta ? (
+                  <AdviceCard
+                    yongSinElement={result.yongSinElement}
+                    meta={report.adviceMeta}
+                  />
+                ) : (
+                  <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
+                    {text}
+                  </p>
+                )}
               </motion.div>
             );
           })}

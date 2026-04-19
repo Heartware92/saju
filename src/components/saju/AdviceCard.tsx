@@ -1,0 +1,177 @@
+'use client';
+
+import { motion } from 'framer-motion';
+import type { AdviceMeta } from '../../services/fortuneService';
+
+// 용신 오행 → 색상·방향 결정론적 매핑
+const YONGSIN_MAP: Record<string, {
+  colors: { name: string; css: string }[];
+  direction: string;
+  directionDeg: number; // 나침반: 북=0, 동=90, 남=180, 서=270, 중앙=-1
+}> = {
+  목: {
+    colors: [{ name: '초록', css: '#22c55e' }, { name: '연두', css: '#84cc16' }],
+    direction: '동', directionDeg: 90,
+  },
+  화: {
+    colors: [{ name: '빨강', css: '#ef4444' }, { name: '주황', css: '#f97316' }],
+    direction: '남', directionDeg: 180,
+  },
+  토: {
+    colors: [{ name: '노랑', css: '#eab308' }, { name: '황토', css: '#b45309' }],
+    direction: '중앙', directionDeg: -1,
+  },
+  금: {
+    colors: [{ name: '흰색', css: '#e2e8f0' }, { name: '은색', css: '#94a3b8' }],
+    direction: '서', directionDeg: 270,
+  },
+  수: {
+    colors: [{ name: '검정', css: '#1e293b' }, { name: '남색', css: '#1e3a8a' }],
+    direction: '북', directionDeg: 0,
+  },
+};
+
+// 나침반 SVG
+function CompassSVG({ deg, direction }: { deg: number; direction: string }) {
+  if (deg === -1) {
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <div className="w-[72px] h-[72px] rounded-full border border-white/20 flex items-center justify-center bg-white/5">
+          <span className="text-[22px] font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>中</span>
+        </div>
+        <span className="text-[11px] text-text-tertiary">중앙이 길합니다</span>
+      </div>
+    );
+  }
+
+  // 방위 라벨 위치
+  const labels = [
+    { text: '북', x: 36, y: 11 },
+    { text: '동', x: 64, y: 39 },
+    { text: '남', x: 36, y: 67 },
+    { text: '서', x: 8,  y: 39 },
+  ];
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width="72" height="72" viewBox="0 0 72 72">
+        {/* 외부 링 */}
+        <circle cx="36" cy="36" r="34" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+        {/* 십자선 */}
+        <line x1="36" y1="4" x2="36" y2="68" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+        <line x1="4" y1="36" x2="68" y2="36" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+        {/* 방위 텍스트 */}
+        {labels.map(l => (
+          <text key={l.text} x={l.x} y={l.y} textAnchor="middle" dominantBaseline="middle"
+            fontSize="9" fill="rgba(255,255,255,0.35)" fontFamily="var(--font-sans)">
+            {l.text}
+          </text>
+        ))}
+        {/* 바늘 (deg 방향으로 회전) */}
+        <g transform={`rotate(${deg}, 36, 36)`}>
+          {/* 빨간 팁 (가리키는 방향) */}
+          <polygon points="36,6 32.5,36 39.5,36" fill="var(--color-cta, #8B6914)" opacity="0.9" />
+          {/* 흰색 꼬리 */}
+          <polygon points="36,66 32.5,36 39.5,36" fill="rgba(255,255,255,0.18)" />
+        </g>
+        {/* 중심 원 */}
+        <circle cx="36" cy="36" r="3.5" fill="white" opacity="0.7" />
+      </svg>
+      <span className="text-[11px] text-text-tertiary">{direction}쪽이 길합니다</span>
+    </div>
+  );
+}
+
+// 색상 스와치
+function ColorSwatch({ name, css }: { name: string; css: string }) {
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <div
+        className="w-10 h-10 rounded-xl border border-white/15 shadow-inner"
+        style={{ background: css }}
+      />
+      <span className="text-[11px] text-text-tertiary">{name}</span>
+    </div>
+  );
+}
+
+interface AdviceCardProps {
+  yongSinElement: string; // '목' | '화' | '토' | '금' | '수'
+  meta: AdviceMeta;
+}
+
+export function AdviceCard({ yongSinElement, meta }: AdviceCardProps) {
+  // 한자 포함된 경우 매핑
+  const elementKey = Object.keys(YONGSIN_MAP).find(k =>
+    yongSinElement === k || yongSinElement.startsWith(k)
+  ) ?? '목';
+  const mapData = YONGSIN_MAP[elementKey];
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* 은유 제목 */}
+      {meta.title && (
+        <p className="text-[13px] text-text-tertiary italic leading-relaxed">
+          {meta.title}
+        </p>
+      )}
+
+      {/* 시각 정보 그리드: 나침반 + 색상 */}
+      <div className="flex items-center justify-around py-3 px-2 rounded-2xl bg-white/5 border border-white/10">
+        {/* 나침반 */}
+        <CompassSVG deg={mapData.directionDeg} direction={mapData.direction} />
+
+        {/* 구분선 */}
+        <div className="w-px h-16 bg-white/10" />
+
+        {/* 색상 스와치 */}
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-[10px] text-text-tertiary mb-0.5">용신 색상</span>
+          <div className="flex gap-3">
+            {mapData.colors.map(c => (
+              <ColorSwatch key={c.name} name={c.name} css={c.css} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 시간대 + 음식 */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl p-3 bg-white/5 border border-white/10">
+          <div className="text-[10px] text-text-tertiary mb-1">유리한 시간대</div>
+          <div className="text-[13px] text-text-primary font-medium">
+            {meta.timeSlot || '—'}
+          </div>
+        </div>
+        <div className="rounded-xl p-3 bg-white/5 border border-white/10">
+          <div className="text-[10px] text-text-tertiary mb-1">보강 음식</div>
+          <div className="text-[13px] text-text-primary font-medium">
+            {meta.foods.length > 0 ? meta.foods.join(', ') : '—'}
+          </div>
+        </div>
+      </div>
+
+      {/* 본문 */}
+      {meta.body && (
+        <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
+          {meta.body}
+        </p>
+      )}
+
+      {/* 이번 달 실천 */}
+      {meta.actions.length > 0 && (
+        <div className="rounded-xl p-3 bg-white/5 border border-white/10">
+          <div className="text-[11px] text-text-tertiary mb-2">이번 달 실천</div>
+          <ul className="flex flex-col gap-1.5">
+            {meta.actions.map((action, i) => (
+              <li key={i} className="flex items-start gap-2 text-[13px] text-text-secondary">
+                <span className="text-text-tertiary mt-0.5 shrink-0">·</span>
+                <span>{action}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}

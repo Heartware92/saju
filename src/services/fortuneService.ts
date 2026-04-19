@@ -395,11 +395,63 @@ export const getPeriodDomainsDescription = async (
 /**
  * 정통사주 종합 리포트 (원국 기반 9섹션 분석)
  */
+export interface AdviceMeta {
+  title: string;
+  timeSlot: string;
+  foods: string[];
+  body: string;
+  actions: string[];
+}
+
+function parseAdviceMeta(text: string): AdviceMeta {
+  const lines = text.split('\n').map(l => l.trim());
+  let title = '';
+  let timeSlot = '';
+  let foods: string[] = [];
+  const bodyLines: string[] = [];
+  const actions: string[] = [];
+  let metaParsed = false;
+  let inActions = false;
+
+  for (const line of lines) {
+    if (!line) continue;
+
+    if (!title) { title = line; continue; }
+
+    if (!metaParsed && line.startsWith('시간대:')) {
+      timeSlot = line.replace('시간대:', '').trim();
+      continue;
+    }
+    if (!metaParsed && line.startsWith('음식:')) {
+      foods = line.replace('음식:', '').trim().split(/[,，·]/).map(f => f.trim()).filter(Boolean);
+      metaParsed = true;
+      continue;
+    }
+
+    if (line === '이번 달 실천:' || line.startsWith('이번 달 실천')) {
+      inActions = true;
+      continue;
+    }
+
+    if (line.startsWith('- ') || line.startsWith('· ')) {
+      actions.push(line.slice(2).trim());
+      continue;
+    }
+
+    if (!inActions) {
+      bodyLines.push(line);
+    }
+  }
+
+  return { title, timeSlot, foods, body: bodyLines.join('\n').trim(), actions };
+}
+
 export interface JungtongsajuAIResult {
   success: boolean;
   sections?: Partial<Record<JungtongsajuSectionKey, string>>;
   rawText?: string;
   error?: string;
+  adviceMeta?: AdviceMeta;
 }
 
 const parseJungtongsaju = (raw: string): Partial<Record<JungtongsajuSectionKey, string>> => {
@@ -424,7 +476,8 @@ export const getJungtongsajuReport = async (result: SajuResult): Promise<Jungton
     if (Object.keys(sections).length === 0) {
       return { success: true, rawText: content };
     }
-    return { success: true, sections };
+    const adviceMeta = sections.advice ? parseAdviceMeta(sections.advice) : undefined;
+    return { success: true, sections, adviceMeta };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
