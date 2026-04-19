@@ -45,7 +45,47 @@ const QUICK_QUESTIONS = [
 
 // localStorage 키
 const STATUS_KEY = (profileId: string) => `sangdamso:status:${profileId}`;
-const HISTORY_KEY = (profileId: string) => `sangdamso:history:${profileId}`;
+const CONVERSATIONS_KEY = (profileId: string) => `sangdamso:conversations:${profileId}`;
+const ACTIVE_KEY = (profileId: string) => `sangdamso:active:${profileId}`;
+// 레거시 — 단일 히스토리(v1). 로드 시 conversations[0] 으로 마이그레이션 후 삭제.
+const LEGACY_HISTORY_KEY = (profileId: string) => `sangdamso:history:${profileId}`;
+
+const MAX_CONVERSATIONS_PER_PROFILE = 20;
+const MAX_MESSAGES_PER_CONVERSATION = 50;
+
+interface StoredConversation {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  updatedAt: number;
+}
+
+function newConversation(): StoredConversation {
+  return {
+    id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `c-${Date.now()}-${Math.random()}`,
+    title: '새 대화',
+    messages: [],
+    updatedAt: Date.now(),
+  };
+}
+
+function deriveTitle(messages: ChatMessage[]): string {
+  const firstUser = messages.find(m => m.role === 'user');
+  if (!firstUser) return '새 대화';
+  return firstUser.content.slice(0, 24).trim() || '새 대화';
+}
+
+function formatRelativeTime(ts: number): string {
+  const diff = Date.now() - ts;
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return '방금 전';
+  if (min < 60) return `${min}분 전`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}시간 전`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}일 전`;
+  return new Date(ts).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+}
 
 // ──────────────────────────────────────────────
 // 컴포넌트
@@ -62,13 +102,35 @@ export default function ConsultationPage() {
   const [relationshipSelect, setRelationshipSelect] = useState('');
   const [customRelationship, setCustomRelationship] = useState('');
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [conversations, setConversations] = useState<StoredConversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string>('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  const activeConv = useMemo(
+    () => conversations.find(c => c.id === activeConversationId) ?? null,
+    [conversations, activeConversationId],
+  );
+  const messages = activeConv?.messages ?? [];
+
+  // messages setter — 활성 대화의 messages만 업데이트 (다른 대화는 유지)
+  const setMessages = (updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
+    setConversations(prev => prev.map(c => {
+      if (c.id !== activeConversationId) return c;
+      const nextMessages = typeof updater === 'function' ? updater(c.messages) : updater;
+      return {
+        ...c,
+        messages: nextMessages,
+        title: deriveTitle(nextMessages),
+        updatedAt: Date.now(),
+      };
+    }));
+  };
 
   // 초기화: 프로필 불러오기
   useEffect(() => {
@@ -96,7 +158,7 @@ export default function ConsultationPage() {
     return computeSajuFromProfile(selectedProfile);
   }, [selectedProfile]);
 
-  // 프로필 전환 시: 상태·히스토리 로드 (진행 중 응답이 엉뚱한 프로필에 꽂히지 않도록 로딩 리셋)
+  // 프로필 전환 시: 상태·대화 목록 로드 (진행 중 응답이 엉뚱한 프로필에 꽂히지 않도록 로딩 리셋)
   useEffect(() => {
     if (!selectedProfileId) return;
     if (typeof window === 'undefined') return;
@@ -108,38 +170,76 @@ export default function ConsultationPage() {
     // 상태 로드
     try {
       const raw = localStorage.getItem(STATUS_KEY(selectedProfileId));
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        setStatus(parsed);
-      } else {
-        setStatus({});
-      }
+      setStatus(raw ? JSON.parse(raw) : {});
     } catch {
       setStatus({});
     }
 
-    // 히스토리 로드
+    // 대화 목록 로드 + 레거시 단일 히스토리 마이그레이션
+    let loadedConvs: StoredConversation[] = [];
     try {
-      const raw = localStorage.getItem(HISTORY_KEY(selectedProfileId));
-      if (raw) {
-        setMessages(JSON.parse(raw));
+      const rawConvs = localStorage.getItem(CONVERSATIONS_KEY(selectedProfileId));
+      if (rawConvs) {
+        loadedConvs = JSON.parse(rawConvs);
       } else {
-        setMessages([]);
+        // 레거시 히스토리 확인 → 첫 대화로 전환
+        const legacyRaw = localStorage.getItem(LEGACY_HISTORY_KEY(selectedProfileId));
+        if (legacyRaw) {
+          const legacyMessages: ChatMessage[] = JSON.parse(legacyRaw);
+          if (legacyMessages.length > 0) {
+            const migrated: StoredConversation = {
+              ...newConversation(),
+              messages: legacyMessages,
+              title: deriveTitle(legacyMessages),
+            };
+            loadedConvs = [migrated];
+          }
+          localStorage.removeItem(LEGACY_HISTORY_KEY(selectedProfileId));
+        }
       }
     } catch {
-      setMessages([]);
+      loadedConvs = [];
     }
+
+    // 활성 대화 결정: 저장된 active > 가장 최근 > 새 빈 대화
+    let activeId = '';
+    try {
+      activeId = localStorage.getItem(ACTIVE_KEY(selectedProfileId)) || '';
+    } catch { /* ignore */ }
+
+    if (loadedConvs.length === 0) {
+      const fresh = newConversation();
+      loadedConvs = [fresh];
+      activeId = fresh.id;
+    } else if (!activeId || !loadedConvs.find(c => c.id === activeId)) {
+      activeId = [...loadedConvs].sort((a, b) => b.updatedAt - a.updatedAt)[0].id;
+    }
+
+    setConversations(loadedConvs);
+    setActiveConversationId(activeId);
   }, [selectedProfileId]);
 
-  // 히스토리 자동 저장
+  // 대화 목록 자동 저장 + 크기 제한
   useEffect(() => {
-    if (!selectedProfileId) return;
+    if (!selectedProfileId || conversations.length === 0) return;
     try {
-      localStorage.setItem(HISTORY_KEY(selectedProfileId), JSON.stringify(messages));
+      // 메시지 50개 초과 시 오래된 것 잘라냄 + 대화 20개 초과 시 오래된 것 삭제
+      const trimmed = conversations
+        .map(c => ({
+          ...c,
+          messages: c.messages.length > MAX_MESSAGES_PER_CONVERSATION
+            ? c.messages.slice(-MAX_MESSAGES_PER_CONVERSATION)
+            : c.messages,
+        }))
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .slice(0, MAX_CONVERSATIONS_PER_PROFILE);
+
+      localStorage.setItem(CONVERSATIONS_KEY(selectedProfileId), JSON.stringify(trimmed));
+      localStorage.setItem(ACTIVE_KEY(selectedProfileId), activeConversationId);
     } catch {
       /* ignore */
     }
-  }, [messages, selectedProfileId]);
+  }, [conversations, activeConversationId, selectedProfileId]);
 
   // 메시지 추가 시 자동 스크롤
   useEffect(() => {
@@ -385,12 +485,45 @@ export default function ConsultationPage() {
     }
   };
 
-  const handleClearHistory = () => {
-    if (!confirm('대화 기록을 모두 삭제할까요?')) return;
-    setMessages([]);
-    if (selectedProfileId) {
-      try { localStorage.removeItem(HISTORY_KEY(selectedProfileId)); } catch { /* ignore */ }
-    }
+  const handleNewConversation = () => {
+    abortRef.current?.abort();
+    setError('');
+    setLoading(false);
+
+    // 현재 활성 대화가 비어있으면 재사용 (빈 대화 쌓임 방지)
+    if (activeConv && activeConv.messages.length === 0) return;
+
+    const fresh = newConversation();
+    setConversations(prev => [fresh, ...prev]);
+    setActiveConversationId(fresh.id);
+    setDrawerOpen(false);
+  };
+
+  const handleSelectConversation = (id: string) => {
+    if (id === activeConversationId) { setDrawerOpen(false); return; }
+    abortRef.current?.abort();
+    setError('');
+    setLoading(false);
+    setActiveConversationId(id);
+    setDrawerOpen(false);
+  };
+
+  const handleDeleteConversation = (id: string) => {
+    if (!confirm('이 대화를 삭제할까요?')) return;
+    setConversations(prev => {
+      const next = prev.filter(c => c.id !== id);
+      // 활성 대화가 삭제되면 다른 대화로 전환하거나 새로 생성
+      if (id === activeConversationId) {
+        if (next.length > 0) {
+          setActiveConversationId(next[0].id);
+        } else {
+          const fresh = newConversation();
+          setActiveConversationId(fresh.id);
+          return [fresh];
+        }
+      }
+      return next;
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -433,16 +566,34 @@ export default function ConsultationPage() {
             </h1>
             <p className="text-[11px] text-text-tertiary mt-0.5">사주 기반 1:1 AI 상담 · 1회 🌙 {MOON_COST_PER_QUESTION}</p>
           </div>
-          <div className="flex items-center gap-1.5">
-            {messages.length > 0 && (
-              <button
-                onClick={handleClearHistory}
-                className="text-[11px] text-text-tertiary hover:text-text-secondary px-2 py-1"
-                title="대화 기록 초기화"
-              >
-                기록 지우기
-              </button>
-            )}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="flex items-center gap-1 text-[11px] text-text-secondary hover:text-text-primary px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
+              title="이전 대화 목록"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+              <span className="hidden sm:inline">목록</span>
+              {conversations.length > 1 && (
+                <span className="text-[9px] text-cta font-bold">{conversations.length}</span>
+              )}
+            </button>
+            <button
+              onClick={handleNewConversation}
+              disabled={loading}
+              className="flex items-center gap-1 text-[11px] text-cta hover:bg-cta/10 px-2 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+              title="새 대화 시작"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              <span>새 대화</span>
+            </button>
           </div>
         </div>
 
@@ -642,6 +793,99 @@ export default function ConsultationPage() {
           </span>
         </div>
       </div>
+
+      {/* ── 대화 목록 드로어 ── */}
+      <AnimatePresence>
+        {drawerOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDrawerOpen(false)}
+              className="fixed inset-0 z-[75] bg-black/60"
+            />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'tween', duration: 0.25 }}
+              className="fixed left-0 top-0 bottom-0 z-[76] w-[min(340px,85vw)] bg-[rgba(20,12,38,0.98)] border-r border-white/15 shadow-2xl flex flex-col"
+            >
+              <div className="flex-shrink-0 px-4 py-4 border-b border-white/10 flex items-center justify-between">
+                <div>
+                  <p className="text-[15px] font-bold text-text-primary">대화 목록</p>
+                  <p className="text-[10px] text-text-tertiary mt-0.5">
+                    {selectedProfile?.name}님 · {conversations.length}개
+                  </p>
+                </div>
+                <button
+                  onClick={() => setDrawerOpen(false)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-text-tertiary hover:text-text-primary"
+                  aria-label="닫기"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <button
+                onClick={handleNewConversation}
+                className="mx-3 mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-cta/15 border border-cta/40 text-cta font-semibold text-[13px] hover:bg-cta/25 transition"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                새 대화 시작
+              </button>
+
+              <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5">
+                {[...conversations]
+                  .sort((a, b) => b.updatedAt - a.updatedAt)
+                  .map(c => {
+                    const isActive = c.id === activeConversationId;
+                    const isEmpty = c.messages.length === 0;
+                    return (
+                      <div
+                        key={c.id}
+                        className={`group relative rounded-xl border transition-all
+                          ${isActive ? 'bg-cta/15 border-cta/50' : 'bg-white/5 border-white/10 hover:border-white/25'}`}
+                      >
+                        <button
+                          onClick={() => handleSelectConversation(c.id)}
+                          className="w-full text-left px-3 py-2.5 pr-9"
+                        >
+                          <p className={`text-[13px] font-medium truncate ${isActive ? 'text-cta' : 'text-text-primary'}`}>
+                            {isEmpty ? '빈 대화' : c.title}
+                          </p>
+                          <p className="text-[10px] text-text-tertiary mt-0.5">
+                            {c.messages.length}개 메시지 · {formatRelativeTime(c.updatedAt)}
+                          </p>
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteConversation(c.id); }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center text-text-tertiary hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                          aria-label="대화 삭제"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              <div className="flex-shrink-0 px-4 py-3 border-t border-white/10">
+                <p className="text-[10px] text-text-tertiary text-center">
+                  💾 대화 기록은 이 기기에만 저장돼요 (서버 X)
+                </p>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* ── 상태 수정 모달 ── */}
       <AnimatePresence>
