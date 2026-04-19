@@ -29,6 +29,8 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   createdAt: number;
+  /** 답변 직후 제안된 후속 질문 3개 (assistant 메시지에만 채워짐) */
+  followups?: string[];
 }
 
 const RELATIONSHIP_PRESETS = ['솔로', '썸타는 중', '연애중', '결혼했어요', '새로운 출발', '기타'];
@@ -346,6 +348,29 @@ export default function ConsultationPage() {
       if (!consumed) {
         console.error('크레딧 차감 실패 (응답은 이미 생성됨)');
       }
+
+      // 후속 질문 제안 (fire-and-forget — 실패해도 메인 UX 영향 없음)
+      if (selectedProfileId === profileAtSend && cleaned) {
+        fetch('/api/consultation/followups', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ lastQuestion: question, lastAnswer: cleaned }),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then((data: { suggestions?: string[] } | null) => {
+            const suggestions = data?.suggestions ?? [];
+            if (suggestions.length === 0) return;
+            // 여전히 같은 프로필이고 해당 메시지가 남아있으면 업데이트
+            if (selectedProfileId !== profileAtSend) return;
+            setMessages(prev => prev.map(m =>
+              m.id === botMsgId ? { ...m, followups: suggestions } : m
+            ));
+          })
+          .catch(() => { /* 후속 제안 실패는 무시 */ });
+      }
     } catch (e: unknown) {
       if ((e as Error)?.name === 'AbortError') {
         // 사용자가 중단 (페이지 이동 등) — 조용히 종료
@@ -502,29 +527,59 @@ export default function ConsultationPage() {
           {messages.map((msg, idx) => {
             const isLast = idx === messages.length - 1;
             const isStreaming = loading && msg.role === 'assistant' && isLast;
+            const showFollowups = !loading
+              && msg.role === 'assistant'
+              && isLast
+              && (msg.followups?.length ?? 0) > 0;
             return (
               <motion.div
                 key={msg.id}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
               >
-                {msg.role === 'assistant' && (
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500/40 to-indigo-500/30 flex items-center justify-center text-sm mr-2 border border-white/15">
-                    🌙
-                  </div>
-                )}
-                <div
-                  className={`max-w-[85%] px-4 py-3 rounded-2xl text-[14px] leading-[1.75] whitespace-pre-wrap
-                    ${msg.role === 'user'
-                      ? 'bg-cta/90 text-white rounded-tr-sm'
-                      : 'bg-[rgba(20,12,38,0.75)] border border-[var(--border-subtle)] text-text-primary rounded-tl-sm'}`}
-                >
-                  {msg.content}
-                  {isStreaming && (
-                    <span className="inline-block w-[8px] h-[14px] bg-cta/80 ml-0.5 -mb-0.5 align-middle animate-pulse" />
+                <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} w-full`}>
+                  {msg.role === 'assistant' && (
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500/40 to-indigo-500/30 flex items-center justify-center text-sm mr-2 border border-white/15">
+                      🌙
+                    </div>
                   )}
+                  <div
+                    className={`max-w-[85%] px-4 py-3 rounded-2xl text-[14px] leading-[1.75] whitespace-pre-wrap
+                      ${msg.role === 'user'
+                        ? 'bg-cta/90 text-white rounded-tr-sm'
+                        : 'bg-[rgba(20,12,38,0.75)] border border-[var(--border-subtle)] text-text-primary rounded-tl-sm'}`}
+                  >
+                    {msg.content}
+                    {isStreaming && (
+                      <span className="inline-block w-[8px] h-[14px] bg-cta/80 ml-0.5 -mb-0.5 align-middle animate-pulse" />
+                    )}
+                  </div>
                 </div>
+
+                {/* 후속 질문 제안 칩 */}
+                {showFollowups && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="flex flex-col gap-1.5 mt-2 ml-10 max-w-[85%]"
+                  >
+                    <p className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider px-1">
+                      이어서 물어볼까요
+                    </p>
+                    {(msg.followups ?? []).map((s, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleSend(s)}
+                        disabled={loading || moonBalance < MOON_COST_PER_QUESTION}
+                        className="text-left px-3 py-2 rounded-xl bg-cta/10 border border-cta/30 text-[12px] text-cta hover:bg-cta/20 hover:border-cta/50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
               </motion.div>
             );
           })}
