@@ -82,10 +82,13 @@ export function calculateZamidusu(
       ? (astro as any).byLunar(solarDateStr, timeIndex, genderName, false, true, 'ko-KR')
       : (astro as any).bySolar(solarDateStr, timeIndex, genderName, true, 'ko-KR');
 
-  // palaces 직렬화
+  // palaces 직렬화 — iztro는 명궁만 "궁"을 붙이고 나머지는 약칭(부모·복덕·…) 반환.
+  // 앱 전역에서 "부처궁"·"재백궁" 등 풀네임 매칭 규약이라 엔진 경계에서 정규화한다.
+  const normalizePalaceName = (n: string): string => (n === '명궁' || n.endsWith('궁')) ? n : `${n}궁`;
+
   const palaces: ZamidusuPalace[] = astrolabe.palaces.map((p: any) => ({
     index: p.index,
-    name: p.name,
+    name: normalizePalaceName(p.name),
     heavenlyStem: p.heavenlyStem,
     earthlyBranch: p.earthlyBranch,
     isBodyPalace: p.isBodyPalace,

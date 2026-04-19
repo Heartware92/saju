@@ -9,6 +9,7 @@ import { calculateSaju, type SajuResult } from '../utils/sajuCalculator';
 import { getTodayFortuneReport, type TodayFortuneAIResult } from '../services/fortuneService';
 import { TODAY_SECTION_KEYS, TODAY_SECTION_LABELS } from '../constants/prompts';
 import { AILoadingBar } from '../components/AILoadingBar';
+import { LuckyVisualCard, ELEMENT_LUCKY } from '../components/saju/LuckyVisualCard';
 
 const TODAY_MESSAGES = [
   '일진과 원국의 오행을 대조하는 중입니다',
@@ -290,11 +291,14 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
       )}
 
       {/* 5섹션 카드 */}
-      {report?.sections && (
+      {report?.sections && result && (
         <div className="space-y-2">
           {TODAY_SECTION_KEYS.map((key, idx) => {
             const text = report.sections?.[key];
             if (!text) return null;
+            const isLucky = key === 'today_lucky';
+            const luckyEl = result.yongSinElement ?? '목';
+            const el = ELEMENT_LUCKY[luckyEl] ?? ELEMENT_LUCKY['목'];
             return (
               <motion.div
                 key={key}
@@ -303,12 +307,25 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
                 transition={{ delay: 0.07 * idx }}
                 className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
               >
-                <div className="text-[13px] font-bold text-text-primary mb-2">
+                <div className="text-[13px] font-bold text-text-primary mb-3">
                   {TODAY_SECTION_LABELS[key]}
                 </div>
-                <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
-                  {text}
-                </p>
+                {isLucky ? (
+                  <LuckyVisualCard
+                    colors={el.colors}
+                    colorCss={el.colorCss}
+                    numbers={el.numbers}
+                    direction={el.direction}
+                    timeSlot={el.timeSlot}
+                    gem={el.gem}
+                    activity={el.activity}
+                    extraText={text}
+                  />
+                ) : (
+                  <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
+                    {text}
+                  </p>
+                )}
               </motion.div>
             );
           })}

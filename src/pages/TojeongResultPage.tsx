@@ -203,6 +203,26 @@ export default function TojeongResultPage() {
         </div>
       </section>
 
+      {/* 원문 한문 괘사 */}
+      {reading.entry.hanjaSa && (
+        <section className="rounded-2xl p-4 mb-3 text-center" style={{ backgroundColor: `${gradeColor}08`, border: `1px solid ${gradeColor}33` }}>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-text-tertiary mb-3">괘사 (卦辭)</div>
+          <div className="text-[22px] font-bold mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-serif)', color: gradeColor }}>
+            {reading.entry.hanjaSa.title}
+          </div>
+          <div className="space-y-1 mb-3">
+            {reading.entry.hanjaSa.lines.map((line, i) => (
+              <div key={i} className="text-[14px] tracking-[0.1em] text-text-secondary" style={{ fontFamily: 'var(--font-serif)' }}>
+                {line}
+              </div>
+            ))}
+          </div>
+          <div className="text-[12px] text-text-tertiary leading-relaxed border-t border-white/10 pt-3 mt-3">
+            {reading.entry.hanjaSa.translation}
+          </div>
+        </section>
+      )}
+
       {/* 총평 */}
       <section className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
         <div className="text-[13px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">올해 총평</div>
@@ -260,7 +280,7 @@ export default function TojeongResultPage() {
       {/* AI 심층 풀이 */}
       {(aiLoading || aiContent) && (
         <section className="mt-3 rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-          <div className="text-[13px] font-semibold text-text-primary mb-3">AI 심층 풀이</div>
+          <div className="text-[13px] font-semibold text-text-primary mb-3">심층 풀이</div>
           {aiLoading ? (
             <AILoadingBar
               inline

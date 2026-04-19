@@ -21,6 +21,7 @@ import { calculatePeriodFortune, type FortuneScope, type FortuneGrade, type Peri
 import { getPeriodDomainsDescription, getNewyearReport, type NewyearReportAIResult } from '../services/fortuneService';
 import { NEWYEAR_SECTION_KEYS, NEWYEAR_SECTION_LABELS } from '../constants/prompts';
 import { AILoadingBar } from '../components/AILoadingBar';
+import { LuckyVisualCard, ELEMENT_LUCKY } from '../components/saju/LuckyVisualCard';
 
 const NEWYEAR_MESSAGES = [
   '세운과 원국의 합충을 분석하는 중입니다',
@@ -444,32 +445,31 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
         })}
       </motion.section>
 
-      {/* 행운 메타 */}
+      {/* 행운 메타 — 비주얼 카드 */}
       <motion.section
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
         className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
       >
-        <div className="text-[13px] font-semibold text-text-secondary mb-3 px-1 uppercase tracking-wider">오늘의 행운</div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg p-2.5 bg-white/5">
-            <div className="text-[11px] text-text-tertiary mb-0.5">색상</div>
-            <div className="text-[13px] font-semibold text-text-primary">{fortune.luckyColors.join(' · ')}</div>
-          </div>
-          <div className="rounded-lg p-2.5 bg-white/5">
-            <div className="text-[11px] text-text-tertiary mb-0.5">숫자</div>
-            <div className="text-[13px] font-semibold text-text-primary">{fortune.luckyNumbers.join(' · ')}</div>
-          </div>
-          <div className="rounded-lg p-2.5 bg-white/5">
-            <div className="text-[11px] text-text-tertiary mb-0.5">방위</div>
-            <div className="text-[13px] font-semibold text-text-primary">{fortune.luckyDirection}</div>
-          </div>
-          <div className="rounded-lg p-2.5 bg-white/5">
-            <div className="text-[11px] text-text-tertiary mb-0.5">시간대</div>
-            <div className="text-[13px] font-semibold text-text-primary">{fortune.luckyTime}</div>
-          </div>
+        <div className="text-[13px] font-semibold text-text-secondary mb-3 px-1 uppercase tracking-wider">
+          {scope === 'year' ? '연간 행운 처방' : '오늘의 행운'}
         </div>
+        {(() => {
+          const luckyEl = saju.yongSinElement ?? '목';
+          const el = ELEMENT_LUCKY[luckyEl] ?? ELEMENT_LUCKY['목'];
+          return (
+            <LuckyVisualCard
+              colors={fortune.luckyColors.length >= 2 ? fortune.luckyColors : el.colors}
+              colorCss={fortune.luckyColors.length >= 2 ? undefined : el.colorCss}
+              numbers={fortune.luckyNumbers.length > 0 ? fortune.luckyNumbers : el.numbers}
+              direction={fortune.luckyDirection || el.direction}
+              timeSlot={fortune.luckyTime || el.timeSlot}
+              gem={el.gem}
+              activity={el.activity}
+            />
+          );
+        })()}
       </motion.section>
 
       {/* 상호작용 */}
@@ -574,20 +574,42 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
               {NEWYEAR_SECTION_KEYS.map((key, idx) => {
                 const text = newyearReport.sections?.[key];
                 if (!text) return null;
+                const isLucky = key === 'lucky';
+                const luckyEl = saju.yongSinElement ?? '목';
+                const el = ELEMENT_LUCKY[luckyEl] ?? ELEMENT_LUCKY['목'];
                 return (
                   <motion.div
                     key={key}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.06 * idx }}
-                    className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
+                    className="rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
                   >
-                    <div className="text-[13px] font-bold text-text-primary mb-2">
+                    <div
+                      className="text-[19px] font-bold leading-snug text-text-primary mb-1"
+                      style={{ fontFamily: 'var(--font-serif)' }}
+                    >
+                      {text.split('\n')[0]?.trim()}
+                    </div>
+                    <div className="text-[11px] font-medium text-text-tertiary tracking-widest uppercase mb-4">
                       {NEWYEAR_SECTION_LABELS[key]}
                     </div>
-                    <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
-                      {text}
-                    </p>
+                    {isLucky ? (
+                      <LuckyVisualCard
+                        colors={el.colors}
+                        colorCss={el.colorCss}
+                        numbers={el.numbers}
+                        direction={el.direction}
+                        timeSlot={el.timeSlot}
+                        gem={el.gem}
+                        activity={el.activity}
+                        extraText={text.split('\n').slice(1).join('\n').trim()}
+                      />
+                    ) : (
+                      <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
+                        {text.split('\n').slice(1).join('\n').trim()}
+                      </p>
+                    )}
                   </motion.div>
                 );
               })}

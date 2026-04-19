@@ -18,6 +18,9 @@ import {
   generateWealthFortunePrompt,
   generateTojeongPrompt,
   generateZamidusuPrompt,
+  ZAMIDUSU_SECTION_KEYS,
+  ZAMIDUSU_SECTION_LABELS,
+  type ZamidusuSectionKey,
   generatePeriodDomainsPrompt,
   generateNewyearReportPrompt,
   generateJungtongsajuPrompt,
@@ -320,15 +323,44 @@ export const getTojeongReading = async (
 };
 
 /**
- * 자미두수 (전체 무료)
+ * 자미두수 (전체 무료) — 섹션 델리미터 파싱까지
  */
+export interface ZamidusuAIResult {
+  success: boolean;
+  /** 원본 AI 전문 (fallback 또는 디버깅) */
+  content?: string;
+  /** 섹션별 본문 — key는 ZAMIDUSU_SECTION_KEYS 중 하나 */
+  sections?: Partial<Record<ZamidusuSectionKey, string>>;
+  error?: string;
+}
+
+const ZAMIDUSU_KEYS: ZamidusuSectionKey[] = [
+  'overview', 'core', 'relations', 'wealth', 'body_mind', 'mutagen', 'daehan', 'advice',
+];
+
+function parseZamidusuSections(raw: string): Partial<Record<ZamidusuSectionKey, string>> {
+  const out: Partial<Record<ZamidusuSectionKey, string>> = {};
+  const re = /^\s*\[(overview|core|relations|wealth|body_mind|mutagen|daehan|advice)\]\s*$/m;
+  const parts = raw.split(re);
+  // parts: ['', 'overview', '본문...', 'core', '본문...', ...]
+  for (let i = 1; i < parts.length; i += 2) {
+    const key = parts[i] as ZamidusuSectionKey;
+    const body = (parts[i + 1] ?? '').trim();
+    if (ZAMIDUSU_KEYS.includes(key) && body) {
+      out[key] = body;
+    }
+  }
+  return out;
+}
+
 export const getZamidusuReading = async (
   z: ZamidusuResult
-): Promise<FortuneResponse> => {
+): Promise<ZamidusuAIResult> => {
   try {
     const prompt = generateZamidusuPrompt(z);
     const content = await callGPT(prompt, 6800);
-    return { success: true, content };
+    const sections = parseZamidusuSections(content);
+    return { success: true, content, sections };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

@@ -13,8 +13,9 @@
  * 합성된 엔트리는 불변(순수 함수 출력)이며, 프롬프트 주입 시 AI가
  * 이 틀을 벗어난 길흉을 창작하지 않도록 제약 역할을 한다.
  *
- * TODO(후속): 원전 144괘 점사 원문을 추가 테이블로 덧대어 정밀도 향상.
  */
+
+import { getHanjaSa } from './gwae-hanja';
 
 export type GwaeGrade =
   | '대길'
@@ -36,6 +37,11 @@ export interface GwaeEntry {
   keywords: string[]; // 3~5개
   summary: string; // 2~3문장 총평
   monthlyHints: string[]; // 12개월 키워드
+  hanjaSa?: {
+    title: string;       // 4자 한문 표제
+    lines: string[];     // 7언 한문 구절 2줄
+    translation: string; // 한국어 번역
+  };
 }
 
 // ============================================
@@ -228,7 +234,8 @@ export function getGwaeEntry(upper: number, middle: number, lower: number): Gwae
   if (!hit) {
     throw new Error(`invalid gwae: ${upper}/${middle}/${lower}`);
   }
-  return hit;
+  const hanjaSa = getHanjaSa(key);
+  return hanjaSa ? { ...hit, hanjaSa } : hit;
 }
 
 /** 전체 144괘 엔트리 리스트 (테스트/디버그 용도) */
