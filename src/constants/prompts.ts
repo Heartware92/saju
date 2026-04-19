@@ -687,7 +687,7 @@ ${pillarDetailBlock}
 오행: 목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%
 ${elementNoteBlock}
 ${strengthBlock}
-용신: ${yongSinElement}(${yongSin})  희신: ${result.heeSin}  기신: ${result.giSin}
+용신: ${yongSinElement}(${yongSin})  희신: ${result.heeSin}  기신: ${result.giSin}${result.strengthScore >= 85 || result.strengthScore <= 15 ? `  ★전왕법 적용(점수 ${result.strengthScore}) — 억부 역전 주의` : ''}
 격국: ${gyeokguk.name}
 십성 분포: ${sipseong}
 신살·길성: ${sinSalStr}
@@ -804,6 +804,15 @@ ${dayTraitsBlock}
 - 귀문관살(鬼門關殺) = 달도 없는 칠흑 같은 밤. 예민한 직관이 깨어나는 시간.
 - 장성살(將星殺) = 밤하늘을 이끄는 가장 밝은 별. 리더십과 독립성의 상징.
 - 반안살(攀鞍殺) = 고생 끝에 안장 위에 오른 별. 역경 후에 안정을 찾아가는 별.
+
+전왕법(專旺法) — 흐름을 따라가는 용신:
+- 전왕 = 한 방향의 물살이 너무 강해 막으면 터집니다. 흐름을 따라가는 것이 용신.
+- 종강격(從强格): 극신강(85점↑) + 비겁·인성 65%↑ → 일간 오행 자체가 용신. 억부와 반대.
+- 종아격(從兒格): 극신약(15점↓) + 식상 오행 65%↑ → 식상을 따라감. 재능·창의 방향으로 설명.
+- 종재격(從財格): 극신약 + 재성 오행 65%↑ → 재성을 따라감. 돈과 현실에 순응하는 삶.
+- 종살격(從殺格): 극신약 + 관살 오행 65%↑ → 관살을 따라감. 조직·권위에 순응하며 오히려 성공.
+- ★전왕 표시가 있을 때: 반드시 전왕 맥락으로 해석. "억누르면 오히려 역효과" 관점 유지.
+- 서술 팁: "거대한 강물을 막을 수 없을 때, 그 흐름을 타는 것이 지혜" 같은 은유 활용.
 
 간여지동(干與支同) — 순수한 기둥의 빛:
 - 간여지동 = 하늘(천간)과 땅(지지)이 같은 오행으로 물든 기둥. 에너지가 한 방향으로 순수하게 집중됩니다.
@@ -3619,3 +3628,227 @@ ${me.isStrong && !other.isStrong ? `${myName}(신강)이 ${otherName}(신약)을
 
 [mentor_gunghap]`;
 };
+
+// ============================================================
+// 상담소 — 챗봇 시스템 프롬프트
+// ============================================================
+
+export interface ConsultationStatus {
+  relationshipStatus?: string;  // 연애상태 (솔로/연애중/결혼/기타)
+  job?: string;                 // 직업/일
+}
+
+/**
+ * SajuResult + Profile + Status를 종합해 상담소 시스템 프롬프트 생성.
+ * 사용자의 질문에 대해 사주 데이터 기반으로 친근하고 구체적인 해설을 생성하도록 유도.
+ */
+function getTenGodForMonth(dayGan: string, targetGan: string): string {
+  const map = (TEN_GODS_MAP as Record<string, Record<string, string>>)[dayGan] || {};
+  return map[targetGan] || '';
+}
+
+// 월지(사주력 월 → 지지)
+const _MONTH_BRANCH_MAP: Record<number, string> = {
+  1: '인', 2: '묘', 3: '진', 4: '사', 5: '오', 6: '미',
+  7: '신', 8: '유', 9: '술', 10: '해', 11: '자', 12: '축',
+};
+
+// 오호전환: 연간 → 인월의 천간 (비등간 동일 그룹)
+const _WUHO: Record<string, Record<number, string>> = {
+  '갑': { 1: '병', 2: '정', 3: '무', 4: '기', 5: '경', 6: '신', 7: '임', 8: '계', 9: '갑', 10: '을', 11: '병', 12: '정' },
+  '기': { 1: '병', 2: '정', 3: '무', 4: '기', 5: '경', 6: '신', 7: '임', 8: '계', 9: '갑', 10: '을', 11: '병', 12: '정' },
+  '을': { 1: '무', 2: '기', 3: '경', 4: '신', 5: '임', 6: '계', 7: '갑', 8: '을', 9: '병', 10: '정', 11: '무', 12: '기' },
+  '경': { 1: '무', 2: '기', 3: '경', 4: '신', 5: '임', 6: '계', 7: '갑', 8: '을', 9: '병', 10: '정', 11: '무', 12: '기' },
+  '병': { 1: '경', 2: '신', 3: '임', 4: '계', 5: '갑', 6: '을', 7: '병', 8: '정', 9: '무', 10: '기', 11: '경', 12: '신' },
+  '신': { 1: '경', 2: '신', 3: '임', 4: '계', 5: '갑', 6: '을', 7: '병', 8: '정', 9: '무', 10: '기', 11: '경', 12: '신' },
+  '정': { 1: '임', 2: '계', 3: '갑', 4: '을', 5: '병', 6: '정', 7: '무', 8: '기', 9: '경', 10: '신', 11: '임', 12: '계' },
+  '임': { 1: '임', 2: '계', 3: '갑', 4: '을', 5: '병', 6: '정', 7: '무', 8: '기', 9: '경', 10: '신', 11: '임', 12: '계' },
+  '무': { 1: '갑', 2: '을', 3: '병', 4: '정', 5: '무', 6: '기', 7: '경', 8: '신', 9: '임', 10: '계', 11: '갑', 12: '을' },
+  '계': { 1: '갑', 2: '을', 3: '병', 4: '정', 5: '무', 6: '기', 7: '경', 8: '신', 9: '임', 10: '계', 11: '갑', 12: '을' },
+};
+
+/**
+ * 월운 문자열 생성 — 절기 기반으로 정확하게 12개월 나열.
+ * 현재 세운(연간) 천간을 WUHO에 넣어 각 사주력 월(인월=1 ~ 축월=12)의 월간을 계산.
+ * AI가 "몇 월"을 말할 때 절기 경계를 명시하도록 절기 명·시작일도 함께 제공.
+ */
+function buildMonthUnsStr(saju: SajuResult, seWoon: SeWoon | undefined): string {
+  if (!seWoon?.gan) return '월운 데이터 없음';
+  const yearGan = seWoon.gan;
+  const year = seWoon.year;
+
+  // JEOLIP_DATA를 런타임에 require하지 않기 위해 직접 임포트된 값을 사용해야 하지만
+  // 이 파일은 SajuResult만 다루므로, 간략화: 절기 시작월 대응표(양력월→사주력월)만 사용.
+  // 사주력 월 1(인월) = 양력 2월 입춘~3월 경칩 전 … 사주력 월 12(축월) = 양력 1월 소한~2월 입춘 전.
+  const SAJU_MONTH_RANGE: Record<number, string> = {
+    1: '2월 초순(입춘)~3월 초순(경칩)',
+    2: '3월 초순(경칩)~4월 초순(청명)',
+    3: '4월 초순(청명)~5월 초순(입하)',
+    4: '5월 초순(입하)~6월 초순(망종)',
+    5: '6월 초순(망종)~7월 초순(소서)',
+    6: '7월 초순(소서)~8월 초순(입추)',
+    7: '8월 초순(입추)~9월 초순(백로)',
+    8: '9월 초순(백로)~10월 초순(한로)',
+    9: '10월 초순(한로)~11월 초순(입동)',
+    10: '11월 초순(입동)~12월 초순(대설)',
+    11: '12월 초순(대설)~1월 초순(소한)',
+    12: '1월 초순(소한)~2월 초순(입춘)',
+  };
+
+  const lines: string[] = [];
+  for (let sajuMonth = 1; sajuMonth <= 12; sajuMonth++) {
+    const gan = _WUHO[yearGan]?.[sajuMonth] || '?';
+    const zhi = _MONTH_BRANCH_MAP[sajuMonth];
+    const tenGod = getTenGodForMonth(saju.dayMaster, gan);
+    lines.push(`${gan}${zhi}(${tenGod}) — ${SAJU_MONTH_RANGE[sajuMonth]}`);
+  }
+  return `${year}년 월운 (절기 기준):\n${lines.join('\n')}`;
+}
+
+export function buildConsultationSystemPrompt(
+  saju: SajuResult,
+  profile: { name: string; birth_date: string; gender: 'male' | 'female'; calendar_type: 'solar' | 'lunar' },
+  status: ConsultationStatus,
+): string {
+  const p = saju.pillars;
+  const sipseongStr = formatSipseongCounts(computeSipseongCounts(saju));
+  const today = new Date().toISOString().slice(0, 10);
+  const currentMonth = new Date().getMonth() + 1;
+
+  // 대운 — 생일 반영한 만나이로 매칭
+  const now = new Date();
+  const birth = new Date(profile.birth_date);
+  let currentAge = now.getFullYear() - birth.getFullYear();
+  const monthDiff = now.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
+    currentAge--;
+  }
+  const currentDaeWoon = saju.daeWoon.find(d => currentAge >= d.startAge && currentAge <= d.endAge);
+  const daeWoonStr = currentDaeWoon
+    ? `${currentDaeWoon.gan}${currentDaeWoon.zhi} (${currentDaeWoon.startAge}세~${currentDaeWoon.endAge}세, 현재 · ${currentDaeWoon.tenGod})`
+    : saju.daeWoon.length === 0
+    ? '대운 데이터 없음 (시간미상 프로필)'
+    : `대운 전 상태 (첫 대운은 ${saju.daeWoonStartAge}세부터 시작)`;
+
+  // 세운 (안전 가드)
+  const seWoon = saju.currentSeWoon;
+  const seWoonStr = seWoon
+    ? `${seWoon.year}년 ${seWoon.gan}${seWoon.zhi}년 (${seWoon.tenGod}, ${seWoon.animal}띠 해)`
+    : '세운 데이터 없음';
+
+  // 월운 — 절기 기반으로 정확히 계산 (JEOLIP_DATA + 오호전환)
+  const monthStr = buildMonthUnsStr(saju, seWoon);
+
+  // 신살 (type별 그룹핑 — 길신/흉신 구분해서 제공)
+  const goodSins = saju.sinSals.filter(s => s.type === 'good').map(s => s.name);
+  const badSins = saju.sinSals.filter(s => s.type === 'bad').map(s => s.name);
+  const neutralSins = saju.sinSals.filter(s => s.type === 'neutral').map(s => s.name);
+  const sinSalLines: string[] = [];
+  if (goodSins.length > 0) sinSalLines.push(`길신: ${goodSins.join(', ')}`);
+  if (badSins.length > 0) sinSalLines.push(`흉신: ${badSins.join(', ')}`);
+  if (neutralSins.length > 0) sinSalLines.push(`중립: ${neutralSins.join(', ')}`);
+  const sinSalStr = sinSalLines.length > 0 ? sinSalLines.join(' / ') : '특별 신살 없음';
+
+  // 합·충·형
+  const interactionStr = saju.interactions.length > 0
+    ? saju.interactions.map(i => `${i.type}: ${i.description}`).join(' / ')
+    : '뚜렷한 합충 없음';
+
+  return `당신은 35년 경력의 노련한 사주명리 상담가입니다. ${profile.name}님의 개인 상담소에 방문한 AI 도사로서, 아래 사주 데이터를 바탕으로 질문에 친근하면서도 명리학적으로 정확한 답변을 제공합니다.
+
+[의뢰인 기본 정보]
+이름: ${profile.name}
+성별: ${profile.gender === 'male' ? '남성' : '여성'}
+생년월일: ${profile.birth_date} (${profile.calendar_type === 'solar' ? '양력' : '음력'})
+나이: ${currentAge}세
+현재 연애상태: ${status.relationshipStatus || '미입력'}
+직업/일: ${status.job || '미입력'}
+오늘 날짜: ${today} (${currentMonth}월)
+
+[사주 원국 4주]
+연주: ${p.year.gan}${p.year.zhi} (${p.year.ganElement}·${p.year.zhiElement}) / 지장간: ${p.year.hiddenStems.join(',')}
+월주: ${p.month.gan}${p.month.zhi} (${p.month.ganElement}·${p.month.zhiElement}) / 지장간: ${p.month.hiddenStems.join(',')}
+일주: ${p.day.gan}${p.day.zhi} (일간: ${saju.dayMaster} ${saju.dayMasterElement}·${saju.dayMasterYinYang}간) / 지장간: ${p.day.hiddenStems.join(',')}
+시주: ${saju.hourUnknown ? '시간미상' : `${p.hour.gan}${p.hour.zhi} (${p.hour.ganElement}·${p.hour.zhiElement}) / 지장간: ${p.hour.hiddenStems.join(',')}`}
+
+[오행 분포]
+목 ${saju.elementPercent.목}% / 화 ${saju.elementPercent.화}% / 토 ${saju.elementPercent.토}% / 금 ${saju.elementPercent.금}% / 수 ${saju.elementPercent.수}%
+강한 오행: ${saju.strongElement} / 약한 오행: ${saju.weakElement}
+
+[십성 분포]
+${sipseongStr}
+
+[신강·신약]
+${saju.strengthStatus} (점수 ${saju.strengthScore}): ${saju.strengthAnalysis}
+득령: ${saju.deukRyeong ? 'O' : 'X'} / 득지: ${saju.deukJi ? 'O' : 'X'} / 득세: ${saju.deukSe ? 'O' : 'X'}
+
+[격국]
+${determineGyeokguk(saju).name}
+
+[용신·희신·기신]
+용신: ${saju.yongSin}(${saju.yongSinElement}) — 보충해야 할 핵심 기운
+희신: ${saju.heeSin} — 돕는 기운
+기신: ${saju.giSin} — 피해야 할 기운
+
+[신살]
+${sinSalStr}
+
+[원국 내 합·충·형]
+${interactionStr}
+
+[간여지동 / 병존]
+${saju.ganYeojidong.length > 0 ? saju.ganYeojidong.map(g => {
+  const pMap: Record<string, string> = { year: '연', month: '월', day: '일', hour: '시' };
+  return `${pMap[g.pillar] || g.pillar}주 ${g.gan}${g.zhi}(${g.element})`;
+}).join(' / ') : '없음'}
+
+[현재 대운]
+${daeWoonStr}
+
+[올해 세운]
+${seWoonStr}
+
+[이번 해 월운]
+${monthStr}
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+[답변 작성 규칙 — 절대 준수]
+
+1. **길이**: 500~800자. 너무 짧으면 성의 없어 보이고(사용자가 "에게?"라고 느낌), 너무 길면 읽기 부담. 4~6단락.
+
+2. **구조** (순서대로):
+   - 공감 훅 1~2줄 (이름 호명 + 질문 상황 공감)
+   - 핵심 결론 1줄 (두괄식)
+   - 명리 근거 (원국·세운·십성 구체 인용)
+   - 시기 예측 (월운 기반으로 "몇 월에 어떻다")
+   - 개운법 1~2가지 (용신 ${saju.yongSinElement} 기반, 색·방향·행동)
+   - 따뜻한 마무리 1줄
+
+3. **말투**: 친근한 구어체 ("~시죠", "~예요", "~해보세요"). 반말·욕설 금지.
+
+4. **개인화**:
+   - 이름("${profile.name}님")을 자연스럽게 2~3회 호명
+   - 연애상태·직업 정보가 있으면 해당 주제에서 자연스럽게 반영
+   - 막연한 답변 금지. "좋습니다" 대신 "7월에 상관 기운이 들어와 표현력이 강해집니다" 식 구체성
+
+5. **명리 인용 방식**:
+   - 원국 글자("일지 ${p.day.zhi}") 또는 십성("정재") 직접 인용
+   - 용신·기신 활용해서 "이 기운이 부족해서 이런 현상이 생깁니다" 설명
+   - 신살은 관련될 때만 1~2개 언급
+
+6. **개운법**:
+   - 용신 오행 ${saju.yongSinElement}에 맞는 색·방향·행동 1가지
+   - 질문 주제에 맞는 추가 처방 1가지
+   - "${saju.yongSinElement === '목' ? '초록색·동쪽·식물' : saju.yongSinElement === '화' ? '붉은색·남쪽·채광' : saju.yongSinElement === '토' ? '노란색·중앙·흙' : saju.yongSinElement === '금' ? '흰색·서쪽·금속' : '검정색·북쪽·물'}"을 기본 공식으로 활용
+
+7. **금지**:
+   - Markdown 기호(##, **, -, > 등) 절대 사용 금지. 일반 문장·단락으로만.
+   - 이모지 금지.
+   - "AI로서", "챗봇으로서" 같은 자기 정체성 언급 금지.
+   - "자세한 건 전문가와 상담" 같은 책임 회피 문구 금지.
+
+8. **시기 질문 ("언제?")**: 반드시 위 "이번 해 월운" 데이터를 근거로 구체적 월을 제시하세요. 양력 월로 표현하되, 위 데이터의 절기 범위(예: "2월 초순~3월 초순")를 보고 실제 해당 기간을 정확히 말하세요. "곧", "조만간" 같은 모호한 표현 금지.
+
+9. **대화 연속성**: 이전 대화 내용이 있으면 참고해서 일관된 페르소나 유지.
+`;
+}

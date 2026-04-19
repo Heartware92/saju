@@ -13,7 +13,7 @@ interface LayoutProps {
 
 const navItems = [
   { path: '/', label: '홈', icon: 'home' },
-  { path: '/saju', label: '사주', icon: 'pillars' },
+  { path: '/sangdamso', label: '상담소', icon: 'chat' },
   { path: '/tarot', label: '타로', icon: 'card' },
   { path: '/archive', label: '보관함', icon: 'archive' },
 ];
@@ -30,14 +30,14 @@ function NavIcon({ name, active }: { name: string; active: boolean }) {
           <polyline points="9,22 9,12 15,12 15,22" />
         </svg>
       );
-    case 'pillars':
-      // 태극(음양) — 사주의 상징
+    case 'chat':
+      // 상담소 — 달+말풍선 조합 (사주 데이터 기반 채팅)
       return (
         <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 2 A5 5 0 0 1 12 12 A5 5 0 0 0 12 22" />
-          <circle cx="12" cy="7" r="1.1" fill={color} stroke="none" />
-          <circle cx="12" cy="17" r="1.1" fill={color} stroke="none" />
+          <path d="M21 12a8.5 8.5 0 0 1-12.4 7.56L3 21l1.44-4.56A8.5 8.5 0 1 1 21 12Z" />
+          <circle cx="9" cy="12" r="0.9" fill={color} stroke="none" />
+          <circle cx="12" cy="12" r="0.9" fill={color} stroke="none" />
+          <circle cx="15" cy="12" r="0.9" fill={color} stroke="none" />
         </svg>
       );
     case 'card':

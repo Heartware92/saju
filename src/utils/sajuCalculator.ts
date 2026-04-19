@@ -483,31 +483,69 @@ const analyzeStrength = (
 const determineYongSin = (
   dayElement: string,
   isStrong: boolean,
-  _elementCount: ElementCount,
-  _monthBranch: string
+  elementCount: ElementCount,
+  _monthBranch: string,
+  strengthScore: number
 ): { yongSin: string; heeSin: string; giSin: string; element: string } => {
-  if (isStrong) {
-    const drainElements: Record<string, string> = {
-      '목': '화', '화': '토', '토': '금', '금': '수', '수': '목'
-    };
-    const drain = drainElements[dayElement];
+  // 오행 관계 테이블
+  const GEN: Record<string, string>  = { '목': '화', '화': '토', '토': '금', '금': '수', '수': '목' };
+  const CTRL: Record<string, string> = { '목': '토', '화': '금', '토': '수', '금': '목', '수': '화' };
+  const PAR: Record<string, string>  = { '목': '수', '화': '목', '토': '화', '금': '토', '수': '금' };
+  const BY: Record<string, string>   = { '목': '금', '화': '수', '토': '목', '금': '화', '수': '토' };
 
+  const total = (Object.values(elementCount) as number[]).reduce((a, b) => a + b, 0);
+
+  // ── 전왕법(專旺法) ─────────────────────────────────────────────
+  // 극신강(85↑): 비겁+인성이 원국의 65% 이상 → 종강격, 일간 오행이 용신
+  if (isStrong && strengthScore >= 85 && total > 0) {
+    const bigyeop = (elementCount[dayElement as keyof ElementCount] || 0);
+    const inseong = (elementCount[PAR[dayElement] as keyof ElementCount] || 0);
+    if ((bigyeop + inseong) / total >= 0.65) {
+      return {
+        yongSin: '비견/겁재',
+        heeSin: '편인/정인',
+        giSin: '편관/정관',
+        element: dayElement,
+      };
+    }
+  }
+
+  // 극신약(15↓): 일간 외 단일 오행이 65% 이상 → 종격, 그 오행이 용신
+  if (!isStrong && strengthScore <= 15 && total > 0) {
+    const others = (Object.entries(elementCount) as [string, number][])
+      .filter(([el]) => el !== dayElement)
+      .sort((a, b) => b[1] - a[1]);
+    if (others.length > 0 && others[0][1] / total >= 0.65) {
+      const domEl = others[0][0];
+      if (domEl === GEN[dayElement]) {
+        // 종아격(從兒格): 식상 압도
+        return { yongSin: '식신/상관', heeSin: '편재/정재', giSin: '비견/겁재', element: domEl };
+      }
+      if (domEl === CTRL[dayElement]) {
+        // 종재격(從財格): 재성 압도
+        return { yongSin: '편재/정재', heeSin: '식신/상관', giSin: '비견/겁재', element: domEl };
+      }
+      if (domEl === BY[dayElement]) {
+        // 종살격(從殺格): 관살 압도
+        return { yongSin: '편관/정관', heeSin: '편재/정재', giSin: '편인/정인', element: domEl };
+      }
+    }
+  }
+
+  // ── 억부법(抑扶法) — 일반 케이스 ────────────────────────────────
+  if (isStrong) {
     return {
       yongSin: '식신/상관',
       heeSin: '편재/정재',
       giSin: '편인/정인',
-      element: drain
+      element: GEN[dayElement],
     };
   } else {
-    const supportElements: Record<string, string> = {
-      '목': '수', '화': '목', '토': '화', '금': '토', '수': '금'
-    };
-
     return {
       yongSin: '편인/정인',
       heeSin: '비견/겁재',
       giSin: '편관/정관',
-      element: supportElements[dayElement]
+      element: PAR[dayElement],
     };
   }
 };
@@ -1174,7 +1212,7 @@ export const calculateSaju = (
   const weakElement = sortedElements[sortedElements.length - 1][0];
 
   const strengthResult = analyzeStrength(dayGan, monthZhiNorm, pillars);
-  const yongSinResult = determineYongSin(dayMasterElement, strengthResult.isStrong, elementCount, monthZhiNorm);
+  const yongSinResult = determineYongSin(dayMasterElement, strengthResult.isStrong, elementCount, monthZhiNorm, strengthResult.score);
   const sinSals = calculateSinSals(dayGan, pillars);
   const interactions = analyzeInteractions(pillars);
   const ganYeojidong = calculateGanYeojidong(pillars, hourUnknown);
