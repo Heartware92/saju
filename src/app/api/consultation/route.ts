@@ -1,20 +1,24 @@
 /**
  * POST /api/consultation
  *
- * 상담소 챗봇 — 사주 데이터 기반 AI 응답 생성.
+ * 상담소 챗봇 — 사주 데이터 기반 AI 응답 생성 (스트리밍).
+ * Gemini streamGenerateContent 엔드포인트를 SSE로 받아 클라이언트에 그대로 프록시.
+ * 클라이언트는 ReadableStream을 읽어가며 타이핑 효과로 렌더링.
+ *
  * Auth: Authorization: Bearer <supabase-access-token>
  * Body: { systemPrompt: string, history: ChatMessage[], userMessage: string }
+ * Response: text/event-stream
+ *   data: { "delta": "..." }  (텍스트 청크)
+ *   data: { "done": true }    (종료)
+ *   data: { "error": "..." }  (오류)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/services/supabaseAdmin';
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GEMINI_STREAM_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent';
 
-// 토큰 폭증 방지: 최근 N턴만 유지 (user+assistant 각 N개)
 const MAX_HISTORY_TURNS = 10;
-
-// 시스템 프롬프트·질문 길이 방어 (악용 방지)
 const MAX_SYSTEM_PROMPT = 8000;
 const MAX_USER_MESSAGE = 500;
 
@@ -23,101 +27,155 @@ interface ChatMessage {
   content: string;
 }
 
+function encodeSSE(data: Record<string, unknown>): Uint8Array {
+  return new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`);
+}
+
 export async function POST(request: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return NextResponse.json(
-      { error: 'Gemini API 키가 서버에 설정되지 않았습니다.' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ error: 'Gemini API 키가 서버에 설정되지 않았습니다.' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } },
     );
   }
 
-  try {
-    // ── 사용자 인증 ──
-    const authHeader = request.headers.get('authorization') ?? '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-    if (!token) {
-      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
-    }
-    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
-    if (userErr || !userData?.user) {
-      return NextResponse.json({ error: '세션이 만료되었습니다.' }, { status: 401 });
-    }
+  // ── 사용자 인증 ──
+  const authHeader = request.headers.get('authorization') ?? '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (!token) {
+    return new Response(JSON.stringify({ error: '로그인이 필요합니다.' }), {
+      status: 401, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
+  if (userErr || !userData?.user) {
+    return new Response(JSON.stringify({ error: '세션이 만료되었습니다.' }), {
+      status: 401, headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
+  // ── 입력 파싱 + 검증 ──
+  let systemPrompt = '';
+  let history: ChatMessage[] = [];
+  let userMessage = '';
+  try {
     const body = await request.json() as {
       systemPrompt?: string;
       history?: ChatMessage[];
       userMessage?: string;
     };
-    const { systemPrompt, history = [], userMessage } = body;
-
-    // ── 입력 검증 ──
-    if (!systemPrompt || !userMessage) {
-      return NextResponse.json(
-        { error: '시스템 프롬프트와 질문이 필요합니다.' },
-        { status: 400 }
-      );
-    }
-    if (systemPrompt.length > MAX_SYSTEM_PROMPT) {
-      return NextResponse.json(
-        { error: `시스템 프롬프트가 너무 큽니다 (최대 ${MAX_SYSTEM_PROMPT}자).` },
-        { status: 400 }
-      );
-    }
-    if (userMessage.length > MAX_USER_MESSAGE) {
-      return NextResponse.json(
-        { error: `질문은 최대 ${MAX_USER_MESSAGE}자까지 가능해요.` },
-        { status: 400 }
-      );
-    }
-
-    // ── 히스토리 trim ──
-    const trimmedHistory = history.slice(-MAX_HISTORY_TURNS * 2);
-
-    const contents = [
-      ...trimmedHistory.map(m => ({
-        role: m.role,
-        parts: [{ text: m.content }],
-      })),
-      { role: 'user', parts: [{ text: userMessage }] },
-    ];
-
-    // ── Gemini 호출 ──
-    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents,
-        generationConfig: {
-          temperature: 0.85,
-          maxOutputTokens: 1200,
-          thinkingConfig: { thinkingBudget: 0 },
-        },
-      }),
+    systemPrompt = body.systemPrompt ?? '';
+    history = body.history ?? [];
+    userMessage = body.userMessage ?? '';
+  } catch {
+    return new Response(JSON.stringify({ error: '요청 형식이 올바르지 않습니다.' }), {
+      status: 400, headers: { 'Content-Type': 'application/json' },
     });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return NextResponse.json(
-        { error: `AI 응답 오류: ${response.status} - ${errorData?.error?.message || ''}` },
-        { status: response.status }
-      );
-    }
-
-    const data = await response.json();
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    if (!content.trim()) {
-      return NextResponse.json(
-        { error: 'AI 응답이 비어 있습니다. 잠시 후 다시 시도해주세요.' },
-        { status: 502 }
-      );
-    }
-
-    return NextResponse.json({ content });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : '서버 오류가 발생했습니다.';
-    return NextResponse.json({ error: message }, { status: 500 });
   }
+
+  if (!systemPrompt || !userMessage) {
+    return new Response(JSON.stringify({ error: '시스템 프롬프트와 질문이 필요합니다.' }), {
+      status: 400, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  if (systemPrompt.length > MAX_SYSTEM_PROMPT) {
+    return new Response(JSON.stringify({ error: `시스템 프롬프트 과대(최대 ${MAX_SYSTEM_PROMPT}자).` }), {
+      status: 400, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  if (userMessage.length > MAX_USER_MESSAGE) {
+    return new Response(JSON.stringify({ error: `질문은 최대 ${MAX_USER_MESSAGE}자까지 가능해요.` }), {
+      status: 400, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const trimmedHistory = history.slice(-MAX_HISTORY_TURNS * 2);
+  const contents = [
+    ...trimmedHistory.map(m => ({ role: m.role, parts: [{ text: m.content }] })),
+    { role: 'user', parts: [{ text: userMessage }] },
+  ];
+
+  // ── Gemini 스트리밍 호출 ──
+  const geminiRes = await fetch(`${GEMINI_STREAM_URL}?alt=sse&key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents,
+      generationConfig: {
+        temperature: 0.85,
+        maxOutputTokens: 1200,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    }),
+  });
+
+  if (!geminiRes.ok || !geminiRes.body) {
+    const errorData = await geminiRes.json().catch(() => ({}));
+    return new Response(
+      JSON.stringify({ error: `AI 응답 오류: ${geminiRes.status} - ${errorData?.error?.message || ''}` }),
+      { status: geminiRes.status, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  // ── SSE 프록시 스트림 생성 ──
+  const stream = new ReadableStream({
+    async start(controller) {
+      const reader = geminiRes.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let emittedAny = false;
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // SSE 프레임(`data: {...}\n\n`) 단위로 분리
+          let idx: number;
+          while ((idx = buffer.indexOf('\n\n')) !== -1) {
+            const frame = buffer.slice(0, idx).trim();
+            buffer = buffer.slice(idx + 2);
+            if (!frame.startsWith('data:')) continue;
+
+            const jsonStr = frame.slice(5).trim();
+            if (!jsonStr || jsonStr === '[DONE]') continue;
+
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (typeof text === 'string' && text.length > 0) {
+                emittedAny = true;
+                controller.enqueue(encodeSSE({ delta: text }));
+              }
+            } catch {
+              // JSON 파싱 실패는 무시 (keep-alive 등)
+            }
+          }
+        }
+
+        if (!emittedAny) {
+          controller.enqueue(encodeSSE({ error: 'AI 응답이 비어 있습니다.' }));
+        } else {
+          controller.enqueue(encodeSSE({ done: true }));
+        }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : '스트림 오류';
+        controller.enqueue(encodeSSE({ error: msg }));
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'X-Accel-Buffering': 'no',
+    },
+  });
 }

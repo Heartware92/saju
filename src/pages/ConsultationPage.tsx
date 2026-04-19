@@ -66,6 +66,7 @@ export default function ConsultationPage() {
   const [error, setError] = useState('');
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   // 초기화: 프로필 불러오기
   useEffect(() => {
@@ -143,6 +144,26 @@ export default function ConsultationPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, loading]);
 
+  // 분석 중 페이지 이탈 경고 (브라우저 닫기·새로고침)
+  useEffect(() => {
+    if (!loading) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Chrome/Edge는 빈 문자열만 있어도 기본 경고 표시
+      e.returnValue = '사주 분석 중입니다. 지금 나가면 답변이 사라져요.';
+      return e.returnValue;
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [loading]);
+
+  // 언마운트 시 진행 중 스트림 중단
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
   // 상태 저장
   const saveStatus = () => {
     if (!selectedProfileId) return;
@@ -206,6 +227,13 @@ export default function ConsultationPage() {
     setMessages(newMessages);
     setLoading(true);
 
+    // AbortController로 중단 가능하게
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    // assistant 메시지 자리 미리 확보 (타이핑 효과 위해)
+    const botMsgId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `a-${Date.now()}-${Math.random()}`;
+
     try {
       // 세션 토큰
       const { data: sessionData } = await supabase.auth.getSession();
@@ -226,7 +254,6 @@ export default function ConsultationPage() {
         content: m.content,
       }));
 
-      // API 호출 먼저 (성공 시에만 크레딧 차감)
       const res = await fetch('/api/consultation', {
         method: 'POST',
         headers: {
@@ -234,36 +261,101 @@ export default function ConsultationPage() {
           'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ systemPrompt, history, userMessage: question }),
+        signal: controller.signal,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '응답 생성 실패');
-      if (!data.content || typeof data.content !== 'string') {
-        throw new Error('AI 응답이 비어 있습니다.');
+
+      // 에러 응답은 JSON (스트리밍 아님)
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || '응답 생성 실패');
+      }
+      if (!res.body) throw new Error('응답 본문이 비어 있습니다.');
+
+      // 빈 assistant 메시지 추가 (타이핑 자리)
+      if (selectedProfileId === profileAtSend) {
+        setMessages(prev => [...prev, {
+          id: botMsgId,
+          role: 'assistant',
+          content: '',
+          createdAt: Date.now(),
+        }]);
       }
 
-      // 응답 받은 뒤 크레딧 차감 (실패 시 롤백 없음 — 이미 응답은 성공)
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = '';
+      let accumulated = '';
+      let streamError: string | null = null;
+      let gotDone = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        sseBuffer += decoder.decode(value, { stream: true });
+
+        // SSE 프레임 파싱
+        let idx: number;
+        while ((idx = sseBuffer.indexOf('\n\n')) !== -1) {
+          const frame = sseBuffer.slice(0, idx).trim();
+          sseBuffer = sseBuffer.slice(idx + 2);
+          if (!frame.startsWith('data:')) continue;
+
+          const jsonStr = frame.slice(5).trim();
+          if (!jsonStr) continue;
+
+          try {
+            const parsed = JSON.parse(jsonStr) as { delta?: string; done?: boolean; error?: string };
+            if (parsed.error) {
+              streamError = parsed.error;
+              continue;
+            }
+            if (parsed.done) {
+              gotDone = true;
+              continue;
+            }
+            if (parsed.delta) {
+              accumulated += parsed.delta;
+              // 전송 시점 프로필과 여전히 같을 때만 UI 반영
+              if (selectedProfileId === profileAtSend) {
+                const snapshot = accumulated;
+                setMessages(prev => prev.map(m =>
+                  m.id === botMsgId ? { ...m, content: snapshot } : m
+                ));
+              }
+            }
+          } catch {
+            /* 파싱 실패 프레임 무시 */
+          }
+        }
+      }
+
+      if (streamError) throw new Error(streamError);
+      if (!gotDone && accumulated.length === 0) throw new Error('AI 응답이 비어 있습니다.');
+
+      // 완료 후 sanitize 한 번 더 (마크다운/이모지 최종 정리)
+      const cleaned = sanitizeAIOutput(accumulated);
+      if (selectedProfileId === profileAtSend) {
+        setMessages(prev => prev.map(m =>
+          m.id === botMsgId ? { ...m, content: cleaned } : m
+        ));
+      }
+
+      // 응답 성공 후 크레딧 차감
       const consumed = await consumeCredit('moon', MOON_COST_PER_QUESTION, `상담소:${question.slice(0, 20)}`);
       if (!consumed) {
-        // 이론상 위에서 잔액 체크를 통과했지만 동시성 이슈 대비
         console.error('크레딧 차감 실패 (응답은 이미 생성됨)');
       }
-
-      // 응답 받았는데 프로필이 바뀌었으면 버림
-      if (selectedProfileId !== profileAtSend) {
+    } catch (e: unknown) {
+      if ((e as Error)?.name === 'AbortError') {
+        // 사용자가 중단 (페이지 이동 등) — 조용히 종료
         return;
       }
-
-      const cleaned = sanitizeAIOutput(data.content);
-      const botMsg: ChatMessage = {
-        id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `a-${Date.now()}-${Math.random()}`,
-        role: 'assistant',
-        content: cleaned,
-        createdAt: Date.now(),
-      };
-      setMessages(prev => [...prev, botMsg]);
-    } catch (e: unknown) {
+      // 실패 시 빈 assistant 메시지 제거
+      setMessages(prev => prev.filter(m => m.id !== botMsgId));
       setError(e instanceof Error ? e.message : '응답 생성 중 오류가 발생했습니다.');
     } finally {
+      abortRef.current = null;
       setLoading(false);
     }
   };
@@ -407,32 +499,39 @@ export default function ConsultationPage() {
 
         {/* 메시지 목록 */}
         <AnimatePresence initial={false}>
-          {messages.map(msg => (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              {msg.role === 'assistant' && (
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500/40 to-indigo-500/30 flex items-center justify-center text-sm mr-2 border border-white/15">
-                  🌙
-                </div>
-              )}
-              <div
-                className={`max-w-[85%] px-4 py-3 rounded-2xl text-[14px] leading-[1.75] whitespace-pre-wrap
-                  ${msg.role === 'user'
-                    ? 'bg-cta/90 text-white rounded-tr-sm'
-                    : 'bg-[rgba(20,12,38,0.75)] border border-[var(--border-subtle)] text-text-primary rounded-tl-sm'}`}
+          {messages.map((msg, idx) => {
+            const isLast = idx === messages.length - 1;
+            const isStreaming = loading && msg.role === 'assistant' && isLast;
+            return (
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                {msg.content}
-              </div>
-            </motion.div>
-          ))}
+                {msg.role === 'assistant' && (
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500/40 to-indigo-500/30 flex items-center justify-center text-sm mr-2 border border-white/15">
+                    🌙
+                  </div>
+                )}
+                <div
+                  className={`max-w-[85%] px-4 py-3 rounded-2xl text-[14px] leading-[1.75] whitespace-pre-wrap
+                    ${msg.role === 'user'
+                      ? 'bg-cta/90 text-white rounded-tr-sm'
+                      : 'bg-[rgba(20,12,38,0.75)] border border-[var(--border-subtle)] text-text-primary rounded-tl-sm'}`}
+                >
+                  {msg.content}
+                  {isStreaming && (
+                    <span className="inline-block w-[8px] h-[14px] bg-cta/80 ml-0.5 -mb-0.5 align-middle animate-pulse" />
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
 
-        {/* 로딩 */}
-        {loading && (
+        {/* 응답 시작 전 짧은 대기 표시 (첫 청크 도착 전) */}
+        {loading && (messages.length === 0 || messages[messages.length - 1]?.role === 'user') && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
             <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500/40 to-indigo-500/30 flex items-center justify-center text-sm mr-2 border border-white/15">
               🌙
@@ -442,7 +541,7 @@ export default function ConsultationPage() {
                 <span className="inline-block w-2 h-2 rounded-full bg-cta animate-pulse" style={{ animationDelay: '0s' }} />
                 <span className="inline-block w-2 h-2 rounded-full bg-cta animate-pulse" style={{ animationDelay: '0.2s' }} />
                 <span className="inline-block w-2 h-2 rounded-full bg-cta animate-pulse" style={{ animationDelay: '0.4s' }} />
-                <span className="text-[12px] text-text-secondary ml-1">사주 풀이 중...</span>
+                <span className="text-[12px] text-text-secondary ml-1">사주 데이터를 엮는 중...</span>
               </div>
             </div>
           </motion.div>
