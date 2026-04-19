@@ -76,7 +76,10 @@ async function callGemini(
   }
 
   const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  const parts: any[] = data.candidates?.[0]?.content?.parts ?? [];
+  // 2.5-flash는 thinking 파트(thought:true)가 parts[0]에 올 수 있으므로 실제 텍스트 파트를 찾아야 함
+  const textPart = parts.find((p: any) => p.text && !p.thought) ?? parts[0];
+  return textPart?.text ?? '';
 }
 
 // ── 메인 핸들러 ────────────────────────────────────────────────────────────
