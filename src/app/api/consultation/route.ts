@@ -106,7 +106,6 @@ export async function POST(request: NextRequest) {
       generationConfig: {
         temperature: 0.85,
         maxOutputTokens: 1200,
-        thinkingConfig: { thinkingBudget: 0 },
       },
     }),
   });
@@ -146,7 +145,10 @@ export async function POST(request: NextRequest) {
 
             try {
               const parsed = JSON.parse(jsonStr);
-              const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+              const parts: any[] = parsed?.candidates?.[0]?.content?.parts ?? [];
+              // thought:true 파트(thinking) 제외, 실제 텍스트만 추출
+              const textPart = parts.find((p: any) => p.text && !p.thought) ?? parts[0];
+              const text = textPart?.text;
               if (typeof text === 'string' && text.length > 0) {
                 emittedAny = true;
                 controller.enqueue(encodeSSE({ delta: text }));
