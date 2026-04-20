@@ -16,6 +16,16 @@ import {
   generateHybridPrompt,
   generateLoveFortunePrompt,
   generateWealthFortunePrompt,
+  generateLoveShortPrompt,
+  generateWealthShortPrompt,
+  generateCareerShortPrompt,
+  generateHealthShortPrompt,
+  generateStudyShortPrompt,
+  generatePeopleShortPrompt,
+  generateChildrenShortPrompt,
+  generatePersonalityShortPrompt,
+  generateNameFortunePrompt,
+  type NameAnalysisInput,
   generateTojeongPrompt,
   generateZamidusuPrompt,
   ZAMIDUSU_SECTION_KEYS,
@@ -747,4 +757,75 @@ export const getHybridReading = async (
   } catch (error: any) {
     return { success: false, error: error.message };
   }
+};
+
+// ============================================================
+// 더 많은 운세 — 9개 카테고리 서비스 함수
+// (모두 달 크레딧 1개 소모, 짧은 형식)
+// ============================================================
+
+export const getLoveShort = async (result: SajuResult): Promise<FortuneResponse> => {
+  try {
+    const content = await callGPT(generateLoveShortPrompt(result), 1500);
+    return { success: true, content };
+  } catch (e: any) { return { success: false, error: e.message }; }
+};
+
+export const getWealthShort = async (result: SajuResult): Promise<FortuneResponse> => {
+  try {
+    const content = await callGPT(generateWealthShortPrompt(result), 1500);
+    return { success: true, content };
+  } catch (e: any) { return { success: false, error: e.message }; }
+};
+
+export const getCareerShort = async (result: SajuResult): Promise<FortuneResponse> => {
+  try {
+    const content = await callGPT(generateCareerShortPrompt(result), 1500);
+    return { success: true, content };
+  } catch (e: any) { return { success: false, error: e.message }; }
+};
+
+export const getHealthShort = async (result: SajuResult): Promise<FortuneResponse> => {
+  try {
+    const content = await callGPT(generateHealthShortPrompt(result), 1300);
+    return { success: true, content };
+  } catch (e: any) { return { success: false, error: e.message }; }
+};
+
+export const getStudyShort = async (result: SajuResult): Promise<FortuneResponse> => {
+  try {
+    const content = await callGPT(generateStudyShortPrompt(result), 1300);
+    return { success: true, content };
+  } catch (e: any) { return { success: false, error: e.message }; }
+};
+
+export const getPeopleShort = async (result: SajuResult): Promise<FortuneResponse> => {
+  try {
+    const content = await callGPT(generatePeopleShortPrompt(result), 1500);
+    return { success: true, content };
+  } catch (e: any) { return { success: false, error: e.message }; }
+};
+
+export const getChildrenShort = async (result: SajuResult): Promise<FortuneResponse> => {
+  try {
+    const content = await callGPT(generateChildrenShortPrompt(result), 1300);
+    return { success: true, content };
+  } catch (e: any) { return { success: false, error: e.message }; }
+};
+
+export const getPersonalityShort = async (result: SajuResult): Promise<FortuneResponse> => {
+  try {
+    const content = await callGPT(generatePersonalityShortPrompt(result), 1800);
+    return { success: true, content };
+  } catch (e: any) { return { success: false, error: e.message }; }
+};
+
+export const getNameFortune = async (
+  result: SajuResult,
+  nameInput: NameAnalysisInput,
+): Promise<FortuneResponse> => {
+  try {
+    const content = await callGPT(generateNameFortunePrompt(result, nameInput), 1300);
+    return { success: true, content };
+  } catch (e: any) { return { success: false, error: e.message }; }
 };

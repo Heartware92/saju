@@ -13,6 +13,7 @@ import {
   pillarToHanja,
   STEM_TO_ELEMENT,
 } from '../lib/character';
+import { MORE_FORTUNE_CONFIGS, MORE_FORTUNE_ORDER } from '../constants/moreFortunes';
 
 /**
  * 운세 서비스 목록
@@ -87,10 +88,18 @@ const SECONDARY_SERVICES = [
 // 모든 서비스 버튼은 결과 페이지로 직행한다.
 // 대표 프로필이 없으면 결과 페이지 자체에서 "프로필 등록" 안내가 표시된다.
 
-const SUB_SERVICES = [
-  { id: 'love',   title: '애정운', href: '/saju/input?category=love' },
-  { id: 'wealth', title: '재물운', href: '/saju/input?category=wealth' },
-];
+// "더 많은 운세" — 달 크레딧 1개 소모 (작은 풀이 9종)
+// 설정은 constants/moreFortunes.ts에서 일원화하여 ID·설명·프롬프트 일치.
+const SUB_SERVICES = MORE_FORTUNE_ORDER.map((id) => {
+  const cfg = MORE_FORTUNE_CONFIGS[id];
+  return {
+    id,
+    title: cfg.title,
+    icon: cfg.icon,
+    desc: cfg.shortDesc,
+    href: `/saju/more/${id}`,
+  };
+});
 
 const stagger = {
   hidden: {},
@@ -385,21 +394,26 @@ export default function HomePage() {
         </motion.div>
       </section>
 
-      {/* 추가 서비스 - 작은 칩 */}
+      {/* 추가 서비스 - 더 많은 운세 9종 (달 크레딧) */}
       <section className="px-4 mt-5">
-        <h2 className="text-base font-bold text-text-primary mb-3 px-1">더 많은 운세</h2>
+        <div className="flex items-center justify-between mb-3 px-1">
+          <h2 className="text-base font-bold text-text-primary">더 많은 운세</h2>
+          <span className="text-[10px] text-text-tertiary">🌙 1개 소모</span>
+        </div>
         <motion.div
           variants={stagger}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="grid grid-cols-2 gap-2"
+          className="grid grid-cols-3 gap-2"
         >
           {SUB_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>
               <Link href={svc.href}>
-                <div className="flex items-center justify-center h-[52px] p-2 rounded-xl bg-space-surface/60 border border-[var(--border-subtle)] hover:border-cta/40 transition-all active:scale-[0.95]">
-                  <span className="text-[13px] font-bold text-text-primary">{svc.title}</span>
+                <div className="flex flex-col items-center justify-center aspect-square p-2 rounded-xl bg-space-surface/60 border border-[var(--border-subtle)] hover:border-cta/40 hover:bg-space-surface transition-all active:scale-[0.95]">
+                  <span className="text-xl mb-1" style={{ color: 'var(--cta-primary)' }}>{svc.icon}</span>
+                  <span className="text-[12px] font-bold text-text-primary text-center leading-tight">{svc.title}</span>
+                  <span className="text-[9px] text-text-tertiary text-center mt-0.5 leading-tight line-clamp-1">{svc.desc}</span>
                 </div>
               </Link>
             </motion.div>

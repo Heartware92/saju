@@ -3098,3 +3098,353 @@ ${monthStr}
 ${METAPHOR_SHORT_GUIDE}
 `;
 }
+
+// ============================================================
+// 더 많은 운세 — 9개 카테고리별 짧은 형식 프롬프트
+// (달 크레딧 1개 소모, 400~700자 본문, 핵심만 집중)
+// ============================================================
+
+/** 공통 원국 블록 — 더 많은 운세 프롬프트 재사용 */
+function buildMoreFortuneBlock(result: SajuResult): string {
+  const p = result.pillars;
+  const sipseong = formatSipseongCounts(computeSipseongCounts(result));
+  const today = new Date().toISOString().slice(0, 10);
+  const currentMonth = new Date().getMonth() + 1;
+
+  const now = new Date();
+  const birth = new Date(result.solarDate);
+  let age = now.getFullYear() - birth.getFullYear();
+  if (now.getMonth() < birth.getMonth() ||
+    (now.getMonth() === birth.getMonth() && now.getDate() < birth.getDate())) {
+    age--;
+  }
+
+  const sinSalStr = result.sinSals.length > 0
+    ? result.sinSals.map(s => `${s.name}(${s.type === 'good' ? '길' : s.type === 'bad' ? '흉' : '중'})`).join(' · ')
+    : '특별 신살 없음';
+
+  return `[원국]
+연주 ${p.year.gan}${p.year.zhi} / 월주 ${p.month.gan}${p.month.zhi} / 일주 ${p.day.gan}${p.day.zhi} / 시주 ${result.hourUnknown ? '시간미상' : `${p.hour.gan}${p.hour.zhi}`}
+일간: ${result.dayMaster} ${result.dayMasterElement}(${result.dayMasterYinYang}간)
+오행: 목${result.elementPercent.목}% 화${result.elementPercent.화}% 토${result.elementPercent.토}% 금${result.elementPercent.금}% 수${result.elementPercent.수}%
+강한 오행: ${result.strongElement} / 약한 오행: ${result.weakElement}
+신강신약: ${result.strengthStatus}(${result.strengthScore})
+십성: ${sipseong}
+용신: ${result.yongSin}(${result.yongSinElement}) / 기신: ${result.giSin}
+신살: ${sinSalStr}
+세운(${result.currentSeWoon?.year}): ${result.currentSeWoon?.gan}${result.currentSeWoon?.zhi} (${result.currentSeWoon?.tenGod})
+성별: ${result.gender === 'male' ? '남' : '여'} / 나이: ${age}세 / 오늘: ${today} (${currentMonth}월)`;
+}
+
+const MORE_COMMON_RULES = `[공통 규칙]
+1) Markdown(#, ##, **, \`\`, >) 절대 금지. 이모지 금지. AI 티("AI로서", "분석 결과") 금지.
+2) 위 원국 데이터 근거로만 풀이. 없는 데이터 창작 금지.
+3) 구어체 "~합니다/~예요". 단정적 톤. "~일 수도 있습니다" 흐린 표현 답변 전체 2회 이하.
+4) 첫 줄에 은유 제목 1줄 (대비되는 두 자연 이미지, 쉼표 연결). 본문에서 회수.
+5) 시기 질문에는 반드시 구체적 월(양력)을 제시. "곧·조만간" 금지.
+6) 마지막에 "- " 불릿 2~3개로 실천 조언.
+
+${METAPHOR_SHORT_GUIDE}`;
+
+// ─────────────────────────────────────────────
+// 1. 애정운 (짧은 버전)
+// ─────────────────────────────────────────────
+export const generateLoveShortPrompt = (result: SajuResult): string => {
+  const p = result.pillars;
+  const jaeseongEl = EL_CON[result.dayMasterElement] || ''; // 재성 오행
+  const gwanseongEl = Object.entries(EL_CON).find(([, v]) => v === result.dayMasterElement)?.[0] || ''; // 관성 오행
+
+  return `당신은 35년 경력의 사주명리 전문가입니다. 아래 사람의 애정운을 짧고 명확하게 풀어주세요.
+
+${buildMoreFortuneBlock(result)}
+
+[애정 관련 포커스]
+- 일지(배우자궁): ${p.day.zhi}
+- ${result.gender === 'male' ? `재성 오행(=이성 에너지): ${jaeseongEl}` : `관성 오행(=이성 에너지): ${gwanseongEl}`}
+- 도화·홍염·원진 신살 여부: ${result.sinSals.filter(s => ['도화살', '홍염살', '원진살'].includes(s.name)).map(s => s.name).join(', ') || '특별 신살 없음'}
+
+${MORE_COMMON_RULES}
+
+[작성 지침] 400~550자 내외
+1단락 — 공감 한 줄 + 핵심 결론(연애 에너지 강/약)
+2단락 — 일지 ${p.day.zhi} 배우자궁과 ${result.gender === 'male' ? `재성(${jaeseongEl})` : `관성(${gwanseongEl})`} 분포로 본 "내가 끌리는 상대 유형"
+3단락 — 올해 세운 기준 연애·만남이 활성화되는 달 1~2개 (월운 근거)
+4단락 — 관계에서 반복되는 패턴 1개 + "- " 불릿 2~3개 실천 조언`;
+};
+
+// ─────────────────────────────────────────────
+// 2. 재물운 (짧은 버전)
+// ─────────────────────────────────────────────
+export const generateWealthShortPrompt = (result: SajuResult): string => {
+  const counts = computeSipseongCounts(result);
+  const jaeTotal = (counts['정재'] || 0) + (counts['편재'] || 0);
+  const siksangTotal = (counts['식신'] || 0) + (counts['상관'] || 0);
+
+  return `당신은 35년 경력의 사주명리 전문가입니다. 아래 사람의 재물운을 짧고 명확하게 풀어주세요.
+
+${buildMoreFortuneBlock(result)}
+
+[재물 관련 포커스]
+- 재성 합계: ${jaeTotal}개 (정재 ${counts['정재'] || 0} / 편재 ${counts['편재'] || 0})
+- 식상(재물 생성): ${siksangTotal}개
+- 재고(辰戌丑未): ${['진','술','축','미'].filter(z => [result.pillars.year.zhi, result.pillars.month.zhi, result.pillars.day.zhi, result.pillars.hour.zhi].includes(z)).join('·') || '없음'}
+
+${MORE_COMMON_RULES}
+
+[작성 지침] 400~550자 내외
+1단락 — 공감 한 줄 + 재물 에너지 한 줄 결론
+2단락 — 재성 구조로 본 돈 버는 스타일(월급형·사업형·투자형 중 선택) + 근거
+3단락 — 올해 세운 기준 돈이 들어오는 달 / 새는 달 각 1개씩 월운 근거 포함
+4단락 — 반복되는 금전 함정 1개 + "- " 불릿 2~3개 실천 조언`;
+};
+
+// ─────────────────────────────────────────────
+// 3. 직업·진로운
+// ─────────────────────────────────────────────
+export const generateCareerShortPrompt = (result: SajuResult): string => {
+  const counts = computeSipseongCounts(result);
+  const gwan = (counts['정관'] || 0) + (counts['편관'] || 0);
+  const siksang = (counts['식신'] || 0) + (counts['상관'] || 0);
+  const inseong = (counts['정인'] || 0) + (counts['편인'] || 0);
+  const gyeokguk = determineGyeokguk(result).name;
+
+  return `당신은 35년 경력의 사주명리 전문가입니다. 아래 사람의 직업·진로운을 짧고 명확하게 풀어주세요.
+
+${buildMoreFortuneBlock(result)}
+
+[직업 관련 포커스]
+- 격국: ${gyeokguk}
+- 관성(조직·권위): ${gwan}개 / 식상(창의·기술): ${siksang}개 / 인성(학문·전문성): ${inseong}개
+- 일지 12운성: ${result.pillars.day.twelveStage || '—'}
+
+${MORE_COMMON_RULES}
+
+[작성 지침] 400~550자 내외
+1단락 — 결론: 조직형인지 독립형인지 + 가장 잘 맞는 직군 2~3개 구체 제시
+2단락 — 격국(${gyeokguk})과 관성·식상 비율로 본 적성 근거
+3단락 — 이직·승진·창업 중 올해 유리한 행동 + 월운 기반 타이밍 1개
+4단락 — 피해야 할 환경 1개 + "- " 불릿 2~3개 실천 조언`;
+};
+
+// ─────────────────────────────────────────────
+// 4. 건강운
+// ─────────────────────────────────────────────
+export const generateHealthShortPrompt = (result: SajuResult): string => {
+  const organ: Record<string, string> = {
+    '목': '간·담(쓸개)', '화': '심장·소장', '토': '비장·위장·췌장',
+    '금': '폐·대장', '수': '신장·방광',
+  };
+  const weakOrgan = organ[result.weakElement] || '';
+  const strongOrgan = organ[result.strongElement] || '';
+  const chungHyeong = result.interactions.filter(i => ['충', '형'].includes(i.type)).map(i => i.description).join(' / ') || '없음';
+
+  return `당신은 35년 경력의 사주명리 전문가입니다. 아래 사람의 건강운을 짧고 명확하게 풀어주세요.
+
+${buildMoreFortuneBlock(result)}
+
+[건강 관련 포커스]
+- 약한 오행 ${result.weakElement}(${result.elementPercent[result.weakElement as keyof typeof result.elementPercent]}%) → 취약 장부: ${weakOrgan}
+- 강한 오행 ${result.strongElement}(${result.elementPercent[result.strongElement as keyof typeof result.elementPercent]}%) → 과열 장부: ${strongOrgan}
+- 주요 충·형: ${chungHyeong}
+- 올해 세운 오행: ${result.currentSeWoon?.ganElement}·${result.currentSeWoon?.zhiElement}
+
+${MORE_COMMON_RULES}
+
+[작성 지침] 350~480자 내외
+1단락 — 결론: 타고난 체질 한 줄 + 올해 특히 주의할 장부 1개
+2단락 — 약한 오행(${result.weakElement})이 만드는 증상 2개 구체적 (피로·두통·소화 등 일상 감각으로 묘사)
+3단락 — 올해 세운이 건강에 미치는 영향 + 주의할 달 1개
+4단락 — "- " 불릿 3개로 실천 습관(피할 음식/추천 음식/생활 리듬)`;
+};
+
+// ─────────────────────────────────────────────
+// 5. 학업·시험운
+// ─────────────────────────────────────────────
+export const generateStudyShortPrompt = (result: SajuResult): string => {
+  const counts = computeSipseongCounts(result);
+  const inseong = (counts['정인'] || 0) + (counts['편인'] || 0);
+  const siksang = (counts['식신'] || 0) + (counts['상관'] || 0);
+  const hasMunchang = result.sinSals.some(s => s.name.includes('문창') || s.name.includes('학당') || s.name.includes('문곡'));
+
+  return `당신은 35년 경력의 사주명리 전문가입니다. 아래 사람의 학업·시험운을 짧고 명확하게 풀어주세요.
+
+${buildMoreFortuneBlock(result)}
+
+[학업 관련 포커스]
+- 인성(공부 흡수력): ${inseong}개
+- 식상(표현·면접·논술): ${siksang}개
+- 학업 신살: ${hasMunchang ? '문창·학당·문곡귀인 성립' : '없음'}
+- 올해 세운 십성: ${result.currentSeWoon?.tenGod}
+
+${MORE_COMMON_RULES}
+
+[작성 지침] 350~480자 내외
+1단락 — 결론: 공부 체질 / 암기형 vs 사고형 / 타고난 학업 유형
+2단락 — 인성·식상 비율로 본 시험·면접·자격 중 강한 분야
+3단락 — 올해 세운에서 인성·식상이 강해지는 달(월운 근거) → 시험·발표 유리 시기 1~2개
+4단락 — "- " 불릿 3개로 공부 전략(시간대·환경·과목 배치)`;
+};
+
+// ─────────────────────────────────────────────
+// 6. 인간관계·귀인운
+// ─────────────────────────────────────────────
+export const generatePeopleShortPrompt = (result: SajuResult): string => {
+  const counts = computeSipseongCounts(result);
+  const bigyeop = (counts['비견'] || 0) + (counts['겁재'] || 0);
+  const inseong = (counts['정인'] || 0) + (counts['편인'] || 0);
+  const hasCheonEul = result.sinSals.some(s => s.name.includes('천을귀인'));
+  const hasGongmang = result.sinSals.some(s => s.name.includes('공망'));
+
+  return `당신은 35년 경력의 사주명리 전문가입니다. 아래 사람의 인간관계·귀인운을 짧고 명확하게 풀어주세요.
+
+${buildMoreFortuneBlock(result)}
+
+[관계 관련 포커스]
+- 비겁(동료·경쟁자): ${bigyeop}개
+- 인성(윗사람·멘토): ${inseong}개
+- 천을귀인 성립: ${hasCheonEul ? '예' : '아니오'}
+- 공망 여부: ${hasGongmang ? '있음(인연 박한 자리)' : '없음'}
+
+${MORE_COMMON_RULES}
+
+[작성 지침] 400~550자 내외
+1단락 — 결론: 넓은 인맥형 vs 좁고 깊은 우정형
+2단락 — 비겁·인성 배치로 본 올해 나를 돕는 사람 유형(연령·성별·관계 구체적으로)
+3단락 — 경계해야 할 관계 1가지와 원인 — 올해 세운 기준 갈등 유발 가능한 달 1개
+4단락 — "- " 불릿 2~3개로 관계 개선 실천 조언`;
+};
+
+// ─────────────────────────────────────────────
+// 7. 자녀·출산운
+// ─────────────────────────────────────────────
+export const generateChildrenShortPrompt = (result: SajuResult): string => {
+  const counts = computeSipseongCounts(result);
+  const jaNyeoStar = result.gender === 'male'
+    ? (counts['정관'] || 0) + (counts['편관'] || 0)
+    : (counts['식신'] || 0) + (counts['상관'] || 0);
+  const siSpot = result.hourUnknown
+    ? '시간미상 — 자녀궁 해석 제한'
+    : `시주 ${result.pillars.hour.gan}${result.pillars.hour.zhi}`;
+
+  return `당신은 35년 경력의 사주명리 전문가입니다. 아래 사람의 자녀·출산운을 짧고 명확하게 풀어주세요.
+
+${buildMoreFortuneBlock(result)}
+
+[자녀 관련 포커스]
+- 성별 기준 자녀성: ${result.gender === 'male' ? '관성' : '식상'} ${jaNyeoStar}개
+- 자녀궁(시주): ${siSpot}
+- 올해 세운: ${result.currentSeWoon?.gan}${result.currentSeWoon?.zhi}
+
+${MORE_COMMON_RULES}
+
+[작성 지침] 350~480자 내외 (시간미상이면 자녀궁 언급 최소화)
+1단락 — 결론: 자녀복 경향(다자·소자·만득 중 하나)
+2단락 — 자녀성 분포로 본 자녀 기질 힌트(활동적·차분·예술적 등)
+3단락 — 올해 세운이 자녀성에 어떤 영향을 주는지 + 출산·임신에 유리한 시기 월 1개(월운 근거)
+4단락 — "- " 불릿 2개로 자녀 양육 시 유념할 점`;
+};
+
+// ─────────────────────────────────────────────
+// 8. 성격 심층 분석
+// ─────────────────────────────────────────────
+export const generatePersonalityShortPrompt = (result: SajuResult): string => {
+  const p = result.pillars;
+  const gyeokguk = determineGyeokguk(result).name;
+  const ganYeojidong = formatGanYeojidong(result);
+  const byeongjOn = formatByeongjOn(result);
+
+  return `당신은 35년 경력의 사주명리 전문가입니다. 아래 사람의 타고난 성격을 깊이 있게 풀어주세요.
+
+${buildMoreFortuneBlock(result)}
+
+[성격 포커스]
+- 일주: ${p.day.gan}${p.day.zhi} (${p.day.ganElement}일간·${result.dayMasterYinYang})
+- 격국: ${gyeokguk}
+- 신강신약: ${result.strengthStatus}
+- 간여지동: ${ganYeojidong}
+- 병존·삼존: ${byeongjOn}
+
+${MORE_COMMON_RULES}
+
+[작성 지침] 500~700자 내외 — 성격은 핵심이니 약간 더 김
+1단락 — 은유 제목 + 일주 ${p.day.gan}${p.day.zhi}의 핵심 기질 1줄
+2단락 — 격국(${gyeokguk})과 신강신약(${result.strengthStatus})이 만드는 행동 패턴 + 강점 2개 구체적 상황 묘사
+3단락 — 숨은 그림자 2개 — 간여지동·병존이 있다면 그 편향성을 꼭 언급
+4단락 — 스트레스 받을 때 나타나는 패턴 1개
+5단락 — "- " 불릿 3개로 자기관리 조언(내가 빛나는 환경 / 피해야 할 환경 / 관계에서 유의점)`;
+};
+
+// ─────────────────────────────────────────────
+// 9. 이름 풀이 — 음령오행 + (선택) 한자 자원오행
+// ─────────────────────────────────────────────
+export interface NameAnalysisInput {
+  koreanName: string;       // 필수 — 한글 이름
+  koreanInitialsElements: string[];  // 초성별 오행 계산 결과 (예: ['土','金','土'])
+  hanjaName?: string;       // 선택 — 한자 이름
+  hanjaElements?: string[]; // 선택 — 한자별 자원오행
+}
+
+export const generateNameFortunePrompt = (
+  result: SajuResult,
+  nameInput: NameAnalysisInput,
+): string => {
+  const { koreanName, koreanInitialsElements, hanjaName, hanjaElements } = nameInput;
+
+  // 이름 오행 분포 카운트
+  const countEls = (els: string[]) => {
+    const c: Record<string, number> = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
+    els.forEach(e => { if (c[e] !== undefined) c[e]++; });
+    return c;
+  };
+  const eumRyeong = countEls(koreanInitialsElements);
+  const jawon = hanjaElements ? countEls(hanjaElements) : null;
+
+  // 용신과의 관계
+  const yongSinEl = result.yongSinElement;
+
+  // 기신 오행 역산 — result.giSin은 '편관/정관' 같은 십성명이므로 일간 오행 기준으로 오행 추출
+  const EL_GEN_: Record<string, string> = { '목': '화', '화': '토', '토': '금', '금': '수', '수': '목' };
+  const EL_CON_: Record<string, string> = { '목': '토', '화': '금', '토': '수', '금': '목', '수': '화' };
+  const EL_PAR_: Record<string, string> = { '목': '수', '화': '목', '토': '화', '금': '토', '수': '금' };
+  const EL_BY_:  Record<string, string> = { '목': '금', '화': '수', '토': '목', '금': '화', '수': '토' };
+  const giSinElement = (() => {
+    const g = result.giSin || '';
+    const dayEl = result.dayMasterElement;
+    if (g.includes('식신') || g.includes('상관')) return EL_GEN_[dayEl];
+    if (g.includes('편재') || g.includes('정재')) return EL_CON_[dayEl];
+    if (g.includes('편관') || g.includes('정관')) return EL_BY_[dayEl];
+    if (g.includes('편인') || g.includes('정인')) return EL_PAR_[dayEl];
+    if (g.includes('비견') || g.includes('겁재')) return dayEl;
+    return '';
+  })();
+
+  const yongSinInName = koreanInitialsElements.includes(yongSinEl)
+    || (hanjaElements && hanjaElements.includes(yongSinEl));
+  const giSinInName = !!giSinElement && (
+    koreanInitialsElements.includes(giSinElement)
+    || (hanjaElements && hanjaElements.includes(giSinElement))
+  );
+
+  return `당신은 35년 경력의 사주명리·성명학 전문가입니다. 아래 사람의 이름이 사주와 어떻게 어울리는지 풀어주세요.
+
+${buildMoreFortuneBlock(result)}
+
+[이름 분석]
+한글 이름: ${koreanName}
+초성 음령오행: ${koreanInitialsElements.join(' · ')} (분포 목${eumRyeong.목} 화${eumRyeong.화} 토${eumRyeong.토} 금${eumRyeong.금} 수${eumRyeong.수})
+${hanjaName ? `한자 이름: ${hanjaName}
+자원오행: ${hanjaElements?.join(' · ')} (분포 목${jawon?.목} 화${jawon?.화} 토${jawon?.토} 금${jawon?.금} 수${jawon?.수})` : '한자 이름 미입력 — 음령오행만 분석'}
+
+[사주와 이름 조화]
+- 용신(${yongSinEl})이 이름에 ${yongSinInName ? '있음 — 이름이 용신을 보강' : '없음'}
+- 기신(${result.giSin}${giSinElement ? `·${giSinElement}` : ''})이 이름에 ${giSinInName ? '있음 — 주의 필요' : '없음'}
+
+${MORE_COMMON_RULES}
+
+[작성 지침] 380~520자 내외
+1단락 — 은유 제목 + 결론 한 줄: 이름이 사주를 돕는가 중립인가 거스르는가
+2단락 — 음령오행 분포와 사주 오행(강·약·용신) 비교 — 구체적 어떤 기운이 보강되고 어떤 기운이 과잉되는지
+${hanjaName ? '3단락 — 자원오행(한자 뜻·부수)이 이름에 더하는 기운 분석' : ''}
+${hanjaName ? '4' : '3'}단락 — 개명이 필요한 수준인지, 보완책이 충분한지 단정적으로 평가
+마지막 — "- " 불릿 3개로 실천 조언 (필명·SNS ID·자주 쓰는 색 등 이름 대안 보완)`;
+};
