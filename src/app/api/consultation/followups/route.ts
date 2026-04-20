@@ -75,6 +75,7 @@ ${lastAnswer}
       generationConfig: {
         temperature: 0.9,
         maxOutputTokens: 300,
+        thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: 'application/json',
         responseSchema: {
           type: 'OBJECT',
