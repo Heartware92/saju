@@ -5,7 +5,7 @@
  * URL: /saju/tojeong?year=1990&month=1&day=1&calendarType=solar&...&targetYear=2026
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { calculateTojeong, type TojeongResult } from '../engine/tojeong';
@@ -13,6 +13,13 @@ import { buildTojeongReading, type TojeongReading } from '../engine/tojeong/read
 import type { GwaeGrade } from '../engine/tojeong/gwae-table';
 import { useProfileStore } from '../store/useProfileStore';
 import { getTojeongReading } from '../services/fortuneService';
+import { AILoadingBar } from '../components/AILoadingBar';
+
+const TOJEONG_MESSAGES = [
+  '괘의 상징을 풀어 쓰는 중입니다',
+  '12개월의 흐름을 정리하는 중입니다',
+  '총운의 방향을 잡는 중입니다',
+];
 
 const GRADE_COLOR: Record<GwaeGrade, string> = {
   '대길': '#34D399',
@@ -30,7 +37,7 @@ export default function TojeongResultPage() {
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
 
-  // AI 내러티브 — 자동 호출하지 않고 버튼 클릭 시에만 시작
+  // AI 내러티브 — 진입 즉시 자동 호출
   const [aiContent, setAiContent] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -64,22 +71,68 @@ export default function TojeongResultPage() {
     }
   }, [searchParams, primary]);
 
-  // 심층 풀이 수동 트리거 (버튼 클릭)
-  const handleRequestAI = async () => {
-    if (!tojeong || aiLoading) return;
-    setAiError(null);
+  // 심층 풀이 — 진입 즉시 자동 호출 (StrictMode·재렌더 중복 방지 + 45초 타임아웃)
+  const aiStartedRef = useRef(false);
+  useEffect(() => {
+    if (!tojeong) return;
+    if (aiStartedRef.current) return;
+    aiStartedRef.current = true;
+
+    let cancelled = false;
     setAiLoading(true);
-    try {
-      const r = await getTojeongReading(tojeong);
-      if (!r.success || !r.content) {
-        throw new Error(r.error || '심층 풀이를 가져오지 못했어요.');
-      }
-      setAiContent(r.content);
-    } catch (e: unknown) {
-      setAiError(e instanceof Error ? e.message : '오류가 발생했어요.');
-    } finally {
+
+    const timeoutId = setTimeout(() => {
+      if (cancelled) return;
+      setAiError('응답이 너무 오래 걸려요. 아래 괘 풀이는 정상이니 확인해주세요.');
       setAiLoading(false);
-    }
+    }, 45_000);
+
+    getTojeongReading(tojeong)
+      .then(r => {
+        if (cancelled) return;
+        clearTimeout(timeoutId);
+        if (!r.success || !r.content) {
+          setAiError(r.error || '심층 풀이를 가져오지 못했어요.');
+        } else {
+          setAiContent(r.content);
+        }
+        setAiLoading(false);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        clearTimeout(timeoutId);
+        setAiError(err?.message || '오류가 발생했어요.');
+        setAiLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [tojeong]);
+
+  const retryAI = () => {
+    aiStartedRef.current = false;
+    setAiContent(null);
+    setAiError(null);
+    setAiLoading(false);
+    // useEffect의 tojeong 의존성은 변경 안 되므로 수동 재호출
+    if (!tojeong) return;
+    aiStartedRef.current = true;
+    setAiLoading(true);
+    getTojeongReading(tojeong)
+      .then(r => {
+        if (!r.success || !r.content) {
+          setAiError(r.error || '심층 풀이를 가져오지 못했어요.');
+        } else {
+          setAiContent(r.content);
+        }
+        setAiLoading(false);
+      })
+      .catch(err => {
+        setAiError(err?.message || '오류가 발생했어요.');
+        setAiLoading(false);
+      });
   };
 
   if (!tojeong || !reading) {
@@ -110,6 +163,32 @@ export default function TojeongResultPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-cta border-t-transparent rounded-full animate-spin" />
       </div>
+    );
+  }
+
+  // ── AI 풀이 로딩 — 풀스크린 ──
+  if (aiLoading) {
+    return (
+      <AILoadingBar
+        label="토정비결 풀이중"
+        minLabel="10초"
+        maxLabel="40초"
+        estimatedSeconds={20}
+        messages={TOJEONG_MESSAGES}
+        topContent={
+          <motion.div
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <div className="text-[32px] mb-1" style={{ fontFamily: 'var(--font-serif)' }}>
+              {tojeong.gwaeNumber}괘
+            </div>
+            <div className="text-[15px] text-text-tertiary">
+              {tojeong.targetYear}년 · {reading.grade}
+            </div>
+          </motion.div>
+        }
+      />
     );
   }
 
@@ -281,60 +360,38 @@ export default function TojeongResultPage() {
         </section>
       </div>
 
-      {/* 심층 풀이 — 버튼 클릭 방식 */}
-      <section className="mt-3 rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="inline-block w-1 h-5 rounded-full bg-cta" />
-          <div
-            className="text-[17px] font-bold text-text-primary tracking-tight"
-            style={{ fontFamily: 'var(--font-serif)' }}
-          >
-            심층 풀이
-          </div>
-        </div>
-
-        {!aiContent && !aiLoading && (
-          <>
-            <p className="text-[14px] text-text-secondary leading-relaxed mb-4">
-              AI가 괘의 의미와 월별 흐름, 한 해 총운을 이어지는 문장으로 풀어드려요.
-            </p>
-            <button
-              onClick={handleRequestAI}
-              className="w-full py-3 rounded-xl bg-cta text-white font-bold text-[15px] active:scale-[0.98] transition-all"
+      {/* 심층 풀이 — 자동 호출 결과 표시 */}
+      {(aiContent || aiError) && (
+        <section className="mt-3 rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="inline-block w-1 h-5 rounded-full bg-cta" />
+            <div
+              className="text-[17px] font-bold text-text-primary tracking-tight"
+              style={{ fontFamily: 'var(--font-serif)' }}
             >
-              심층 풀이 받기
-            </button>
-            {aiError && (
-              <div className="mt-3 p-3 rounded-xl bg-red-500/10 border border-red-500/30">
-                <p className="text-[13px] text-red-400 mb-2">{aiError}</p>
-                <button
-                  onClick={handleRequestAI}
-                  className="text-[13px] text-cta font-semibold underline"
-                >
-                  다시 시도
-                </button>
-              </div>
-            )}
-          </>
-        )}
-
-        {aiLoading && (
-          <div className="flex flex-col items-center py-6 gap-3">
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 rounded-full bg-cta animate-pulse" style={{ animationDelay: '0s' }} />
-              <span className="inline-block w-2 h-2 rounded-full bg-cta animate-pulse" style={{ animationDelay: '0.2s' }} />
-              <span className="inline-block w-2 h-2 rounded-full bg-cta animate-pulse" style={{ animationDelay: '0.4s' }} />
+              심층 풀이
             </div>
-            <p className="text-[13px] text-text-tertiary">괘의 흐름을 읽는 중입니다... (최대 1분)</p>
           </div>
-        )}
 
-        {aiContent && (
-          <p className="text-[15px] text-text-secondary leading-[1.85] whitespace-pre-line tracking-[-0.005em]">
-            {aiContent}
-          </p>
-        )}
-      </section>
+          {aiError && !aiContent && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30">
+              <p className="text-[14px] text-red-400 mb-2">{aiError}</p>
+              <button
+                onClick={retryAI}
+                className="text-[14px] text-cta font-semibold underline"
+              >
+                다시 시도
+              </button>
+            </div>
+          )}
+
+          {aiContent && (
+            <p className="text-[15px] text-text-secondary leading-[1.85] whitespace-pre-line tracking-[-0.005em]">
+              {aiContent}
+            </p>
+          )}
+        </section>
+      )}
     </motion.div>
   );
 }

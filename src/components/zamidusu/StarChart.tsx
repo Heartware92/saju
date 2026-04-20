@@ -27,8 +27,9 @@ interface StarChartProps {
   onSelect: (index: number) => void;
 }
 
-const VIEWBOX = 400;
-const CENTER = 200;
+// viewBox 500으로 확대 — 같은 그리드에 더 큰 텍스트 허용
+const VIEWBOX = 500;
+const CENTER = 250;
 
 // 4x4 그리드에서 각 셀의 중심 좌표
 function gridToXY(row: number, col: number): { x: number; y: number } {
@@ -39,10 +40,10 @@ function gridToXY(row: number, col: number): { x: number; y: number } {
   };
 }
 
-// 주성 수에 따른 별 크기
+// 주성 수에 따른 별 크기 (뷰박스 키움에 맞춰 반지름도 상향)
 function starRadius(palace: ZamidusuPalace): number {
-  const base = palace.name === '명궁' ? 12 : palace.isBodyPalace ? 10 : 8;
-  const extra = Math.min(palace.majorStars.length * 1.5, 5);
+  const base = palace.name === '명궁' ? 14 : palace.isBodyPalace ? 12 : 10;
+  const extra = Math.min(palace.majorStars.length * 1.5, 6);
   return base + extra;
 }
 
@@ -87,7 +88,7 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
   });
 
   return (
-    <div className="relative w-full aspect-square max-w-[400px] mx-auto">
+    <div className="relative w-full aspect-square max-w-[460px] mx-auto">
       <svg
         viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}
         className="w-full h-full"
@@ -126,15 +127,15 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
         )}
 
         {/* 중심 원 — 명주·오행국 표기 */}
-        <circle cx={CENTER} cy={CENTER} r="48" fill="rgba(20,12,38,0.85)" stroke="rgba(139,92,246,0.35)" strokeWidth="1.5" />
-        <text x={CENTER} y={CENTER - 10} textAnchor="middle" fill="#C4B5FD" fontSize="11" fontWeight="600" letterSpacing="2">
+        <circle cx={CENTER} cy={CENTER} r="62" fill="rgba(20,12,38,0.85)" stroke="rgba(139,92,246,0.35)" strokeWidth="1.5" />
+        <text x={CENTER} y={CENTER - 14} textAnchor="middle" fill="#C4B5FD" fontSize="14" fontWeight="600" letterSpacing="2">
           {fiveElementsClass}
         </text>
-        <text x={CENTER} y={CENTER + 8} textAnchor="middle" fill="#FBBF24" fontSize="16" fontWeight="700" style={{ fontFamily: 'var(--font-serif)' }}>
+        <text x={CENTER} y={CENTER + 10} textAnchor="middle" fill="#FBBF24" fontSize="22" fontWeight="700" style={{ fontFamily: 'var(--font-serif)' }}>
           {soul}
         </text>
-        <text x={CENTER} y={CENTER + 24} textAnchor="middle" fill="#9CA3AF" fontSize="8" letterSpacing="3">
-          MYEONG JU
+        <text x={CENTER} y={CENTER + 32} textAnchor="middle" fill="#9CA3AF" fontSize="11" letterSpacing="3">
+          명주
         </text>
 
         {/* 각 궁의 별 */}
@@ -172,11 +173,11 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
               {/* 궁 이름 */}
               <text
                 x={x}
-                y={y + r + 12}
+                y={y + r + 16}
                 textAnchor="middle"
                 fill={isSelected ? '#FBBF24' : '#E5E7EB'}
-                fontSize="9"
-                fontWeight={palace.name === '명궁' ? '700' : '500'}
+                fontSize="13"
+                fontWeight={palace.name === '명궁' ? '700' : '600'}
               >
                 {palace.name}
               </text>
@@ -184,10 +185,10 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
               {/* 간지 */}
               <text
                 x={x}
-                y={y + r + 22}
+                y={y + r + 30}
                 textAnchor="middle"
                 fill="#9CA3AF"
-                fontSize="7"
+                fontSize="11"
                 letterSpacing="1"
               >
                 {palace.heavenlyStem}{palace.earthlyBranch}
@@ -198,10 +199,10 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
                 <text
                   key={`${palace.index}-s-${si}`}
                   x={x}
-                  y={y - r - 4 - (si * 8)}
+                  y={y - r - 6 - (si * 12)}
                   textAnchor="middle"
                   fill={s.mutagen ? '#FBBF24' : '#C4B5FD'}
-                  fontSize="7.5"
+                  fontSize="11"
                   fontWeight="600"
                 >
                   {s.name}{s.mutagen ? `·${s.mutagen.slice(0, 1)}` : ''}

@@ -22,7 +22,7 @@ import { buildZamidusuReading, type ZamidusuReading } from '../engine/zamidusu/r
 import styles from './ZamidusuResultPage.module.css';
 import { useProfileStore } from '../store/useProfileStore';
 import { getZamidusuReading, type ZamidusuAIResult } from '../services/fortuneService';
-import { ZAMIDUSU_SECTION_KEYS, ZAMIDUSU_SECTION_LABELS, type ZamidusuSectionKey } from '../constants/prompts';
+import { ZAMIDUSU_SECTION_KEYS, ZAMIDUSU_SECTION_LABELS } from '../constants/prompts';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { StarChart } from '../components/zamidusu/StarChart';
 
@@ -34,17 +34,6 @@ const LOADING_MESSAGES = [
   '별자리 속 이야기를 엮는 중입니다',
 ];
 
-// 섹션별 은유 아이콘 (이모지 X — SVG 대신 심볼 활용)
-const SECTION_SYMBOL: Record<ZamidusuSectionKey, string> = {
-  overview:  '◐',
-  core:      '☀',
-  relations: '◇',
-  wealth:    '◆',
-  body_mind: '◎',
-  mutagen:   '✦',
-  daehan:    '◐',
-  advice:    '★',
-};
 
 export default function ZamidusuResultPage() {
   const searchParams = useSearchParams();
@@ -219,24 +208,25 @@ export default function ZamidusuResultPage() {
     return <div className={styles.loading}>{error}</div>;
   }
 
-  // ── 명반만 계산 중일 때 풀스크린 로딩 (AI 호출은 별도 inline 로딩) ──
-  if (!chart) {
+  // ── 풀스크린 로딩: 명반 계산 OR AI 풀이 대기 중 ──
+  // 한번에 모든 내용이 준비되어 쭉 보이도록 풀스크린으로 대기
+  if (!chart || aiLoading) {
     return (
       <AILoadingBar
         label="자미두수 명반을 펼치는 중"
-        minLabel="5초"
-        maxLabel="15초"
-        estimatedSeconds={8}
-        messages={['12궁 배치를 계산하는 중입니다', '주성·보좌성을 찾는 중입니다', '명주·오행국을 읽는 중입니다']}
+        minLabel="15초"
+        maxLabel="40초"
+        estimatedSeconds={25}
+        messages={LOADING_MESSAGES}
         topContent={
           <motion.div
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <div className="text-[24px] mb-1 tracking-widest" style={{ fontFamily: 'var(--font-serif)' }}>
+            <div className="text-[28px] mb-1 tracking-widest" style={{ fontFamily: 'var(--font-serif)' }}>
               紫微斗數
             </div>
-            <div className="text-[14px] text-text-tertiary">하늘의 별자리 지도</div>
+            <div className="text-[15px] text-text-tertiary">하늘의 별자리 지도</div>
           </motion.div>
         }
       />
@@ -329,8 +319,8 @@ export default function ZamidusuResultPage() {
               cursor: 'pointer',
             }}
           >
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
-              ✦ 자미두수가 뭔가요?
+            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+              자미두수가 뭔가요?
             </span>
             <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
               {introOpen ? '접기' : '펼치기'}
@@ -384,9 +374,9 @@ export default function ZamidusuResultPage() {
                 className={styles.section}
               >
                 <h2>
-                  ✦ {p.name}
+                  {p.name}
                   {p.isBodyPalace ? ' · 신궁' : ''}
-                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 400, marginLeft: 8 }}>
+                  <span style={{ fontSize: 14, color: 'var(--text-tertiary)', fontWeight: 400, marginLeft: 8 }}>
                     {p.heavenlyStem}{p.earthlyBranch}
                   </span>
                 </h2>
@@ -431,32 +421,6 @@ export default function ZamidusuResultPage() {
           })()}
         </AnimatePresence>
 
-        {/* AI 풀이 진행 중 인라인 로딩 */}
-        {aiLoading && (
-          <div
-            className={styles.section}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              padding: '24px 16px',
-              gap: 10,
-            }}
-          >
-            <div style={{ display: 'flex', gap: 6 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cta-primary)' }} className="animate-pulse" />
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cta-primary)', animationDelay: '0.2s' }} className="animate-pulse" />
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cta-primary)', animationDelay: '0.4s' }} className="animate-pulse" />
-            </div>
-            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
-              별자리 속 이야기를 엮는 중입니다... (최대 45초)
-            </p>
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0, opacity: 0.7 }}>
-              명반은 이미 완성됐으니 위에서 먼저 확인하실 수 있어요.
-            </p>
-          </div>
-        )}
-
         {/* AI 풀이 — 섹션별 은유 헤드라인으로 카드화 */}
         {ZAMIDUSU_SECTION_KEYS.map((key) => {
           const text = sections[key];
@@ -474,22 +438,22 @@ export default function ZamidusuResultPage() {
               transition={{ duration: 0.4 }}
               className={styles.section}
             >
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
-                <span style={{ fontSize: 18, color: 'var(--cta-primary)' }}>
-                  {SECTION_SYMBOL[key]}
-                </span>
-                <div>
-                  <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase' }}>
-                    {ZAMIDUSU_SECTION_LABELS[key]}
-                  </div>
-                  {hasHeadline && (
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.5, marginTop: 2, fontFamily: 'var(--font-serif)' }}>
-                      {headline}
-                    </div>
-                  )}
+              {/* 섹션 레이블 — 정통사주와 동일 패턴 (세로바 + 큰 레이블) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{ display: 'inline-block', width: 4, height: 20, borderRadius: 2, background: 'var(--cta-primary)' }} />
+                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', letterSpacing: '-0.01em' }}>
+                  {ZAMIDUSU_SECTION_LABELS[key]}
                 </div>
               </div>
-              <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.85, whiteSpace: 'pre-line', margin: 0 }}>
+
+              {/* 은유 제목 부제 */}
+              {hasHeadline && (
+                <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--cta-primary)', opacity: 0.9, lineHeight: 1.5, marginBottom: 14, paddingLeft: 12, fontFamily: 'var(--font-serif)' }}>
+                  {headline}
+                </div>
+              )}
+
+              <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.85, letterSpacing: '-0.005em', whiteSpace: 'pre-line', margin: 0 }}>
                 {hasHeadline ? body : text}
               </p>
             </motion.div>
@@ -509,8 +473,8 @@ export default function ZamidusuResultPage() {
         {reading && Object.keys(sections).length === 0 && !aiResult?.content && (
           <>
             <div className={styles.section}>
-              <h2>✦ 명반 요약</h2>
-              <p style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.7, marginBottom: 12 }}>
+              <h2>명반 요약</h2>
+              <p style={{ fontSize: 15, color: 'var(--text-primary)', lineHeight: 1.7, marginBottom: 12 }}>
                 {reading.profileHeadline}
               </p>
               {reading.coreStars.length > 0 && (
