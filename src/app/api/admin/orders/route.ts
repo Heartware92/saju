@@ -1,0 +1,51 @@
+/**
+ * GET /api/admin/orders?page=1&status=&search=&limit=20
+ * 주문/결제 목록
+ */
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/services/supabaseAdmin';
+import { requireAdmin } from '../_auth';
+
+const PAGE_SIZE = 20;
+
+export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (auth instanceof Response) return auth;
+
+  const { searchParams } = new URL(request.url);
+  const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'));
+  const status = searchParams.get('status') ?? '';
+  const search = searchParams.get('search')?.trim() ?? '';
+  const from = (page - 1) * PAGE_SIZE;
+
+  let query = supabaseAdmin
+    .from('orders')
+    .select('*, user_id', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(from, from + PAGE_SIZE - 1);
+
+  if (status) query = query.eq('status', status);
+
+  const { data: orders, count, error } = await query;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // 사용자 이메일 조회 (user_id 기준)
+  const userIds = [...new Set((orders ?? []).map(o => o.user_id))];
+  const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+  const emailMap = new Map((authUsers?.users ?? []).map(u => [u.id, u.email ?? '']));
+
+  // search 필터 (email 기반)
+  let result = (orders ?? []).map(o => ({
+    ...o,
+    userEmail: emailMap.get(o.user_id) ?? o.user_id,
+  }));
+
+  if (search) {
+    result = result.filter(o =>
+      o.userEmail.toLowerCase().includes(search.toLowerCase()) ||
+      (o.id ?? '').toLowerCase().includes(search.toLowerCase())
+    );
+  }
+
+  return NextResponse.json({ orders: result, total: count ?? result.length, page, pageSize: PAGE_SIZE });
+}
