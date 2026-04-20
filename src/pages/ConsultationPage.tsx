@@ -642,7 +642,7 @@ export default function ConsultationPage() {
             onClick={openStatusModal}
             className="text-[13px] text-cta hover:text-cta/80 font-medium"
           >
-            상태 수정 ✎
+            상태 수정
           </button>
         </div>
       </div>

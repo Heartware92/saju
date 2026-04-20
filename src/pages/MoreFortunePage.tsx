@@ -209,10 +209,10 @@ export default function MoreFortunePage({ category }: Props) {
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <div className="text-[40px] mb-1" style={{ fontFamily: 'var(--font-serif)' }}>
-              {cfg.icon}
+            <div className="text-[28px] mb-1 font-bold" style={{ fontFamily: 'var(--font-serif)' }}>
+              {cfg.title}
             </div>
-            <div className="text-[15px] text-text-tertiary">{cfg.title}</div>
+            <div className="text-[14px] text-text-tertiary">{cfg.shortDesc}</div>
           </motion.div>
         }
       />
@@ -244,8 +244,8 @@ export default function MoreFortunePage({ category }: Props) {
             border: '1px solid rgba(139,92,246,0.25)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-            <span style={{ fontSize: 32, color: 'var(--cta-primary)' }}>{cfg.icon}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <span style={{ display: 'inline-block', width: 4, height: 22, borderRadius: 2, background: 'var(--cta-primary)' }} />
             <div>
               <p style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase' }}>
                 MORE FORTUNE
@@ -360,8 +360,8 @@ export default function MoreFortunePage({ category }: Props) {
               animate={{ opacity: 1, y: 0 }}
               className={styles.section}
             >
-              <h2 style={{ fontSize: 14, marginBottom: 12 }}>
-                <span style={{ color: 'var(--cta-primary)', marginRight: 6 }}>{cfg.icon}</span>
+              <h2 style={{ fontSize: 17, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ display: 'inline-block', width: 4, height: 20, borderRadius: 2, background: 'var(--cta-primary)' }} />
                 {cfg.title} 풀이
               </h2>
               <p

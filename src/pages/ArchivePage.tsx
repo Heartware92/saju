@@ -74,9 +74,7 @@ export default function ArchivePage() {
               MOCK_SAJU_RECORDS.map((record) => (
                 <Card key={record.id} padding="md" hover>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[rgba(124,92,252,0.12)] flex items-center justify-center text-lg">
-                      ✦
-                    </div>
+                    <div className="w-1 h-10 rounded-full bg-cta" />
                     <div className="flex-1">
                       <h3 className="text-sm font-semibold text-text-primary">{record.title}</h3>
                       <p className="text-xs text-text-tertiary mt-0.5">{record.summary}</p>
@@ -125,8 +123,8 @@ export default function ArchivePage() {
 function EmptyState({ type }: { type: 'saju' | 'tarot' }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-16 h-16 rounded-full bg-space-surface flex items-center justify-center text-2xl mb-4">
-        {type === 'saju' ? '✦' : '🎴'}
+      <div className="w-16 h-16 rounded-full bg-space-surface flex items-center justify-center text-sm font-bold text-text-tertiary mb-4" style={{ fontFamily: 'var(--font-serif)' }}>
+        {type === 'saju' ? '사주' : '타로'}
       </div>
       <p className="text-text-secondary text-sm mb-1">
         {type === 'saju' ? '사주 상담 기록이 없습니다' : '타로 상담 기록이 없습니다'}

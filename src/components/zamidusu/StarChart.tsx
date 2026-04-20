@@ -27,9 +27,9 @@ interface StarChartProps {
   onSelect: (index: number) => void;
 }
 
-// viewBox 500으로 확대 — 같은 그리드에 더 큰 텍스트 허용
-const VIEWBOX = 500;
-const CENTER = 250;
+// viewBox를 실제 표시 영역에 딱 맞춰 거의 1:1 스케일로 폰트 크게 보이게 — 가독성 최우선
+const VIEWBOX = 420;
+const CENTER = 210;
 
 // 4x4 그리드에서 각 셀의 중심 좌표
 function gridToXY(row: number, col: number): { x: number; y: number } {
@@ -40,10 +40,10 @@ function gridToXY(row: number, col: number): { x: number; y: number } {
   };
 }
 
-// 주성 수에 따른 별 크기 (뷰박스 키움에 맞춰 반지름도 상향)
+// 별 크기 — 텍스트와 균형 맞춤
 function starRadius(palace: ZamidusuPalace): number {
-  const base = palace.name === '명궁' ? 14 : palace.isBodyPalace ? 12 : 10;
-  const extra = Math.min(palace.majorStars.length * 1.5, 6);
+  const base = palace.name === '명궁' ? 11 : palace.isBodyPalace ? 9 : 7;
+  const extra = Math.min(palace.majorStars.length * 1, 4);
   return base + extra;
 }
 
@@ -88,7 +88,7 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
   });
 
   return (
-    <div className="relative w-full aspect-square max-w-[460px] mx-auto">
+    <div className="relative w-full aspect-square max-w-none mx-auto">
       <svg
         viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}
         className="w-full h-full"
@@ -127,14 +127,14 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
         )}
 
         {/* 중심 원 — 명주·오행국 표기 */}
-        <circle cx={CENTER} cy={CENTER} r="62" fill="rgba(20,12,38,0.85)" stroke="rgba(139,92,246,0.35)" strokeWidth="1.5" />
-        <text x={CENTER} y={CENTER - 14} textAnchor="middle" fill="#C4B5FD" fontSize="14" fontWeight="600" letterSpacing="2">
+        <circle cx={CENTER} cy={CENTER} r="58" fill="rgba(20,12,38,0.85)" stroke="rgba(139,92,246,0.35)" strokeWidth="1.5" />
+        <text x={CENTER} y={CENTER - 10} textAnchor="middle" fill="#C4B5FD" fontSize="14" fontWeight="600" letterSpacing="2">
           {fiveElementsClass}
         </text>
-        <text x={CENTER} y={CENTER + 10} textAnchor="middle" fill="#FBBF24" fontSize="22" fontWeight="700" style={{ fontFamily: 'var(--font-serif)' }}>
+        <text x={CENTER} y={CENTER + 14} textAnchor="middle" fill="#FBBF24" fontSize="22" fontWeight="700" style={{ fontFamily: 'var(--font-serif)' }}>
           {soul}
         </text>
-        <text x={CENTER} y={CENTER + 32} textAnchor="middle" fill="#9CA3AF" fontSize="11" letterSpacing="3">
+        <text x={CENTER} y={CENTER + 36} textAnchor="middle" fill="#9CA3AF" fontSize="11" letterSpacing="3">
           명주
         </text>
 
@@ -173,10 +173,10 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
               {/* 궁 이름 */}
               <text
                 x={x}
-                y={y + r + 16}
+                y={y + r + 15}
                 textAnchor="middle"
-                fill={isSelected ? '#FBBF24' : '#E5E7EB'}
-                fontSize="13"
+                fill={isSelected ? '#FBBF24' : '#F3F4F6'}
+                fontSize="14"
                 fontWeight={palace.name === '명궁' ? '700' : '600'}
               >
                 {palace.name}
@@ -185,11 +185,11 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
               {/* 간지 */}
               <text
                 x={x}
-                y={y + r + 30}
+                y={y + r + 28}
                 textAnchor="middle"
-                fill="#9CA3AF"
+                fill="#B8B1C8"
                 fontSize="11"
-                letterSpacing="1"
+                letterSpacing="0.5"
               >
                 {palace.heavenlyStem}{palace.earthlyBranch}
               </text>
@@ -199,11 +199,11 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
                 <text
                   key={`${palace.index}-s-${si}`}
                   x={x}
-                  y={y - r - 6 - (si * 12)}
+                  y={y - r - 6 - (si * 13)}
                   textAnchor="middle"
-                  fill={s.mutagen ? '#FBBF24' : '#C4B5FD'}
-                  fontSize="11"
-                  fontWeight="600"
+                  fill={s.mutagen ? '#FBBF24' : '#D8BFFD'}
+                  fontSize="12"
+                  fontWeight="700"
                 >
                   {s.name}{s.mutagen ? `·${s.mutagen.slice(0, 1)}` : ''}
                 </text>
@@ -213,21 +213,25 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
         })}
       </svg>
 
-      {/* 하단 범례 */}
-      <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[12px] text-text-tertiary">
-        <span className="flex items-center gap-1">
-          <span className="inline-block w-2 h-2 rounded-full bg-[#FBBF24]" />
-          명궁
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block w-2 h-2 rounded-full bg-[#F472B6]" />
-          신궁
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block w-2 h-2 rounded-full bg-[#6B7280] opacity-50" />
-          공궁
-        </span>
-        <span className="text-text-tertiary/60">별을 눌러 자세히 보기</span>
+      {/* 하단 범례 — 잘 보이게 확대 */}
+      <div className="mt-4 rounded-xl p-3 bg-[rgba(20,12,38,0.45)] border border-[var(--border-subtle)]">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-[14px] text-text-secondary">
+          <span className="flex items-center gap-1.5 font-medium">
+            <span className="inline-block w-3 h-3 rounded-full bg-[#FBBF24]" />
+            명궁
+          </span>
+          <span className="flex items-center gap-1.5 font-medium">
+            <span className="inline-block w-3 h-3 rounded-full bg-[#F472B6]" />
+            신궁
+          </span>
+          <span className="flex items-center gap-1.5 font-medium">
+            <span className="inline-block w-3 h-3 rounded-full bg-[#6B7280] opacity-60" />
+            공궁
+          </span>
+        </div>
+        <p className="text-[12px] text-text-tertiary text-center mt-2">
+          별을 눌러 자세히 볼 수 있어요
+        </p>
       </div>
     </div>
   );

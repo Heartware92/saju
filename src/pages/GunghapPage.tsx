@@ -382,7 +382,6 @@ export default function GunghapPage() {
                         bg-gradient-to-br ${cat.accent}
                         ${category === cat.id ? 'border-cta/70 ring-1 ring-cta/30 shadow-[0_0_12px_rgba(139,92,246,0.15)]' : 'border-[var(--border-subtle)] hover:border-white/25'}`}
                     >
-                      <span className="text-lg leading-tight mt-0.5 w-5 text-center flex-shrink-0">{cat.icon}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-[15px] font-bold text-text-primary leading-tight">{cat.label}</p>
                         <p className="text-[12px] text-text-secondary mt-0.5 leading-tight">{cat.desc}</p>
@@ -430,7 +429,6 @@ export default function GunghapPage() {
 
             {/* 선택된 관계 배지 */}
             <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5 bg-gradient-to-r ${selectedCat.accent} border border-white/15`}>
-              <span className="text-sm">{selectedCat.icon}</span>
               <span className="text-[15px] font-semibold text-text-primary">{getCategoryDisplayLabel()}</span>
             </div>
 
@@ -516,8 +514,8 @@ export default function GunghapPage() {
             {/* 내 정보 요약 */}
             {selectedProfile && (
               <div className="mb-4 p-3 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${selectedCat.accent} flex items-center justify-center text-sm border border-white/15 flex-shrink-0`}>
-                  {selectedCat.icon}
+                <div className={`px-3 py-1 rounded-full bg-gradient-to-br ${selectedCat.accent} text-[12px] font-semibold text-text-primary border border-white/15 flex-shrink-0`}>
+                  {getCategoryDisplayLabel()}
                 </div>
                 <div>
                   <p className="text-[15px] font-bold text-text-primary">{selectedProfile.name}</p>
@@ -641,7 +639,7 @@ export default function GunghapPage() {
             {/* 결과 헤더 */}
             <div className={`p-4 rounded-2xl mb-4 bg-gradient-to-br ${selectedCat.accent} border border-white/15`}>
               <div className="flex items-center gap-3">
-                <span className="text-3xl">{selectedCat.icon}</span>
+                <span className="inline-block w-1 h-10 rounded-full bg-white/60" />
                 <div className="flex-1">
                   <p className="text-[13px] text-text-tertiary uppercase tracking-wider">{getCategoryDisplayLabel()} 궁합</p>
                   <p className="text-[16px] font-bold text-text-primary mt-0.5">
