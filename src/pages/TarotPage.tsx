@@ -9,7 +9,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { TAROT_DECK, ELEMENT_COLORS, SUIT_SYMBOL, type TarotCard } from '../engine/tarot/deck';
+import { TAROT_DECK, ELEMENT_COLORS, SUIT_SYMBOL, getCardImg, type TarotCard } from '../engine/tarot/deck';
 import { buildTarotReading, type DrawnCard, type TarotReading, type TarotSpread } from '../engine/tarot/reading';
 import { drawOne, drawMany, getTodayKey, getMonthKey, formatTodayString, formatMonthString } from '../utils/tarotSeed';
 import { useProfileStore } from '../store/useProfileStore';
@@ -58,11 +58,12 @@ function CardFace({ drawn, width = 120 }: { drawn: DrawnCard; width?: number }) 
         <div className="text-[10px] text-text-tertiary mb-1 font-semibold">{position}</div>
       )}
       <div style={{ transform: isReversed ? 'rotate(180deg)' : 'none' }}>
-        <div className="text-[18px] mb-1">{SUIT_SYMBOL[card.suit]}</div>
-        <div style={{ color, fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-serif)' }}>
-          {card.symbol}
-        </div>
-        <div className="text-[13px] font-semibold mt-1 text-text-primary">{card.nameKr}</div>
+        <img
+          src={getCardImg(card)}
+          alt={card.nameKr}
+          style={{ width: '100%', borderRadius: 8, display: 'block', marginBottom: 8 }}
+        />
+        <div className="text-[13px] font-semibold text-text-primary">{card.nameKr}</div>
         <div className="text-[10px] text-text-tertiary mt-0.5">{card.name}</div>
       </div>
       <div

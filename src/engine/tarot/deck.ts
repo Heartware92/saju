@@ -27,6 +27,7 @@ export interface TarotCard {
   suit: TarotSuit;
   number?: number;     // 1~14 for minor, 0~21 for major
   element: TarotElement;
+  img?: string;        // /tarot/{filename}.jpg
   keywords: { upright: string[]; reversed: string[] };
   upright: TarotContextMeaning;
   reversed: TarotContextMeaning;
@@ -581,6 +582,7 @@ function buildNumberCard(
     suit,
     number,
     element: meta.element,
+    img: `/tarot/${suit[0]}${String(number).padStart(2, '0')}.jpg`,
     keywords: { upright: n.keywordsU, reversed: n.keywordsR },
     upright: { overall: n.overallU, ...uD },
     reversed: { overall: n.overallR, ...rD },
@@ -616,6 +618,7 @@ function buildCourtCard(
     suit,
     number: 11 + roleIdx,
     element: meta.element,
+    img: `/tarot/${suit[0]}${String(11 + roleIdx).padStart(2, '0')}.jpg`,
     keywords: {
       upright: [role.label, meta.theme, '성장'],
       reversed: ['미성숙', '불균형', '역할 혼란'],
@@ -650,6 +653,10 @@ function buildSuit(startId: number, suit: Exclude<TarotSuit, 'major'>): TarotCar
   return cards;
 }
 
+MAJOR_ARCANA.forEach(card => {
+  card.img = `/tarot/m${String(card.number).padStart(2, '0')}.jpg`;
+});
+
 const WANDS     = buildSuit(22, 'wands');
 const CUPS      = buildSuit(36, 'cups');
 const SWORDS    = buildSuit(50, 'swords');
@@ -680,3 +687,11 @@ export const SUIT_SYMBOL: Record<TarotSuit, string> = {
   swords:    '⚔️',
   pentacles: '🪙',
 };
+
+export function getCardImg(card: TarotCard): string {
+  if (card.img) return card.img;
+  if (card.suit === 'major') {
+    return `/tarot/m${String(card.number ?? 0).padStart(2, '0')}.jpg`;
+  }
+  return `/tarot/${card.suit[0]}${String(card.number ?? 1).padStart(2, '0')}.jpg`;
+}
