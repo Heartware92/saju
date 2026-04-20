@@ -22,7 +22,8 @@ export async function requireAdmin(request: Request): Promise<{ userId: string }
 
   const adminEmails = (process.env.ADMIN_EMAIL ?? '').split(',').map(e => e.trim()).filter(Boolean);
   if (!adminEmails.includes(data.user.email ?? '')) {
-    return new Response(JSON.stringify({ error: '관리자 권한이 없습니다.' }), {
+    const detectedEmail = data.user.email ?? '(이메일 없음)';
+    return new Response(JSON.stringify({ error: `관리자 권한이 없습니다. (감지된 이메일: ${detectedEmail})` }), {
       status: 403, headers: { 'Content-Type': 'application/json' },
     });
   }
