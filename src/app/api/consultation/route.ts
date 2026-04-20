@@ -16,6 +16,8 @@
 import { NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/services/supabaseAdmin';
 
+export const runtime = 'edge';
+
 const GEMINI_STREAM_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent';
 
 const MAX_HISTORY_TURNS = 10;
@@ -96,7 +98,7 @@ export async function POST(request: NextRequest) {
     { role: 'user', parts: [{ text: userMessage }] },
   ];
 
-  // ── Gemini 스트리밍 호출 ──
+  // ── Gemini 스트리밍 호출 (인증과 병렬로 시작) ──
   const geminiRes = await fetch(`${GEMINI_STREAM_URL}?alt=sse&key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
