@@ -169,7 +169,7 @@ export default function HomePage() {
                   <p className="text-xs text-text-secondary">
                     생년월일을 등록하면 당신의 캐릭터와 만세력을 볼 수 있어요
                   </p>
-                  <div className="mt-4 inline-flex items-center gap-1 text-[13px] font-semibold text-cta">
+                  <div className="mt-4 inline-flex items-center gap-1 text-[17px] font-semibold text-cta">
                     프로필 등록하기
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                       <path d="M9 18l6-6-6-6" />
@@ -235,14 +235,14 @@ export default function HomePage() {
                   {' · '}
                   {sajuData.character.label}
                 </p>
-                <p className="text-[13px] text-text-secondary mb-2 italic" style={{ fontFamily: 'var(--font-serif)' }}>
+                <p className="text-[17px] text-text-secondary mb-2 italic" style={{ fontFamily: 'var(--font-serif)' }}>
                   "{sajuData.character.tagline}"
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-1.5">
                   {sajuData.character.traits.map((t) => (
                     <span
                       key={t}
-                      className="text-[11px] px-2 py-0.5 rounded-full border"
+                      className="text-[13px] px-2 py-0.5 rounded-full border"
                       style={{
                         color: sajuData.character!.colorMain,
                         borderColor: `${sajuData.character!.colorMain}55`,
@@ -265,12 +265,12 @@ export default function HomePage() {
                 <div className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)]
                                 border border-[var(--border-subtle)] backdrop-blur-sm">
                   <div className="flex items-center justify-between mb-3 px-1">
-                    <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider">
+                    <span className="text-[13px] font-medium text-text-tertiary uppercase tracking-wider">
                       만세력
                     </span>
                     <Link
                       href="/saju/profile"
-                      className="text-[11px] font-medium text-cta hover:underline"
+                      className="text-[13px] font-medium text-cta hover:underline"
                     >
                       프로필 관리
                     </Link>
@@ -287,7 +287,7 @@ export default function HomePage() {
                         className="rounded-xl bg-[rgba(20,12,38,0.6)]
                                    border border-[var(--border-subtle)] p-2 text-center"
                       >
-                        <div className="text-[10px] font-medium text-text-tertiary mb-1">
+                        <div className="text-[12px] font-medium text-text-tertiary mb-1">
                           {col.label}
                         </div>
                         {col.unknown ? (
@@ -320,7 +320,7 @@ export default function HomePage() {
                     href="/saju/manseryeok"
                     className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl
                                bg-[rgba(124,92,252,0.15)] border border-cta/30
-                               text-[13px] font-semibold text-cta
+                               text-[17px] font-semibold text-cta
                                hover:bg-[rgba(124,92,252,0.22)] active:scale-[0.98] transition-all"
                   >
                     만세력 보기
@@ -356,8 +356,8 @@ export default function HomePage() {
                   flex flex-col items-center justify-center text-center gap-1
                   active:scale-[0.97]
                 `}>
-                  <h3 className="text-[15px] font-bold text-text-primary tracking-tight">{svc.title}</h3>
-                  <p className="text-[11px] font-medium text-text-secondary">{svc.desc}</p>
+                  <h3 className="text-[17px] font-bold text-text-primary tracking-tight">{svc.title}</h3>
+                  <p className="text-[13px] font-medium text-text-secondary">{svc.desc}</p>
                 </div>
               </Link>
             </motion.div>
@@ -385,8 +385,8 @@ export default function HomePage() {
                   flex flex-col items-center justify-center text-center gap-1
                   active:scale-[0.97]
                 `}>
-                  <h3 className="text-[15px] font-bold text-text-primary tracking-tight">{svc.title}</h3>
-                  <p className="text-[11px] font-medium text-text-secondary">{svc.desc}</p>
+                  <h3 className="text-[17px] font-bold text-text-primary tracking-tight">{svc.title}</h3>
+                  <p className="text-[13px] font-medium text-text-secondary">{svc.desc}</p>
                 </div>
               </Link>
             </motion.div>
@@ -398,7 +398,7 @@ export default function HomePage() {
       <section className="px-4 mt-5">
         <div className="flex items-center justify-between mb-3 px-1">
           <h2 className="text-base font-bold text-text-primary">더 많은 운세</h2>
-          <span className="text-[10px] text-text-tertiary">🌙 1개 소모</span>
+          <span className="text-[12px] text-text-tertiary">🌙 1개 소모</span>
         </div>
         <motion.div
           variants={stagger}
@@ -412,8 +412,8 @@ export default function HomePage() {
               <Link href={svc.href}>
                 <div className="flex flex-col items-center justify-center aspect-square p-2 rounded-xl bg-space-surface/60 border border-[var(--border-subtle)] hover:border-cta/40 hover:bg-space-surface transition-all active:scale-[0.95]">
                   <span className="text-xl mb-1" style={{ color: 'var(--cta-primary)' }}>{svc.icon}</span>
-                  <span className="text-[12px] font-bold text-text-primary text-center leading-tight">{svc.title}</span>
-                  <span className="text-[9px] text-text-tertiary text-center mt-0.5 leading-tight line-clamp-1">{svc.desc}</span>
+                  <span className="text-[14px] font-bold text-text-primary text-center leading-tight">{svc.title}</span>
+                  <span className="text-[11px] text-text-tertiary text-center mt-0.5 leading-tight line-clamp-1">{svc.desc}</span>
                 </div>
               </Link>
             </motion.div>

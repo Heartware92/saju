@@ -66,13 +66,13 @@ export const CreditPurchasePage: React.FC = () => {
             <div className="flex items-center gap-1.5">
               <span className="text-base">☀️</span>
               <span className="text-lg font-bold text-sun-core">{sunBalance}</span>
-              <span className="text-[10px] text-text-tertiary">해</span>
+              <span className="text-[12px] text-text-tertiary">해</span>
             </div>
             <div className="w-px h-5 bg-[var(--border-subtle)]" />
             <div className="flex items-center gap-1.5">
               <span className="text-base">🌙</span>
               <span className="text-lg font-bold text-moon-halo">{moonBalance}</span>
-              <span className="text-[10px] text-text-tertiary">달</span>
+              <span className="text-[12px] text-text-tertiary">달</span>
             </div>
           </div>
         </div>
@@ -123,7 +123,7 @@ const PackageCard: React.FC<{
     `}>
       {/* Badge */}
       {isHighlighted && (
-        <div className="absolute -top-2.5 left-4 px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white bg-gradient-to-r from-cta to-cta-active">
+        <div className="absolute -top-2.5 left-4 px-2.5 py-0.5 rounded-full text-[12px] font-bold text-white bg-gradient-to-r from-cta to-cta-active">
           {pkg.popular ? '인기' : '최고 가성비'}
         </div>
       )}
@@ -135,7 +135,7 @@ const PackageCard: React.FC<{
         {/* Info */}
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-bold text-text-primary">{pkg.name}</h3>
-          <p className="text-[11px] text-text-tertiary">{pkg.description}</p>
+          <p className="text-[13px] text-text-tertiary">{pkg.description}</p>
           <div className="flex items-center gap-3 mt-1 text-xs">
             <span className="text-sun-core font-semibold">
               ☀️ {pkg.sunCredit}{pkg.bonusSun > 0 && `+${pkg.bonusSun}`}
@@ -149,7 +149,7 @@ const PackageCard: React.FC<{
         {/* Price + Buy */}
         <div className="text-right shrink-0">
           <div className="text-base font-bold text-text-primary mb-1">
-            {pkg.price.toLocaleString()}<span className="text-[10px] font-normal text-text-tertiary">원</span>
+            {pkg.price.toLocaleString()}<span className="text-[12px] font-normal text-text-tertiary">원</span>
           </div>
           <button
             onClick={() => onPurchase(pkg)}

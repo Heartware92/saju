@@ -212,7 +212,7 @@ export default function MoreFortunePage({ category }: Props) {
             <div className="text-[40px] mb-1" style={{ fontFamily: 'var(--font-serif)' }}>
               {cfg.icon}
             </div>
-            <div className="text-[13px] text-text-tertiary">{cfg.title}</div>
+            <div className="text-[15px] text-text-tertiary">{cfg.title}</div>
           </motion.div>
         }
       />

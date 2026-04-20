@@ -113,7 +113,7 @@ export default function ManageProfilesPage() {
       </div>
 
       {/* 안내 */}
-      <p className="text-[12px] text-text-tertiary mb-3 px-1">
+      <p className="text-[14px] text-text-tertiary mb-3 px-1">
         대표 프로필은 홈 화면에 표시되며, 모든 운세 분석의 기본값으로 사용됩니다.
       </p>
 
@@ -123,7 +123,7 @@ export default function ManageProfilesPage() {
           <p className="text-sm text-text-secondary mb-3">아직 등록된 프로필이 없어요</p>
           <Link
             href="/saju/input?mode=profile-only"
-            className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-cta text-white text-[13px] font-semibold"
+            className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-cta text-white text-[15px] font-semibold"
           >
             새 프로필 추가
           </Link>
@@ -147,19 +147,19 @@ export default function ManageProfilesPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-text-primary text-sm">{p.name}</span>
                     {p.is_primary && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cta/20 text-cta font-semibold">
+                      <span className="text-[12px] px-1.5 py-0.5 rounded-full bg-cta/20 text-cta font-semibold">
                         대표
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-text-tertiary mt-0.5">
+                  <div className="text-[13px] text-text-tertiary mt-0.5">
                     {p.birth_date.replace(/-/g, '.')}
                     {p.birth_time ? ` ${p.birth_time}` : ' (시간 모름)'}
                     {' · '}
                     {p.gender === 'male' ? '남' : '여'}
                   </div>
                   {p.memo && (
-                    <div className="text-[11px] text-text-tertiary mt-0.5 truncate">{p.memo}</div>
+                    <div className="text-[13px] text-text-tertiary mt-0.5 truncate">{p.memo}</div>
                   )}
                 </div>
               </div>
@@ -169,20 +169,20 @@ export default function ManageProfilesPage() {
                 {!p.is_primary && (
                   <button
                     onClick={() => setPrimary(p.id)}
-                    className="flex-1 py-1.5 rounded-lg bg-[rgba(124,92,252,0.14)] border border-cta/30 text-cta text-[12px] font-semibold hover:bg-[rgba(124,92,252,0.22)] active:scale-[0.97] transition-all"
+                    className="flex-1 py-1.5 rounded-lg bg-[rgba(124,92,252,0.14)] border border-cta/30 text-cta text-[14px] font-semibold hover:bg-[rgba(124,92,252,0.22)] active:scale-[0.97] transition-all"
                   >
                     대표로 지정
                   </button>
                 )}
                 <button
                   onClick={() => openEdit(p)}
-                  className="flex-1 py-1.5 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] text-text-secondary text-[12px] font-medium hover:text-text-primary active:scale-[0.97] transition-all"
+                  className="flex-1 py-1.5 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] text-text-secondary text-[14px] font-medium hover:text-text-primary active:scale-[0.97] transition-all"
                 >
                   수정
                 </button>
                 <button
                   onClick={() => setConfirmDelete(p)}
-                  className="px-3 py-1.5 rounded-lg bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.35)] text-[#F87171] text-[12px] font-medium hover:bg-[rgba(239,68,68,0.15)] active:scale-[0.97] transition-all"
+                  className="px-3 py-1.5 rounded-lg bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.35)] text-[#F87171] text-[14px] font-medium hover:bg-[rgba(239,68,68,0.15)] active:scale-[0.97] transition-all"
                   aria-label="삭제"
                 >
                   삭제
@@ -203,7 +203,7 @@ export default function ManageProfilesPage() {
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          <span className="text-[13px] font-medium">새 프로필 추가</span>
+          <span className="text-[15px] font-medium">새 프로필 추가</span>
         </button>
       )}
 
@@ -225,20 +225,20 @@ export default function ManageProfilesPage() {
               className="w-full max-w-[360px] rounded-2xl p-5 bg-[rgba(28,18,50,0.98)] border border-[var(--border-subtle)]"
             >
               <h3 className="text-base font-bold text-text-primary mb-1">프로필을 삭제할까요?</h3>
-              <p className="text-[12px] text-text-secondary mb-4">
+              <p className="text-[14px] text-text-secondary mb-4">
                 <span className="font-semibold">{confirmDelete.name}</span> 님의 프로필이 영구 삭제됩니다.
                 {confirmDelete.is_primary && ' 대표 프로필이므로 삭제 후 홈이 비어보일 수 있습니다.'}
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setConfirmDelete(null)}
-                  className="flex-1 py-2.5 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] text-text-secondary text-[13px] font-medium"
+                  className="flex-1 py-2.5 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] text-text-secondary text-[15px] font-medium"
                 >
                   취소
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="flex-1 py-2.5 rounded-lg bg-[rgba(239,68,68,0.85)] text-white text-[13px] font-semibold active:scale-[0.98]"
+                  className="flex-1 py-2.5 rounded-lg bg-[rgba(239,68,68,0.85)] text-white text-[15px] font-semibold active:scale-[0.98]"
                 >
                   삭제
                 </button>
@@ -269,7 +269,7 @@ export default function ManageProfilesPage() {
 
               <div className="space-y-3">
                 <div>
-                  <label className="text-[11px] text-text-tertiary block mb-1">이름</label>
+                  <label className="text-[13px] text-text-tertiary block mb-1">이름</label>
                   <input
                     value={editForm.name}
                     onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
@@ -278,13 +278,13 @@ export default function ManageProfilesPage() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] text-text-tertiary block mb-1">양력/음력</label>
+                  <label className="text-[13px] text-text-tertiary block mb-1">양력/음력</label>
                   <div className="flex gap-2">
                     {(['solar', 'lunar'] as const).map((c) => (
                       <button
                         key={c}
                         onClick={() => setEditForm({ ...editForm, calendar_type: c })}
-                        className={`flex-1 py-2 rounded-lg text-[13px] font-medium border transition-all ${
+                        className={`flex-1 py-2 rounded-lg text-[15px] font-medium border transition-all ${
                           editForm.calendar_type === c
                             ? 'bg-[rgba(124,92,252,0.14)] border-cta/40 text-cta'
                             : 'bg-[rgba(255,255,255,0.04)] border-[var(--border-subtle)] text-text-secondary'
@@ -297,7 +297,7 @@ export default function ManageProfilesPage() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] text-text-tertiary block mb-1">생년월일</label>
+                  <label className="text-[13px] text-text-tertiary block mb-1">생년월일</label>
                   <input
                     type="date"
                     value={editForm.birth_date}
@@ -307,7 +307,7 @@ export default function ManageProfilesPage() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] text-text-tertiary block mb-1">
+                  <label className="text-[13px] text-text-tertiary block mb-1">
                     출생시간 <span className="text-text-tertiary">(모르면 비워두세요)</span>
                   </label>
                   <input
@@ -319,13 +319,13 @@ export default function ManageProfilesPage() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] text-text-tertiary block mb-1">성별</label>
+                  <label className="text-[13px] text-text-tertiary block mb-1">성별</label>
                   <div className="flex gap-2">
                     {(['male', 'female'] as const).map((g) => (
                       <button
                         key={g}
                         onClick={() => setEditForm({ ...editForm, gender: g })}
-                        className={`flex-1 py-2 rounded-lg text-[13px] font-medium border transition-all ${
+                        className={`flex-1 py-2 rounded-lg text-[15px] font-medium border transition-all ${
                           editForm.gender === g
                             ? 'bg-[rgba(124,92,252,0.14)] border-cta/40 text-cta'
                             : 'bg-[rgba(255,255,255,0.04)] border-[var(--border-subtle)] text-text-secondary'
@@ -338,7 +338,7 @@ export default function ManageProfilesPage() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] text-text-tertiary block mb-1">메모 (선택)</label>
+                  <label className="text-[13px] text-text-tertiary block mb-1">메모 (선택)</label>
                   <input
                     value={editForm.memo}
                     onChange={(e) => setEditForm({ ...editForm, memo: e.target.value })}
@@ -351,14 +351,14 @@ export default function ManageProfilesPage() {
               <div className="flex gap-2 mt-5">
                 <button
                   onClick={() => { setEditing(null); setEditForm(null); }}
-                  className="flex-1 py-2.5 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] text-text-secondary text-[13px] font-medium"
+                  className="flex-1 py-2.5 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] text-text-secondary text-[15px] font-medium"
                 >
                   취소
                 </button>
                 <button
                   onClick={saveEdit}
                   disabled={!editForm.name.trim() || !editForm.birth_date}
-                  className="flex-1 py-2.5 rounded-lg bg-cta text-white text-[13px] font-semibold disabled:opacity-40 active:scale-[0.98]"
+                  className="flex-1 py-2.5 rounded-lg bg-cta text-white text-[15px] font-semibold disabled:opacity-40 active:scale-[0.98]"
                 >
                   저장
                 </button>

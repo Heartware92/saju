@@ -136,7 +136,7 @@ export default function SajuResultPage() {
             <div className="text-[30px] mb-1" style={{ fontFamily: 'var(--font-serif)' }}>
               {result.pillars.year.gan}{result.pillars.year.zhi}년생
             </div>
-            <div className="text-[13px] text-text-tertiary">
+            <div className="text-[15px] text-text-tertiary">
               {result.pillars.year.gan}{result.pillars.year.zhi} {result.pillars.month.gan}{result.pillars.month.zhi} {result.pillars.day.gan}{result.pillars.day.zhi}
             </div>
           </motion.div>
@@ -171,7 +171,7 @@ export default function SajuResultPage() {
 
       {/* 시간 미상 배너 */}
       {result.hourUnknown && (
-        <div className="mb-3 rounded-xl px-4 py-3 bg-amber-500/10 border border-amber-500/30 text-[12px] text-amber-300 leading-relaxed">
+        <div className="mb-3 rounded-xl px-4 py-3 bg-amber-500/10 border border-amber-500/30 text-[14px] text-amber-300 leading-relaxed">
           출생 시간 미상 · 삼주추명(三柱推命) — 연·월·일주 기반으로 분석합니다.
           자녀운·말년운·시간대 조언은 제한적으로 제공됩니다.
         </div>
@@ -185,14 +185,14 @@ export default function SajuResultPage() {
       {/* 에러 */}
       {report?.error && (
         <div className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-          <p className="text-[12px] text-text-secondary">{report.error}</p>
+          <p className="text-[14px] text-text-secondary">{report.error}</p>
         </div>
       )}
 
       {/* rawText fallback */}
       {report?.rawText && (
         <div className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-          <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
+          <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line">
             {report.rawText}
           </p>
         </div>
@@ -219,17 +219,23 @@ export default function SajuResultPage() {
                 transition={{ delay: 0.06 * idx }}
                 className="rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
               >
-                {/* 은유 제목 — 최상단, 크고 강조 */}
+                {/* 섹션 레이블 — 상단에 크게 강조 (오행 분포, 애정·결혼운 등) */}
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-block w-1 h-5 rounded-full bg-cta" />
+                  <div
+                    className="text-[17px] font-bold text-text-primary tracking-tight"
+                    style={{ fontFamily: 'var(--font-serif)' }}
+                  >
+                    {JUNGTONGSAJU_SECTION_LABELS[key]}
+                  </div>
+                </div>
+
+                {/* 은유 제목 — 레이블 아래, 서브 톤 */}
                 <div
-                  className="text-[19px] font-bold leading-snug text-text-primary mb-1"
+                  className="text-[17px] font-medium leading-snug text-cta/90 mb-4 pl-3"
                   style={{ fontFamily: 'var(--font-serif)' }}
                 >
                   {metaphorTitle}
-                </div>
-
-                {/* 섹션 레이블 — 작은 서브태그 */}
-                <div className="text-[11px] font-medium text-text-tertiary tracking-widest uppercase mb-4">
-                  {JUNGTONGSAJU_SECTION_LABELS[key]}
                 </div>
 
                 {isAdvice && report.adviceMeta ? (
@@ -238,7 +244,7 @@ export default function SajuResultPage() {
                     meta={report.adviceMeta}
                   />
                 ) : (
-                  <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
+                  <p className="text-[17px] text-text-secondary leading-[1.85] whitespace-pre-line tracking-[-0.005em]">
                     {bodyText}
                   </p>
                 )}

@@ -72,7 +72,7 @@ function ShufflingDeck({ count }: { count: 1 | 3 }) {
         })}
       </div>
       <motion.p
-        className="text-[13px] text-text-tertiary mt-8"
+        className="text-[15px] text-text-tertiary mt-8"
         animate={{ opacity: [0.4, 1, 0.4] }}
         transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
       >
@@ -99,7 +99,7 @@ function FlipCard({
   return (
     <div style={{ width, flexShrink: 0, textAlign: 'center' }}>
       {position && (
-        <div className="text-[10px] text-text-tertiary mb-2 font-semibold tracking-wide uppercase">
+        <div className="text-[12px] text-text-tertiary mb-2 font-semibold tracking-wide uppercase">
           {position}
         </div>
       )}
@@ -141,7 +141,7 @@ function FlipCard({
               }}
             />
             <div
-              className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold"
+              className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[11px] font-bold"
               style={{
                 backgroundColor: isReversed ? '#F8717133' : '#34D39933',
                 color: isReversed ? '#F87171' : '#34D399',
@@ -160,8 +160,8 @@ function FlipCard({
         transition={{ delay: flipDelay + 0.65, duration: 0.35 }}
         className="mt-2"
       >
-        <div className="text-[12px] font-semibold text-text-primary">{card.nameKr}</div>
-        <div className="text-[10px] text-text-tertiary mt-0.5">{card.name}</div>
+        <div className="text-[14px] font-semibold text-text-primary">{card.nameKr}</div>
+        <div className="text-[12px] text-text-tertiary mt-0.5">{card.name}</div>
       </motion.div>
     </div>
   );
@@ -185,10 +185,10 @@ function ContextBlock({ block, color }: { block: TarotReading['contexts'][number
   return (
     <div className="rounded-xl p-3 bg-white/5 border border-[var(--border-subtle)]">
       <div className="flex items-center gap-2 mb-2">
-        <span style={{ color }} className="text-[14px]">{block.icon}</span>
-        <span className="text-[13px] font-semibold text-text-primary">{block.label}</span>
+        <span style={{ color }} className="text-[16px]">{block.icon}</span>
+        <span className="text-[15px] font-semibold text-text-primary">{block.label}</span>
       </div>
-      <p className="text-[13px] text-text-secondary leading-relaxed mb-2">{block.text}</p>
+      <p className="text-[15px] text-text-secondary leading-relaxed mb-2">{block.text}</p>
       {block.cardLines.length > 1 && (
         <ul className="space-y-1 pt-2 border-t border-[var(--border-subtle)]">
           {block.cardLines.map((line, i) => (
@@ -205,17 +205,17 @@ function ReadingView({ reading, color }: { reading: TarotReading; color: string 
     <div className="space-y-3">
       <FadeIn delay={0.1}>
         <section className="rounded-2xl p-5 text-center" style={{ backgroundColor: `${color}12`, border: `1px solid ${color}55` }}>
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary mb-2">타로 리딩</div>
+          <div className="text-[13px] font-semibold uppercase tracking-wider text-text-tertiary mb-2">타로 리딩</div>
           <div className="text-[18px] font-bold mb-1" style={{ color, fontFamily: 'var(--font-serif)' }}>{reading.headline}</div>
-          <div className="text-[13px] text-text-secondary">{reading.subhead}</div>
+          <div className="text-[15px] text-text-secondary">{reading.subhead}</div>
         </section>
       </FadeIn>
       <FadeIn delay={0.35}>
         <section className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-          <div className="text-[13px] font-semibold text-text-secondary mb-2 uppercase tracking-wider">키워드</div>
+          <div className="text-[15px] font-semibold text-text-secondary mb-2 uppercase tracking-wider">키워드</div>
           <div className="flex flex-wrap gap-1.5">
             {reading.keywords.map((k, i) => (
-              <span key={i} className="text-[12px] px-2.5 py-1 rounded-md border"
+              <span key={i} className="text-[14px] px-2.5 py-1 rounded-md border"
                 style={{ borderColor: `${color}55`, color, backgroundColor: `${color}12` }}>
                 {k}
               </span>
@@ -225,12 +225,12 @@ function ReadingView({ reading, color }: { reading: TarotReading; color: string 
       </FadeIn>
       <FadeIn delay={0.55}>
         <section className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-          <div className="text-[13px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">종합 해석</div>
+          <div className="text-[15px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">종합 해석</div>
           <div className="space-y-3">
             {reading.synthesis.map((p, i) => (
               <motion.p key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                 transition={{ delay: 0.7 + i * 0.18, duration: 0.4 }}
-                className="text-[13px] text-text-secondary leading-relaxed">
+                className="text-[15px] text-text-secondary leading-relaxed">
                 {p}
               </motion.p>
             ))}
@@ -239,7 +239,7 @@ function ReadingView({ reading, color }: { reading: TarotReading; color: string 
       </FadeIn>
       <FadeIn delay={0.9}>
         <section className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-          <div className="text-[13px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">맥락별 풀이</div>
+          <div className="text-[15px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">맥락별 풀이</div>
           <div className="space-y-2">
             {reading.contexts.map((b, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
@@ -252,10 +252,10 @@ function ReadingView({ reading, color }: { reading: TarotReading; color: string 
       </FadeIn>
       <FadeIn delay={1.9}>
         <section className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-          <div className="text-[13px] font-semibold mb-2" style={{ color: '#34D399' }}>카드의 조언</div>
+          <div className="text-[15px] font-semibold mb-2" style={{ color: '#34D399' }}>카드의 조언</div>
           <ul className="space-y-1.5">
             {reading.advice.map((a, i) => (
-              <li key={i} className="text-[12px] text-text-secondary flex gap-2">
+              <li key={i} className="text-[14px] text-text-secondary flex gap-2">
                 <span style={{ color: '#34D399' }}>✓</span><span>{a}</span>
               </li>
             ))}
@@ -273,7 +273,7 @@ function AIReadingView({ content, color }: { content: string; color: string }) {
     <div className="space-y-3">
       <FadeIn delay={0.1}>
         <section className="rounded-2xl p-5 text-center" style={{ backgroundColor: `${color}12`, border: `1px solid ${color}55` }}>
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary mb-2">사주 × 타로 리딩</div>
+          <div className="text-[13px] font-semibold uppercase tracking-wider text-text-tertiary mb-2">사주 × 타로 리딩</div>
           <div className="text-[16px] font-bold" style={{ color, fontFamily: 'var(--font-serif)' }}>
             당신의 사주와 카드가 만나는 순간
           </div>
@@ -290,14 +290,14 @@ function AIReadingView({ content, color }: { content: string; color: string }) {
                   {trimmed.startsWith('-') || trimmed.startsWith('·') ? (
                     <ul className="space-y-1.5">
                       {trimmed.split('\n').map((line, j) => (
-                        <li key={j} className="text-[13px] text-text-secondary leading-relaxed flex gap-2">
+                        <li key={j} className="text-[15px] text-text-secondary leading-relaxed flex gap-2">
                           <span style={{ color }} className="shrink-0">·</span>
                           <span>{line.replace(/^[-·]\s*/, '')}</span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">{trimmed}</p>
+                    <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line">{trimmed}</p>
                   )}
                 </motion.div>
               );
@@ -331,13 +331,13 @@ function NoPrimaryModal({ onClose }: { onClose: () => void }) {
         <div className="text-center">
           <div className="text-[32px] mb-3">✦</div>
           <h3 className="text-[17px] font-bold text-text-primary mb-2">대표 프로필이 필요합니다</h3>
-          <p className="text-[13px] text-text-secondary leading-relaxed mb-5">
+          <p className="text-[15px] text-text-secondary leading-relaxed mb-5">
             사주와 타로를 함께 풀이하려면<br />대표 프로필을 먼저 등록해 주세요.
           </p>
           <div className="flex gap-2">
-            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[var(--border-subtle)] text-[13px] text-text-secondary">닫기</button>
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[var(--border-subtle)] text-[15px] text-text-secondary">닫기</button>
             <button onClick={() => router.push('/saju/input')}
-              className="flex-1 py-2.5 rounded-xl font-bold text-white text-[13px]"
+              className="flex-1 py-2.5 rounded-xl font-bold text-white text-[15px]"
               style={{ background: 'var(--cta-primary)' }}>
               프로필 등록하기
             </button>
@@ -503,7 +503,7 @@ export default function TarotPage() {
 
       <div className="text-center mb-4">
         <h1 className="text-[22px] font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>타로 상담</h1>
-        <p className="text-[13px] text-text-tertiary mt-1">78장 라이더-웨이트 풀덱 · 전문 타로인의 노하우 기반</p>
+        <p className="text-[15px] text-text-tertiary mt-1">78장 라이더-웨이트 풀덱 · 전문 타로인의 노하우 기반</p>
       </div>
 
       {/* 모드 탭 */}
@@ -512,7 +512,7 @@ export default function TarotPage() {
           const active = mode === m;
           return (
             <button key={m} onClick={() => setMode(m)}
-              className="flex-1 py-2.5 rounded-lg text-[13px] transition-colors"
+              className="flex-1 py-2.5 rounded-lg text-[15px] transition-colors"
               style={{ fontWeight: active ? 700 : 500, background: active ? 'var(--cta-primary)' : 'transparent', color: active ? '#fff' : 'var(--text-tertiary)' }}>
               {modeLabels[m]}
             </button>
@@ -528,10 +528,10 @@ export default function TarotPage() {
             {autoState === 'idle' && (
               <motion.div key="idle" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                 className="rounded-2xl p-6 text-center bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-                <p className="text-[13px] text-text-tertiary mb-2">
+                <p className="text-[15px] text-text-tertiary mb-2">
                   {mode === 'today' ? formatTodayString() : formatMonthString()}
                 </p>
-                <p className="text-[14px] text-text-secondary leading-relaxed mb-5">
+                <p className="text-[16px] text-text-secondary leading-relaxed mb-5">
                   {mode === 'today'
                     ? '오늘 당신의 한 장 — 사주와 카드가 만나 오늘의 흐름을 읽어드립니다.'
                     : '이달의 흐름을 세 장으로 짚고, 사주와 함께 이달의 기운을 풀어드립니다.'}
@@ -575,7 +575,7 @@ export default function TarotPage() {
                     transition={{ delay: 0.3 }}
                     className="text-center mb-4"
                   >
-                    <p className="text-[13px] text-text-tertiary mb-3">카드가 정해졌습니다</p>
+                    <p className="text-[15px] text-text-tertiary mb-3">카드가 정해졌습니다</p>
                     <motion.button
                       onClick={() => revealCards(autoDrawn, mode)}
                       whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
@@ -593,8 +593,8 @@ export default function TarotPage() {
                     {aiLoading && <LoadingSpinner />}
                     {aiError && (
                       <div className="rounded-2xl p-4 text-center bg-[rgba(248,113,113,0.1)] border border-[rgba(248,113,113,0.3)]">
-                        <p className="text-[13px] text-[#F87171] mb-3">{aiError}</p>
-                        <button onClick={() => callAI(autoDrawn, mode)} className="text-[12px] text-text-secondary underline">다시 시도</button>
+                        <p className="text-[15px] text-[#F87171] mb-3">{aiError}</p>
+                        <button onClick={() => callAI(autoDrawn, mode)} className="text-[14px] text-text-secondary underline">다시 시도</button>
                       </div>
                     )}
                     {aiContent && <AIReadingView content={aiContent} color={primaryColor} />}
@@ -602,7 +602,7 @@ export default function TarotPage() {
                 )}
 
                 <button onClick={resetAuto}
-                  className="w-full mt-4 py-3 rounded-xl border border-[var(--border-subtle)] text-[13px] text-text-secondary">
+                  className="w-full mt-4 py-3 rounded-xl border border-[var(--border-subtle)] text-[15px] text-text-secondary">
                   다시 펼치기
                 </button>
               </motion.div>
@@ -616,7 +616,7 @@ export default function TarotPage() {
             {qState === 'select' && (
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                 className="rounded-2xl p-6 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-                <p className="text-[14px] text-text-secondary leading-relaxed mb-4 text-center">
+                <p className="text-[16px] text-text-secondary leading-relaxed mb-4 text-center">
                   마음속 질문을 적고, 카드를 섞어 직접 선택하세요.<br />
                   사주와 카드를 함께 읽어 깊은 풀이를 드립니다.
                 </p>
@@ -627,14 +627,14 @@ export default function TarotPage() {
                     placeholder="예: 이직을 해도 될까요? / 이 사람과 계속 만나야 할까요?"
                     maxLength={80}
                     rows={2}
-                    className="w-full rounded-xl px-4 py-3 text-[13px] text-text-primary resize-none outline-none"
+                    className="w-full rounded-xl px-4 py-3 text-[15px] text-text-primary resize-none outline-none"
                     style={{
                       background: 'rgba(255,255,255,0.06)',
                       border: '1px solid var(--border-subtle)',
                       lineHeight: 1.6,
                     }}
                   />
-                  <div className="text-right text-[11px] text-text-tertiary mt-1">{question.length}/80</div>
+                  <div className="text-right text-[13px] text-text-tertiary mt-1">{question.length}/80</div>
                 </div>
                 <motion.button onClick={shuffleForQuestion}
                   whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
@@ -668,7 +668,7 @@ export default function TarotPage() {
                 ))}
                 {qState === 'spread' && (
                   <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-                    className="absolute -bottom-10 w-full text-center text-[12px] text-text-tertiary">
+                    className="absolute -bottom-10 w-full text-center text-[14px] text-text-tertiary">
                     마음이 끌리는 카드를 선택하세요
                   </motion.p>
                 )}
@@ -683,14 +683,14 @@ export default function TarotPage() {
                 {aiLoading && <LoadingSpinner />}
                 {aiError && (
                   <div className="rounded-2xl p-4 text-center bg-[rgba(248,113,113,0.1)] border border-[rgba(248,113,113,0.3)]">
-                    <p className="text-[13px] text-[#F87171] mb-3">{aiError}</p>
-                    <button onClick={() => callAI([qDrawn], 'question', question)} className="text-[12px] text-text-secondary underline">다시 시도</button>
+                    <p className="text-[15px] text-[#F87171] mb-3">{aiError}</p>
+                    <button onClick={() => callAI([qDrawn], 'question', question)} className="text-[14px] text-text-secondary underline">다시 시도</button>
                   </div>
                 )}
                 {aiContent && <AIReadingView content={aiContent} color={primaryColor} />}
                 <button
                   onClick={() => { setQState('select'); setQDrawn(null); setQSpread([]); setAiContent(null); setAiError(null); }}
-                  className="w-full mt-4 py-3 rounded-xl border border-[var(--border-subtle)] text-[13px] text-text-secondary">
+                  className="w-full mt-4 py-3 rounded-xl border border-[var(--border-subtle)] text-[15px] text-text-secondary">
                   다른 질문 · 다시 뽑기
                 </button>
               </motion.div>

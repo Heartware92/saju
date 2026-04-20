@@ -25,13 +25,26 @@ function CollapsibleSection({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const toggle = () => setOpen(v => !v);
   return (
     <div className={styles.section}>
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
+      {/*
+        외곽 요소는 <div role="button">. <button> 안에 <button>(SectionHelp) 중첩은
+        HTML 표준 위반 + React 하이드레이션 에러 유발. 키보드 접근성(Enter/Space)도 보장.
+      */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={toggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggle();
+          }
+        }}
         className={styles.collapsibleHeader}
         aria-expanded={open}
+        style={{ cursor: 'pointer' }}
       >
         <div className={styles.collapsibleTitle}>
           <h2>{title}</h2>
@@ -46,7 +59,7 @@ function CollapsibleSection({
             <path d="M6 9l6 6 6-6" />
           </svg>
         </motion.span>
-      </button>
+      </div>
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
@@ -69,12 +82,18 @@ function CollapsibleSection({
 
 const SectionHelp = ({ text }: { text: string }) => {
   const [open, setOpen] = useState(false);
+  // 이 버튼은 CollapsibleSection 헤더(div role=button) 내부에 위치하므로
+  // 클릭 이벤트가 바깥으로 전파되면 섹션이 동시에 펼쳐지는 버그가 생긴다.
+  // stopPropagation으로 차단.
   return (
-    <span className={styles.sectionHelpWrap}>
+    <span
+      className={styles.sectionHelpWrap}
+      onClick={(e) => e.stopPropagation()}
+    >
       <button
         type="button"
         className={styles.sectionHelpBtn}
-        onClick={() => setOpen(v => !v)}
+        onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
         aria-expanded={open}
         aria-label="섹션 설명 보기"
       >
@@ -86,7 +105,7 @@ const SectionHelp = ({ text }: { text: string }) => {
           <button
             type="button"
             className={styles.sectionHelpBackdrop}
-            onClick={() => setOpen(false)}
+            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
             aria-label="설명 닫기"
             tabIndex={-1}
           />
@@ -94,7 +113,7 @@ const SectionHelp = ({ text }: { text: string }) => {
             <button
               type="button"
               className={styles.sectionHelpClose}
-              onClick={() => setOpen(false)}
+              onClick={(e) => { e.stopPropagation(); setOpen(false); }}
               aria-label="설명 닫기"
             >
               ×

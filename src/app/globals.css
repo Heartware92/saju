@@ -142,6 +142,8 @@
 html {
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
+  /* 가독성 상향: 기본 16px → 17px (모든 rem·text-sm 등 자동 확대) */
+  font-size: 17px;
 }
 
 body {
@@ -156,6 +158,14 @@ body {
   font-family: 'Pretendard', -apple-system, 'Noto Sans KR', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* 가독성: 자간 살짝 조임 + 기본 라인하이트 상향 */
+  letter-spacing: -0.01em;
+  line-height: 1.65;
+}
+
+/* 본문 기본 폰트 — text-[XXpx] 명시 없는 플레인 p/div */
+p, li, span, div, button, a {
+  letter-spacing: inherit;
 }
 
 /* WebView safe area padding */

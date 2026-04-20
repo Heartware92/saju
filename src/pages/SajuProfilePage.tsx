@@ -109,7 +109,7 @@ export default function SajuProfilePage() {
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-text-primary text-sm">{profile.name}</span>
                   {profile.is_primary && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cta/15 text-cta font-medium">대표</span>
+                    <span className="text-[12px] px-1.5 py-0.5 rounded-full bg-cta/15 text-cta font-medium">대표</span>
                   )}
                 </div>
                 <div className="text-xs text-text-tertiary mt-0.5">
@@ -119,7 +119,7 @@ export default function SajuProfilePage() {
                   {profile.gender === 'male' ? '남' : '여'}
                 </div>
                 {profile.memo && (
-                  <div className="text-[11px] text-text-tertiary mt-0.5 truncate">{profile.memo}</div>
+                  <div className="text-[13px] text-text-tertiary mt-0.5 truncate">{profile.memo}</div>
                 )}
               </div>
 

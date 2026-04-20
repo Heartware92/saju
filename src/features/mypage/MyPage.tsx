@@ -247,7 +247,7 @@ const RecordsTab: React.FC<{ records: SajuRecord[]; loading: boolean }> = ({ rec
                   <div className="text-xs text-cta font-bold">
                     {record.is_detailed ? '상세 해석' : '기본 해석'}
                   </div>
-                  <div className="text-[11px] text-text-tertiary">
+                  <div className="text-[13px] text-text-tertiary">
                     {record.credit_used} 크레딧
                   </div>
                 </div>

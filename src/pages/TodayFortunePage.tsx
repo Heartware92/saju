@@ -44,13 +44,13 @@ function DatePicker({ value, onChange }: { value: string; onChange: (v: string) 
           onClick={() => setViewDate(new Date(year, month - 1, 1))}
           className="w-8 h-8 rounded-lg text-text-secondary hover:bg-white/5 text-lg"
         >‹</button>
-        <span className="text-[14px] font-bold text-text-primary">{year}년 {month + 1}월</span>
+        <span className="text-[16px] font-bold text-text-primary">{year}년 {month + 1}월</span>
         <button
           onClick={() => setViewDate(new Date(year, month + 1, 1))}
           className="w-8 h-8 rounded-lg text-text-secondary hover:bg-white/5 text-lg"
         >›</button>
       </div>
-      <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-text-tertiary mb-1">
+      <div className="grid grid-cols-7 gap-1 text-center text-[13px] text-text-tertiary mb-1">
         {['일', '월', '화', '수', '목', '금', '토'].map(d => <div key={d}>{d}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-1">
@@ -59,7 +59,7 @@ function DatePicker({ value, onChange }: { value: string; onChange: (v: string) 
             key={i}
             disabled={!d}
             onClick={() => d && onChange(toIso(d))}
-            className={`aspect-square rounded-lg text-[12px] font-medium
+            className={`aspect-square rounded-lg text-[14px] font-medium
               ${!d ? 'opacity-0 pointer-events-none' : ''}
               ${d && isSelected(d) ? 'bg-cta text-white' : ''}
               ${d && isToday(d) && !isSelected(d) ? 'border border-cta/50 text-cta' : ''}
@@ -177,7 +177,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
             <div className="text-[28px] mb-1 tracking-widest" style={{ fontFamily: 'var(--font-serif)' }}>
               {result.pillars.day.gan}{result.pillars.day.zhi}일주
             </div>
-            <div className="text-[13px] text-text-tertiary">{targetDateStr}</div>
+            <div className="text-[15px] text-text-tertiary">{targetDateStr}</div>
           </motion.div>
         }
       />
@@ -231,7 +231,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
           <DatePicker value={pickedDate} onChange={setPickedDate} />
           <button
             onClick={() => setConfirmedDate(pickedDate)}
-            className="w-full py-3 rounded-2xl bg-cta text-white font-semibold text-[15px]"
+            className="w-full py-3 rounded-2xl bg-cta text-white font-semibold text-[17px]"
           >
             {(() => {
               const d = new Date(pickedDate);
@@ -249,8 +249,8 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
       >
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-[12px] text-text-tertiary mb-1">{reportDateStr}</div>
-            <div className="text-[13px] font-semibold text-text-secondary">
+            <div className="text-[14px] text-text-tertiary mb-1">{reportDateStr}</div>
+            <div className="text-[15px] font-semibold text-text-secondary">
               내 일주: <span className="text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
                 {result.pillars.day.gan}{result.pillars.day.zhi}
               </span>
@@ -258,14 +258,14 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
           </div>
           {todayGz && (
             <div className="text-right">
-              <div className="text-[11px] text-text-tertiary mb-0.5">{mode === 'date' ? '일진' : '오늘 일진'}</div>
+              <div className="text-[13px] text-text-tertiary mb-0.5">{mode === 'date' ? '일진' : '오늘 일진'}</div>
               <div
                 className="text-[26px] font-bold text-text-primary leading-none"
                 style={{ fontFamily: 'var(--font-serif)' }}
               >
                 {todayGz.hanja}
               </div>
-              <div className="text-[11px] text-text-tertiary mt-0.5">
+              <div className="text-[13px] text-text-tertiary mt-0.5">
                 {todayGz.ganElement}·{todayGz.zhiElement}
                 {todayGz.tenGodGan ? ` · ${todayGz.tenGodGan}` : ''}
               </div>
@@ -277,20 +277,20 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
       {/* 에러 */}
       {report?.error && (
         <div className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-          <p className="text-[12px] text-text-secondary">{report.error}</p>
+          <p className="text-[14px] text-text-secondary">{report.error}</p>
         </div>
       )}
 
       {/* rawText fallback */}
       {report?.rawText && (
         <div className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-          <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
+          <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line">
             {report.rawText}
           </p>
         </div>
       )}
 
-      {/* 5섹션 카드 */}
+      {/* 5섹션 카드 — 정통사주 패턴: 레이블(상단 크게) + 은유 제목(부제) + 본문 */}
       {report?.sections && result && (
         <div className="space-y-2">
           {TODAY_SECTION_KEYS.map((key, idx) => {
@@ -299,17 +299,49 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
             const isLucky = key === 'today_lucky';
             const luckyEl = result.yongSinElement ?? '목';
             const el = ELEMENT_LUCKY[luckyEl] ?? ELEMENT_LUCKY['목'];
+
+            // 첫 줄 = 은유 제목, 나머지 = 본문 (정통사주와 동일 파싱)
+            const lines = text.trim().split('\n');
+            const firstLine = lines[0]?.trim() ?? '';
+            // 은유 제목 감지: 첫 줄이 짧고(≤60자) 문장 부호(「」·:·() 제외)가 상대적으로 적을 때
+            const hasMetaphor = lines.length > 1
+              && firstLine.length > 0
+              && firstLine.length <= 60
+              && !firstLine.startsWith('-')
+              && !firstLine.endsWith('.');
+            const metaphorTitle = hasMetaphor ? firstLine : '';
+            const bodyText = hasMetaphor ? lines.slice(1).join('\n').trim() : text;
+
             return (
               <motion.div
                 key={key}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.07 * idx }}
-                className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
+                className="rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
               >
-                <div className="text-[13px] font-bold text-text-primary mb-3">
-                  {TODAY_SECTION_LABELS[key]}
+                {/* 섹션 레이블 — 상단 크게 강조 */}
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-block w-1 h-5 rounded-full bg-cta" />
+                  <div
+                    className="text-[17px] font-bold text-text-primary tracking-tight"
+                    style={{ fontFamily: 'var(--font-serif)' }}
+                  >
+                    {TODAY_SECTION_LABELS[key]}
+                  </div>
                 </div>
+
+                {/* 은유 제목 — 부제 */}
+                {metaphorTitle && (
+                  <div
+                    className="text-[15px] font-medium leading-snug text-cta/90 mb-4 pl-3"
+                    style={{ fontFamily: 'var(--font-serif)' }}
+                  >
+                    {metaphorTitle}
+                  </div>
+                )}
+
+                {/* 본문 */}
                 {isLucky ? (
                   <LuckyVisualCard
                     colors={el.colors}
@@ -319,11 +351,11 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
                     timeSlot={el.timeSlot}
                     gem={el.gem}
                     activity={el.activity}
-                    extraText={text}
+                    extraText={bodyText}
                   />
                 ) : (
-                  <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
-                    {text}
+                  <p className="text-[15px] text-text-secondary leading-[1.85] whitespace-pre-line tracking-[-0.005em]">
+                    {bodyText}
                   </p>
                 )}
               </motion.div>

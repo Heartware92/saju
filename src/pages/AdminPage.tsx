@@ -57,16 +57,16 @@ const fmtDate = (s: string | null) => s ? new Date(s).toLocaleDateString('ko-KR'
 function MetricCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-      <p className="text-[11px] text-text-tertiary uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-[13px] text-text-tertiary uppercase tracking-wider mb-1">{label}</p>
       <p className={`text-[22px] font-bold ${color ?? 'text-text-primary'}`}>{value}</p>
-      {sub && <p className="text-[11px] text-text-tertiary mt-0.5">{sub}</p>}
+      {sub && <p className="text-[13px] text-text-tertiary mt-0.5">{sub}</p>}
     </div>
   );
 }
 
 function Badge({ status }: { status: string }) {
   const s = STATUS_LABEL[status] ?? { text: status, cls: 'bg-gray-500/20 text-gray-400 border-gray-500/30' };
-  return <span className={`px-2 py-0.5 text-[10px] rounded-full border ${s.cls}`}>{s.text}</span>;
+  return <span className={`px-2 py-0.5 text-[12px] rounded-full border ${s.cls}`}>{s.text}</span>;
 }
 
 // ── 컴포넌트 ──────────────────────────────────────────────
@@ -187,11 +187,11 @@ export default function AdminPage() {
       <div className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
         <div>
           <h1 className="text-[18px] font-bold text-text-primary">사주 어드민</h1>
-          <p className="text-[11px] text-text-tertiary mt-0.5">Admin Dashboard</p>
+          <p className="text-[13px] text-text-tertiary mt-0.5">Admin Dashboard</p>
         </div>
         <button
           onClick={() => { if (tab === 'overview') fetchStats(); else if (tab === 'users') fetchUsers(); else if (tab === 'orders') fetchOrders(); else fetchRecords(); }}
-          className="text-[12px] text-cta hover:text-cta/80 border border-cta/30 hover:border-cta/60 px-3 py-1.5 rounded-lg transition-all"
+          className="text-[14px] text-cta hover:text-cta/80 border border-cta/30 hover:border-cta/60 px-3 py-1.5 rounded-lg transition-all"
         >
           새로고침
         </button>
@@ -203,7 +203,7 @@ export default function AdminPage() {
           <button
             key={t.key}
             onClick={() => { setTab(t.key); setError(''); }}
-            className={`px-4 py-3 text-[13px] font-medium border-b-2 transition-colors ${tab === t.key ? 'border-cta text-cta' : 'border-transparent text-text-tertiary hover:text-text-secondary'}`}
+            className={`px-4 py-3 text-[15px] font-medium border-b-2 transition-colors ${tab === t.key ? 'border-cta text-cta' : 'border-transparent text-text-tertiary hover:text-text-secondary'}`}
           >
             {t.label}
           </button>
@@ -212,19 +212,19 @@ export default function AdminPage() {
 
       <div className="px-6 py-6 max-w-[1400px] mx-auto">
         {error && (
-          <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-[13px] text-red-300">
+          <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-[15px] text-red-300">
             {error}
           </div>
         )}
         {loading && (
-          <div className="mb-4 text-[12px] text-text-tertiary">로딩 중…</div>
+          <div className="mb-4 text-[14px] text-text-tertiary">로딩 중…</div>
         )}
 
         {/* ── 개요 ── */}
         {tab === 'overview' && stats && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-[13px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">사용자</h2>
+              <h2 className="text-[15px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">사용자</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <MetricCard label="총 사용자" value={fmt(stats.users.total)} />
                 <MetricCard label="오늘 신규" value={fmt(stats.users.today)} color="text-cta" />
@@ -234,7 +234,7 @@ export default function AdminPage() {
             </div>
 
             <div>
-              <h2 className="text-[13px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">매출</h2>
+              <h2 className="text-[15px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">매출</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <MetricCard label="총 매출" value={fmtWon(stats.revenue.total)} />
                 <MetricCard
@@ -249,7 +249,7 @@ export default function AdminPage() {
             </div>
 
             <div>
-              <h2 className="text-[13px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">서비스 이용</h2>
+              <h2 className="text-[15px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">서비스 이용</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <MetricCard label="사주 분석 (누적)" value={fmt(stats.usage.sajuTotal)} />
                 <MetricCard label="사주 분석 (오늘)" value={fmt(stats.usage.sajuToday)} color="text-cta" />
@@ -259,7 +259,7 @@ export default function AdminPage() {
             </div>
 
             <div>
-              <h2 className="text-[13px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">크레딧 현황</h2>
+              <h2 className="text-[15px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">크레딧 현황</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <MetricCard label="☀️ 해 발행" value={fmt(stats.credits.sun.issued)} sub={`소비 ${fmt(stats.credits.sun.consumed)} / 잔여 ${fmt(stats.credits.sun.balance)}`} />
                 <MetricCard label="🌙 달 발행" value={fmt(stats.credits.moon.issued)} sub={`소비 ${fmt(stats.credits.moon.consumed)} / 잔여 ${fmt(stats.credits.moon.balance)}`} />
@@ -282,16 +282,16 @@ export default function AdminPage() {
                 placeholder="이메일 검색"
                 value={userSearch}
                 onChange={e => { setUserSearch(e.target.value); setUserPage(1); }}
-                className="flex-1 max-w-sm px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[13px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-cta/50"
+                className="flex-1 max-w-sm px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-cta/50"
               />
             </div>
 
             <div className="overflow-x-auto rounded-xl border border-white/10">
-              <table className="w-full text-[12px]">
+              <table className="w-full text-[14px]">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/3">
                     {['이메일', '가입일', '마지막 로그인', '로그인 방식', '프로필 수', '해 잔액', '달 잔액', '총 결제', '주문 수'].map(h => (
-                      <th key={h} className="px-3 py-2.5 text-left text-[10px] text-text-tertiary uppercase tracking-wider font-medium">{h}</th>
+                      <th key={h} className="px-3 py-2.5 text-left text-[12px] text-text-tertiary uppercase tracking-wider font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -302,7 +302,7 @@ export default function AdminPage() {
                       <td className="px-3 py-2.5 text-text-tertiary">{fmtDate(u.createdAt)}</td>
                       <td className="px-3 py-2.5 text-text-tertiary">{fmtDate(u.lastSignIn)}</td>
                       <td className="px-3 py-2.5">
-                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-white/8 text-text-secondary">{u.provider}</span>
+                        <span className="px-1.5 py-0.5 rounded text-[12px] bg-white/8 text-text-secondary">{u.provider}</span>
                       </td>
                       <td className="px-3 py-2.5 text-center text-text-secondary">{u.profileCount}</td>
                       <td className="px-3 py-2.5 text-center text-amber-300">☀️ {u.sunBalance}</td>
@@ -331,12 +331,12 @@ export default function AdminPage() {
                 placeholder="이메일 / 주문 ID 검색"
                 value={orderSearch}
                 onChange={e => { setOrderSearch(e.target.value); setOrderPage(1); }}
-                className="flex-1 max-w-sm px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[13px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-cta/50"
+                className="flex-1 max-w-sm px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-cta/50"
               />
               <select
                 value={orderStatus}
                 onChange={e => { setOrderStatus(e.target.value); setOrderPage(1); }}
-                className="px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[13px] text-text-primary focus:outline-none focus:border-cta/50"
+                className="px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[15px] text-text-primary focus:outline-none focus:border-cta/50"
               >
                 <option value="">전체 상태</option>
                 <option value="completed">완료</option>
@@ -347,11 +347,11 @@ export default function AdminPage() {
             </div>
 
             <div className="overflow-x-auto rounded-xl border border-white/10">
-              <table className="w-full text-[12px]">
+              <table className="w-full text-[14px]">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/3">
                     {['상태', '사용자', '패키지', '결제금액', '해 크레딧', '달 크레딧', '결제수단', '결제일시'].map(h => (
-                      <th key={h} className="px-3 py-2.5 text-left text-[10px] text-text-tertiary uppercase tracking-wider font-medium">{h}</th>
+                      <th key={h} className="px-3 py-2.5 text-left text-[12px] text-text-tertiary uppercase tracking-wider font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -388,7 +388,7 @@ export default function AdminPage() {
                   <button
                     key={t}
                     onClick={() => { setRecordType(t); setRecordCategory(''); setRecordPage(1); }}
-                    className={`px-3 py-1.5 rounded text-[12px] font-medium transition-colors ${recordType === t ? 'bg-cta text-white' : 'text-text-tertiary hover:text-text-secondary'}`}
+                    className={`px-3 py-1.5 rounded text-[14px] font-medium transition-colors ${recordType === t ? 'bg-cta text-white' : 'text-text-tertiary hover:text-text-secondary'}`}
                   >
                     {t === 'saju' ? '사주 분석' : '타로 분석'}
                   </button>
@@ -399,7 +399,7 @@ export default function AdminPage() {
                 <select
                   value={recordCategory}
                   onChange={e => { setRecordCategory(e.target.value); setRecordPage(1); }}
-                  className="px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[13px] text-text-primary focus:outline-none focus:border-cta/50"
+                  className="px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[15px] text-text-primary focus:outline-none focus:border-cta/50"
                 >
                   <option value="">전체 카테고리</option>
                   {Object.entries(categorySummary).sort((a, b) => (b[1] as number) - (a[1] as number)).map(([cat, cnt]) => (
@@ -418,7 +418,7 @@ export default function AdminPage() {
                     <button
                       key={cat}
                       onClick={() => { setRecordCategory(recordCategory === cat ? '' : cat); setRecordPage(1); }}
-                      className={`px-2.5 py-1 rounded-full text-[11px] border transition-all ${recordCategory === cat ? 'bg-cta/20 border-cta/50 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
+                      className={`px-2.5 py-1 rounded-full text-[13px] border transition-all ${recordCategory === cat ? 'bg-cta/20 border-cta/50 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
                     >
                       {CATEGORY_LABEL[cat] ?? cat} <span className="text-text-tertiary">{Math.round((cnt as number) / total * 100)}%</span>
                     </button>
@@ -428,11 +428,11 @@ export default function AdminPage() {
             )}
 
             <div className="overflow-x-auto rounded-xl border border-white/10">
-              <table className="w-full text-[12px]">
+              <table className="w-full text-[14px]">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/3">
                     {['사용자', '서비스', '크레딧 타입', '소비량', '일시'].map(h => (
-                      <th key={h} className="px-3 py-2.5 text-left text-[10px] text-text-tertiary uppercase tracking-wider font-medium">{h}</th>
+                      <th key={h} className="px-3 py-2.5 text-left text-[12px] text-text-tertiary uppercase tracking-wider font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -472,9 +472,9 @@ function Pagination({ page, total, pageSize, onChange }: { page: number; total: 
   if (totalPages <= 1) return null;
   return (
     <div className="flex items-center gap-2 justify-center pt-2">
-      <button onClick={() => onChange(Math.max(1, page - 1))} disabled={page === 1} className="px-3 py-1.5 rounded-lg text-[12px] bg-white/5 border border-white/10 text-text-secondary disabled:opacity-30 hover:border-white/20 transition-colors">이전</button>
-      <span className="text-[12px] text-text-tertiary">{page} / {totalPages} (총 {total.toLocaleString()}건)</span>
-      <button onClick={() => onChange(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="px-3 py-1.5 rounded-lg text-[12px] bg-white/5 border border-white/10 text-text-secondary disabled:opacity-30 hover:border-white/20 transition-colors">다음</button>
+      <button onClick={() => onChange(Math.max(1, page - 1))} disabled={page === 1} className="px-3 py-1.5 rounded-lg text-[14px] bg-white/5 border border-white/10 text-text-secondary disabled:opacity-30 hover:border-white/20 transition-colors">이전</button>
+      <span className="text-[14px] text-text-tertiary">{page} / {totalPages} (총 {total.toLocaleString()}건)</span>
+      <button onClick={() => onChange(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="px-3 py-1.5 rounded-lg text-[14px] bg-white/5 border border-white/10 text-text-secondary disabled:opacity-30 hover:border-white/20 transition-colors">다음</button>
     </div>
   );
 }

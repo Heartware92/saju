@@ -199,11 +199,11 @@ export default function ZamidusuResultPage() {
     }
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-        <p className="text-[15px] font-semibold text-text-primary mb-2">대표 프로필이 없어요</p>
-        <p className="text-[13px] text-text-secondary mb-4">프로필을 등록하면 자미두수를 볼 수 있어요</p>
+        <p className="text-[17px] font-semibold text-text-primary mb-2">대표 프로필이 없어요</p>
+        <p className="text-[15px] text-text-secondary mb-4">프로필을 등록하면 자미두수를 볼 수 있어요</p>
         <button
           onClick={() => router.push('/saju/input')}
-          className="px-4 py-2 rounded-lg bg-cta text-white text-[13px] font-semibold"
+          className="px-4 py-2 rounded-lg bg-cta text-white text-[15px] font-semibold"
         >
           프로필 등록하기
         </button>
@@ -232,7 +232,7 @@ export default function ZamidusuResultPage() {
             <div className="text-[24px] mb-1 tracking-widest" style={{ fontFamily: 'var(--font-serif)' }}>
               紫微斗數
             </div>
-            <div className="text-[12px] text-text-tertiary">하늘의 별자리 지도</div>
+            <div className="text-[14px] text-text-tertiary">하늘의 별자리 지도</div>
           </motion.div>
         }
       />

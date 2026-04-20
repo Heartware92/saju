@@ -42,7 +42,7 @@ const GRADE_COLOR: Record<FortuneGrade, string> = {
 function GradeBadge({ grade }: { grade: FortuneGrade }) {
   const c = GRADE_COLOR[grade];
   return (
-    <span className="px-2 py-0.5 rounded-md text-[11px] font-bold" style={{ backgroundColor: `${c}22`, color: c }}>
+    <span className="px-2 py-0.5 rounded-md text-[13px] font-bold" style={{ backgroundColor: `${c}22`, color: c }}>
       {grade}
     </span>
   );
@@ -75,7 +75,7 @@ function DomainBar({ label, score, grade }: { label: string; score: number; grad
   const c = GRADE_COLOR[grade];
   return (
     <div className="flex items-center gap-2">
-      <div className="w-14 text-[12px] font-semibold text-text-secondary">{label}</div>
+      <div className="w-14 text-[14px] font-semibold text-text-secondary">{label}</div>
       <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
         <motion.div
           className="h-full rounded-full"
@@ -85,7 +85,7 @@ function DomainBar({ label, score, grade }: { label: string; score: number; grad
           transition={{ duration: 0.6, ease: 'easeOut' }}
         />
       </div>
-      <div className="w-8 text-right text-[12px] font-bold" style={{ color: c }}>{score}</div>
+      <div className="w-8 text-right text-[14px] font-bold" style={{ color: c }}>{score}</div>
     </div>
   );
 }
@@ -120,7 +120,7 @@ function CalendarPicker({ value, onChange }: { value: string; onChange: (v: stri
           onClick={() => setViewDate(new Date(year, month - 1, 1))}
           className="w-8 h-8 rounded-lg text-text-secondary hover:bg-white/5"
         >‹</button>
-        <span className="text-[14px] font-bold text-text-primary">
+        <span className="text-[16px] font-bold text-text-primary">
           {year}년 {month + 1}월
         </span>
         <button
@@ -128,7 +128,7 @@ function CalendarPicker({ value, onChange }: { value: string; onChange: (v: stri
           className="w-8 h-8 rounded-lg text-text-secondary hover:bg-white/5"
         >›</button>
       </div>
-      <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-text-tertiary mb-1">
+      <div className="grid grid-cols-7 gap-1 text-center text-[13px] text-text-tertiary mb-1">
         {['일', '월', '화', '수', '목', '금', '토'].map(d => <div key={d}>{d}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-1">
@@ -137,7 +137,7 @@ function CalendarPicker({ value, onChange }: { value: string; onChange: (v: stri
             key={i}
             disabled={!d}
             onClick={() => d && pick(d)}
-            className={`aspect-square rounded-lg text-[12px] font-medium
+            className={`aspect-square rounded-lg text-[14px] font-medium
               ${!d ? 'opacity-0' : ''}
               ${d && isSelected(d) ? 'bg-cta text-white' : 'text-text-primary hover:bg-white/5'}`}
           >
@@ -360,22 +360,22 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
         <div className="flex items-center gap-4">
           <ScoreRing score={fortune.overallScore} grade={fortune.overallGrade} />
           <div className="flex-1 min-w-0">
-            <div className="text-[12px] text-text-tertiary mb-1">{fortune.lunarLabel}</div>
+            <div className="text-[14px] text-text-tertiary mb-1">{fortune.lunarLabel}</div>
             <div className="text-[16px] font-bold text-text-primary leading-snug mb-1.5">
               {fortune.headline}
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[11px] px-2 py-0.5 rounded-md bg-white/5 text-text-secondary">
+              <span className="text-[13px] px-2 py-0.5 rounded-md bg-white/5 text-text-secondary">
                 {fortune.targetGanZhi.ganZhi}
               </span>
-              <span className="text-[11px] px-2 py-0.5 rounded-md bg-white/5 text-text-secondary">
+              <span className="text-[13px] px-2 py-0.5 rounded-md bg-white/5 text-text-secondary">
                 {fortune.targetGanZhi.tenGodGan}
               </span>
               <GradeBadge grade={fortune.overallGrade} />
             </div>
           </div>
         </div>
-        <p className="text-[13px] text-text-secondary mt-3 leading-relaxed">
+        <p className="text-[15px] text-text-secondary mt-3 leading-relaxed">
           {fortune.summary}
         </p>
       </motion.section>
@@ -387,7 +387,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
         transition={{ delay: 0.1 }}
         className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
       >
-        <div className="text-[13px] font-semibold text-text-secondary mb-3 px-1 uppercase tracking-wider">영역별 운세</div>
+        <div className="text-[15px] font-semibold text-text-secondary mb-3 px-1 uppercase tracking-wider">영역별 운세</div>
         <div className="space-y-2.5">
           {fortune.domains.filter(d => d.key !== 'overall').map(d => (
             <DomainBar key={d.key} label={d.label} score={d.score} grade={d.grade} />
@@ -410,14 +410,14 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
               className="rounded-xl p-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
             >
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[13px] font-bold text-text-primary">{d.label}</span>
+                <span className="text-[15px] font-bold text-text-primary">{d.label}</span>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[12px] font-bold" style={{ color: GRADE_COLOR[d.grade] }}>{d.score}점</span>
+                  <span className="text-[14px] font-bold" style={{ color: GRADE_COLOR[d.grade] }}>{d.score}점</span>
                   <GradeBadge grade={d.grade} />
                 </div>
               </div>
               {aiText ? (
-                <p className="text-[12px] text-text-secondary leading-relaxed mb-2 whitespace-pre-line">{aiText}</p>
+                <p className="text-[14px] text-text-secondary leading-relaxed mb-2 whitespace-pre-line">{aiText}</p>
               ) : domainAILoading ? (
                 <div className="mb-2 space-y-1.5">
                   <div className="h-2 rounded bg-white/5 animate-pulse" />
@@ -427,13 +427,13 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
                   <div className="h-2 rounded bg-white/5 animate-pulse w-[60%]" />
                 </div>
               ) : (
-                <p className="text-[12px] text-text-secondary leading-relaxed mb-2">{d.summary}</p>
+                <p className="text-[14px] text-text-secondary leading-relaxed mb-2">{d.summary}</p>
               )}
               <div className="flex flex-wrap gap-1.5">
                 {d.tips.map((t, i) => (
                   <span
                     key={i}
-                    className="text-[11px] px-2 py-1 rounded-md border"
+                    className="text-[13px] px-2 py-1 rounded-md border"
                     style={{ borderColor: `${GRADE_COLOR[d.grade]}55`, color: GRADE_COLOR[d.grade], backgroundColor: `${GRADE_COLOR[d.grade]}12` }}
                   >
                     {t}
@@ -452,7 +452,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
         transition={{ delay: 0.2 }}
         className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
       >
-        <div className="text-[13px] font-semibold text-text-secondary mb-3 px-1 uppercase tracking-wider">
+        <div className="text-[15px] font-semibold text-text-secondary mb-3 px-1 uppercase tracking-wider">
           {scope === 'year' ? '연간 행운 처방' : '오늘의 행운'}
         </div>
         {(() => {
@@ -480,17 +480,17 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
           transition={{ delay: 0.25 }}
           className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
         >
-          <div className="text-[13px] font-semibold text-text-secondary mb-3 px-1 uppercase tracking-wider">원국과의 상호작용</div>
+          <div className="text-[15px] font-semibold text-text-secondary mb-3 px-1 uppercase tracking-wider">원국과의 상호작용</div>
           <div className="space-y-2">
             {fortune.interactions.map((it, i) => {
               const color = it.nature === 'good' ? '#34D399' : it.nature === 'bad' ? '#F87171' : '#FBBF24';
               return (
                 <div key={i} className="rounded-lg p-2.5 border" style={{ borderColor: `${color}55`, backgroundColor: `${color}12` }}>
                   <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-[12px] font-bold" style={{ color }}>{it.kind}</span>
-                    <span className="text-[11px] text-text-tertiary">{it.between}</span>
+                    <span className="text-[14px] font-bold" style={{ color }}>{it.kind}</span>
+                    <span className="text-[13px] text-text-tertiary">{it.between}</span>
                   </div>
-                  <div className="text-[12px] text-text-secondary">{it.description}</div>
+                  <div className="text-[14px] text-text-secondary">{it.description}</div>
                 </div>
               );
             })}
@@ -506,10 +506,10 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
           transition={{ delay: 0.3 }}
           className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
         >
-          <div className="text-[13px] font-semibold text-text-secondary mb-2 px-1 uppercase tracking-wider">주의점</div>
+          <div className="text-[15px] font-semibold text-text-secondary mb-2 px-1 uppercase tracking-wider">주의점</div>
           <ul className="space-y-1">
             {fortune.cautions.map((c, i) => (
-              <li key={i} className="text-[12px] text-text-secondary flex gap-2">
+              <li key={i} className="text-[14px] text-text-secondary flex gap-2">
                 <span className="text-[#F87171]">•</span>
                 <span>{c}</span>
               </li>
@@ -526,7 +526,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
           transition={{ delay: 0.35 }}
           className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
         >
-          <div className="text-[13px] font-semibold text-text-secondary mb-3 px-1 uppercase tracking-wider">월별 흐름 (12개월)</div>
+          <div className="text-[15px] font-semibold text-text-secondary mb-3 px-1 uppercase tracking-wider">월별 흐름 (12개월)</div>
           <div className="grid grid-cols-3 gap-1.5">
             {fortune.monthlyFlow.map(m => (
               <div
@@ -534,9 +534,9 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
                 className="rounded-lg p-2 border flex flex-col items-center gap-0.5"
                 style={{ borderColor: `${GRADE_COLOR[m.grade]}55`, backgroundColor: `${GRADE_COLOR[m.grade]}10` }}
               >
-                <span className="text-[11px] text-text-tertiary">{m.month}월</span>
-                <span className="text-[12px] font-bold" style={{ color: GRADE_COLOR[m.grade] }}>{m.grade}</span>
-                <span className="text-[10px] text-text-secondary">{m.keyword}</span>
+                <span className="text-[13px] text-text-tertiary">{m.month}월</span>
+                <span className="text-[14px] font-bold" style={{ color: GRADE_COLOR[m.grade] }}>{m.grade}</span>
+                <span className="text-[12px] text-text-secondary">{m.keyword}</span>
               </div>
             ))}
           </div>
@@ -551,19 +551,19 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
           transition={{ delay: 0.4 }}
           className="mb-3"
         >
-          <div className="text-[13px] font-semibold text-text-secondary mb-2 px-1 uppercase tracking-wider">
+          <div className="text-[15px] font-semibold text-text-secondary mb-2 px-1 uppercase tracking-wider">
             {targetYear}년 종합 리포트
           </div>
 
           {newyearReport.error && (
             <div className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-              <p className="text-[12px] text-text-secondary">{newyearReport.error}</p>
+              <p className="text-[14px] text-text-secondary">{newyearReport.error}</p>
             </div>
           )}
 
           {newyearReport.rawText && (
             <div className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-              <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
+              <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line">
                 {newyearReport.rawText}
               </p>
             </div>
@@ -591,7 +591,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
                     >
                       {text.split('\n')[0]?.trim()}
                     </div>
-                    <div className="text-[11px] font-medium text-text-tertiary tracking-widest uppercase mb-4">
+                    <div className="text-[13px] font-medium text-text-tertiary tracking-widest uppercase mb-4">
                       {NEWYEAR_SECTION_LABELS[key]}
                     </div>
                     {isLucky ? (
@@ -606,7 +606,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
                         extraText={text.split('\n').slice(1).join('\n').trim()}
                       />
                     ) : (
-                      <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
+                      <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line">
                         {text.split('\n').slice(1).join('\n').trim()}
                       </p>
                     )}

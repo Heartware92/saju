@@ -52,8 +52,8 @@ export function AILoadingBar({
     return (
       <div className="py-4 flex flex-col gap-3">
         <div className="flex justify-between items-center">
-          <span className="text-[13px] font-semibold text-text-primary">{label}</span>
-          <span className="text-[11px] text-text-tertiary">{rounded}%</span>
+          <span className="text-[15px] font-semibold text-text-primary">{label}</span>
+          <span className="text-[13px] text-text-tertiary">{rounded}%</span>
         </div>
 
         {/* 게이지 바 */}
@@ -78,13 +78,13 @@ export function AILoadingBar({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.35 }}
-                className="block text-[11px] text-text-tertiary"
+                className="block text-[13px] text-text-tertiary"
               >
                 {messages[msgIdx]}
               </motion.span>
             </AnimatePresence>
           </div>
-          <span className="text-[10px] text-text-tertiary/60 ml-2 shrink-0">
+          <span className="text-[12px] text-text-tertiary/60 ml-2 shrink-0">
             약 {minLabel}~{maxLabel}
           </span>
         </div>
@@ -110,7 +110,7 @@ export function AILoadingBar({
         {/* 타이틀 */}
         <div className="text-center">
           <div className="text-[17px] font-semibold text-text-primary mb-1">{label}</div>
-          <div className="text-[12px] text-text-tertiary">
+          <div className="text-[14px] text-text-tertiary">
             정확한 풀이를 위해 시간이 필요합니다
           </div>
         </div>
@@ -128,8 +128,8 @@ export function AILoadingBar({
             />
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-[11px] text-text-tertiary font-medium">{rounded}%</span>
-            <span className="text-[11px] text-text-tertiary">
+            <span className="text-[13px] text-text-tertiary font-medium">{rounded}%</span>
+            <span className="text-[13px] text-text-tertiary">
               약 {minLabel} ~ {maxLabel} 소요
             </span>
           </div>
@@ -144,7 +144,7 @@ export function AILoadingBar({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}
               transition={{ duration: 0.4 }}
-              className="text-[12px] text-text-tertiary text-center"
+              className="text-[14px] text-text-tertiary text-center"
             >
               {messages[msgIdx]}
             </motion.div>

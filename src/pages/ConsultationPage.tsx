@@ -574,12 +574,12 @@ export default function ConsultationPage() {
             <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
               상담소
             </h1>
-            <p className="text-[11px] text-text-tertiary mt-0.5">사주 기반 1:1 AI 상담 · 1회 🌙 {MOON_COST_PER_QUESTION}</p>
+            <p className="text-[13px] text-text-tertiary mt-0.5">사주 기반 1:1 AI 상담 · 1회 🌙 {MOON_COST_PER_QUESTION}</p>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setDrawerOpen(true)}
-              className="flex items-center gap-1 text-[11px] text-text-secondary hover:text-text-primary px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
+              className="flex items-center gap-1 text-[13px] text-text-secondary hover:text-text-primary px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
               title="이전 대화 목록"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -589,13 +589,13 @@ export default function ConsultationPage() {
               </svg>
               <span className="hidden sm:inline">목록</span>
               {conversations.length > 1 && (
-                <span className="text-[9px] text-cta font-bold">{conversations.length}</span>
+                <span className="text-[11px] text-cta font-bold">{conversations.length}</span>
               )}
             </button>
             <button
               onClick={handleNewConversation}
               disabled={loading}
-              className="flex items-center gap-1 text-[11px] text-cta hover:bg-cta/10 px-2 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+              className="flex items-center gap-1 text-[13px] text-cta hover:bg-cta/10 px-2 py-1.5 rounded-lg transition-colors disabled:opacity-40"
               title="새 대화 시작"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -613,7 +613,7 @@ export default function ConsultationPage() {
             <button
               key={p.id}
               onClick={() => setSelectedProfileId(p.id)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium border transition-all
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[14px] font-medium border transition-all
                 ${selectedProfileId === p.id ? 'bg-cta/20 border-cta/50 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
             >
               {p.name}
@@ -623,7 +623,7 @@ export default function ConsultationPage() {
 
         {/* 상태 요약 + 수정 */}
         <div className="flex items-center justify-between mt-2">
-          <div className="flex flex-wrap gap-1.5 text-[10px]">
+          <div className="flex flex-wrap gap-1.5 text-[12px]">
             {status.relationshipStatus && (
               <span className="px-2 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-300">
                 💕 {status.relationshipStatus}
@@ -640,7 +640,7 @@ export default function ConsultationPage() {
           </div>
           <button
             onClick={openStatusModal}
-            className="text-[11px] text-cta hover:text-cta/80 font-medium"
+            className="text-[13px] text-cta hover:text-cta/80 font-medium"
           >
             상태 수정 ✎
           </button>
@@ -657,8 +657,8 @@ export default function ConsultationPage() {
             transition={{ duration: 0.2 }}
             className="mx-4 mt-2 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-2.5"
           >
-            <span className="text-amber-400 text-[14px] mt-0.5 flex-shrink-0">⚠</span>
-            <p className="text-[12px] text-amber-200/80 leading-relaxed flex-1">
+            <span className="text-amber-400 text-[16px] mt-0.5 flex-shrink-0">⚠</span>
+            <p className="text-[14px] text-amber-200/80 leading-relaxed flex-1">
               대화 내역은 <span className="font-semibold text-amber-300">이 기기에만</span> 저장됩니다. 다른 기기나 브라우저에서는 보이지 않으며, 브라우저 데이터를 지우면 사라질 수 있어요.
             </p>
             <button
@@ -682,21 +682,21 @@ export default function ConsultationPage() {
         {showWelcome && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
             <div className="bg-[rgba(20,12,38,0.65)] border border-[var(--border-subtle)] rounded-2xl p-4 mb-4">
-              <p className="text-[14px] text-text-primary leading-relaxed">
+              <p className="text-[16px] text-text-primary leading-relaxed">
                 안녕하세요, <span className="font-bold text-cta">{selectedProfile.name}님</span>. 상담소에 오신 것을 환영해요.
               </p>
-              <p className="text-[13px] text-text-secondary leading-relaxed mt-2">
+              <p className="text-[15px] text-text-secondary leading-relaxed mt-2">
                 재물운·연애운·건강운 무엇이든 편하게 물어보세요. {selectedProfile.name}님의 사주를 바탕으로 맞춤 답변을 드려요.
               </p>
-              <p className="text-[11px] text-text-tertiary mt-3">
+              <p className="text-[13px] text-text-tertiary mt-3">
                 💡 더 정확한 답변을 위해 상단의 <span className="text-cta">상태 수정</span>에서 연애상태와 직업을 입력해보세요.
               </p>
-              <p className="text-[11px] text-text-tertiary/60 mt-2 border-t border-white/5 pt-2">
+              <p className="text-[13px] text-text-tertiary/60 mt-2 border-t border-white/5 pt-2">
                 대화 내역은 이 기기에만 저장되며, 다른 기기나 브라우저에서는 보이지 않아요.
               </p>
             </div>
 
-            <p className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-2 px-1">
+            <p className="text-[13px] font-semibold text-text-tertiary uppercase tracking-wider mb-2 px-1">
               이런 질문을 많이 해요
             </p>
             <div className="flex flex-col gap-2">
@@ -705,7 +705,7 @@ export default function ConsultationPage() {
                   key={q}
                   onClick={() => handleSend(q)}
                   disabled={loading}
-                  className="text-left px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-[13px] text-text-secondary hover:border-cta/40 hover:text-text-primary transition-all disabled:opacity-40"
+                  className="text-left px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-[15px] text-text-secondary hover:border-cta/40 hover:text-text-primary transition-all disabled:opacity-40"
                 >
                   {q}
                 </button>
@@ -737,7 +737,7 @@ export default function ConsultationPage() {
                     </div>
                   )}
                   <div
-                    className={`max-w-[85%] px-4 py-3 rounded-2xl text-[14px] leading-[1.75] whitespace-pre-wrap
+                    className={`max-w-[85%] px-4 py-3 rounded-2xl text-[16px] leading-[1.75] whitespace-pre-wrap
                       ${msg.role === 'user'
                         ? 'bg-cta/90 text-white rounded-tr-sm'
                         : 'bg-[rgba(20,12,38,0.75)] border border-[var(--border-subtle)] text-text-primary rounded-tl-sm'}`}
@@ -757,7 +757,7 @@ export default function ConsultationPage() {
                     transition={{ delay: 0.15 }}
                     className="flex flex-col gap-1.5 mt-2 ml-10 max-w-[85%]"
                   >
-                    <p className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider px-1">
+                    <p className="text-[12px] font-medium text-text-tertiary uppercase tracking-wider px-1">
                       이어서 물어볼까요
                     </p>
                     {(msg.followups ?? []).map((s, i) => (
@@ -765,7 +765,7 @@ export default function ConsultationPage() {
                         key={i}
                         onClick={() => handleSend(s)}
                         disabled={loading || moonBalance < MOON_COST_PER_QUESTION}
-                        className="text-left px-3 py-2 rounded-xl bg-cta/10 border border-cta/30 text-[12px] text-cta hover:bg-cta/20 hover:border-cta/50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="text-left px-3 py-2 rounded-xl bg-cta/10 border border-cta/30 text-[14px] text-cta hover:bg-cta/20 hover:border-cta/50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         {s}
                       </button>
@@ -788,14 +788,14 @@ export default function ConsultationPage() {
                 <span className="inline-block w-2 h-2 rounded-full bg-cta animate-pulse" style={{ animationDelay: '0s' }} />
                 <span className="inline-block w-2 h-2 rounded-full bg-cta animate-pulse" style={{ animationDelay: '0.2s' }} />
                 <span className="inline-block w-2 h-2 rounded-full bg-cta animate-pulse" style={{ animationDelay: '0.4s' }} />
-                <span className="text-[12px] text-text-secondary ml-1">사주 데이터를 엮는 중...</span>
+                <span className="text-[14px] text-text-secondary ml-1">사주 데이터를 엮는 중...</span>
               </div>
             </div>
           </motion.div>
         )}
 
         {error && (
-          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-[13px] text-red-400 text-center">
+          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-[15px] text-red-400 text-center">
             {error}
           </div>
         )}
@@ -812,7 +812,7 @@ export default function ConsultationPage() {
             rows={1}
             maxLength={300}
             disabled={loading}
-            className="flex-1 px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-text-primary text-[14px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none resize-none transition disabled:opacity-60"
+            className="flex-1 px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-text-primary text-[16px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none resize-none transition disabled:opacity-60"
             style={{ maxHeight: '100px' }}
           />
           <button
@@ -828,8 +828,8 @@ export default function ConsultationPage() {
           </button>
         </div>
         <div className="flex items-center justify-between mt-1.5 px-1">
-          <span className="text-[10px] text-text-tertiary">{inputText.length}/300</span>
-          <span className="text-[10px] text-text-tertiary">
+          <span className="text-[12px] text-text-tertiary">{inputText.length}/300</span>
+          <span className="text-[12px] text-text-tertiary">
             보유 🌙 {moonBalance} · 1회 🌙 {MOON_COST_PER_QUESTION}
           </span>
         </div>
@@ -855,8 +855,8 @@ export default function ConsultationPage() {
             >
               <div className="flex-shrink-0 px-4 py-4 border-b border-white/10 flex items-center justify-between">
                 <div>
-                  <p className="text-[15px] font-bold text-text-primary">대화 목록</p>
-                  <p className="text-[10px] text-text-tertiary mt-0.5">
+                  <p className="text-[17px] font-bold text-text-primary">대화 목록</p>
+                  <p className="text-[12px] text-text-tertiary mt-0.5">
                     {selectedProfile?.name}님 · {conversations.length}개
                   </p>
                 </div>
@@ -871,7 +871,7 @@ export default function ConsultationPage() {
 
               <button
                 onClick={handleNewConversation}
-                className="mx-3 mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-cta/15 border border-cta/40 text-cta font-semibold text-[13px] hover:bg-cta/25 transition"
+                className="mx-3 mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-cta/15 border border-cta/40 text-cta font-semibold text-[15px] hover:bg-cta/25 transition"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="12" y1="5" x2="12" y2="19" />
@@ -896,10 +896,10 @@ export default function ConsultationPage() {
                           onClick={() => handleSelectConversation(c.id)}
                           className="w-full text-left px-3 py-2.5 pr-9"
                         >
-                          <p className={`text-[13px] font-medium truncate ${isActive ? 'text-cta' : 'text-text-primary'}`}>
+                          <p className={`text-[15px] font-medium truncate ${isActive ? 'text-cta' : 'text-text-primary'}`}>
                             {isEmpty ? '빈 대화' : c.title}
                           </p>
-                          <p className="text-[10px] text-text-tertiary mt-0.5">
+                          <p className="text-[12px] text-text-tertiary mt-0.5">
                             {c.messages.length}개 메시지 · {formatRelativeTime(c.updatedAt)}
                           </p>
                         </button>
@@ -919,7 +919,7 @@ export default function ConsultationPage() {
               </div>
 
               <div className="flex-shrink-0 px-4 py-3 border-t border-white/10">
-                <p className="text-[10px] text-text-tertiary text-center">
+                <p className="text-[12px] text-text-tertiary text-center">
                   💾 대화 기록은 이 기기에만 저장돼요 (서버 X)
                 </p>
               </div>
@@ -948,7 +948,7 @@ export default function ConsultationPage() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <p className="text-[16px] font-bold text-text-primary">현재 상태 수정</p>
-                  <p className="text-[11px] text-text-tertiary mt-0.5">답변 개인화를 위한 참고 정보</p>
+                  <p className="text-[13px] text-text-tertiary mt-0.5">답변 개인화를 위한 참고 정보</p>
                 </div>
                 <button
                   onClick={() => setStatusModalOpen(false)}
@@ -960,13 +960,13 @@ export default function ConsultationPage() {
 
               {/* 연애상태 */}
               <div className="mb-4">
-                <p className="text-[11px] font-semibold text-text-secondary mb-2 uppercase tracking-wider">연애상태</p>
+                <p className="text-[13px] font-semibold text-text-secondary mb-2 uppercase tracking-wider">연애상태</p>
                 <div className="flex flex-wrap gap-1.5">
                   {RELATIONSHIP_PRESETS.map(r => (
                     <button
                       key={r}
                       onClick={() => setRelationshipSelect(r)}
-                      className={`px-3 py-1.5 rounded-full text-[12px] font-medium border transition-all
+                      className={`px-3 py-1.5 rounded-full text-[14px] font-medium border transition-all
                         ${relationshipSelect === r ? 'bg-cta/25 border-cta/60 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
                     >
                       {r}
@@ -980,34 +980,34 @@ export default function ConsultationPage() {
                     onChange={e => setCustomRelationship(e.target.value)}
                     placeholder="직접 입력 (예: 장거리 연애중)"
                     maxLength={30}
-                    className="w-full mt-2 px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-text-primary text-[13px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none"
+                    className="w-full mt-2 px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-text-primary text-[15px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none"
                   />
                 )}
               </div>
 
               {/* 직업 */}
               <div className="mb-5">
-                <p className="text-[11px] font-semibold text-text-secondary mb-2 uppercase tracking-wider">직업 / 일</p>
+                <p className="text-[13px] font-semibold text-text-secondary mb-2 uppercase tracking-wider">직업 / 일</p>
                 <input
                   type="text"
                   value={jobInput}
                   onChange={e => setJobInput(e.target.value)}
                   placeholder="예: IT 회사 대표, 대학생, 취업 준비중"
                   maxLength={50}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-text-primary text-[13px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-text-primary text-[15px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none"
                 />
               </div>
 
               <div className="flex gap-2">
                 <button
                   onClick={() => setStatusModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-white/15 text-text-secondary font-medium text-[13px]"
+                  className="flex-1 py-2.5 rounded-xl border border-white/15 text-text-secondary font-medium text-[15px]"
                 >
                   취소
                 </button>
                 <button
                   onClick={saveStatus}
-                  className="flex-1 py-2.5 rounded-xl bg-cta text-white font-bold text-[13px]"
+                  className="flex-1 py-2.5 rounded-xl bg-cta text-white font-bold text-[15px]"
                 >
                   저장
                 </button>

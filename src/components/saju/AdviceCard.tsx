@@ -39,7 +39,7 @@ function CompassSVG({ deg, direction }: { deg: number; direction: string }) {
         <div className="w-[72px] h-[72px] rounded-full border border-white/20 flex items-center justify-center bg-white/5">
           <span className="text-[22px] font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>中</span>
         </div>
-        <span className="text-[11px] text-text-tertiary">중앙이 길합니다</span>
+        <span className="text-[13px] text-text-tertiary">중앙이 길합니다</span>
       </div>
     );
   }
@@ -77,7 +77,7 @@ function CompassSVG({ deg, direction }: { deg: number; direction: string }) {
         {/* 중심 원 */}
         <circle cx="36" cy="36" r="3.5" fill="white" opacity="0.7" />
       </svg>
-      <span className="text-[11px] text-text-tertiary">{direction}쪽이 길합니다</span>
+      <span className="text-[13px] text-text-tertiary">{direction}쪽이 길합니다</span>
     </div>
   );
 }
@@ -90,7 +90,7 @@ function ColorSwatch({ name, css }: { name: string; css: string }) {
         className="w-10 h-10 rounded-xl border border-white/15 shadow-inner"
         style={{ background: css }}
       />
-      <span className="text-[11px] text-text-tertiary">{name}</span>
+      <span className="text-[13px] text-text-tertiary">{name}</span>
     </div>
   );
 }
@@ -119,7 +119,7 @@ export function AdviceCard({ yongSinElement, meta }: AdviceCardProps) {
 
         {/* 색상 스와치 */}
         <div className="flex flex-col items-center gap-2">
-          <span className="text-[10px] text-text-tertiary mb-0.5">용신 색상</span>
+          <span className="text-[12px] text-text-tertiary mb-0.5">용신 색상</span>
           <div className="flex gap-3">
             {mapData.colors.map(c => (
               <ColorSwatch key={c.name} name={c.name} css={c.css} />
@@ -131,14 +131,14 @@ export function AdviceCard({ yongSinElement, meta }: AdviceCardProps) {
       {/* 시간대 + 음식 */}
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-xl p-3 bg-white/5 border border-white/10">
-          <div className="text-[10px] text-text-tertiary mb-1">유리한 시간대</div>
-          <div className="text-[13px] text-text-primary font-medium">
+          <div className="text-[12px] text-text-tertiary mb-1">유리한 시간대</div>
+          <div className="text-[15px] text-text-primary font-medium">
             {meta.timeSlot || '—'}
           </div>
         </div>
         <div className="rounded-xl p-3 bg-white/5 border border-white/10">
-          <div className="text-[10px] text-text-tertiary mb-1">보강 음식</div>
-          <div className="text-[13px] text-text-primary font-medium">
+          <div className="text-[12px] text-text-tertiary mb-1">보강 음식</div>
+          <div className="text-[15px] text-text-primary font-medium">
             {meta.foods.length > 0 ? meta.foods.join(', ') : '—'}
           </div>
         </div>
@@ -146,7 +146,7 @@ export function AdviceCard({ yongSinElement, meta }: AdviceCardProps) {
 
       {/* 본문 */}
       {meta.body && (
-        <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
+        <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line">
           {meta.body}
         </p>
       )}
@@ -154,10 +154,10 @@ export function AdviceCard({ yongSinElement, meta }: AdviceCardProps) {
       {/* 이번 달 실천 */}
       {meta.actions.length > 0 && (
         <div className="rounded-xl p-3 bg-white/5 border border-white/10">
-          <div className="text-[11px] text-text-tertiary mb-2">이번 달 실천</div>
+          <div className="text-[13px] text-text-tertiary mb-2">이번 달 실천</div>
           <ul className="flex flex-col gap-1.5">
             {meta.actions.map((action, i) => (
-              <li key={i} className="flex items-start gap-2 text-[13px] text-text-secondary">
+              <li key={i} className="flex items-start gap-2 text-[15px] text-text-secondary">
                 <span className="text-text-tertiary mt-0.5 shrink-0">·</span>
                 <span>{action}</span>
               </li>

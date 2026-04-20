@@ -188,7 +188,7 @@ export default function Layout({ children }: LayoutProps) {
                       <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cta shadow-[0_0_6px_var(--cta-primary)]" />
                     )}
                   </div>
-                  <span className="text-[10px] font-medium">{item.label}</span>
+                  <span className="text-[12px] font-medium">{item.label}</span>
                 </Link>
               );
             })}

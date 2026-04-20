@@ -298,7 +298,7 @@ export default function GunghapPage() {
           '대운 흐름과 인연의 타이밍을 보는 중입니다',
         ]}
         topContent={
-          <div className="text-[15px] font-semibold text-text-primary">
+          <div className="text-[17px] font-semibold text-text-primary">
             {getCategoryDisplayLabel()} 궁합
           </div>
         }
@@ -346,11 +346,11 @@ export default function GunghapPage() {
           {stepOrder.map((s, i) => (
             <div key={s} className="flex items-center gap-1.5 flex-1">
               <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[12px] font-bold transition-all
                   ${step === s ? 'bg-cta text-white scale-110' : i < stepIdx ? 'bg-cta/50 text-white' : 'bg-white/10 text-text-tertiary'}`}>
                   {i + 1}
                 </div>
-                <span className={`text-[9px] font-medium whitespace-nowrap transition-colors
+                <span className={`text-[11px] font-medium whitespace-nowrap transition-colors
                   ${step === s ? 'text-cta' : i < stepIdx ? 'text-text-secondary' : 'text-text-tertiary'}`}>
                   {STEP_LABELS[s]}
                 </span>
@@ -370,7 +370,7 @@ export default function GunghapPage() {
           <motion.div key="category" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="px-5 space-y-5">
             {CATEGORY_GROUPS.map(group => (
               <div key={group.groupLabel}>
-                <p className={`text-[11px] font-bold mb-2.5 uppercase tracking-wider ${group.groupColor}`}>
+                <p className={`text-[13px] font-bold mb-2.5 uppercase tracking-wider ${group.groupColor}`}>
                   {group.groupLabel}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
@@ -384,8 +384,8 @@ export default function GunghapPage() {
                     >
                       <span className="text-lg leading-tight mt-0.5 w-5 text-center flex-shrink-0">{cat.icon}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-bold text-text-primary leading-tight">{cat.label}</p>
-                        <p className="text-[10px] text-text-secondary mt-0.5 leading-tight">{cat.desc}</p>
+                        <p className="text-[15px] font-bold text-text-primary leading-tight">{cat.label}</p>
+                        <p className="text-[12px] text-text-secondary mt-0.5 leading-tight">{cat.desc}</p>
                       </div>
                     </button>
                   ))}
@@ -408,7 +408,7 @@ export default function GunghapPage() {
                     onChange={e => setCustomLabel(e.target.value)}
                     placeholder="관계를 직접 입력 (예: 전생의 연인, 인터넷 친구)"
                     maxLength={30}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-text-primary text-[14px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none transition"
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-text-primary text-[16px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none transition"
                   />
                 </motion.div>
               )}
@@ -417,7 +417,7 @@ export default function GunghapPage() {
             <button
               onClick={() => setStep('role')}
               disabled={category === 'custom' && !customLabel.trim()}
-              className="w-full py-3.5 rounded-2xl bg-cta text-white font-bold text-[15px] active:scale-[0.98] transition-all disabled:opacity-40"
+              className="w-full py-3.5 rounded-2xl bg-cta text-white font-bold text-[17px] active:scale-[0.98] transition-all disabled:opacity-40"
             >
               다음 — 역할 입력
             </button>
@@ -431,20 +431,20 @@ export default function GunghapPage() {
             {/* 선택된 관계 배지 */}
             <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5 bg-gradient-to-r ${selectedCat.accent} border border-white/15`}>
               <span className="text-sm">{selectedCat.icon}</span>
-              <span className="text-[13px] font-semibold text-text-primary">{getCategoryDisplayLabel()}</span>
+              <span className="text-[15px] font-semibold text-text-primary">{getCategoryDisplayLabel()}</span>
             </div>
 
             <div className="p-4 rounded-2xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] space-y-4">
               <div>
-                <p className="text-[13px] font-bold text-text-primary mb-0.5">
+                <p className="text-[15px] font-bold text-text-primary mb-0.5">
                   각자의 역할을 입력해주세요
                 </p>
-                <p className="text-[11px] text-text-tertiary">선택사항 · 입력할수록 분석이 더 개인화됩니다</p>
+                <p className="text-[13px] text-text-tertiary">선택사항 · 입력할수록 분석이 더 개인화됩니다</p>
               </div>
 
               {/* 내 역할 */}
               <div>
-                <label className="text-[11px] font-medium text-text-tertiary mb-1.5 block">
+                <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">
                   {selectedProfile?.name}의 역할
                 </label>
                 <input
@@ -453,13 +453,13 @@ export default function GunghapPage() {
                   onChange={e => setMyRole(e.target.value)}
                   placeholder="예: 남자친구, 엄마, 팬, 직속 상사"
                   maxLength={50}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[14px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none transition"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[16px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none transition"
                 />
               </div>
 
               {/* 상대 역할 */}
               <div>
-                <label className="text-[11px] font-medium text-text-tertiary mb-1.5 block">
+                <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">
                   상대방의 역할
                 </label>
                 <input
@@ -468,7 +468,7 @@ export default function GunghapPage() {
                   onChange={e => setOtherRole(e.target.value)}
                   placeholder="예: 여자친구, 딸, 아이돌, 팀장"
                   maxLength={50}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[14px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none transition"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[16px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none transition"
                 />
               </div>
             </div>
@@ -476,13 +476,13 @@ export default function GunghapPage() {
             <div className="flex gap-2 mt-5">
               <button
                 onClick={() => setStep('category')}
-                className="px-5 py-3.5 rounded-2xl border border-white/15 text-text-secondary font-medium text-[14px] active:scale-[0.98] transition-all"
+                className="px-5 py-3.5 rounded-2xl border border-white/15 text-text-secondary font-medium text-[16px] active:scale-[0.98] transition-all"
               >
                 이전
               </button>
               <button
                 onClick={() => setStep('input')}
-                className="flex-1 py-3.5 rounded-2xl bg-cta text-white font-bold text-[15px] active:scale-[0.98] transition-all"
+                className="flex-1 py-3.5 rounded-2xl bg-cta text-white font-bold text-[17px] active:scale-[0.98] transition-all"
               >
                 {myRole.trim() || otherRole.trim() ? '역할 입력 완료' : '건너뛰기'}
               </button>
@@ -497,13 +497,13 @@ export default function GunghapPage() {
             {/* 내 프로필 선택 */}
             {profiles.length > 1 && (
               <div className="mb-4">
-                <p className="text-[11px] font-semibold text-text-secondary mb-2 uppercase tracking-wider">내 프로필</p>
+                <p className="text-[13px] font-semibold text-text-secondary mb-2 uppercase tracking-wider">내 프로필</p>
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {profiles.map(p => (
                     <button
                       key={p.id}
                       onClick={() => setMyProfileId(p.id)}
-                      className={`flex-shrink-0 px-3.5 py-2 rounded-xl text-[13px] font-medium border transition-all
+                      className={`flex-shrink-0 px-3.5 py-2 rounded-xl text-[15px] font-medium border transition-all
                         ${selectedProfile?.id === p.id ? 'bg-cta/20 border-cta/50 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
                     >
                       {p.name}
@@ -520,11 +520,11 @@ export default function GunghapPage() {
                   {selectedCat.icon}
                 </div>
                 <div>
-                  <p className="text-[13px] font-bold text-text-primary">{selectedProfile.name}</p>
-                  <p className="text-[11px] text-text-secondary">{selectedProfile.birth_date} · {selectedProfile.gender === 'male' ? '남' : '여'}</p>
+                  <p className="text-[15px] font-bold text-text-primary">{selectedProfile.name}</p>
+                  <p className="text-[13px] text-text-secondary">{selectedProfile.birth_date} · {selectedProfile.gender === 'male' ? '남' : '여'}</p>
                 </div>
                 {(myRole.trim() || otherRole.trim()) && (
-                  <div className="ml-auto text-[10px] text-text-tertiary text-right">
+                  <div className="ml-auto text-[12px] text-text-tertiary text-right">
                     {myRole.trim() && <div>내 역할: {myRole}</div>}
                     {otherRole.trim() && <div>상대 역할: {otherRole}</div>}
                   </div>
@@ -534,49 +534,49 @@ export default function GunghapPage() {
 
             {/* 상대방 입력 */}
             <div className="p-4 rounded-2xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] space-y-4">
-              <p className="text-[13px] font-bold text-text-primary">상대방 정보</p>
+              <p className="text-[15px] font-bold text-text-primary">상대방 정보</p>
 
               <div>
-                <label className="text-[11px] font-medium text-text-tertiary mb-1.5 block">이름</label>
+                <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">이름</label>
                 <input
                   type="text"
                   value={other.name}
                   onChange={e => setOther(o => ({ ...o, name: e.target.value }))}
                   placeholder="상대방 이름"
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[14px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none transition"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[16px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none transition"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-medium text-text-tertiary mb-1.5 block">생년월일</label>
+                <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">생년월일</label>
                 <input
                   type="date"
                   value={other.birth_date}
                   onChange={e => setOther(o => ({ ...o, birth_date: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[14px] focus:border-cta/50 focus:outline-none transition"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[16px] focus:border-cta/50 focus:outline-none transition"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-medium text-text-tertiary mb-1.5 block">
+                <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">
                   출생시간 <span className="text-text-tertiary/60">(모르면 비워두세요)</span>
                 </label>
                 <input
                   type="time"
                   value={other.birth_time}
                   onChange={e => setOther(o => ({ ...o, birth_time: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[14px] focus:border-cta/50 focus:outline-none transition"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[16px] focus:border-cta/50 focus:outline-none transition"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-medium text-text-tertiary mb-1.5 block">성별</label>
+                <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">성별</label>
                 <div className="grid grid-cols-2 gap-2">
                   {(['male', 'female'] as const).map(g => (
                     <button
                       key={g}
                       onClick={() => setOther(o => ({ ...o, gender: g }))}
-                      className={`py-2.5 rounded-xl text-[13px] font-medium border transition-all
+                      className={`py-2.5 rounded-xl text-[15px] font-medium border transition-all
                         ${other.gender === g ? 'bg-cta/20 border-cta/50 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
                     >
                       {g === 'male' ? '남성' : '여성'}
@@ -586,13 +586,13 @@ export default function GunghapPage() {
               </div>
 
               <div>
-                <label className="text-[11px] font-medium text-text-tertiary mb-1.5 block">역법</label>
+                <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">역법</label>
                 <div className="grid grid-cols-2 gap-2">
                   {(['solar', 'lunar'] as const).map(c => (
                     <button
                       key={c}
                       onClick={() => setOther(o => ({ ...o, calendar_type: c }))}
-                      className={`py-2.5 rounded-xl text-[13px] font-medium border transition-all
+                      className={`py-2.5 rounded-xl text-[15px] font-medium border transition-all
                         ${other.calendar_type === c ? 'bg-cta/20 border-cta/50 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
                     >
                       {c === 'solar' ? '양력' : '음력'}
@@ -603,7 +603,7 @@ export default function GunghapPage() {
             </div>
 
             {error && (
-              <div className="mt-3 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-[13px] text-red-400">
+              <div className="mt-3 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-[15px] text-red-400">
                 {error}
               </div>
             )}
@@ -611,14 +611,14 @@ export default function GunghapPage() {
             <div className="flex gap-2 mt-5">
               <button
                 onClick={() => setStep('role')}
-                className="px-5 py-3.5 rounded-2xl border border-white/15 text-text-secondary font-medium text-[14px] active:scale-[0.98] transition-all"
+                className="px-5 py-3.5 rounded-2xl border border-white/15 text-text-secondary font-medium text-[16px] active:scale-[0.98] transition-all"
               >
                 이전
               </button>
               <button
                 disabled={!isOtherValid || loading}
                 onClick={handleAnalyze}
-                className="flex-1 py-3.5 rounded-2xl bg-cta text-white font-bold text-[15px] active:scale-[0.98] transition-all disabled:opacity-40"
+                className="flex-1 py-3.5 rounded-2xl bg-cta text-white font-bold text-[17px] active:scale-[0.98] transition-all disabled:opacity-40"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -643,12 +643,12 @@ export default function GunghapPage() {
               <div className="flex items-center gap-3">
                 <span className="text-3xl">{selectedCat.icon}</span>
                 <div className="flex-1">
-                  <p className="text-[11px] text-text-tertiary uppercase tracking-wider">{getCategoryDisplayLabel()} 궁합</p>
+                  <p className="text-[13px] text-text-tertiary uppercase tracking-wider">{getCategoryDisplayLabel()} 궁합</p>
                   <p className="text-[16px] font-bold text-text-primary mt-0.5">
                     {selectedProfile?.name} · {other.name}
                   </p>
                   {(myRole.trim() || otherRole.trim()) && (
-                    <p className="text-[11px] text-text-secondary mt-0.5">
+                    <p className="text-[13px] text-text-secondary mt-0.5">
                       {myRole.trim() && `${selectedProfile?.name}: ${myRole}`}
                       {myRole.trim() && otherRole.trim() && ' / '}
                       {otherRole.trim() && `${other.name}: ${otherRole}`}
@@ -660,7 +660,7 @@ export default function GunghapPage() {
 
             {/* 결과 본문 */}
             <div className="p-5 rounded-2xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-              <div className="text-[14px] text-text-primary leading-[1.85] whitespace-pre-wrap">
+              <div className="text-[16px] text-text-primary leading-[1.85] whitespace-pre-wrap">
                 {result}
               </div>
             </div>
@@ -669,13 +669,13 @@ export default function GunghapPage() {
             <div className="flex gap-2 mt-5">
               <button
                 onClick={reset}
-                className="flex-1 py-3.5 rounded-2xl border border-white/15 text-text-secondary font-medium text-[14px] active:scale-[0.98] transition-all"
+                className="flex-1 py-3.5 rounded-2xl border border-white/15 text-text-secondary font-medium text-[16px] active:scale-[0.98] transition-all"
               >
                 처음으로
               </button>
               <button
                 onClick={() => { setStep('input'); setResult(''); setError(''); }}
-                className="flex-1 py-3.5 rounded-2xl bg-cta/20 border border-cta/40 text-cta font-bold text-[14px] active:scale-[0.98] transition-all"
+                className="flex-1 py-3.5 rounded-2xl bg-cta/20 border border-cta/40 text-cta font-bold text-[16px] active:scale-[0.98] transition-all"
               >
                 다른 상대 분석
               </button>

@@ -213,7 +213,7 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
       </svg>
 
       {/* 하단 범례 */}
-      <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px] text-text-tertiary">
+      <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[12px] text-text-tertiary">
         <span className="flex items-center gap-1">
           <span className="inline-block w-2 h-2 rounded-full bg-[#FBBF24]" />
           명궁

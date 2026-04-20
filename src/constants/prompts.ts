@@ -729,20 +729,32 @@ export const generateTodayFortunePrompt = (
 
 ${METAPHOR_SHORT_GUIDE}
 
-[today_energy] — 90~130자
-오늘 일진(${todayGz.gan}${todayGz.zhi})이 내 일간(${pillars.day.gan})에 미치는 십성(${todayGz.tenGodGan}) 에너지를 단정적으로. 오늘 기운의 핵심 성질(상승·소모·충돌·화합 중)과 어떤 상황에서 유리·불리한지 각 1개 구체적으로. 오늘 하루 키워드 1개로 마무리.
+[은유 제목 규칙 — 각 섹션 공통]
+- 각 섹션은 [key] 마커 바로 다음 줄(빈 줄 없이)에 **은유 제목 1줄**을 먼저 씁니다.
+- 제목 형식: 대비되는 두 자연 이미지를 쉼표로 연결 (「」 괄호 금지, 평문).
+  예: "안개 낀 새벽, 천천히 떠오르는 해" / "갈라진 구름 사이 빛나는 별"
+- 제목 다음 빈 줄 없이 바로 본문 시작.
+- 본문 첫 문장·마지막 문장에 제목 은유를 자연스럽게 재등장시켜 회수.
+
+[today_energy] — 90~130자 (은유 제목 별도, 본문 분량만)
+첫 줄: 은유 제목 (오늘 기운의 핵심 성질을 자연 이미지 대비로)
+본문: 오늘 일진(${todayGz.gan}${todayGz.zhi})이 내 일간(${pillars.day.gan})에 미치는 십성(${todayGz.tenGodGan}) 에너지를 단정적으로. 오늘 기운의 핵심 성질(상승·소모·충돌·화합 중)과 어떤 상황에서 유리·불리한지 각 1개 구체적으로. 오늘 하루 키워드 1개로 마무리.
 
 [today_work] — 160~210자
-일진 기운을 바탕으로 집중이 잘 되는 업무 유형과 막히는 유형을 구체적으로. 오늘 하면 좋은 행동 1개(회의·기획·제출·연락·협상·계약 중 1가지 + 구체적 이유). 피해야 할 행동 1개(구체 상황 + 이유). 오늘 가장 생산적인 시간대 1구간.
+첫 줄: 은유 제목 (일·집중의 결을 자연 이미지 대비로)
+본문: 일진 기운을 바탕으로 집중이 잘 되는 업무 유형과 막히는 유형을 구체적으로. 오늘 하면 좋은 행동 1개(회의·기획·제출·연락·협상·계약 중 1가지 + 구체적 이유). 피해야 할 행동 1개(구체 상황 + 이유). 오늘 가장 생산적인 시간대 1구간.
 
 [today_love] — 130~170자
-오늘 일진 십성(${todayGz.tenGodGan}) 기준으로 잘 통하는 관계 유형과 마찰이 생기기 쉬운 관계 유형 각 1개. 조심할 말투·상황 1가지(구체 예시 포함). 연인·가족·동료 중 오늘 특히 신경 써야 할 관계 1가지와 실천할 행동 1가지.
+첫 줄: 은유 제목 (관계 온도·흐름을 자연 이미지 대비로)
+본문: 오늘 일진 십성(${todayGz.tenGodGan}) 기준으로 잘 통하는 관계 유형과 마찰이 생기기 쉬운 관계 유형 각 1개. 조심할 말투·상황 1가지(구체 예시 포함). 연인·가족·동료 중 오늘 특히 신경 써야 할 관계 1가지와 실천할 행동 1가지.
 
 [today_caution] — 110~150자
-오늘 합충(${interStr})에서 생기는 실수 유발 상황 1가지를 구체적 장면으로. 특히 조심해야 할 시간대·감정 상태·물리적 환경 중 1개 선택해 구체화. 이미 벌어졌을 때 대처 방법 1문장.
+첫 줄: 은유 제목 (오늘의 함정·빈틈을 자연 이미지로)
+본문: 오늘 합충(${interStr})에서 생기는 실수 유발 상황 1가지를 구체적 장면으로. 특히 조심해야 할 시간대·감정 상태·물리적 환경 중 1개 선택해 구체화. 이미 벌어졌을 때 대처 방법 1문장.
 
 [today_lucky] — 130~180자
-용신(${yongSinElement}) 기운을 오늘 하루 극대화하는 맞춤 처방.
+첫 줄: 은유 제목 (오늘의 개운 방향을 자연 이미지로)
+본문: 용신(${yongSinElement}) 기운을 오늘 하루 극대화하는 맞춤 처방.
 색상·방위·숫자·시간대는 UI에 이미 표시되므로 중복 서술 금지.
 아래 3가지를 구체적으로:
 - 오늘 특히 효과적인 보강 음식·음료 1가지 (맛·색·효능 설명)
@@ -2013,6 +2025,105 @@ function checkEumYangHap(zhiA: string, zhiB: string): string {
   return found ? `일지 음양합(${found[0]}·${found[1]}) — 자연스럽게 당기는 인연` : '없음';
 }
 
+/** 사주 4기둥 지지 목록 추출 */
+function getAllPillarZhis(result: SajuResult): { label: string; zhi: string }[] {
+  const p = result.pillars;
+  const list: { label: string; zhi: string }[] = [
+    { label: '년지', zhi: p.year.zhi },
+    { label: '월지', zhi: p.month.zhi },
+    { label: '일지', zhi: p.day.zhi },
+  ];
+  if (!result.hourUnknown) list.push({ label: '시지', zhi: p.hour.zhi });
+  return list;
+}
+
+/** 두 사람 간 지지 합·충·형·삼합 교차 분석 */
+function buildCrossJiziInteractions(
+  me: SajuResult, other: SajuResult,
+  myName: string, otherName: string
+): string {
+  const myZhis = getAllPillarZhis(me);
+  const otherZhis = getAllPillarZhis(other);
+  const LIUHE: [string, string, string][] = [
+    ['자','축','토화'], ['인','해','목화'], ['묘','술','화화'],
+    ['진','유','금화'], ['사','신','수화'], ['오','미','화화'],
+  ];
+  const CHONG: [string, string][] = [
+    ['자','오'], ['축','미'], ['인','신'], ['묘','유'], ['진','술'], ['사','해']
+  ];
+  const SANHE: [string[], string][] = [
+    [['인','오','술'], '화국(열정·추진력)'], [['신','자','진'], '수국(지혜·유연성)'],
+    [['사','유','축'], '금국(의지·결단력)'], [['해','묘','미'], '목국(성장·창의력)'],
+  ];
+  const results: string[] = [];
+
+  for (const mz of myZhis) {
+    for (const oz of otherZhis) {
+      for (const [a, b, res] of LIUHE) {
+        if ((mz.zhi === a && oz.zhi === b) || (mz.zhi === b && oz.zhi === a)) {
+          results.push(`${myName} ${mz.label}(${mz.zhi}) × ${otherName} ${oz.label}(${oz.zhi}) 지지합(${a}${b}합·${res}) — 자연스러운 인연`);
+        }
+      }
+      for (const [a, b] of CHONG) {
+        if ((mz.zhi === a && oz.zhi === b) || (mz.zhi === b && oz.zhi === a)) {
+          results.push(`${myName} ${mz.label}(${mz.zhi}) × ${otherName} ${oz.label}(${oz.zhi}) 지지충(${mz.zhi}${oz.zhi}충) — 마찰·변화 에너지`);
+        }
+      }
+    }
+  }
+
+  const allMy = myZhis.map(z => z.zhi);
+  const allOther = otherZhis.map(z => z.zhi);
+  // 자묘형(무례지형) cross-person
+  if (allMy.includes('자') && allOther.includes('묘') || allMy.includes('묘') && allOther.includes('자')) {
+    results.push('두 사람 합산 자묘형(무례지형) 성립 — 감정 표현 방식 충돌, 언행 주의');
+  }
+  for (const [members, label] of SANHE) {
+    const combined = [...allMy, ...allOther];
+    const matched = members.filter(m => combined.includes(m));
+    if (matched.length >= 2 && members.some(m => allMy.includes(m)) && members.some(m => allOther.includes(m))) {
+      results.push(`${matched.join('·')} ${label} 반합/삼합 — 함께할 때 강력한 시너지`);
+    }
+  }
+
+  return results.length > 0 ? results.join('\n') : '두 사람 간 특기할 지지 합·충·형 없음';
+}
+
+/** 두 사람 주요 십성 분포 비교 */
+function buildGunghapSipseong(
+  me: SajuResult, other: SajuResult,
+  myName: string, otherName: string
+): string {
+  const myCounts = computeSipseongCounts(me);
+  const otherCounts = computeSipseongCounts(other);
+  const keys = ['정재','편재','정관','편관','정인','편인','식신','상관','비견','겁재'];
+  const fmt = (counts: Record<string, number>) =>
+    keys.filter(k => (counts[k] || 0) > 0)
+      .sort((a, b) => (counts[b] || 0) - (counts[a] || 0))
+      .slice(0, 4).map(k => `${k}(${counts[k].toFixed(1)})`)
+      .join(' > ');
+  return `${myName} 십성: ${fmt(myCounts) || '없음'}\n${otherName} 십성: ${fmt(otherCounts) || '없음'}`;
+}
+
+/** 두 사람 오행 분포 비교 및 상보 관계 */
+function buildOhaengCompare(
+  me: SajuResult, other: SajuResult,
+  myName: string, otherName: string
+): string {
+  const els = ['목','화','토','금','수'] as const;
+  const myRow = els.map(e => `${e}${me.elementPercent[e]}%`).join(' ');
+  const otherRow = els.map(e => `${e}${other.elementPercent[e]}%`).join(' ');
+  const comps: string[] = [];
+  for (const e of els) {
+    if (me.elementPercent[e] === 0 && other.elementPercent[e] >= 20)
+      comps.push(`${otherName}의 ${e}기운이 ${myName}의 결핍 보충`);
+    if (other.elementPercent[e] === 0 && me.elementPercent[e] >= 20)
+      comps.push(`${myName}의 ${e}기운이 ${otherName}의 결핍 보충`);
+  }
+  const complementStr = comps.length > 0 ? comps.join(' / ') : '오행 결핍 상호보완 없음 (독립적 구성)';
+  return `${myName}: ${myRow}\n${otherName}: ${otherRow}\n상보관계: ${complementStr}`;
+}
+
 // ─────────────────────────────────────────────
 // 연인·배우자 궁합
 // ─────────────────────────────────────────────
@@ -2037,12 +2148,20 @@ export const generateLoverGunghapPrompt = (
     }
   })();
 
-  return `당신은 사주명리 전문가입니다. 두 사람의 연인·배우자 궁합을 해석하세요.
+  const crossInteractions = buildCrossJiziInteractions(me, other, myName, otherName);
+  const sipseongCompare = buildGunghapSipseong(me, other, myName, otherName);
+  const ohaengCompare = buildOhaengCompare(me, other, myName, otherName);
+  const yongSinClash = [
+    `${myName} 용신(${me.yongSinElement}) vs ${otherName} 기신(${other.giSin}): ${me.yongSinElement === other.giSin ? '충돌 — 에너지 소진 주의' : '충돌 없음'}`,
+    `${otherName} 용신(${other.yongSinElement}) vs ${myName} 기신(${me.giSin}): ${other.yongSinElement === me.giSin ? '충돌 — 에너지 소진 주의' : '충돌 없음'}`,
+  ].join('\n');
+
+  return `당신은 사주명리 전문가입니다. 두 사람의 연인 궁합을 아래 7개 섹션으로 풀이하세요.
 
 [절대 규칙]
-- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- Markdown·이모지 금지. 섹션 제목은 반드시 "▶ 제목" 형식으로만.
 - 수치·판정 변경 금지. 흐린 표현 2회 이하.
-- 출력은 [lover_gunghap] 마커 한 줄로 시작. 분량: 440~540자.
+- 출력은 [lover_gunghap] 마커 한 줄로 시작. 총 분량: 1,800~2,400자.
 
 [${myName} 사주]
 ${buildPersonBlock(me, myName)}
@@ -2056,20 +2175,45 @@ ${elRel}
 ▶ 일지 음양합
 ${eumYangHap}
 
+▶ 두 사람 지지 합·충·형
+${crossInteractions}
+
+▶ 오행 분포 비교
+${ohaengCompare}
+
+▶ 십성 분포 비교
+${sipseongCompare}
+
 ▶ 배우자성 오행 대응
 ${mySpouseCheck}
 
-▶ 두 사람 용신·기신 충돌 여부
-${myName} 용신(${me.yongSinElement}) vs ${otherName} 기신(${other.giSin}): ${me.yongSinElement === other.giSin ? '충돌 — 에너지 소진 위험' : '충돌 없음'}
-${otherName} 용신(${other.yongSinElement}) vs ${myName} 기신(${me.giSin}): ${other.yongSinElement === me.giSin ? '충돌 — 에너지 소진 위험' : '충돌 없음'}
+▶ 용신·기신 충돌
+${yongSinClash}
 
 ${METAPHOR_SHORT_GUIDE}
 
-[작성 지침]
-두 일간 오행 관계(${elRel})에서 연애 역학 구조(누가 리드하고 누가 지지하는지)를 먼저 선언하세요.
-일지 음양합(${eumYangHap})과 배우자성 오행 대응을 근거로 인연의 강도를 1~2문장으로 서술하세요.
-두 사람의 용신·기신 충돌이 실제 연애에서 어떤 갈등 패턴으로 나타날지 구체 장면 1가지로 묘사하세요.
-오행 보완 관계에서 서로에게 어떤 성장을 주는지 1문장, 주의해야 할 반복 패턴 1문장으로 마무리하세요.
+[작성 지침 — 아래 7개 섹션을 순서대로 빠짐없이 작성하세요]
+
+▶ 핵심 요약 (150~200자)
+두 일간 오행 관계(${elRel})를 근거로 이 커플의 에너지 구조를 한마디로 선언하세요. 일지 음양합(${eumYangHap})과 배우자성 오행 대응(${mySpouseCheck})으로 인연의 강도를 1~2문장 제시. 이 두 사람의 관계를 가장 잘 표현하는 자연 현상이나 상황으로 비유하세요.
+
+▶ 공명과 끌림 (200~270자)
+두 사람이 처음 만났을 때 왜 끌렸는지 명리적 근거 2~3가지로 서술하세요. 지지 합·삼합 결과(${crossInteractions})를 구체적으로 활용해 "어떤 에너지가 둘을 당겼는지" 장면으로 묘사. 일간이 동일하다면 비화(비견) 공명의 양면성(강렬한 동질감 + 내면 경쟁)을 언급하세요.
+
+▶ 오행 상보 관계 (200~260자)
+두 사람의 오행 분포를 비교해 서로가 어떻게 채워주는지 서술하세요. 결핍 오행 상보 관계를 실생활 장면("함께 있을 때 ${myName}은 ~해지고, ${otherName}은 ~해진다")으로 묘사. 두 사람이 함께할 때 강해지는 오행과 과잉이 될 수 있는 오행도 언급하세요.
+
+▶ 갈등·마찰 포인트 (200~260자)
+두 사람 사이에서 반복될 수 있는 갈등 패턴을 2~3가지 구체 장면으로 묘사하세요. 지지 충·형·용신 기신 충돌 근거를 활용. 단순한 성격 차이가 아닌 "명리 구조가 만드는 필연적 충돌 구조"로 설명하세요. 각 갈등 패턴마다 한 문장 처방을 붙이세요.
+
+▶ 연애 방식과 역학 (200~260자)
+십성 분포를 근거로 두 사람의 연애 스타일을 분석하세요. 재성·식신·관성 분포로 "누가 더 표현하고 누가 더 받는지", "사랑을 어떻게 주고받는지" 구체적으로 서술. 연애가 깊어질수록 주의해야 할 반복 패턴 1가지와 관계를 오래 유지하는 핵심 비결 1가지로 마무리.
+
+▶ 서로의 속마음 (160~220자)
+${myName}이 ${otherName}에게 말 못 하는 내면 욕구, ${otherName}이 ${myName}에게 진짜 원하는 것을 십성 구조로 분석하세요. 각자의 속마음을 1인칭 화법으로 대변("나는 당신이 ~해줬으면 해"). 상대방이 오해하기 쉬운 행동 패턴 1가지씩 설명하세요.
+
+▶ 개운법·처방 (160~200자)
+이 두 사람이 함께 운을 높이는 실용 처방 4가지를 제시하세요: 1) 용신 오행에 맞는 데이트 장소·활동, 2) 함께 있을 때 피해야 할 상황이나 장소, 3) 갈등이 생겼을 때 화해 방법, 4) 이 관계가 가진 가장 아름다운 가능성 한 문장.
 
 [lover_gunghap]`;
 };
@@ -2096,12 +2240,15 @@ export const generateFriendGunghapPrompt = (
     ? `${myName}의 결핍 오행(${complement.join('·')})을 ${otherName}이 채워줌 — 보완 관계`
     : '오행 결핍 상호보완 없음';
 
-  return `당신은 사주명리 전문가입니다. 두 사람의 친구 궁합을 해석하세요.
+  const crossInteractions = buildCrossJiziInteractions(me, other, myName, otherName);
+  const ohaengCompare = buildOhaengCompare(me, other, myName, otherName);
+
+  return `당신은 사주명리 전문가입니다. 두 사람의 친구 궁합을 아래 5개 섹션으로 풀이하세요.
 
 [절대 규칙]
-- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- Markdown·이모지 금지. 섹션 제목은 "▶ 제목" 형식으로만.
 - 수치·판정 변경 금지. 흐린 표현 2회 이하.
-- 출력은 [friend_gunghap] 마커 한 줄로 시작. 분량: 380~460자.
+- 출력은 [friend_gunghap] 마커 한 줄로 시작. 총 분량: 1,200~1,700자.
 
 [${myName} 사주]
 ${buildPersonBlock(me, myName)}
@@ -2112,23 +2259,37 @@ ${buildPersonBlock(other, otherName)}
 ▶ 일간 오행 관계
 ${elRel}
 
+▶ 두 사람 지지 합·충
+${crossInteractions}
+
+▶ 오행 분포 비교
+${ohaengCompare}
+
 ▶ 비겁 에너지 (동류 공명)
 ${myName} 비겁: ${myBijeop}개 / ${otherName} 비겁: ${otherBijeop}개
-${myBijeop + otherBijeop >= 4 ? '비겁 과다 — 경쟁·질투 주의, 이해관계 충돌 가능' : '비겁 적정 — 균형 잡힌 관계'}
+${myBijeop + otherBijeop >= 4 ? '비겁 과다 — 경쟁·질투 주의, 이해관계 충돌 가능' : '비겁 적정 — 균형 잡힌 우정 가능'}
 
-▶ 오행 보완
-${complementStr}
-
-▶ 용신·기신 에너지
-${myName} 용신: ${me.yongSinElement} / ${otherName} 용신: ${other.yongSinElement}
-${me.yongSinElement === other.yongSinElement ? '동일 용신 — 같은 방향으로 함께 성장 가능' : '다른 용신 — 서로 다른 강점으로 보완 관계 형성 가능'}
+▶ 용신 방향
+${me.yongSinElement === other.yongSinElement ? '동일 용신 — 같은 방향으로 함께 성장 가능' : '다른 용신 — 서로 다른 강점으로 보완 우정 가능'}
 
 ${METAPHOR_SHORT_GUIDE}
 
-[작성 지침]
-일간 오행 관계(${elRel})를 근거로 두 사람이 함께 있을 때의 에너지 흐름을 "누가 활력을 주고 누가 안정을 주는지"로 묘사하세요.
-오행 보완 관계를 실제 우정에서 어떻게 나타나는지(공부·취미·위기 상황에서 어떻게 도움이 되는지) 1~2가지 장면으로 서술하세요.
-비겁 에너지 분석으로 경쟁 vs 협력의 밸런스를 1문장으로 짚고, 우정이 오래 유지되려면 무엇을 조심해야 하는지 마무리하세요.
+[작성 지침 — 아래 5개 섹션을 순서대로 작성하세요]
+
+▶ 이 우정의 에너지 구조 (180~240자)
+일간 오행 관계(${elRel})를 근거로 두 사람이 함께 있을 때의 에너지 흐름을 묘사하세요. "누가 활력을 주고 누가 안정을 주는지", "이 두 사람이 오래 친구로 지내는 명리적 이유"를 서술. 지지 합 결과(${crossInteractions})가 있다면 이 우정의 특별한 연결 고리로 활용하세요.
+
+▶ 서로에게 어떤 친구인가 (200~260자)
+십성 분포를 근거로 ${myName}이 ${otherName}에게 어떤 유형의 친구인지, ${otherName}이 ${myName}에게 어떤 존재인지 분석하세요. 오행 보완 관계(${complementStr})를 실생활 장면으로 묘사("위기 상황에서 어떻게 서로를 돕는지", "취미·관심사를 어떻게 공유하는지").
+
+▶ 갈등과 마찰 포인트 (200~260자)
+비겁 에너지와 지지 충 구조를 근거로 두 사람 사이에서 반복될 수 있는 갈등 패턴 2가지를 구체적으로 묘사하세요. 경쟁·질투·가치관 충돌 중 이 두 사람에게 해당하는 것을 명리 근거로 설명. 각 패턴마다 처방 1문장.
+
+▶ 함께 성장하는 방법 (160~220자)
+두 사람이 함께할 때 시너지가 나는 분야와 활동을 서술하세요. 서로의 용신 방향이 같다면 함께 성장하는 방향을, 다르다면 각자의 강점이 서로를 어떻게 보완하는지 제시. 우정이 더 깊어지는 핵심 비결 2가지.
+
+▶ 오래가는 우정을 위한 처방 (140~180자)
+이 두 사람의 우정이 오래 유지되려면 조심해야 할 상황·행동 2가지와, 함께 하면 운이 오르는 활동·장소(용신 오행 기반) 2가지를 제시하세요. 마지막은 이 우정이 가진 가장 큰 가치 한 문장.
 
 [friend_gunghap]`;
 };
@@ -2166,12 +2327,14 @@ export const generateFamilyGunghapPrompt = (
     ? `${otherEl}→${myEl} 상생 흐름 — 아랫 세대 오행이 윗 세대를 보완`
     : elRel;
 
-  return `당신은 사주명리 전문가입니다. 두 사람의 가족 궁합(${relation})을 해석하세요.
+  const crossInteractions = buildCrossJiziInteractions(me, other, myName, otherName);
+
+  return `당신은 사주명리 전문가입니다. 두 사람의 가족 궁합(${relation})을 아래 5개 섹션으로 풀이하세요.
 
 [절대 규칙]
-- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- Markdown·이모지 금지. 섹션 제목은 "▶ 제목" 형식으로만.
 - 수치·판정 변경 금지. 흐린 표현 2회 이하.
-- 출력은 [family_gunghap] 마커 한 줄로 시작. 분량: 380~460자.
+- 출력은 [family_gunghap] 마커 한 줄로 시작. 총 분량: 1,200~1,600자.
 
 [${myName} 사주]
 ${buildPersonBlock(me, myName)}
@@ -2184,22 +2347,33 @@ ${buildPersonBlock(other, otherName)}
 ▶ 일간 오행 관계 (세대 흐름)
 ${generationFlow}
 
-▶ 년주 오행 연결 (뿌리·조상 기운)
-${yearRel}
+▶ 두 사람 지지 합·충
+${crossInteractions}
 
-▶ 인성 분포 (양육·돌봄 에너지)
+▶ 인성 분포
 ${parentChildAnalysis}
 
-▶ 신강신약 상호작용
+▶ 신강신약
 ${myName}: ${me.strengthStatus} / ${otherName}: ${other.strengthStatus}
-${me.isStrong && other.isStrong ? '두 사람 모두 신강 — 독립적, 주도권 갈등 주의' : !me.isStrong && !other.isStrong ? '두 사람 모두 신약 — 상호 의존, 외부 지원 중요' : '신강·신약 조합 — 한쪽이 리드·다른쪽이 지지하는 구조'}
 
 ${METAPHOR_SHORT_GUIDE}
 
-[작성 지침]
-${relation} 관계에서 오행 세대 흐름(${generationFlow})이 가족 역학에 어떤 구조를 만드는지 먼저 서술하세요.
-신강·신약 조합에서 두 사람의 에너지 역할(누가 이끌고 누가 따르는지)을 가족 상황에 맞게 묘사하세요.
-갈등이 생기는 구체 패턴 1가지와 관계를 강화하는 행동 처방 1가지로 마무리하세요.
+[작성 지침 — 아래 5개 섹션을 순서대로 작성하세요]
+
+▶ 이 가족 관계의 명리 구조 (180~240자)
+${relation} 관계에서 오행 세대 흐름(${generationFlow})이 어떤 가족 역학을 만드는지 서술하세요. 지지 합 결과(${crossInteractions})가 있다면 이 가족 관계의 특별한 연결 고리로 활용. "이 두 사람이 한 가족인 명리적 이유"를 따뜻하게 풀어내세요.
+
+▶ 각자의 역할과 에너지 (180~240자)
+신강신약 조합을 근거로 두 사람의 에너지 역할("누가 이끌고 누가 따르는지", "누가 더 보호하고 누가 더 의지하는지")을 ${relation} 상황에 맞게 묘사하세요. 인성 분포(${parentChildAnalysis})로 돌봄 에너지의 방향도 분석하세요.
+
+▶ 갈등과 오해 패턴 (180~240자)
+이 가족 관계에서 반복될 수 있는 갈등 패턴 2가지를 구체 장면으로 묘사하세요. "세대 차이"나 "기대의 차이"가 명리 구조상 어떻게 생겨나는지 설명. 충 관계(${crossInteractions})가 있다면 갈등의 명리적 근거로 활용. 각 패턴마다 처방 1문장.
+
+▶ 서로에게 주는 선물 (160~210자)
+이 가족 관계에서 두 사람이 서로에게 자연스럽게 주는 것을 오행 보완 구조로 서술하세요. "윗세대가 아랫세대에게, 또는 아랫세대가 윗세대에게 채워주는 것"을 구체적으로 묘사. 이 가족 관계가 가진 가장 아름다운 측면을 부각하세요.
+
+▶ 관계를 더 깊게 하는 처방 (140~180자)
+이 가족 관계를 더 따뜻하게 유지하기 위한 실용 처방 3가지: 1) 함께하면 좋은 활동, 2) 갈등이 생겼을 때 화해 방법, 3) 이 관계가 앞으로 더 강해지는 시기나 계기.
 
 [family_gunghap]`;
 };
@@ -2231,12 +2405,14 @@ export const generateWorkGunghapPrompt = (
     ? '동일 스타일 — 같은 업무 방식, 협업 부드럽지만 맹점 공유'
     : `${workStyleA} + ${workStyleB} 조합 — 역할 분담 명확, 서로 보완 가능`;
 
-  return `당신은 사주명리 전문가입니다. 두 사람의 직장동료 궁합을 해석하세요.
+  const crossInteractions = buildCrossJiziInteractions(me, other, myName, otherName);
+
+  return `당신은 사주명리 전문가입니다. 두 사람의 직장동료 궁합을 아래 5개 섹션으로 풀이하세요.
 
 [절대 규칙]
-- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- Markdown·이모지 금지. 섹션 제목은 "▶ 제목" 형식으로만.
 - 수치·판정 변경 금지. 흐린 표현 2회 이하.
-- 출력은 [work_gunghap] 마커 한 줄로 시작. 분량: 380~460자.
+- 출력은 [work_gunghap] 마커 한 줄로 시작. 총 분량: 1,200~1,600자.
 
 [${myName} 사주]
 ${buildPersonBlock(me, myName)}
@@ -2244,27 +2420,41 @@ ${buildPersonBlock(me, myName)}
 [${otherName} 사주]
 ${buildPersonBlock(other, otherName)}
 
-▶ 일간 오행 관계 (업무 에너지)
+▶ 일간 오행 관계
 ${elRel}
+
+▶ 두 사람 지지 합·충
+${crossInteractions}
 
 ▶ 업무 스타일
 ${myName}: 관성 ${myGwan}개·식상 ${mySiksang}개 → ${workStyleA}
 ${otherName}: 관성 ${otherGwan}개·식상 ${otherSiksang}개 → ${workStyleB}
 조합: ${complementRoles}
 
-▶ 신강신약 (업무 주도권)
-${myName}: ${me.strengthStatus}(${me.isStrong ? '주도·독립 성향' : '협력·지원 성향'})
-${otherName}: ${other.strengthStatus}(${other.isStrong ? '주도·독립 성향' : '협력·지원 성향'})
+▶ 신강신약 (주도권)
+${myName}: ${me.strengthStatus} / ${otherName}: ${other.strengthStatus}
 
-▶ 용신·기신 에너지 충돌
-${me.yongSinElement === other.giSin ? `${myName} 용신이 ${otherName} 기신 — 업무 협력 시 에너지 소진 주의` : `용신·기신 충돌 없음 — 에너지 방해 적음`}
+▶ 용신·기신 충돌
+${me.yongSinElement === other.giSin ? `${myName} 용신이 ${otherName} 기신 — 장기 협업 시 에너지 소진 주의` : '용신·기신 충돌 없음 — 에너지 상충 없음'}
 
 ${METAPHOR_SHORT_GUIDE}
 
-[작성 지침]
-업무 스타일(${workStyleA} + ${workStyleB}) 조합이 프로젝트에서 어떻게 작동하는지 먼저 서술하세요.
-일간 오행 관계(${elRel})가 회의·의사결정·갈등 상황에서 어떻게 나타나는지 구체 장면 1가지로 묘사하세요.
-두 사람이 최대 시너지를 내는 업무 분담 방식 1가지와 주의해야 할 상황 1가지로 마무리하세요.
+[작성 지침 — 아래 5개 섹션을 순서대로 작성하세요]
+
+▶ 업무 에너지 구조 (180~240자)
+일간 오행 관계(${elRel})를 근거로 두 사람이 함께 일할 때의 에너지 흐름을 묘사하세요. "누가 방향을 잡고 누가 실행하는지", "업무 현장에서 어떤 역학이 작동하는지" 구체적으로 서술. 지지 합 결과(${crossInteractions})가 있다면 이 관계의 시너지 근거로 활용.
+
+▶ 각자의 업무 스타일과 시너지 (200~260자)
+업무 스타일 분석(${workStyleA} + ${workStyleB})을 근거로 두 사람이 프로젝트에서 어떻게 역할 분담하는지 서술하세요. 서로의 강점이 만나는 장면("이런 상황에서 두 사람은 최고의 팀이 된다")을 2가지 묘사. 함께하면 더 빠르게 성과를 내는 분야를 명시하세요.
+
+▶ 갈등·마찰 포인트 (200~260자)
+업무 현장에서 반복될 수 있는 갈등 패턴 2~3가지를 구체 장면으로 묘사하세요. 회의·의사결정·마감·평가 상황에서 충돌할 수 있는 지점을 명리 근거로 설명. 갈등이 생겼을 때 빠르게 해소하는 처방 1가지씩.
+
+▶ 협업 극대화 전략 (160~220자)
+두 사람이 함께 일할 때 최대 시너지를 내는 업무 분담 방식을 제시하세요. "이 사람은 이런 일을, 저 사람은 저런 일을"처럼 구체적 역할 제안. 함께 피해야 할 업무 상황과 서로를 지치지 않게 하는 소통 방법도 포함.
+
+▶ 직장 관계 처방 (130~170자)
+이 두 사람이 좋은 동료 관계를 유지하기 위한 실용 처방 3가지: 1) 회의·협업 시 지켜야 할 원칙, 2) 서로의 에너지를 살리는 업무 방식, 3) 이 파트너십이 가진 가장 큰 직업적 가치.
 
 [work_gunghap]`;
 };
@@ -2358,12 +2548,15 @@ export const generateSomGunghapPrompt = (
     ? `${myName}의 일간(${myEl})이 ${otherName}의 용신 — 상대도 나를 필요로 하는 관계`
     : '용신 직접 충족 없음 — 감정의 기복과 설렘의 지속성 점검 필요';
 
-  return `당신은 사주명리 전문가입니다. 두 사람의 썸 관계 궁합을 해석하세요.
+  const crossInteractions = buildCrossJiziInteractions(me, other, myName, otherName);
+  const ohaengCompare = buildOhaengCompare(me, other, myName, otherName);
+
+  return `당신은 사주명리 전문가입니다. 두 사람의 썸 관계 궁합을 아래 5개 섹션으로 풀이하세요.
 
 [절대 규칙]
-- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- Markdown·이모지 금지. 섹션 제목은 "▶ 제목" 형식으로만.
 - 수치·판정 변경 금지. 흐린 표현 2회 이하.
-- 출력은 [som_gunghap] 마커 한 줄로 시작. 분량: 420~520자.
+- 출력은 [som_gunghap] 마커 한 줄로 시작. 총 분량: 1,400~1,900자.
 
 [${myName} 사주]
 ${buildPersonBlock(me, myName)}
@@ -2374,8 +2567,14 @@ ${buildPersonBlock(other, otherName)}
 ▶ 일간 오행 관계
 ${elRel}
 
-▶ 일지 음양합 (본능적 당김)
+▶ 일지 음양합
 ${eumYangHap}
+
+▶ 두 사람 지지 합·충
+${crossInteractions}
+
+▶ 오행 분포 비교
+${ohaengCompare}
 
 ▶ 초기 끌림 분석
 ${attractionCheck}
@@ -2385,10 +2584,22 @@ ${developmentCheck}
 
 ${METAPHOR_SHORT_GUIDE}
 
-[작성 지침]
-일지 음양합(${eumYangHap})과 초기 끌림 분석(${attractionCheck})으로 두 사람 사이 설렘의 명리적 근거를 먼저 서술하세요.
-관계 발전 가능성(${developmentCheck})을 근거로 이 감정이 연애로 이어질 가능성을 1~2문장으로 서술하세요.
-썸 단계에서 서로 조심해야 할 행동 패턴 1가지와 관계를 더 발전시킬 핵심 조언 1가지로 마무리하세요.
+[작성 지침 — 아래 5개 섹션을 순서대로 작성하세요]
+
+▶ 이 설렘의 정체 (200~260자)
+일지 음양합(${eumYangHap})과 끌림 분석(${attractionCheck})으로 두 사람 사이 설렘의 명리적 근거를 서술하세요. "왜 이 사람이 유독 신경 쓰이는지" 오행·지지합 구조로 설명. 이 끌림이 단순한 호기심인지, 명리적으로 의미 있는 인연인지 판단하세요.
+
+▶ 상대방이 나를 보는 시선 (220~280자)
+상대방의 십성 분포로 ${myName}이 ${otherName}에게 어떻게 보이는지, ${otherName}이 ${myName}에게 어떻게 보이는지 분석하세요. 재성·관성으로 "상대가 나를 이성으로 인식하는지" 판단. 상대방이 마음이 열릴 때 보이는 행동 신호 2가지를 구체적으로 제시하세요.
+
+▶ 연애로 발전할 가능성 (220~280자)
+관계 발전 가능성(${developmentCheck})과 지지 합충 구조(${crossInteractions})를 근거로 썸이 연애로 이어질 명리적 근거와 장애물을 서술하세요. "이 관계가 연애로 발전하려면 무엇이 필요한지" 구체적으로 제시. 발전 가능성 높음/보통/낮음을 명확히 판정하세요.
+
+▶ 썸 단계의 주의사항 (180~240자)
+이 두 사람의 오행·충 구조에서 썸이 끝나버리는 전형적 패턴을 2가지 서술하세요. "이런 행동을 하면 상대가 멀어진다"는 형식으로 구체적으로 묘사. 반대로 "이렇게 하면 상대 마음이 열린다"는 처방도 각각 1가지씩 제시하세요.
+
+▶ 고백 타이밍과 개운법 (160~200자)
+현재 사주 구조에서 고백하기 좋은 상황과 피해야 할 타이밍을 서술하세요. 두 사람이 함께하면 좋은 데이트 장소나 활동(용신 오행 기반), 상대의 마음을 여는 구체적 행동 처방 2가지로 마무리.
 
 [som_gunghap]`;
 };
@@ -2423,12 +2634,31 @@ export const generateSpouseGunghapPrompt = (
     ? '재성 희박 — 경제 관리 의식적으로 체계화 필요'
     : '재성 균형 — 현실적 경제 감각을 공유하는 가정 꾸리기 가능';
 
-  return `당신은 사주명리 전문가입니다. 두 사람의 배우자 궁합을 해석하세요.
+  const crossInteractions = buildCrossJiziInteractions(me, other, myName, otherName);
+  const sipseongCompare = buildGunghapSipseong(me, other, myName, otherName);
+  const ohaengCompare = buildOhaengCompare(me, other, myName, otherName);
+
+  // 자녀 궁합 (식신/상관 여성, 관성 남성)
+  const myCounts2 = computeSipseongCounts(me);
+  const otherCounts2 = computeSipseongCounts(other);
+  const childStar = (() => {
+    const female = me.gender === 'female' ? me : other;
+    const femaleName = me.gender === 'female' ? myName : otherName;
+    const male = me.gender === 'male' ? me : other;
+    const maleName = me.gender === 'male' ? myName : otherName;
+    const fCounts = computeSipseongCounts(female);
+    const mCounts = computeSipseongCounts(male);
+    const fSiksang = (fCounts['식신'] || 0) + (fCounts['상관'] || 0);
+    const mGwan = (mCounts['정관'] || 0) + (mCounts['편관'] || 0);
+    return `${femaleName} 식상(자녀성): ${fSiksang.toFixed(1)}개 / ${maleName} 관성(자녀성): ${mGwan.toFixed(1)}개`;
+  })();
+
+  return `당신은 사주명리 전문가입니다. 두 사람의 배우자 궁합을 아래 8개 섹션으로 풀이하세요.
 
 [절대 규칙]
-- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- Markdown·이모지 금지. 섹션 제목은 "▶ 제목" 형식으로만.
 - 수치·판정 변경 금지. 흐린 표현 2회 이하.
-- 출력은 [spouse_gunghap] 마커 한 줄로 시작. 분량: 460~560자.
+- 출력은 [spouse_gunghap] 마커 한 줄로 시작. 총 분량: 2,000~2,600자.
 
 [${myName} 사주]
 ${buildPersonBlock(me, myName)}
@@ -2439,8 +2669,17 @@ ${buildPersonBlock(other, otherName)}
 ▶ 일간 오행 관계
 ${elRel}
 
-▶ 일지 음양합 (장기 안정감)
+▶ 일지 음양합
 ${eumYangHap}
+
+▶ 두 사람 지지 합·충·형
+${crossInteractions}
+
+▶ 오행 분포 비교
+${ohaengCompare}
+
+▶ 십성 분포 비교
+${sipseongCompare}
 
 ▶ 가정 내 역할 분담
 ${householdRole}
@@ -2448,15 +2687,39 @@ ${householdRole}
 ▶ 경제 궁합
 ${myName} 재성: ${myJaeseong}개 / ${otherName} 재성: ${otherJaeseong}개 → ${financeCheck}
 
-▶ 배우자성 오행 대응
-${myName} 용신(${me.yongSinElement}) vs ${otherName} 기신(${other.giSin}): ${me.yongSinElement === other.giSin ? '충돌 — 장기 관계에서 에너지 소진 패턴 점검 필요' : '충돌 없음'}
+▶ 자녀 궁합
+${childStar}
+
+▶ 용신·기신 충돌
+${myName} 용신(${me.yongSinElement}) vs ${otherName} 기신(${other.giSin}): ${me.yongSinElement === other.giSin ? '충돌 — 장기 에너지 소진 주의' : '충돌 없음'}
 
 ${METAPHOR_SHORT_GUIDE}
 
-[작성 지침]
-가정 내 역할 분담(${householdRole})을 근거로 두 사람이 함께 사는 생활의 기본 구조를 먼저 서술하세요.
-일지 음양합(${eumYangHap})과 오행 관계(${elRel})로 장기 동반자로서의 안정감과 긴장감을 1~2문장으로 서술하세요.
-경제 궁합(${financeCheck})을 실제 가정 상황과 연결해 서술하고, 백년해로를 위한 핵심 처방 1가지로 마무리하세요.
+[작성 지침 — 아래 8개 섹션을 순서대로 빠짐없이 작성하세요]
+
+▶ 핵심 요약 (150~200자)
+두 일간 오행 관계(${elRel})와 일지 음양합(${eumYangHap})으로 이 부부의 관계 구조를 한마디로 선언하세요. "이 두 사람은 ~한 부부다"로 시작. 함께 사는 삶의 전체적 색깔을 1~2문장으로 제시.
+
+▶ 공명과 유대 (180~240자)
+지지 합·삼합(${crossInteractions})과 일간 관계를 근거로 두 사람이 처음 끌렸던 이유, 오랫동안 함께할 수 있는 명리적 근거를 서술하세요. "이 두 사람 사이에 작동하는 보이지 않는 끈"이 무엇인지 구체적으로 묘사.
+
+▶ 오행 상보 관계 (180~240자)
+두 사람의 오행 분포 비교를 근거로 결혼 생활에서 서로가 어떻게 보완하는지 서술하세요. 어느 쪽이 어떤 에너지를 제공하고 받는지, 함께할 때 더 강해지는 오행이 무엇인지 실생활 장면으로 묘사.
+
+▶ 갈등·마찰 포인트 (200~260자)
+결혼 생활에서 반복되는 갈등 패턴 2~3가지를 구체 장면으로 묘사하세요. 지지 충·형·용신 기신 충돌 근거 활용. "왜 이 갈등이 반복되는지" 명리 구조로 설명하고, 각 갈등마다 실용적 처방 1문장씩.
+
+▶ 가정 역할과 생활 방식 (200~260자)
+가정 내 역할 분담(${householdRole})을 근거로 두 사람의 일상 속 역할 구조를 서술하세요. 의사결정 방식, 가사 분담, 갈등 해결 방식에서 각자의 스타일을 십성 분포로 분석. 서로의 차이를 조율하는 핵심 비결 1가지.
+
+▶ 경제·자산 궁합 (180~230자)
+재성 분포(${financeCheck})를 근거로 두 사람의 돈에 대한 태도, 소비·저축 방식을 서술하세요. 재산 관리에서 충돌할 수 있는 포인트와 함께 자산을 쌓는 최적의 방식을 1~2문장으로 제시.
+
+▶ 자녀와 가족 관계 (160~220자)
+자녀성(식상·관성) 분포(${childStar})로 자녀 관계를 분석하세요. 자녀를 키우는 방식에서 두 사람의 차이와 시너지를 서술. 양가 가족과의 관계에서 주의해야 할 점도 1문장 포함.
+
+▶ 개운법·처방 (160~200자)
+이 부부가 함께 행복하게 오래 사는 실용 처방 4가지: 1) 함께하면 운이 오르는 활동·장소, 2) 가정에서 용신 오행 활용법, 3) 반복 갈등 예방을 위한 생활 습관, 4) 이 두 사람이 함께일 때 가장 빛나는 순간.
 
 [spouse_gunghap]`;
 };
@@ -2485,12 +2748,15 @@ export const generateExRelationGunghapPrompt = (
     ? `일지 음양합 성립 — 감정적 재결합 인력 잔재, 재회 후 같은 패턴 반복 주의`
     : `일지 음양합 없음 — 재결합보다 각자 새 출발이 에너지 효율적`;
 
-  return `당신은 사주명리 전문가입니다. 두 사람의 ${label} 관계 궁합을 해석하세요.
+  const crossInteractions = buildCrossJiziInteractions(me, other, myName, otherName);
+  const ohaengCompare = buildOhaengCompare(me, other, myName, otherName);
+
+  return `당신은 사주명리 전문가입니다. 두 사람의 ${label} 관계 궁합을 아래 5개 섹션으로 풀이하세요.
 
 [절대 규칙]
-- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- Markdown·이모지 금지. 섹션 제목은 "▶ 제목" 형식으로만.
 - 수치·판정 변경 금지. 흐린 표현 2회 이하.
-- 출력은 [ex_gunghap] 마커 한 줄로 시작. 분량: 420~520자.
+- 출력은 [ex_gunghap] 마커 한 줄로 시작. 총 분량: 1,400~1,900자.
 
 [${myName} 사주]
 ${buildPersonBlock(me, myName)}
@@ -2501,22 +2767,40 @@ ${buildPersonBlock(other, otherName)}
 ▶ 일간 오행 관계
 ${elRel}
 
-▶ 이별 에너지 분석 (갈등의 명리 구조)
+▶ 두 사람 지지 합·충
+${crossInteractions}
+
+▶ 오행 분포 비교
+${ohaengCompare}
+
+▶ 이별 에너지 분석
 ${conflictCore}
 
-▶ 재결합 인력 여부
+▶ 재결합 인력
 ${reconnectCheck}
 
-▶ 두 사람 기신 충돌
+▶ 기신 충돌
 ${myName} 기신(${me.giSin}) vs ${otherName} 일간(${otherEl}): ${me.giSin === otherEl ? '직접 충돌 — 반복 마찰 패턴' : '직접 충돌 없음'}
 ${otherName} 기신(${other.giSin}) vs ${myName} 일간(${myEl}): ${other.giSin === myEl ? '직접 충돌 — 반복 마찰 패턴' : '직접 충돌 없음'}
 
 ${METAPHOR_SHORT_GUIDE}
 
-[작성 지침]
-이별 에너지 분석(${conflictCore})을 근거로 두 사람이 왜 헤어지게 됐는지 명리적 구조를 먼저 서술하세요.
-재결합 인력(${reconnectCheck})을 솔직하게 평가하고 재회할 경우 반복될 갈등 패턴 1가지를 서술하세요.
-감정 정리를 돕는 실용 조언 1가지로 마무리하세요.
+[작성 지침 — 아래 5개 섹션을 순서대로 작성하세요]
+
+▶ 왜 헤어졌는가 (220~280자)
+이별 에너지 분석(${conflictCore})과 기신 충돌 구조를 근거로 두 사람이 결국 헤어진 명리적 이유를 서술하세요. "단순한 감정 문제가 아닌 사주 구조가 만들어낸 필연적 패턴"으로 설명. 관계 중 반복됐을 갈등 패턴 2가지를 구체 장면으로 묘사하세요.
+
+▶ 그때 서로에게 어떤 존재였나 (200~260자)
+이 관계가 지속됐을 때 두 사람이 서로에게 주었던 것과 빼앗았던 것을 오행·십성 구조로 분석하세요. "이 관계에서 좋았던 점"과 "결국 소진됐던 에너지" 모두 솔직하게 서술. 지지 합 구조(${crossInteractions})가 있다면 "그럼에도 계속 당겼던 이유"로 활용.
+
+▶ 재결합 가능성 (200~260자)
+재결합 인력(${reconnectCheck})을 솔직하게 평가하세요. 재결합할 경우 반드시 반복될 갈등 패턴 2가지를 제시. "재결합이 의미 있는 경우"와 "재결합이 또 다른 상처가 될 경우"를 명리 구조로 구분해 서술하세요. 감정이 아닌 사주로 판단하게 해주세요.
+
+▶ 이 관계에서 배운 것 (160~220자)
+이 이별이 ${myName}의 사주에 어떤 성장의 계기가 됐는지 분석하세요. "이 관계를 통해 강해진 것", "아직 채워야 할 결핍"을 오행·용신 구조로 설명. 다음 인연에서 반복하지 않아야 할 패턴 1가지를 명확히 제시하세요.
+
+▶ 감정 정리와 개운법 (150~200자)
+지금 이 감정을 잘 정리하기 위한 실용 처방 3가지: 1) 용신 오행 기반의 회복 활동, 2) 피해야 할 상황이나 생각 패턴, 3) 다음 인연을 위해 지금 준비해야 할 것. 마지막은 응원의 한 문장으로 마무리하세요.
 
 [ex_gunghap]`;
 };
@@ -2561,12 +2845,14 @@ export const generateBusinessGunghapPrompt = (
     ? '용신·기신 충돌 — 의사결정 갈등 시 에너지 소진 위험'
     : '용신 방향 다름 — 서로 다른 강점으로 보완, 정기 소통 중요';
 
-  return `당신은 사주명리 전문가입니다. 두 사람의 사업 파트너 궁합을 해석하세요.
+  const crossInteractions = buildCrossJiziInteractions(me, other, myName, otherName);
+
+  return `당신은 사주명리 전문가입니다. 두 사람의 사업 파트너 궁합을 아래 5개 섹션으로 풀이하세요.
 
 [절대 규칙]
-- Markdown·이모지 금지. 불릿은 "- " 또는 "· " 만.
+- Markdown·이모지 금지. 섹션 제목은 "▶ 제목" 형식으로만.
 - 수치·판정 변경 금지. 흐린 표현 2회 이하.
-- 출력은 [business_gunghap] 마커 한 줄로 시작. 분량: 420~520자.
+- 출력은 [business_gunghap] 마커 한 줄로 시작. 총 분량: 1,400~1,900자.
 
 [${myName} 사주]
 ${buildPersonBlock(me, myName)}
@@ -2574,8 +2860,11 @@ ${buildPersonBlock(me, myName)}
 [${otherName} 사주]
 ${buildPersonBlock(other, otherName)}
 
-▶ 일간 오행 관계 (사업 에너지)
+▶ 일간 오행 관계
 ${elRel}
+
+▶ 두 사람 지지 합·충
+${crossInteractions}
 
 ▶ 역할 분담 구조
 ${roleDiv}
@@ -2583,20 +2872,31 @@ ${roleDiv}
 ▶ 금전 궁합
 ${myName} 재성: ${myJae}개 / ${otherName} 재성: ${otherJae}개 → ${financeRisk}
 
-▶ 신뢰 에너지 (용신 방향성)
+▶ 신뢰 에너지
 ${trustCheck}
 
-▶ 신강신약 (의사결정 주도권)
-${myName}: ${me.strengthStatus}(${me.isStrong ? '독립적·주도 성향' : '협력·지원 성향'})
-${otherName}: ${other.strengthStatus}(${other.isStrong ? '독립적·주도 성향' : '협력·지원 성향'})
+▶ 신강신약 (의사결정)
+${myName}: ${me.strengthStatus}(${me.isStrong ? '주도 성향' : '협력 성향'}) / ${otherName}: ${other.strengthStatus}(${other.isStrong ? '주도 성향' : '협력 성향'})
 ${me.isStrong && other.isStrong ? '두 사람 모두 신강 — 주도권 충돌 위험, 의사결정 룰 명문화 필요' : ''}
 
 ${METAPHOR_SHORT_GUIDE}
 
-[작성 지침]
-역할 분담 구조(${roleDiv})를 근거로 두 사람의 사업 파트너십 강점을 먼저 서술하세요.
-금전 궁합(${financeRisk})을 근거로 공동 자금 운용의 리스크와 장점을 1~2문장으로 서술하세요.
-사업이 잘 풀리는 조건 1가지와 파트너십 붕괴를 막는 핵심 조언 1가지로 마무리하세요.
+[작성 지침 — 아래 5개 섹션을 순서대로 작성하세요]
+
+▶ 파트너십의 에너지 구조 (180~240자)
+일간 오행 관계(${elRel})와 역할 분담 구조(${roleDiv})를 근거로 두 사람이 함께 사업할 때의 에너지 흐름을 서술하세요. "누가 방향을 잡고 누가 실행하는지", "어떤 분야에서 시너지가 나는지" 구체적으로 묘사. 지지 합(${crossInteractions})이 있다면 파트너십의 강점으로 활용.
+
+▶ 최대 시너지 영역 (200~260자)
+두 사람의 십성 분포와 오행 구조를 근거로 함께 사업할 때 가장 강점이 나오는 분야와 상황을 2~3가지 서술하세요. "이런 프로젝트는 두 사람이 환상의 파트너다"라는 구체적 업무 시나리오로 묘사. 각자의 강점이 합쳐졌을 때 어떤 결과가 나오는지 설명.
+
+▶ 파트너십의 위험 신호 (200~260자)
+이 두 사람이 사업에서 충돌할 수 있는 패턴 2~3가지를 구체 장면으로 묘사하세요. 금전 관리·의사결정·권한 배분에서 명리 구조상 충돌 포인트를 설명. 특히 신강신약 조합에서 주도권 갈등이 어떻게 나타나는지, 미리 방지하는 방법 1가지씩.
+
+▶ 금전과 신뢰 (160~220자)
+금전 궁합(${financeRisk})과 신뢰 에너지(${trustCheck})를 근거로 공동 자금 운용에서 주의해야 할 점을 서술하세요. 돈 문제가 파트너십을 망치는 전형적 패턴과 이를 예방하는 계약·약속의 형식 1가지를 구체적으로 제시.
+
+▶ 사업 파트너십 처방 (140~180자)
+이 파트너십이 성공하는 조건 3가지: 1) 서로의 역할을 명확히 하는 방법, 2) 위기 상황에서 관계를 지키는 원칙, 3) 이 두 사람이 함께라면 가장 잘 해낼 수 있는 사업 분야. 마지막은 이 파트너십의 가능성을 한 문장으로.
 
 [business_gunghap]`;
 };

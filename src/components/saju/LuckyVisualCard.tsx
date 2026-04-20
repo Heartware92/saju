@@ -86,7 +86,7 @@ function CompassSVG({ deg, direction }: { deg: number; direction: string }) {
         <div className="w-[72px] h-[72px] rounded-full border border-white/20 flex items-center justify-center bg-white/5">
           <span className="text-[22px] font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>中</span>
         </div>
-        <span className="text-[11px] text-text-tertiary">중앙이 길합니다</span>
+        <span className="text-[13px] text-text-tertiary">중앙이 길합니다</span>
       </div>
     );
   }
@@ -118,7 +118,7 @@ function CompassSVG({ deg, direction }: { deg: number; direction: string }) {
         </g>
         <circle cx="36" cy="36" r="3.5" fill="white" opacity="0.7" />
       </svg>
-      <span className="text-[11px] text-text-tertiary">{dirShort}쪽이 길합니다</span>
+      <span className="text-[13px] text-text-tertiary">{dirShort}쪽이 길합니다</span>
     </div>
   );
 }
@@ -130,7 +130,7 @@ function ColorSwatch({ name, css }: { name: string; css: string }) {
         className="w-10 h-10 rounded-xl border border-white/15 shadow-inner"
         style={{ background: css }}
       />
-      <span className="text-[11px] text-text-tertiary">{name}</span>
+      <span className="text-[13px] text-text-tertiary">{name}</span>
     </div>
   );
 }
@@ -171,7 +171,7 @@ export function LuckyVisualCard({
         <CompassSVG deg={deg} direction={direction} />
         <div className="w-px h-16 bg-white/10" />
         <div className="flex flex-col items-center gap-2">
-          <span className="text-[10px] text-text-tertiary mb-0.5">행운 색상</span>
+          <span className="text-[12px] text-text-tertiary mb-0.5">행운 색상</span>
           <div className="flex gap-3">
             {swatches.map(c => (
               <ColorSwatch key={c.name} name={c.name} css={c.css} />
@@ -183,7 +183,7 @@ export function LuckyVisualCard({
       {/* 숫자 + 시간대 */}
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-xl p-3 bg-white/5 border border-white/10">
-          <div className="text-[10px] text-text-tertiary mb-1">행운 숫자</div>
+          <div className="text-[12px] text-text-tertiary mb-1">행운 숫자</div>
           <div
             className="text-[22px] font-bold text-text-primary tracking-widest leading-none"
             style={{ fontFamily: 'var(--font-serif)' }}
@@ -192,8 +192,8 @@ export function LuckyVisualCard({
           </div>
         </div>
         <div className="rounded-xl p-3 bg-white/5 border border-white/10">
-          <div className="text-[10px] text-text-tertiary mb-1">유리한 시간대</div>
-          <div className="text-[12px] text-text-primary font-medium leading-snug">{timeSlot || '—'}</div>
+          <div className="text-[12px] text-text-tertiary mb-1">유리한 시간대</div>
+          <div className="text-[14px] text-text-primary font-medium leading-snug">{timeSlot || '—'}</div>
         </div>
       </div>
 
@@ -202,14 +202,14 @@ export function LuckyVisualCard({
         <div className="grid grid-cols-2 gap-2">
           {gem && (
             <div className="rounded-xl p-3 bg-white/5 border border-white/10">
-              <div className="text-[10px] text-text-tertiary mb-1">행운 보석·소품</div>
-              <div className="text-[12px] text-text-primary font-medium">{gem}</div>
+              <div className="text-[12px] text-text-tertiary mb-1">행운 보석·소품</div>
+              <div className="text-[14px] text-text-primary font-medium">{gem}</div>
             </div>
           )}
           {activity && (
             <div className="rounded-xl p-3 bg-white/5 border border-white/10">
-              <div className="text-[10px] text-text-tertiary mb-1">추천 활동</div>
-              <div className="text-[12px] text-text-primary font-medium">{activity}</div>
+              <div className="text-[12px] text-text-tertiary mb-1">추천 활동</div>
+              <div className="text-[14px] text-text-primary font-medium">{activity}</div>
             </div>
           )}
         </div>
@@ -217,7 +217,7 @@ export function LuckyVisualCard({
 
       {/* AI 보조 텍스트 */}
       {extraText && (
-        <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">
+        <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line">
           {extraText}
         </p>
       )}
