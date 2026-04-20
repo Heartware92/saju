@@ -124,20 +124,37 @@ export const sanitizeAIOutput = (raw: string): string => {
  * GPT API 호출 헬퍼 (서버 API Route 경유)
  * - 응답을 sanitize 하여 마크다운·이모지 잔해 제거
  */
+// Vercel 서버 maxDuration=60초와 맞춤. 55초 지나면 클라이언트가 abort.
+const AI_CLIENT_TIMEOUT_MS = 55_000;
+
 const callGPT = async (userPrompt: string, maxTokens: number = 1000): Promise<string> => {
-  const response = await fetch('/api/ai', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt: userPrompt, maxTokens, systemPrompt: SYSTEM_PROMPT }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), AI_CLIENT_TIMEOUT_MS);
 
-  const data = await response.json();
+  try {
+    const response = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: userPrompt, maxTokens, systemPrompt: SYSTEM_PROMPT }),
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    throw new Error(data.error || '분석을 가져오는데 실패했습니다.');
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || '분석을 가져오는데 실패했습니다.');
+    }
+    if (!data.content || typeof data.content !== 'string') {
+      throw new Error('AI 응답이 비어 있습니다. 잠시 후 다시 시도해주세요.');
+    }
+    return sanitizeAIOutput(data.content);
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      throw new Error('응답이 너무 오래 걸려요. 잠시 후 다시 시도해주세요.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return sanitizeAIOutput(data.content);
 };
 
 /**
@@ -358,7 +375,9 @@ export const getZamidusuReading = async (
 ): Promise<ZamidusuAIResult> => {
   try {
     const prompt = generateZamidusuPrompt(z);
-    const content = await callGPT(prompt, 6800);
+    // 8개 섹션 × 평균 300자 = ~2500자 → ~4500 토큰이면 충분.
+    // 기존 6800은 Vercel 타임아웃 유발. 프롬프트도 2500~3200자로 요청하므로 오버헤드 여유 포함.
+    const content = await callGPT(prompt, 4500);
     const sections = parseZamidusuSections(content);
     return { success: true, content, sections };
   } catch (error: any) {
@@ -678,10 +697,8 @@ export const getNewyearReport = async (
     const seWoon = result.seWoon.find(s => s.year === year);
     if (!seWoon) throw new Error(`${year}년 세운 데이터가 없습니다.`);
 
-    const birthYear = new Date(result.solarDate).getFullYear();
-    const ageAtYear = year - birthYear;
     const currentDaeWoon = result.daeWoon.find(
-      d => d.gan && d.zhi && ageAtYear >= d.startAge && ageAtYear <= d.endAge
+      d => d.gan && d.zhi && year >= d.startAge && year <= d.endAge
     ) ?? null;
 
     const domains = fortune.domains.map(d => ({

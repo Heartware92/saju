@@ -359,6 +359,17 @@ export const METAPHOR_KB = `[은유 지식베이스 — 반드시 활용]
 - 귀문관살(鬼門關殺) = 달도 없는 칠흑 같은 밤. 예민한 직관이 깨어나는 시간.
 - 장성살(將星殺) = 밤하늘을 이끄는 가장 밝은 별. 리더십과 독립성의 상징.
 - 반안살(攀鞍殺) = 고생 끝에 안장 위에 오른 별. 역경 후에 안정을 찾아가는 별.
+- 양인살(羊刃殺) = 칼날처럼 예리한 별. 강한 승부욕과 결단력이 빛나지만, 그 날이 자신을 향하면 수술·사고로 연결됩니다.
+- 괴강살(魁罡殺) = 하늘을 혼자 지배하는 북두칠성. 강렬한 카리스마와 리더십, 타협을 모르는 결단력이 특징입니다.
+- 화개살(華蓋殺) = 홀로 빛나는 외로운 별. 종교·학문·예술의 재능이 뛰어나지만 군중보다 고독한 탐구를 선호합니다.
+- 홍염살(紅艶殺) = 붉은 노을빛을 품은 별. 강렬한 이성 매력으로 사람을 끌어당기며, 연애와 결혼에 큰 영향을 줍니다.
+- 현침살(懸針殺) = 바늘처럼 날카롭게 빛나는 별. 예리한 지성과 분석력, 섬세한 감수성이 강점이며 의료·법률·기술 분야에 유리합니다.
+- 겁살(劫殺) = 갑자기 구름이 달을 가리는 것. 예상치 못한 재물 손실이나 도난 기운이 있어 방심 금물.
+- 망신살(亡身殺) = 별빛이 엉뚱한 방향으로 흩어지는 것. 실수나 구설로 체면을 잃기 쉬운 기운, 언행 신중이 최선.
+- 재살(災殺) = 하늘에서 갑자기 내리치는 번개. 갑작스러운 사고·재난의 기운이 있어 안전 주의가 필요합니다.
+- 천살(天殺) = 높은 하늘에서 내려오는 차가운 서리. 하늘의 뜻에 저항하기 어려운 기운으로, 순리를 따르는 것이 상책.
+- 월살(月殺) = 달빛이 방해를 받아 어두워지는 것. 시작한 일에 장애가 생기기 쉬운 기운, 새 사업·이사에 주의.
+- 육해살(六害殺) = 두 별이 서로의 빛을 갉아먹는 것. 주변의 보이지 않는 방해나 시기를 주의해야 합니다.
 
 전왕법(專旺法) — 흐름을 따라가는 용신:
 - 전왕 = 한 방향의 물살이 너무 강해 막으면 터집니다. 흐름을 따라가는 것이 용신.
@@ -390,7 +401,14 @@ export const METAPHOR_KB = `[은유 지식베이스 — 반드시 활용]
 - 정관 병존: 원칙·책임 과잉 → 융통성 부족, 완벽주의.
 - 편인 병존: 학문·예술 심취 → 고독·편향, 세상과 거리 둠.
 - 정인 병존: 명예·공부 집착 → 의존성·수동성, 타인 평가에 민감.
-- 서술 팁: 병존·삼존이 있으면 해당 십성 특성을 극단적으로 증폭해 서술. "같은 별이 두 개 떠오른 밤" 등 은유 활용.`;
+- 서술 팁: 병존·삼존이 있으면 해당 십성 특성을 극단적으로 증폭해 서술. "같은 별이 두 개 떠오른 밤" 등 은유 활용.
+
+지장간(支藏干) 3주기신(三柱氣神) 해석 규칙:
+- 지장간 배열 순서: [정기(본기), 중기, 여기] — 왼쪽이 가장 강한 기운.
+- 정기(본기): 해당 지지가 가진 핵심 에너지. 격국 판정의 기준이 되며 무게 약 50%. "가장 밝게 빛나는 별"로 서술.
+- 중기: 정기를 보좌하는 2차 에너지. 무게 약 30%. "정기의 그림자 속에서 때를 기다리는 별"로 서술.
+- 여기: 이전 절기에서 넘어온 잔여 에너지. 무게 약 20%. "물러가는 계절이 남긴 마지막 빛"으로 서술.
+- 서술 팁: "인(寅)의 지장간 갑·병·무 중 갑(정기)이 이 기둥의 중심 에너지이며" 처럼 정기를 명시하고 나머지는 부연. 단, 월지 지장간이 천간에 투출(透出)된 경우 그 투출간이 격국의 핵심이 됨.`;
 
 /**
  * 은유 제목 작성 규칙 — 모든 섹션·단락의 첫 줄에 은유 제목을 붙이는 공통 규칙.
@@ -545,7 +563,7 @@ export const generateDetailedPrompt = (result: SajuResult): string => {
 ${pillarLine}
 오행: 목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%
 ${isStrong ? '신강' : '신약'}, 용신: ${yongSinElement}(${yongSin})
-격국: ${gyeokguk.name}${gyeokguk.nameHanja ? `(${gyeokguk.nameHanja})` : ''} — ${gyeokguk.type}
+격국: ${gyeokguk.name}${gyeokguk.nameHanja ? `(${gyeokguk.nameHanja})` : ''} — ${gyeokguk.type} (판정 근거: ${gyeokguk.reason})
 격국 성패: ${gyeokgukStatus.isSuccessful ? '성격(成格)' : '패격(敗格)'} — ${gyeokgukStatus.analysis}
 십성 분포: ${sipseong}
 성별: ${gender === 'male' ? '남성' : '여성'}
@@ -848,7 +866,7 @@ ${pillarDetailBlock}
 ${elementNoteBlock}
 ${strengthBlock}
 용신: ${yongSinElement}(${yongSin})  희신: ${result.heeSin}  기신: ${result.giSin}${result.strengthScore >= 85 || result.strengthScore <= 15 ? `  ★전왕법 적용(점수 ${result.strengthScore}) — 억부 역전 주의` : ''}
-격국: ${gyeokguk.name}
+격국: ${gyeokguk.name} (판정 근거: ${gyeokguk.reason})
 십성 분포: ${sipseong}
 신살·길성: ${sinSalStr}
 합충형파해: ${interactionStr}
@@ -1106,7 +1124,7 @@ ${pillarLine}
 오행: 목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%
 신강신약: ${isStrong ? '신강' : '신약'}
 용신: ${yongSinElement}(${yongSin})  희신: ${result.heeSin}  기신: ${result.giSin}
-격국: ${gyeokguk.name}
+격국: ${gyeokguk.name} (판정 근거: ${gyeokguk.reason})
 십성 분포: ${sipseong}
 간여지동: ${formatGanYeojidong(result)} / 병존·삼존: ${formatByeongjOn(result)}
 성별: ${gender === 'male' ? '남성' : '여성'}${hourNote}
@@ -1475,33 +1493,33 @@ ${METAPHOR_SHORT_GUIDE}
 
 반드시 전통 토정비결 어법(예: "용이 여의주를 얻은 격", "나무에 꽃이 피는 상")으로 시(詩)적인 개운 문구 1~2줄을 먼저 제시한 뒤, 현대인도 이해하기 쉽게 풀어 설명하세요.
 
-### 올해의 총운 (220~280자)
+1. 올해의 총운 (220~280자)
 - 상중하괘 조합의 상징을 엮어 한 해의 큰 흐름 (등급: ${entry.grade})
 - 핵심 메시지와 경계할 점, 이 한 해의 결이 어떤 감각인지
 
-### 괘의 의미 (180~240자)
+2. 괘의 의미 (180~240자)
 - 왜 이 괘가 나왔는지 상징 해석
 - 상괘(${upperGwae.name})·중괘(${middleGwae.position})·하괘(${lowerGwae.name})의 조화와 긴장
 
-### 월별 운세 (1월~12월, 각 월 3~4문장·약 90~130자)
-- 각 월의 **키워드**(위 월별 키워드 고정)를 근거로 1문장 풀이
+3. 월별 운세 (1월~12월, 각 월 3~4문장·약 90~130자)
+- 각 월의 키워드(위 월별 키워드 고정)를 근거로 1문장 풀이
 - 그 달에 해야 할 일 1가지 + 조심할 일 1가지를 반드시 포함
-- 포맷: "### N월 — [월별 키워드]" 이어서 본문
-- 정월부터 12월까지 **빠짐없이 12개 소섹션**으로 작성
+- 포맷: "N월 — [월별 키워드]" 이어서 본문 (예: "1월 — 준비")
+- 정월부터 12월까지 빠짐없이 12개 소섹션으로 작성
 
-### 분야별 운세 (각 3~4문장)
-- **재물운**: 들어오는 시기·새는 시기 구분 + 재테크 방향 1개
-- **애정/가정운**: 연애·부부·가족 중 이달 테마 + 주의 장면 1개
-- **건강운**: 취약 장부 + 유의할 계절·습관
-- **직장/학업운**: 승진·이직·시험·자격 중 유리한 흐름 1개 + 조심할 덫 1개
+4. 분야별 운세 (각 3~4문장)
+- 재물운: 들어오는 시기·새는 시기 구분 + 재테크 방향 1개
+- 애정/가정운: 연애·부부·가족 중 이달 테마 + 주의 장면 1개
+- 건강운: 취약 장부 + 유의할 계절·습관
+- 직장/학업운: 승진·이직·시험·자격 중 유리한 흐름 1개 + 조심할 덫 1개
 
-### 개운 조언 (140~200자) — 불릿 5개
+5. 개운 조언 (140~200자) — 불릿 5개
 - 올해의 길한 방향 1개
 - 길한 색 2개
 - 행운 숫자·요일 각 1개
 - 이달 안에 실천할 개운 행동 2개
 
-반드시 "###" 헤더를 그대로 유지하고, 월별 소섹션은 **12개를 모두** 작성하세요.`;
+섹션 제목은 위 번호(1. 2. 3. 4. 5.) 형식 그대로 유지하고, 월별 소섹션은 12개를 모두 작성하세요. Markdown # 헤더는 절대 사용하지 마세요.`;
 };
 
 /**
@@ -2941,17 +2959,17 @@ export function buildConsultationSystemPrompt(
   const today = new Date().toISOString().slice(0, 10);
   const currentMonth = new Date().getMonth() + 1;
 
-  // 대운 — 생일 반영한 만나이로 매칭
-  const now = new Date();
-  const birth = new Date(profile.birth_date);
-  let currentAge = now.getFullYear() - birth.getFullYear();
-  const monthDiff = now.getMonth() - birth.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
-    currentAge--;
-  }
-  const currentDaeWoon = saju.daeWoon.find(d => currentAge >= d.startAge && currentAge <= d.endAge);
+  // 대운 — startAge/endAge는 연도(year)이므로 currentYear로 비교
+  const _now = new Date();
+  const _birth = new Date(profile.birth_date);
+  let currentAge = _now.getFullYear() - _birth.getFullYear();
+  const _md = _now.getMonth() - _birth.getMonth();
+  if (_md < 0 || (_md === 0 && _now.getDate() < _birth.getDate())) currentAge--;
+  const currentYear_consult = _now.getFullYear();
+  const birthYear_consult = _birth.getFullYear();
+  const currentDaeWoon = saju.daeWoon.find(d => currentYear_consult >= d.startAge && currentYear_consult <= d.endAge);
   const daeWoonStr = currentDaeWoon
-    ? `${currentDaeWoon.gan}${currentDaeWoon.zhi} (${currentDaeWoon.startAge}세~${currentDaeWoon.endAge}세, 현재 · ${currentDaeWoon.tenGod})`
+    ? `${currentDaeWoon.gan}${currentDaeWoon.zhi} (${currentDaeWoon.startAge}~${currentDaeWoon.endAge}년, ${currentDaeWoon.startAge - birthYear_consult}~${currentDaeWoon.endAge - birthYear_consult}세, 현재 · ${currentDaeWoon.tenGod})`
     : saju.daeWoon.length === 0
     ? '대운 데이터 없음 (시간미상 프로필)'
     : `대운 전 상태 (첫 대운은 ${saju.daeWoonStartAge}세부터 시작)`;

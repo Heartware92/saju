@@ -120,17 +120,32 @@ const STEP_LABELS: Record<Step, string> = {
 };
 
 // ──────────────────────────────────────────────
-// GPT 호출
+// GPT 호출 (55초 타임아웃 + 빈 응답 방어)
 // ──────────────────────────────────────────────
 async function callGunghapGPT(prompt: string): Promise<string> {
-  const res = await fetch('/api/ai', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, maxTokens: 900, systemPrompt: SYSTEM_PROMPT }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || '분석 실패');
-  return sanitizeAIOutput(data.content);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 55_000);
+  try {
+    const res = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, maxTokens: 900, systemPrompt: SYSTEM_PROMPT }),
+      signal: controller.signal,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '분석 실패');
+    if (!data.content || typeof data.content !== 'string') {
+      throw new Error('AI 응답이 비어 있습니다. 잠시 후 다시 시도해주세요.');
+    }
+    return sanitizeAIOutput(data.content);
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      throw new Error('응답이 너무 오래 걸려요. 잠시 후 다시 시도해주세요.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 // ──────────────────────────────────────────────

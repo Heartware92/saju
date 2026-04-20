@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Vercel Serverless 기본 10초 → 60초로 확장 (자미두수 등 장문 응답 대응)
+export const maxDuration = 60;
+
 // ── Claude (Anthropic) API ──────────────────────────────────────────────────
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
@@ -60,7 +63,9 @@ async function callGemini(
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: maxTokens,
-        thinkingConfig: { thinkingBudget: 1024 },
+        // Gemini 2.5-flash 기본 thinking 비활성 — 장문 응답에서 TTFB + 총 latency 과대
+        // 추가 thinking이 필요한 프롬프트는 maxTokens로 감당
+        thinkingConfig: { thinkingBudget: 0 },
       },
     }),
   });

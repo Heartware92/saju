@@ -103,15 +103,40 @@ export default function ZamidusuResultPage() {
     return chart ? buildZamidusuReading(chart) : null;
   }, [chart]);
 
-  // 명반 계산 완료되면 AI 풀이 호출
+  // 명반 계산 완료되면 AI 풀이 호출 (55초 타임아웃 — Vercel 60초 전에 종료)
   useEffect(() => {
     if (!chart || aiResult || aiLoading) return;
     let cancelled = false;
     setAiLoading(true);
+
+    const timeoutId = setTimeout(() => {
+      if (cancelled) return;
+      setAiResult({
+        success: false,
+        error: '응답이 너무 오래 걸려요. 잠시 후 다시 시도해주세요.',
+      });
+      setAiLoading(false);
+    }, 55_000);
+
     getZamidusuReading(chart)
-      .then(r => { if (!cancelled) setAiResult(r); })
-      .finally(() => { if (!cancelled) setAiLoading(false); });
-    return () => { cancelled = true; };
+      .then(r => {
+        if (cancelled) return;
+        clearTimeout(timeoutId);
+        setAiResult(r);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        clearTimeout(timeoutId);
+        setAiResult({ success: false, error: err?.message || 'AI 풀이 실패' });
+      })
+      .finally(() => {
+        if (!cancelled) setAiLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
   }, [chart, aiResult, aiLoading]);
 
   // ── 시간 미상 가드 ──
@@ -215,6 +240,12 @@ export default function ZamidusuResultPage() {
   }
 
   const sections = aiResult?.sections ?? {};
+  const aiFailed = !!aiResult && !aiResult.success;
+
+  const retryAI = () => {
+    setAiResult(null);
+    setAiLoading(false); // effect가 재실행되면서 다시 true로 전환됨
+  };
 
   return (
     <div className={styles.container}>
@@ -235,6 +266,39 @@ export default function ZamidusuResultPage() {
       </div>
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+
+        {/* AI 풀이 실패 배너 + 재시도 */}
+        {aiFailed && (
+          <div
+            className={styles.section}
+            style={{
+              background: 'rgba(248,113,113,0.08)',
+              border: '1px solid rgba(248,113,113,0.35)',
+            }}
+          >
+            <p style={{ fontSize: 13, color: '#F87171', fontWeight: 600, marginBottom: 6 }}>
+              별자리 풀이를 불러오지 못했어요
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+              {aiResult?.error || '잠시 후 다시 시도해주세요.'} 아래 명반 자체는 정상적으로 계산되어 있어 바로 확인할 수 있어요.
+            </p>
+            <button
+              onClick={retryAI}
+              style={{
+                padding: '8px 16px',
+                background: 'var(--cta-primary)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              다시 풀이받기
+            </button>
+          </div>
+        )}
 
         {/* 자미두수란? 안내 카드 (접기·펼치기) */}
         <div className={styles.section} style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)' }}>

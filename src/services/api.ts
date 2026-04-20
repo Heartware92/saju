@@ -72,7 +72,7 @@ export const generateSajuPrompt = (
     : '특별한 합충형파해 없음';
 
   const daeWoonStr = daeWoon.slice(0, 8).map(d =>
-    `${d.startAge}~${d.endAge}세: ${d.gan}${d.zhi}(${d.tenGod}, ${d.twelveStage})`
+    `${d.startAge}~${d.endAge}년: ${d.gan}${d.zhi}(${d.tenGod}, ${d.twelveStage})`
   ).join(' → ');
 
   const seWoonStr = seWoon.slice(0, 3).map(s =>

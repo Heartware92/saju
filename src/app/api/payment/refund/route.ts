@@ -27,20 +27,20 @@ interface RefundRequestBody {
 
 export async function POST(req: NextRequest) {
   try {
-    if (!PORTONE_API_SECRET) {
-      return NextResponse.json(
-        { success: false, error: 'PortOne API secret is not configured.' },
-        { status: 500 }
-      );
-    }
-
-    // 사용자 인증 — Supabase access token 필요
+    // 사용자 인증 — 서버 설정 누출 방지 위해 auth 먼저 확인
     const authHeader = req.headers.get('authorization') ?? '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
     if (!token) {
       return NextResponse.json(
         { success: false, error: '로그인이 필요합니다.' },
         { status: 401 }
+      );
+    }
+
+    if (!PORTONE_API_SECRET) {
+      return NextResponse.json(
+        { success: false, error: 'PortOne API secret is not configured.' },
+        { status: 500 }
       );
     }
 
