@@ -49,6 +49,8 @@ const CONVERSATIONS_KEY = (profileId: string) => `sangdamso:conversations:${prof
 const ACTIVE_KEY = (profileId: string) => `sangdamso:active:${profileId}`;
 // 레거시 — 단일 히스토리(v1). 로드 시 conversations[0] 으로 마이그레이션 후 삭제.
 const LEGACY_HISTORY_KEY = (profileId: string) => `sangdamso:history:${profileId}`;
+// 기기 저장 안내 배너 — 최초 1회
+const STORAGE_NOTICE_KEY = 'sangdamso:storage-notice-dismissed';
 
 const MAX_CONVERSATIONS_PER_PROFILE = 20;
 const MAX_MESSAGES_PER_CONVERSATION = 50;
@@ -108,6 +110,7 @@ export default function ConsultationPage() {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [storageBannerVisible, setStorageBannerVisible] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -139,6 +142,13 @@ export default function ConsultationPage() {
       fetchBalance();
     }
   }, [user, fetchProfiles, fetchBalance]);
+
+  // 기기 저장 안내 배너 — 최초 1회
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const dismissed = localStorage.getItem(STORAGE_NOTICE_KEY);
+    if (!dismissed) setStorageBannerVisible(true);
+  }, []);
 
   // 기본 프로필 자동 선택
   useEffect(() => {
@@ -637,6 +647,34 @@ export default function ConsultationPage() {
         </div>
       </div>
 
+      {/* ── 기기 저장 안내 배너 (최초 1회) ── */}
+      <AnimatePresence>
+        {storageBannerVisible && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="mx-4 mt-2 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-2.5"
+          >
+            <span className="text-amber-400 text-[14px] mt-0.5 flex-shrink-0">⚠</span>
+            <p className="text-[12px] text-amber-200/80 leading-relaxed flex-1">
+              대화 내역은 <span className="font-semibold text-amber-300">이 기기에만</span> 저장됩니다. 다른 기기나 브라우저에서는 보이지 않으며, 브라우저 데이터를 지우면 사라질 수 있어요.
+            </p>
+            <button
+              onClick={() => {
+                setStorageBannerVisible(false);
+                localStorage.setItem(STORAGE_NOTICE_KEY, '1');
+              }}
+              className="flex-shrink-0 text-amber-400/60 hover:text-amber-400 text-[16px] leading-none mt-0.5"
+              aria-label="닫기"
+            >
+              ×
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── 메시지 영역 ── */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
 
@@ -652,6 +690,9 @@ export default function ConsultationPage() {
               </p>
               <p className="text-[11px] text-text-tertiary mt-3">
                 💡 더 정확한 답변을 위해 상단의 <span className="text-cta">상태 수정</span>에서 연애상태와 직업을 입력해보세요.
+              </p>
+              <p className="text-[11px] text-text-tertiary/60 mt-2 border-t border-white/5 pt-2">
+                대화 내역은 이 기기에만 저장되며, 다른 기기나 브라우저에서는 보이지 않아요.
               </p>
             </div>
 
