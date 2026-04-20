@@ -134,7 +134,8 @@ export async function POST(request: NextRequest) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
+          // CRLF → LF 정규화 (Gemini SSE는 \r\n\r\n 사용)
+          buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
 
           // SSE 프레임(`data: {...}\n\n`) 단위로 분리
           let idx: number;
