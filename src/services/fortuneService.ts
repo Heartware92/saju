@@ -387,9 +387,9 @@ export const getZamidusuReading = async (
 ): Promise<ZamidusuAIResult> => {
   try {
     const prompt = generateZamidusuPrompt(z);
-    // 8개 섹션 × 평균 300자 = ~2500자 → ~4500 토큰이면 충분.
-    // 기존 6800은 Vercel 타임아웃 유발. 프롬프트도 2500~3200자로 요청하므로 오버헤드 여유 포함.
-    const content = await callGPT(prompt, 4500);
+    // 4500 → 3500 하향. 8섹션 × 평균 250자 = 2000자면 충분.
+    // 장문일수록 Vercel 60초 타임아웃 + 55초 클라이언트 abort 위험 증가.
+    const content = await callGPT(prompt, 3500);
     const sections = parseZamidusuSections(content);
     return { success: true, content, sections };
   } catch (error: any) {

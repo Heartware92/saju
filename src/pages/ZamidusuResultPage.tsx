@@ -10,7 +10,7 @@
  * URL: /saju/zamidusu?year=1990&month=1&day=1&hour=12&gender=male&calendarType=solar
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -103,9 +103,14 @@ export default function ZamidusuResultPage() {
     return chart ? buildZamidusuReading(chart) : null;
   }, [chart]);
 
-  // 명반 계산 완료되면 AI 풀이 호출 (55초 타임아웃 — Vercel 60초 전에 종료)
+  // 명반 계산 완료되면 AI 풀이 호출 (45초 하드 타임아웃 — 어떤 경우든 로딩 해제 보장)
+  // useRef 가드로 StrictMode·재렌더에서 중복 호출 방지
+  const aiStartedRef = useRef(false);
   useEffect(() => {
-    if (!chart || aiResult || aiLoading) return;
+    if (!chart) return;
+    if (aiStartedRef.current) return;
+    aiStartedRef.current = true;
+
     let cancelled = false;
     setAiLoading(true);
 
@@ -113,31 +118,30 @@ export default function ZamidusuResultPage() {
       if (cancelled) return;
       setAiResult({
         success: false,
-        error: '응답이 너무 오래 걸려요. 잠시 후 다시 시도해주세요.',
+        error: '응답이 너무 오래 걸려요. 아래 명반은 정상이니 확인하시고, 풀이는 다시 시도해주세요.',
       });
       setAiLoading(false);
-    }, 55_000);
+    }, 45_000);
 
     getZamidusuReading(chart)
       .then(r => {
         if (cancelled) return;
         clearTimeout(timeoutId);
         setAiResult(r);
+        setAiLoading(false);
       })
       .catch(err => {
         if (cancelled) return;
         clearTimeout(timeoutId);
         setAiResult({ success: false, error: err?.message || 'AI 풀이 실패' });
-      })
-      .finally(() => {
-        if (!cancelled) setAiLoading(false);
+        setAiLoading(false);
       });
 
     return () => {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [chart, aiResult, aiLoading]);
+  }, [chart]);
 
   // ── 시간 미상 가드 ──
   if (hourUnknown) {
@@ -215,15 +219,15 @@ export default function ZamidusuResultPage() {
     return <div className={styles.loading}>{error}</div>;
   }
 
-  // ── 풀스크린 로딩: 명반 계산 또는 AI 풀이 대기 중 ──
-  if (!chart || aiLoading) {
+  // ── 명반만 계산 중일 때 풀스크린 로딩 (AI 호출은 별도 inline 로딩) ──
+  if (!chart) {
     return (
       <AILoadingBar
         label="자미두수 명반을 펼치는 중"
-        minLabel="15초"
-        maxLabel="40초"
-        estimatedSeconds={25}
-        messages={LOADING_MESSAGES}
+        minLabel="5초"
+        maxLabel="15초"
+        estimatedSeconds={8}
+        messages={['12궁 배치를 계산하는 중입니다', '주성·보좌성을 찾는 중입니다', '명주·오행국을 읽는 중입니다']}
         topContent={
           <motion.div
             animate={{ opacity: [0.5, 1, 0.5] }}
@@ -243,8 +247,23 @@ export default function ZamidusuResultPage() {
   const aiFailed = !!aiResult && !aiResult.success;
 
   const retryAI = () => {
+    aiStartedRef.current = false;
     setAiResult(null);
-    setAiLoading(false); // effect가 재실행되면서 다시 true로 전환됨
+    setAiLoading(false);
+    // effect가 chart 의존성이라 chart 여전히 같으면 재실행 안 됨 → 강제로 state 초기화 후
+    // 즉시 수동 재호출
+    if (!chart) return;
+    aiStartedRef.current = true;
+    setAiLoading(true);
+    getZamidusuReading(chart)
+      .then(r => {
+        setAiResult(r);
+        setAiLoading(false);
+      })
+      .catch(err => {
+        setAiResult({ success: false, error: err?.message || 'AI 풀이 실패' });
+        setAiLoading(false);
+      });
   };
 
   return (
@@ -411,6 +430,32 @@ export default function ZamidusuResultPage() {
             );
           })()}
         </AnimatePresence>
+
+        {/* AI 풀이 진행 중 인라인 로딩 */}
+        {aiLoading && (
+          <div
+            className={styles.section}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              padding: '24px 16px',
+              gap: 10,
+            }}
+          >
+            <div style={{ display: 'flex', gap: 6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cta-primary)' }} className="animate-pulse" />
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cta-primary)', animationDelay: '0.2s' }} className="animate-pulse" />
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cta-primary)', animationDelay: '0.4s' }} className="animate-pulse" />
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
+              별자리 속 이야기를 엮는 중입니다... (최대 45초)
+            </p>
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0, opacity: 0.7 }}>
+              명반은 이미 완성됐으니 위에서 먼저 확인하실 수 있어요.
+            </p>
+          </div>
+        )}
 
         {/* AI 풀이 — 섹션별 은유 헤드라인으로 카드화 */}
         {ZAMIDUSU_SECTION_KEYS.map((key) => {

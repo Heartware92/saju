@@ -23,7 +23,6 @@ import {
 } from '../engine/taekil';
 import { getTaekilAdvice } from '../services/fortuneService';
 import styles from './SajuResultPage.module.css';
-import { AILoadingBar } from '../components/AILoadingBar';
 
 const GRADE_COLOR: Record<TaekilGrade, string> = {
   '대길': '#34D399',
@@ -71,20 +70,26 @@ export default function TaekilPage() {
   // 카테고리 선택
   const [category, setCategory] = useState<TaekilCategory>('general');
 
-  // 월 네비게이션
+  // 오늘/연도 제한 — 오늘 연도 ~ +5년 범위만 허용
   const today = new Date();
-  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const todayYear = today.getFullYear();
+  const MAX_YEAR = todayYear + 5;
+  const MIN_YEAR = todayYear;
+
+  // 연·월 네비게이션 (연 ◀▶, 월은 12개 버튼)
+  const [viewYear, setViewYear] = useState(todayYear);
   const [viewMonth, setViewMonth] = useState(today.getMonth() + 1);
 
   // 택일 결과
   const [result, setResult] = useState<TaekilResult | null>(null);
   const [selectedDay, setSelectedDay] = useState<TaekilDay | null>(null);
 
-  // AI 추천
+  // AI 추천 — 자동 호출 X, 날짜 선택 후 수동 버튼 트리거
   const [aiAdvice, setAiAdvice] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
-  // 월 변경 시 자동 계산
+  // 연/월/카테고리 변경 시 자동으로 캘린더 재계산
   const compute = useCallback(() => {
     if (!saju) return;
     const start = `${viewYear}-${String(viewMonth).padStart(2, '0')}-01`;
@@ -94,30 +99,37 @@ export default function TaekilPage() {
     setResult(r);
     setSelectedDay(null);
     setAiAdvice(null);
+    setAiError(null);
   }, [saju, viewYear, viewMonth, category]);
-
-  // 결과 나오면 AI 추천 자동 호출
-  useEffect(() => {
-    if (!saju || !result || aiAdvice || aiLoading) return;
-    let cancelled = false;
-    setAiLoading(true);
-    getTaekilAdvice(saju, result)
-      .then(r => { if (!cancelled && r.success) setAiAdvice(r.advice ?? null); })
-      .finally(() => { if (!cancelled) setAiLoading(false); });
-    return () => { cancelled = true; };
-  }, [result, saju]);
 
   useEffect(() => {
     compute();
   }, [compute]);
 
-  const prevMonth = () => {
-    if (viewMonth === 1) { setViewYear(y => y - 1); setViewMonth(12); }
-    else setViewMonth(m => m - 1);
+  // 연도 네비 (월 단위 X, 연 단위)
+  const prevYear = () => {
+    if (viewYear > MIN_YEAR) setViewYear(y => y - 1);
   };
-  const nextMonth = () => {
-    if (viewMonth === 12) { setViewYear(y => y + 1); setViewMonth(1); }
-    else setViewMonth(m => m + 1);
+  const nextYear = () => {
+    if (viewYear < MAX_YEAR) setViewYear(y => y + 1);
+  };
+
+  // 수동 AI 트리거
+  const handleRequestAI = async () => {
+    if (!saju || !result || aiLoading) return;
+    setAiError(null);
+    setAiLoading(true);
+    try {
+      const r = await getTaekilAdvice(saju, result);
+      if (!r.success || !r.advice) {
+        throw new Error(r.error || '길일 분석을 가져오지 못했어요.');
+      }
+      setAiAdvice(r.advice);
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : '오류가 발생했어요.');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   // 캘린더 그리드 데이터
@@ -223,23 +235,98 @@ export default function TaekilPage() {
 
           {/* 캘린더 */}
           <div className={styles.section}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <button onClick={prevMonth} style={{
-                background: 'var(--space-elevated)', border: '1px solid var(--border-subtle)',
-                borderRadius: '8px', padding: '6px 12px', color: 'var(--text-primary)',
-                cursor: 'pointer', fontSize: '16px', fontWeight: 700,
-              }}>
+            {/* 연도 네비게이션 (오늘 ~ +5년 범위) */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <button
+                onClick={prevYear}
+                disabled={viewYear <= MIN_YEAR}
+                style={{
+                  background: 'var(--space-elevated)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '8px', padding: '8px 16px',
+                  color: viewYear <= MIN_YEAR ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                  cursor: viewYear <= MIN_YEAR ? 'not-allowed' : 'pointer',
+                  fontSize: '16px', fontWeight: 700,
+                  opacity: viewYear <= MIN_YEAR ? 0.4 : 1,
+                }}
+              >
                 ◀
               </button>
-              <h2 style={{ margin: 0 }}>{viewYear}년 {viewMonth}월</h2>
-              <button onClick={nextMonth} style={{
-                background: 'var(--space-elevated)', border: '1px solid var(--border-subtle)',
-                borderRadius: '8px', padding: '6px 12px', color: 'var(--text-primary)',
-                cursor: 'pointer', fontSize: '16px', fontWeight: 700,
-              }}>
+              <h2 style={{ margin: 0, fontSize: 20, fontFamily: 'var(--font-serif)' }}>
+                {viewYear}년
+              </h2>
+              <button
+                onClick={nextYear}
+                disabled={viewYear >= MAX_YEAR}
+                style={{
+                  background: 'var(--space-elevated)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '8px', padding: '8px 16px',
+                  color: viewYear >= MAX_YEAR ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                  cursor: viewYear >= MAX_YEAR ? 'not-allowed' : 'pointer',
+                  fontSize: '16px', fontWeight: 700,
+                  opacity: viewYear >= MAX_YEAR ? 0.4 : 1,
+                }}
+              >
                 ▶
               </button>
             </div>
+
+            {/* 월 선택 12개 버튼 */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(6, 1fr)',
+                gap: '4px',
+                marginBottom: '14px',
+              }}
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
+                const isCurrent = m === viewMonth;
+                const isPast = viewYear === todayYear && m < today.getMonth() + 1;
+                return (
+                  <button
+                    key={m}
+                    onClick={() => !isPast && setViewMonth(m)}
+                    disabled={isPast}
+                    style={{
+                      padding: '8px 4px',
+                      borderRadius: 8,
+                      border: isCurrent
+                        ? '1.5px solid var(--cta-primary)'
+                        : '1px solid var(--border-subtle)',
+                      background: isCurrent
+                        ? 'rgba(232,164,144,0.18)'
+                        : isPast
+                        ? 'rgba(20,12,38,0.3)'
+                        : 'var(--space-elevated)',
+                      color: isCurrent
+                        ? 'var(--cta-primary)'
+                        : isPast
+                        ? 'var(--text-tertiary)'
+                        : 'var(--text-primary)',
+                      fontSize: 13,
+                      fontWeight: isCurrent ? 700 : 500,
+                      cursor: isPast ? 'not-allowed' : 'pointer',
+                      opacity: isPast ? 0.4 : 1,
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {m}월
+                  </button>
+                );
+              })}
+            </div>
+
+            <p style={{
+              fontSize: 11,
+              color: 'var(--text-tertiary)',
+              textAlign: 'center',
+              marginBottom: 10,
+              opacity: 0.7,
+            }}>
+              오늘부터 최대 5년까지 조회 가능해요
+            </p>
 
             {/* 요일 헤더 */}
             <div style={{
@@ -436,42 +523,106 @@ export default function TaekilPage() {
             </div>
           )}
 
-          {/* AI 추천 내러티브 */}
-          {(aiLoading || aiAdvice) && (
-            <div style={{ marginTop: '20px' }}>
-              <div style={{
-                fontSize: '13px', fontWeight: 700,
-                color: 'var(--text-primary)', marginBottom: '10px',
-              }}>
-                AI 길일 추천
-              </div>
-              {aiLoading ? (
-                <div style={{ padding: '4px 0' }}>
-                  <AILoadingBar
-                    inline
-                    label="길일 명리 분석중"
-                    minLabel="10초"
-                    maxLabel="30초"
-                    estimatedSeconds={20}
-                    messages={['날짜별 오행 기운을 계산하는 중입니다', '원국과의 합충을 분석하는 중입니다', '최적의 길일을 선별하는 중입니다']}
-                  />
-                </div>
-              ) : aiAdvice ? (
-                <div style={{
-                  padding: '16px',
-                  background: 'rgba(20,12,38,0.55)',
-                  borderRadius: '16px',
-                  border: '1px solid var(--border-subtle)',
-                  fontSize: '13px',
-                  color: 'var(--text-secondary)',
-                  lineHeight: 1.7,
-                  whiteSpace: 'pre-line',
-                }}>
-                  {aiAdvice}
-                </div>
-              ) : null}
+          {/* 길일 분석 — 수동 버튼 트리거 */}
+          <div className={styles.section} style={{ marginTop: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <span style={{ display: 'inline-block', width: 4, height: 20, borderRadius: 2, background: 'var(--cta-primary)' }} />
+              <h2 style={{ margin: 0, fontSize: 17, fontFamily: 'var(--font-serif)' }}>
+                {selectedDay ? `${selectedDay.date} 길흉 풀이` : '길일 종합 분석'}
+              </h2>
             </div>
-          )}
+
+            {!aiAdvice && !aiLoading && (
+              <>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 14 }}>
+                  {selectedDay
+                    ? `${selectedDay.date}(${selectedDay.grade}) 에 ${TAEKIL_CATEGORIES.find(c => c.id === category)?.label} 행사가 적합한지, 주의할 점과 길시까지 풀어드려요.`
+                    : `${viewYear}년 ${viewMonth}월의 길일 Top 3와 피해야 할 날, 월별 기운 흐름을 종합 분석해드려요.`}
+                </p>
+                <button
+                  onClick={handleRequestAI}
+                  disabled={!result}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    borderRadius: 12,
+                    background: 'var(--cta-primary)',
+                    color: 'white',
+                    border: 'none',
+                    fontWeight: 700,
+                    fontSize: 15,
+                    cursor: result ? 'pointer' : 'not-allowed',
+                    opacity: result ? 1 : 0.5,
+                  }}
+                >
+                  {selectedDay ? '이 날의 길흉 풀이받기' : '이 달의 길일 분석받기'}
+                </button>
+                {aiError && (
+                  <div style={{
+                    marginTop: 12,
+                    padding: 12,
+                    borderRadius: 10,
+                    background: 'rgba(248,113,113,0.1)',
+                    border: '1px solid rgba(248,113,113,0.35)',
+                  }}>
+                    <p style={{ fontSize: 13, color: '#F87171', margin: 0, marginBottom: 6 }}>
+                      {aiError}
+                    </p>
+                    <button
+                      onClick={handleRequestAI}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        fontSize: 13,
+                        color: 'var(--cta-primary)',
+                        fontWeight: 600,
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                        padding: 0,
+                      }}
+                    >
+                      다시 시도
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {aiLoading && (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                padding: '24px 16px',
+                gap: 10,
+              }}>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cta-primary)' }} className="animate-pulse" />
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cta-primary)', animationDelay: '0.2s' }} className="animate-pulse" />
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cta-primary)', animationDelay: '0.4s' }} className="animate-pulse" />
+                </div>
+                <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
+                  명리 분석 중입니다... (최대 1분)
+                </p>
+              </div>
+            )}
+
+            {aiAdvice && (
+              <div style={{
+                padding: 16,
+                background: 'rgba(20,12,38,0.55)',
+                borderRadius: 14,
+                border: '1px solid var(--border-subtle)',
+                fontSize: 15,
+                color: 'var(--text-secondary)',
+                lineHeight: 1.85,
+                letterSpacing: '-0.005em',
+                whiteSpace: 'pre-line',
+              }}>
+                {aiAdvice}
+              </div>
+            )}
+          </div>
 
         </motion.div>
       </div>
