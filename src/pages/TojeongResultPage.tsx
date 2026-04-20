@@ -13,7 +13,6 @@ import { buildTojeongReading, type TojeongReading } from '../engine/tojeong/read
 import type { GwaeGrade } from '../engine/tojeong/gwae-table';
 import { useProfileStore } from '../store/useProfileStore';
 import { getTojeongReading } from '../services/fortuneService';
-import { AILoadingBar } from '../components/AILoadingBar';
 
 const GRADE_COLOR: Record<GwaeGrade, string> = {
   '대길': '#34D399',
@@ -31,9 +30,10 @@ export default function TojeongResultPage() {
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
 
-  // AI 내러티브
+  // AI 내러티브 — 자동 호출하지 않고 버튼 클릭 시에만 시작
   const [aiContent, setAiContent] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
@@ -64,16 +64,23 @@ export default function TojeongResultPage() {
     }
   }, [searchParams, primary]);
 
-  // 토정비결 계산 완료되면 AI 호출
-  useEffect(() => {
-    if (!tojeong || aiContent || aiLoading) return;
-    let cancelled = false;
+  // 심층 풀이 수동 트리거 (버튼 클릭)
+  const handleRequestAI = async () => {
+    if (!tojeong || aiLoading) return;
+    setAiError(null);
     setAiLoading(true);
-    getTojeongReading(tojeong)
-      .then(r => { if (!cancelled && r.success) setAiContent(r.content ?? null); })
-      .finally(() => { if (!cancelled) setAiLoading(false); });
-    return () => { cancelled = true; };
-  }, [tojeong]);
+    try {
+      const r = await getTojeongReading(tojeong);
+      if (!r.success || !r.content) {
+        throw new Error(r.error || '심층 풀이를 가져오지 못했어요.');
+      }
+      setAiContent(r.content);
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : '오류가 발생했어요.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   if (!tojeong || !reading) {
     const hasUrlBirth = !!searchParams?.get('year');
@@ -164,7 +171,6 @@ export default function TojeongResultPage() {
               <span className="text-[13px] text-text-tertiary">· {tojeong.upperGwae.element}</span>
             </div>
             <div className="text-[14px] text-text-secondary">{tojeong.upperGwae.meaning}</div>
-            <div className="text-[12px] text-text-tertiary mt-1">{tojeong.formula.upper}</div>
           </div>
 
           <div className="rounded-lg p-3 bg-white/5">
@@ -173,7 +179,6 @@ export default function TojeongResultPage() {
               <span className="text-[15px] font-bold text-text-primary">{tojeong.middleGwae.position}</span>
             </div>
             <div className="text-[14px] text-text-secondary">{tojeong.middleGwae.meaning}</div>
-            <div className="text-[12px] text-text-tertiary mt-1">{tojeong.formula.middle}</div>
           </div>
 
           <div className="rounded-lg p-3 bg-white/5">
@@ -182,7 +187,6 @@ export default function TojeongResultPage() {
               <span className="text-[15px] font-bold text-text-primary">{tojeong.lowerGwae.name}</span>
             </div>
             <div className="text-[14px] text-text-secondary">{tojeong.lowerGwae.meaning}</div>
-            <div className="text-[12px] text-text-tertiary mt-1">{tojeong.formula.lower}</div>
           </div>
         </div>
       </section>
@@ -277,26 +281,60 @@ export default function TojeongResultPage() {
         </section>
       </div>
 
-      {/* AI 심층 풀이 */}
-      {(aiLoading || aiContent) && (
-        <section className="mt-3 rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-          <div className="text-[15px] font-semibold text-text-primary mb-3">심층 풀이</div>
-          {aiLoading ? (
-            <AILoadingBar
-              inline
-              label="토정비결 풀이중"
-              minLabel="10초"
-              maxLabel="30초"
-              estimatedSeconds={20}
-              messages={['괘의 의미를 해석하는 중입니다', '월별 흐름을 분석하는 중입니다', '한 해 운세를 종합하는 중입니다']}
-            />
-          ) : aiContent ? (
-            <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line">
-              {aiContent}
+      {/* 심층 풀이 — 버튼 클릭 방식 */}
+      <section className="mt-3 rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="inline-block w-1 h-5 rounded-full bg-cta" />
+          <div
+            className="text-[17px] font-bold text-text-primary tracking-tight"
+            style={{ fontFamily: 'var(--font-serif)' }}
+          >
+            심층 풀이
+          </div>
+        </div>
+
+        {!aiContent && !aiLoading && (
+          <>
+            <p className="text-[14px] text-text-secondary leading-relaxed mb-4">
+              AI가 괘의 의미와 월별 흐름, 한 해 총운을 이어지는 문장으로 풀어드려요.
             </p>
-          ) : null}
-        </section>
-      )}
+            <button
+              onClick={handleRequestAI}
+              className="w-full py-3 rounded-xl bg-cta text-white font-bold text-[15px] active:scale-[0.98] transition-all"
+            >
+              심층 풀이 받기
+            </button>
+            {aiError && (
+              <div className="mt-3 p-3 rounded-xl bg-red-500/10 border border-red-500/30">
+                <p className="text-[13px] text-red-400 mb-2">{aiError}</p>
+                <button
+                  onClick={handleRequestAI}
+                  className="text-[13px] text-cta font-semibold underline"
+                >
+                  다시 시도
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {aiLoading && (
+          <div className="flex flex-col items-center py-6 gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full bg-cta animate-pulse" style={{ animationDelay: '0s' }} />
+              <span className="inline-block w-2 h-2 rounded-full bg-cta animate-pulse" style={{ animationDelay: '0.2s' }} />
+              <span className="inline-block w-2 h-2 rounded-full bg-cta animate-pulse" style={{ animationDelay: '0.4s' }} />
+            </div>
+            <p className="text-[13px] text-text-tertiary">괘의 흐름을 읽는 중입니다... (최대 1분)</p>
+          </div>
+        )}
+
+        {aiContent && (
+          <p className="text-[15px] text-text-secondary leading-[1.85] whitespace-pre-line tracking-[-0.005em]">
+            {aiContent}
+          </p>
+        )}
+      </section>
     </motion.div>
   );
 }

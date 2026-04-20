@@ -342,7 +342,9 @@ export const getTojeongReading = async (
 ): Promise<FortuneResponse> => {
   try {
     const prompt = generateTojeongPrompt(tj);
-    const content = await callGPT(prompt, 5200);
+    // 5200 → 3800 하향: 긴 프롬프트(12개월 키워드 + 고정 총평)와 결합되면
+    // 55초 타임아웃 위험. 본문은 월별 80자×12 + 총운 400자 정도면 충분.
+    const content = await callGPT(prompt, 3800);
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
