@@ -74,8 +74,8 @@ ${lastAnswer}
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.9,
-        maxOutputTokens: 2048,
-        thinkingConfig: { thinkingBudget: 1024 },
+        maxOutputTokens: 300,
+        thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: 'application/json',
         responseSchema: {
           type: 'OBJECT',
@@ -102,9 +102,7 @@ ${lastAnswer}
   }
 
   const data = await geminiRes.json();
-  const parts: any[] = data?.candidates?.[0]?.content?.parts ?? [];
-  const textPart = parts.find((p: any) => p.text && !p.thought) ?? parts[0];
-  const raw = textPart?.text ?? '';
+  const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 
   try {
     const parsed = JSON.parse(raw) as { suggestions?: unknown };
