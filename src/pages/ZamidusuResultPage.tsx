@@ -23,6 +23,7 @@ import styles from './ZamidusuResultPage.module.css';
 import { useProfileStore } from '../store/useProfileStore';
 import { getZamidusuReading, type ZamidusuAIResult } from '../services/fortuneService';
 import { ZAMIDUSU_SECTION_KEYS, ZAMIDUSU_SECTION_LABELS } from '../constants/prompts';
+import { MAJOR_STARS_META, MINOR_STARS_META, MUTAGEN_META, PALACE_ROLE_META } from '../engine/zamidusu/knowledge';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { StarChart } from '../components/zamidusu/StarChart';
 
@@ -152,8 +153,8 @@ export default function ZamidusuResultPage() {
     return (
       <div className={styles.container}>
         <div className={styles.header}>
-          <button className={styles.backBtn} onClick={() => router.push('/saju/input')}>
-            ← 다시 입력
+          <button className={styles.backBtn} onClick={() => router.back()}>
+            ← 뒤로
           </button>
           <div className={styles.headerCenter}>
             <h1>자미두수</h1>
@@ -277,9 +278,9 @@ export default function ZamidusuResultPage() {
       <div className={styles.header}>
         <button
           className={styles.backBtn}
-          onClick={() => router.push('/saju/input?category=zamidusu')}
+          onClick={() => router.back()}
         >
-          ← 다시 입력
+          ← 뒤로
         </button>
         <div className={styles.headerCenter}>
           <h1>자미두수</h1>
@@ -459,11 +460,11 @@ export default function ZamidusuResultPage() {
                     ✕
                   </button>
 
-                  {/* 헤더 */}
-                  <div style={{ marginBottom: 18, paddingRight: 36 }}>
+                  {/* 헤더 — 궁 이름 + 이 방이 뭐하는 곳인지 설명 */}
+                  <div style={{ marginBottom: 20, paddingRight: 36 }}>
                     <div
                       style={{
-                        fontSize: 22,
+                        fontSize: 24,
                         fontWeight: 700,
                         color: 'var(--text-primary)',
                         fontFamily: 'var(--font-serif)',
@@ -478,7 +479,7 @@ export default function ZamidusuResultPage() {
                     </div>
                     <div
                       style={{
-                        fontSize: 14,
+                        fontSize: 13,
                         color: 'var(--text-tertiary)',
                         marginTop: 4,
                         letterSpacing: 1,
@@ -487,126 +488,206 @@ export default function ZamidusuResultPage() {
                       {p.heavenlyStem}{p.earthlyBranch}
                       {p.decadalRange && ` · 대한 ${p.decadalRange}`}
                     </div>
+
+                    {/* 이 궁이 뭐하는 자리인지 쉬운 설명 */}
+                    {PALACE_ROLE_META[p.name] && (
+                      <div
+                        style={{
+                          marginTop: 12,
+                          padding: '12px 14px',
+                          background: 'rgba(139,92,246,0.08)',
+                          border: '1px solid rgba(139,92,246,0.25)',
+                          borderRadius: 10,
+                        }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#C4B5FD', marginBottom: 4 }}>
+                          이 방은 뭘 맡고 있나요?
+                        </div>
+                        <div style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 600, marginBottom: 4 }}>
+                          {PALACE_ROLE_META[p.name].domain}
+                        </div>
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.65 }}>
+                          {PALACE_ROLE_META[p.name].focus}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* 주성 */}
-                  <div style={{ marginBottom: 16 }}>
+                  {/* 주성 — 각각 설명 풀어서 */}
+                  <div style={{ marginBottom: 18 }}>
                     <div
                       style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: 'var(--text-tertiary)',
-                        letterSpacing: 1.5,
-                        textTransform: 'uppercase',
-                        marginBottom: 8,
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: 'var(--text-primary)',
+                        marginBottom: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
                       }}
                     >
+                      <span style={{ display: 'inline-block', width: 3, height: 16, borderRadius: 2, background: 'var(--cta-primary)' }} />
                       주인공 별
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {p.majorStars.length === 0 ? (
-                        <span
-                          style={{
-                            fontSize: 14,
-                            padding: '8px 14px',
-                            borderRadius: 999,
-                            background: 'rgba(255,255,255,0.06)',
-                            color: 'var(--text-tertiary)',
-                          }}
-                        >
-                          공궁 — 주성 없음, 대궁의 영향을 받음
-                        </span>
-                      ) : (
-                        p.majorStars.map((s, i) => (
-                          <span
-                            key={i}
-                            style={{
-                              fontSize: 15,
-                              fontWeight: 600,
-                              padding: '8px 14px',
-                              borderRadius: 999,
-                              background: 'rgba(196,181,253,0.15)',
-                              color: '#D8BFFD',
-                              border: '1px solid rgba(196,181,253,0.35)',
-                            }}
-                          >
-                            {s.name}
-                            {s.brightness ? ` ${s.brightness}` : ''}
-                            {s.mutagen && (
-                              <span style={{ color: '#FBBF24', marginLeft: 4 }}>· {s.mutagen}</span>
-                            )}
-                          </span>
-                        ))
-                      )}
-                    </div>
+                    {p.majorStars.length === 0 ? (
+                      <div
+                        style={{
+                          fontSize: 14,
+                          padding: 14,
+                          borderRadius: 10,
+                          background: 'rgba(255,255,255,0.04)',
+                          color: 'var(--text-secondary)',
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        공궁이에요 — 이 방에는 주성이 없고 맞은편 궁(대궁)의 영향을 크게 받습니다.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {p.majorStars.map((s, i) => {
+                          const meta = MAJOR_STARS_META[s.name];
+                          const mutagen = s.mutagen ? MUTAGEN_META[s.mutagen] : undefined;
+                          return (
+                            <div
+                              key={i}
+                              style={{
+                                padding: 14,
+                                borderRadius: 12,
+                                background: 'rgba(196,181,253,0.08)',
+                                border: '1px solid rgba(196,181,253,0.25)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                                <span
+                                  style={{
+                                    fontSize: 18,
+                                    fontWeight: 700,
+                                    color: '#D8BFFD',
+                                    fontFamily: 'var(--font-serif)',
+                                  }}
+                                >
+                                  {s.name}
+                                  {meta && <span style={{ fontSize: 14, color: 'var(--text-tertiary)', fontWeight: 500, marginLeft: 4 }}>({meta.hanja})</span>}
+                                </span>
+                                {s.brightness && (
+                                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)', background: 'rgba(255,255,255,0.06)', padding: '2px 8px', borderRadius: 6 }}>
+                                    {s.brightness}
+                                  </span>
+                                )}
+                                {s.mutagen && (
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: '#FBBF24', background: 'rgba(251,191,36,0.12)', padding: '2px 8px', borderRadius: 6 }}>
+                                    {s.mutagen}
+                                  </span>
+                                )}
+                              </div>
+
+                              {meta && (
+                                <>
+                                  <div style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 600, marginBottom: 6, lineHeight: 1.5 }}>
+                                    {meta.theme}
+                                  </div>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                                    {meta.keywords.slice(0, 5).map((kw, ki) => (
+                                      <span
+                                        key={ki}
+                                        style={{
+                                          fontSize: 12,
+                                          padding: '3px 9px',
+                                          borderRadius: 999,
+                                          background: 'rgba(255,255,255,0.05)',
+                                          color: 'var(--text-secondary)',
+                                        }}
+                                      >
+                                        {kw}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.65, marginBottom: 4 }}>
+                                    <b style={{ color: '#34D399' }}>강점</b> {meta.strength}
+                                  </div>
+                                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.65 }}>
+                                    <b style={{ color: '#F87171' }}>약점</b> {meta.weakness}
+                                  </div>
+                                </>
+                              )}
+
+                              {mutagen && (
+                                <div
+                                  style={{
+                                    marginTop: 10,
+                                    padding: '10px 12px',
+                                    background: 'rgba(251,191,36,0.1)',
+                                    border: '1px solid rgba(251,191,36,0.3)',
+                                    borderRadius: 8,
+                                  }}
+                                >
+                                  <div style={{ fontSize: 12, fontWeight: 700, color: '#FBBF24', marginBottom: 3 }}>
+                                    사화({mutagen.name}) 발동
+                                  </div>
+                                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                                    {mutagen.effect}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
-                  {/* 보조성 */}
+                  {/* 보조성 — 각각 설명 */}
                   {p.minorStars.length > 0 && (
-                    <div style={{ marginBottom: 16 }}>
+                    <div style={{ marginBottom: 18 }}>
                       <div
                         style={{
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: 'var(--text-tertiary)',
-                          letterSpacing: 1.5,
-                          textTransform: 'uppercase',
-                          marginBottom: 8,
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: 'var(--text-primary)',
+                          marginBottom: 10,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
                         }}
                       >
+                        <span style={{ display: 'inline-block', width: 3, height: 16, borderRadius: 2, background: '#34D399' }} />
                         곁에서 돕는 별
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {p.minorStars.map((s, i) => (
-                          <span
-                            key={i}
-                            style={{
-                              fontSize: 14,
-                              padding: '6px 12px',
-                              borderRadius: 999,
-                              background: 'rgba(255,255,255,0.05)',
-                              color: 'var(--text-secondary)',
-                              border: '1px solid rgba(255,255,255,0.1)',
-                            }}
-                          >
-                            {s.name}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 잡성 (일부) */}
-                  {p.adjectiveStars.length > 0 && (
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: 'var(--text-tertiary)',
-                          letterSpacing: 1.5,
-                          textTransform: 'uppercase',
-                          marginBottom: 8,
-                        }}
-                      >
-                        기타 별
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                        {p.adjectiveStars.slice(0, 8).map((s, i) => (
-                          <span
-                            key={i}
-                            style={{
-                              fontSize: 12,
-                              padding: '4px 10px',
-                              borderRadius: 999,
-                              color: 'var(--text-tertiary)',
-                              background: 'rgba(255,255,255,0.03)',
-                              border: '1px solid rgba(255,255,255,0.06)',
-                            }}
-                          >
-                            {s.name}
-                          </span>
-                        ))}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {p.minorStars.map((s, i) => {
+                          const meta = MINOR_STARS_META[s.name];
+                          const badgeColor =
+                            meta?.category === '6길성' ? '#34D399' :
+                            meta?.category === '4흉성' ? '#F87171' : 'var(--text-tertiary)';
+                          return (
+                            <div
+                              key={i}
+                              style={{
+                                padding: '10px 12px',
+                                borderRadius: 10,
+                                background: 'rgba(255,255,255,0.04)',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: meta ? 4 : 0, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
+                                  {s.name}
+                                  {meta && <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500, marginLeft: 4 }}>({meta.hanja})</span>}
+                                </span>
+                                {meta && (
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: badgeColor, background: `${badgeColor}18`, padding: '2px 7px', borderRadius: 6 }}>
+                                    {meta.category}
+                                  </span>
+                                )}
+                              </div>
+                              {meta && (
+                                <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                                  {meta.effect}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

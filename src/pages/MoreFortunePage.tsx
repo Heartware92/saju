@@ -222,8 +222,8 @@ export default function MoreFortunePage({ category }: Props) {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={() => router.push('/')}>
-          ← 홈
+        <button className={styles.backBtn} onClick={() => router.back()}>
+          ← 뒤로
         </button>
         <div className={styles.headerCenter}>
           <h1>{cfg.title}</h1>
