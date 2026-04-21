@@ -127,14 +127,14 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
         )}
 
         {/* 중심 원 — 명주·오행국 표기 */}
-        <circle cx={CENTER} cy={CENTER} r="58" fill="rgba(20,12,38,0.85)" stroke="rgba(139,92,246,0.35)" strokeWidth="1.5" />
-        <text x={CENTER} y={CENTER - 10} textAnchor="middle" fill="#C4B5FD" fontSize="14" fontWeight="600" letterSpacing="2">
+        <circle cx={CENTER} cy={CENTER} r="64" fill="rgba(20,12,38,0.85)" stroke="rgba(139,92,246,0.35)" strokeWidth="1.5" />
+        <text x={CENTER} y={CENTER - 14} textAnchor="middle" fill="#C4B5FD" fontSize="16" fontWeight="600" letterSpacing="2">
           {fiveElementsClass}
         </text>
-        <text x={CENTER} y={CENTER + 14} textAnchor="middle" fill="#FBBF24" fontSize="22" fontWeight="700" style={{ fontFamily: 'var(--font-serif)' }}>
+        <text x={CENTER} y={CENTER + 14} textAnchor="middle" fill="#FBBF24" fontSize="28" fontWeight="700" style={{ fontFamily: 'var(--font-serif)' }}>
           {soul}
         </text>
-        <text x={CENTER} y={CENTER + 36} textAnchor="middle" fill="#9CA3AF" fontSize="11" letterSpacing="3">
+        <text x={CENTER} y={CENTER + 38} textAnchor="middle" fill="#9CA3AF" fontSize="13" letterSpacing="3">
           명주
         </text>
 
@@ -173,10 +173,10 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
               {/* 궁 이름 */}
               <text
                 x={x}
-                y={y + r + 15}
+                y={y + r + 18}
                 textAnchor="middle"
                 fill={isSelected ? '#FBBF24' : '#F3F4F6'}
-                fontSize="14"
+                fontSize="18"
                 fontWeight={palace.name === '명궁' ? '700' : '600'}
               >
                 {palace.name}
@@ -185,10 +185,10 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
               {/* 간지 */}
               <text
                 x={x}
-                y={y + r + 28}
+                y={y + r + 35}
                 textAnchor="middle"
                 fill="#B8B1C8"
-                fontSize="11"
+                fontSize="13"
                 letterSpacing="0.5"
               >
                 {palace.heavenlyStem}{palace.earthlyBranch}
@@ -199,10 +199,10 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
                 <text
                   key={`${palace.index}-s-${si}`}
                   x={x}
-                  y={y - r - 6 - (si * 13)}
+                  y={y - r - 8 - (si * 15)}
                   textAnchor="middle"
                   fill={s.mutagen ? '#FBBF24' : '#D8BFFD'}
-                  fontSize="12"
+                  fontSize="14"
                   fontWeight="700"
                 >
                   {s.name}{s.mutagen ? `·${s.mutagen.slice(0, 1)}` : ''}

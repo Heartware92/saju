@@ -360,63 +360,228 @@ export default function ZamidusuResultPage() {
           />
         </div>
 
-        {/* 선택된 궁 상세 */}
+        {/* 선택된 궁 상세 — 모달 오버레이 */}
         <AnimatePresence>
           {selectedPalace !== null && (() => {
             const p = chart.palaces.find((x) => x.index === selectedPalace);
             if (!p) return null;
             return (
-              <motion.div
-                key={p.index}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className={styles.section}
-              >
-                <h2>
-                  {p.name}
-                  {p.isBodyPalace ? ' · 신궁' : ''}
-                  <span style={{ fontSize: 14, color: 'var(--text-tertiary)', fontWeight: 400, marginLeft: 8 }}>
-                    {p.heavenlyStem}{p.earthlyBranch}
-                  </span>
-                </h2>
+              <>
+                {/* 배경 딤 */}
+                <motion.div
+                  key="backdrop"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setSelectedPalace(null)}
+                  style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 80,
+                    background: 'rgba(0,0,0,0.65)',
+                    backdropFilter: 'blur(4px)',
+                  }}
+                />
+                {/* 모달 카드 */}
+                <motion.div
+                  key="modal"
+                  initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 20, scale: 0.96 }}
+                  transition={{ duration: 0.22 }}
+                  style={{
+                    position: 'fixed',
+                    left: '50%',
+                    top: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 81,
+                    width: 'min(380px, calc(100vw - 32px))',
+                    maxHeight: 'calc(100vh - 100px)',
+                    overflowY: 'auto',
+                    background: 'rgba(20, 12, 38, 0.98)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: 18,
+                    padding: 22,
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+                  }}
+                >
+                  {/* 닫기 버튼 */}
+                  <button
+                    onClick={() => setSelectedPalace(null)}
+                    style={{
+                      position: 'absolute',
+                      top: 14,
+                      right: 14,
+                      width: 32,
+                      height: 32,
+                      borderRadius: 8,
+                      background: 'rgba(255,255,255,0.06)',
+                      border: 'none',
+                      color: 'var(--text-tertiary)',
+                      fontSize: 20,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    aria-label="닫기"
+                  >
+                    ✕
+                  </button>
 
-                {/* 주성 */}
-                <div className={styles.detailStarGroup}>
-                  <h3>주인공 별</h3>
-                  <div className={styles.chips}>
-                    {p.majorStars.length === 0 ? (
-                      <span className={styles.chipMuted}>공궁 — 주성 없음, 대궁의 영향을 받음</span>
-                    ) : (
-                      p.majorStars.map((s, i) => (
-                        <span key={i} className={styles.chipMajor}>
-                          {s.name}
-                          {s.brightness ? ` ${s.brightness}` : ''}
-                          {s.mutagen ? ` · ${s.mutagen}` : ''}
+                  {/* 헤더 */}
+                  <div style={{ marginBottom: 18, paddingRight: 36 }}>
+                    <div
+                      style={{
+                        fontSize: 22,
+                        fontWeight: 700,
+                        color: 'var(--text-primary)',
+                        fontFamily: 'var(--font-serif)',
+                      }}
+                    >
+                      {p.name}
+                      {p.isBodyPalace && (
+                        <span style={{ fontSize: 14, color: '#F472B6', marginLeft: 8, fontWeight: 500 }}>
+                          · 신궁
                         </span>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* 보조성 */}
-                {p.minorStars.length > 0 && (
-                  <div className={styles.detailStarGroup}>
-                    <h3>곁에서 돕는 별</h3>
-                    <div className={styles.chips}>
-                      {p.minorStars.map((s, i) => (
-                        <span key={i} className={styles.chipMinor}>{s.name}</span>
-                      ))}
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 14,
+                        color: 'var(--text-tertiary)',
+                        marginTop: 4,
+                        letterSpacing: 1,
+                      }}
+                    >
+                      {p.heavenlyStem}{p.earthlyBranch}
+                      {p.decadalRange && ` · 대한 ${p.decadalRange}`}
                     </div>
                   </div>
-                )}
 
-                {p.decadalRange && (
-                  <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>
-                    대한: {p.decadalRange}
-                  </p>
-                )}
-              </motion.div>
+                  {/* 주성 */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: 'var(--text-tertiary)',
+                        letterSpacing: 1.5,
+                        textTransform: 'uppercase',
+                        marginBottom: 8,
+                      }}
+                    >
+                      주인공 별
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {p.majorStars.length === 0 ? (
+                        <span
+                          style={{
+                            fontSize: 14,
+                            padding: '8px 14px',
+                            borderRadius: 999,
+                            background: 'rgba(255,255,255,0.06)',
+                            color: 'var(--text-tertiary)',
+                          }}
+                        >
+                          공궁 — 주성 없음, 대궁의 영향을 받음
+                        </span>
+                      ) : (
+                        p.majorStars.map((s, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              fontSize: 15,
+                              fontWeight: 600,
+                              padding: '8px 14px',
+                              borderRadius: 999,
+                              background: 'rgba(196,181,253,0.15)',
+                              color: '#D8BFFD',
+                              border: '1px solid rgba(196,181,253,0.35)',
+                            }}
+                          >
+                            {s.name}
+                            {s.brightness ? ` ${s.brightness}` : ''}
+                            {s.mutagen && (
+                              <span style={{ color: '#FBBF24', marginLeft: 4 }}>· {s.mutagen}</span>
+                            )}
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 보조성 */}
+                  {p.minorStars.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: 'var(--text-tertiary)',
+                          letterSpacing: 1.5,
+                          textTransform: 'uppercase',
+                          marginBottom: 8,
+                        }}
+                      >
+                        곁에서 돕는 별
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {p.minorStars.map((s, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              fontSize: 14,
+                              padding: '6px 12px',
+                              borderRadius: 999,
+                              background: 'rgba(255,255,255,0.05)',
+                              color: 'var(--text-secondary)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                            }}
+                          >
+                            {s.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 잡성 (일부) */}
+                  {p.adjectiveStars.length > 0 && (
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: 'var(--text-tertiary)',
+                          letterSpacing: 1.5,
+                          textTransform: 'uppercase',
+                          marginBottom: 8,
+                        }}
+                      >
+                        기타 별
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                        {p.adjectiveStars.slice(0, 8).map((s, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              fontSize: 12,
+                              padding: '4px 10px',
+                              borderRadius: 999,
+                              color: 'var(--text-tertiary)',
+                              background: 'rgba(255,255,255,0.03)',
+                              border: '1px solid rgba(255,255,255,0.06)',
+                            }}
+                          >
+                            {s.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              </>
             );
           })()}
         </AnimatePresence>
