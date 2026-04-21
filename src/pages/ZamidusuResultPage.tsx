@@ -56,6 +56,21 @@ export default function ZamidusuResultPage() {
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
+  // 모달 오픈 시 ESC 키로 닫기 + body 스크롤 잠금
+  useEffect(() => {
+    if (selectedPalace === null) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedPalace(null);
+    };
+    window.addEventListener('keydown', handleKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [selectedPalace]);
+
   // 명반 계산
   useEffect(() => {
     if (hourUnknown) return;
@@ -309,7 +324,7 @@ export default function ZamidusuResultPage() {
           </div>
         )}
 
-        {/* 자미두수란? 안내 카드 (접기·펼치기) */}
+        {/* 자미두수란? 안내 카드 */}
         <div className={styles.section} style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)' }}>
           <button
             onClick={() => setIntroOpen(v => !v)}
@@ -319,10 +334,10 @@ export default function ZamidusuResultPage() {
               cursor: 'pointer',
             }}
           >
-            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+            <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>
               자미두수가 뭔가요?
             </span>
-            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+            <span style={{ fontSize: 14, color: 'var(--cta-primary)', fontWeight: 600 }}>
               {introOpen ? '접기' : '펼치기'}
             </span>
           </button>
@@ -334,23 +349,38 @@ export default function ZamidusuResultPage() {
                 exit={{ opacity: 0, height: 0 }}
                 style={{ overflow: 'hidden' }}
               >
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.75, margin: '10px 0 0' }}>
-                  자미두수(紫微斗數)는 <b>북극성</b>과 <b>북두칠성</b>으로 운명을 읽는 천 년 된 별자리 점성술이에요.
-                  태어난 순간 하늘에 나만의 <b>별자리 지도(명반)</b>가 그려지는데, 이 지도에는 인생의 12개 방이 있어요.
+                <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.85, letterSpacing: '-0.005em', margin: '14px 0 0' }}>
+                  자미두수(紫微斗數)는 <b style={{ color: 'var(--text-primary)' }}>북극성</b>과 <b style={{ color: 'var(--text-primary)' }}>북두칠성</b>으로 운명을 읽는 천 년 된 별자리 점성술이에요.
+                  태어난 순간 하늘에 나만의 <b style={{ color: 'var(--text-primary)' }}>별자리 지도(명반)</b>가 그려지는데, 이 지도에는 인생의 12개 방이 있어요.
                   각 방에는 다른 주인공 별이 앉아서 — 사랑·재물·건강·명예 — 인생의 각 영역을 이끌어가죠.
-                  사주가 <b>내 기질·체질</b>을 본다면, 자미두수는 <b>내 인생 무대의 조명 배치</b>를 봅니다.
+                  사주가 <b style={{ color: 'var(--text-primary)' }}>내 기질·체질</b>을 본다면, 자미두수는 <b style={{ color: 'var(--text-primary)' }}>내 인생 무대의 조명 배치</b>를 봅니다.
                 </p>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
+        {/* 명반 요약 메타 — 별도 섹션으로 분리 + 크게 */}
+        <div className={styles.section} style={{ padding: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            <div style={{ textAlign: 'center', padding: '10px 6px', background: 'rgba(255,255,255,0.04)', borderRadius: 10 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>띠</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)' }}>{chart.zodiac}</div>
+            </div>
+            <div style={{ textAlign: 'center', padding: '10px 6px', background: 'rgba(255,255,255,0.04)', borderRadius: 10 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>별자리</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)' }}>{chart.sign}</div>
+            </div>
+            <div style={{ textAlign: 'center', padding: '10px 6px', background: 'rgba(255,255,255,0.04)', borderRadius: 10 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>오행국</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#FBBF24', fontFamily: 'var(--font-serif)' }}>{chart.fiveElementsClass}</div>
+            </div>
+          </div>
+        </div>
+
         {/* 별자리 시각화 */}
         <div className={styles.section}>
-          <h2 style={{ textAlign: 'center', marginBottom: 4 }}>하늘에 새겨진 당신의 별자리</h2>
-          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginBottom: 14 }}>
-            {chart.zodiac}띠 · {chart.sign} · {chart.fiveElementsClass}
-          </p>
+          <h2 style={{ textAlign: 'center', marginBottom: 14, fontSize: 18 }}>하늘에 새겨진 당신의 별자리</h2>
           <StarChart
             palaces={chart.palaces}
             soul={chart.soul}
@@ -366,36 +396,36 @@ export default function ZamidusuResultPage() {
             const p = chart.palaces.find((x) => x.index === selectedPalace);
             if (!p) return null;
             return (
-              <>
-                {/* 배경 딤 */}
+              <motion.div
+                key="palace-modal"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setSelectedPalace(null)}
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  zIndex: 100,
+                  background: 'rgba(0,0,0,0.7)',
+                  backdropFilter: 'blur(6px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 16,
+                  overflowY: 'auto',
+                }}
+              >
+                {/* 모달 카드 — transform 대신 flex 센터링 */}
                 <motion.div
-                  key="backdrop"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setSelectedPalace(null)}
-                  style={{
-                    position: 'fixed',
-                    inset: 0,
-                    zIndex: 80,
-                    background: 'rgba(0,0,0,0.65)',
-                    backdropFilter: 'blur(4px)',
-                  }}
-                />
-                {/* 모달 카드 */}
-                <motion.div
-                  key="modal"
-                  initial={{ opacity: 0, y: 20, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 20, scale: 0.96 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
                   transition={{ duration: 0.22 }}
+                  onClick={(e) => e.stopPropagation()}
                   style={{
-                    position: 'fixed',
-                    left: '50%',
-                    top: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: 81,
-                    width: 'min(380px, calc(100vw - 32px))',
+                    position: 'relative',
+                    width: 'min(380px, 100%)',
                     maxHeight: 'calc(100vh - 100px)',
                     overflowY: 'auto',
                     background: 'rgba(20, 12, 38, 0.98)',
@@ -581,7 +611,7 @@ export default function ZamidusuResultPage() {
                     </div>
                   )}
                 </motion.div>
-              </>
+              </motion.div>
             );
           })()}
         </AnimatePresence>

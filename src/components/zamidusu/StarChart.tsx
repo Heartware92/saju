@@ -213,23 +213,23 @@ export function StarChart({ palaces, soul, fiveElementsClass, selectedIndex, onS
         })}
       </svg>
 
-      {/* 하단 범례 — 잘 보이게 확대 */}
-      <div className="mt-4 rounded-xl p-3 bg-[rgba(20,12,38,0.45)] border border-[var(--border-subtle)]">
-        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-[14px] text-text-secondary">
-          <span className="flex items-center gap-1.5 font-medium">
-            <span className="inline-block w-3 h-3 rounded-full bg-[#FBBF24]" />
+      {/* 하단 범례 — 한 번 더 확대 */}
+      <div className="mt-4 rounded-xl p-4 bg-[rgba(20,12,38,0.45)] border border-[var(--border-subtle)]">
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[16px] text-text-primary">
+          <span className="flex items-center gap-2 font-semibold">
+            <span className="inline-block w-4 h-4 rounded-full bg-[#FBBF24]" />
             명궁
           </span>
-          <span className="flex items-center gap-1.5 font-medium">
-            <span className="inline-block w-3 h-3 rounded-full bg-[#F472B6]" />
+          <span className="flex items-center gap-2 font-semibold">
+            <span className="inline-block w-4 h-4 rounded-full bg-[#F472B6]" />
             신궁
           </span>
-          <span className="flex items-center gap-1.5 font-medium">
-            <span className="inline-block w-3 h-3 rounded-full bg-[#6B7280] opacity-60" />
+          <span className="flex items-center gap-2 font-semibold">
+            <span className="inline-block w-4 h-4 rounded-full bg-[#6B7280] opacity-60" />
             공궁
           </span>
         </div>
-        <p className="text-[12px] text-text-tertiary text-center mt-2">
+        <p className="text-[13px] text-text-secondary text-center mt-3">
           별을 눌러 자세히 볼 수 있어요
         </p>
       </div>
