@@ -12,6 +12,8 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
+import { useCreditStore } from '../store/useCreditStore';
+import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import {
   calculateTaekil,
@@ -125,6 +127,9 @@ export default function TaekilPage() {
         throw new Error(r.error || '길일 분석을 가져오지 못했어요.');
       }
       setAiAdvice(r.advice);
+      useCreditStore.getState()
+        .chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.taekil)
+        .catch(() => {});
     } catch (e: unknown) {
       setAiError(e instanceof Error ? e.message : '오류가 발생했어요.');
     } finally {

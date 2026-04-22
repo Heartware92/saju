@@ -8,6 +8,8 @@ import { buildTarotReading, type DrawnCard, type TarotReading } from '../engine/
 import { formatTodayString, formatMonthString } from '../utils/tarotSeed';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
+import { useCreditStore } from '../store/useCreditStore';
+import { MOON_COST_TAROT, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { getHybridReading } from '../services/fortuneService';
 import type { TarotCardInfo } from '../services/api';
@@ -409,8 +411,14 @@ export default function TarotPage() {
         question: userQuestion || undefined,
       };
       const res = await getHybridReading(sajuResult, cardInfo, questionMap[currentMode]);
-      if (res.success && res.content) setAiContent(res.content);
-      else setAiError(res.error || '해석을 불러오지 못했습니다.');
+      if (res.success && res.content) {
+        setAiContent(res.content);
+        useCreditStore.getState()
+          .chargeForContent('moon', MOON_COST_TAROT, `${CHARGE_REASONS.tarotHybrid}:${currentMode}`)
+          .catch(() => {});
+      } else {
+        setAiError(res.error || '해석을 불러오지 못했습니다.');
+      }
     } catch (e: any) {
       setAiError(e.message || '네트워크 오류가 발생했습니다.');
     } finally {

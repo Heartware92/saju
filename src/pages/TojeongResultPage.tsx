@@ -12,8 +12,10 @@ import { calculateTojeong, type TojeongResult } from '../engine/tojeong';
 import { buildTojeongReading, type TojeongReading } from '../engine/tojeong/reading';
 import type { GwaeGrade } from '../engine/tojeong/gwae-table';
 import { useProfileStore } from '../store/useProfileStore';
+import { useCreditStore } from '../store/useCreditStore';
 import { getTojeongReading } from '../services/fortuneService';
 import { AILoadingBar } from '../components/AILoadingBar';
+import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 
 const TOJEONG_MESSAGES = [
   '괘의 상징을 풀어 쓰는 중입니다',
@@ -36,11 +38,13 @@ export default function TojeongResultPage() {
   const router = useRouter();
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
+  const chargeForContent = useCreditStore(s => s.chargeForContent);
 
   // AI 내러티브 — 진입 즉시 자동 호출
   const [aiContent, setAiContent] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const chargedRef = useRef(false);
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
@@ -95,6 +99,10 @@ export default function TojeongResultPage() {
           setAiError(r.error || '심층 풀이를 가져오지 못했어요.');
         } else {
           setAiContent(r.content);
+          if (!chargedRef.current) {
+            chargedRef.current = true;
+            chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.tojeong).catch(() => {});
+          }
         }
         setAiLoading(false);
       })
@@ -126,6 +134,10 @@ export default function TojeongResultPage() {
           setAiError(r.error || '심층 풀이를 가져오지 못했어요.');
         } else {
           setAiContent(r.content);
+          if (!chargedRef.current) {
+            chargedRef.current = true;
+            chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.tojeong).catch(() => {});
+          }
         }
         setAiLoading(false);
       })

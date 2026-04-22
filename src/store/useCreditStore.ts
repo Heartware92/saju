@@ -18,9 +18,28 @@ interface CreditState {
   error: string | null;
   lastFetched: number; // timestamp
 
-  fetchBalance: (userId?: string) => Promise<void>;
+  /**
+   * 상담소 남은 질문 수 (팩 단위 차감 모델)
+   * - 팩 구매 시 +3
+   * - 질문할 때마다 -1 (로컬만, 크레딧 차감 없음)
+   */
+  consultationRemaining: number;
+
+  fetchBalance: (userId?: string, opts?: { force?: boolean }) => Promise<void>;
   fetchTransactions: (userId?: string) => Promise<void>;
   consumeCredit: (creditType: CreditType, amount: number, reason: string) => Promise<boolean>;
+
+  /**
+   * 크레딧 차감 + 서버 재조회까지 묶은 헬퍼.
+   * 낙관적 업데이트 후 서버에서 진짜 잔액을 재조회해 UI를 진실의 원천과 동기화.
+   */
+  chargeForContent: (creditType: CreditType, amount: number, reason: string) => Promise<boolean>;
+
+  /** 상담소 질문팩 구매 — sun 1 또는 moon 3 */
+  purchaseConsultationPack: (payWith: 'sun' | 'moon') => Promise<boolean>;
+  /** 상담소 질문 1개 사용 (팩에서 차감) */
+  useConsultationQuestion: () => boolean;
+
   reset: () => void;
 }
 
@@ -33,10 +52,11 @@ export const useCreditStore = create<CreditState>()(
       loading: false,
       error: null,
       lastFetched: 0,
+      consultationRemaining: 0,
 
-      fetchBalance: async (userId?: string) => {
-        // stale-time: 30초 내 중복 요청 차단
-        if (Date.now() - get().lastFetched < STALE_MS) return;
+      fetchBalance: async (userId?: string, opts?: { force?: boolean }) => {
+        // stale-time: 30초 내 중복 요청 차단 (force=true 면 무시)
+        if (!opts?.force && Date.now() - get().lastFetched < STALE_MS) return;
 
         try {
           set({ loading: true, error: null });
@@ -114,6 +134,49 @@ export const useCreditStore = create<CreditState>()(
         }
       },
 
+      /**
+       * 차감 + 서버 재조회. 컨텐츠 페이지에서 consumeCredit 대신 이걸 쓰면
+       * 낙관적 업데이트와 DB 진실 사이 불일치가 생겨도 UI가 5초 안에 바로잡힘.
+       */
+      chargeForContent: async (creditType, amount, reason) => {
+        const ok = await get().consumeCredit(creditType, amount, reason);
+        if (ok) {
+          // 서버 진실로 덮어쓰기 (RLS 거부·이중차감 등 감지)
+          try {
+            const user = await auth.getCurrentUser();
+            if (user) await get().fetchBalance(user.id, { force: true });
+          } catch {
+            // 재조회 실패는 무시 — 낙관적 업데이트는 이미 반영됨
+          }
+        }
+        return ok;
+      },
+
+      /**
+       * 상담소 질문팩 구매.
+       * - sun: 해 1개 차감 → 3 질문 적립
+       * - moon: 달 3개 차감 → 3 질문 적립
+       */
+      purchaseConsultationPack: async (payWith) => {
+        const cost = payWith === 'sun' ? 1 : 3;
+        const ok = await get().chargeForContent(payWith, cost, '상담소 질문팩(3질문)');
+        if (ok) {
+          set(state => ({ consultationRemaining: state.consultationRemaining + 3 }));
+        }
+        return ok;
+      },
+
+      /**
+       * 상담소 질문 1개 사용. 팩 잔량에서만 차감 (크레딧은 팩 구매 시 이미 차감됨).
+       * @returns false면 팩이 비어있어 구매 필요.
+       */
+      useConsultationQuestion: () => {
+        const remaining = get().consultationRemaining;
+        if (remaining <= 0) return false;
+        set({ consultationRemaining: remaining - 1 });
+        return true;
+      },
+
       reset: () => {
         set({
           sunBalance: 0,
@@ -122,6 +185,7 @@ export const useCreditStore = create<CreditState>()(
           loading: false,
           error: null,
           lastFetched: 0,
+          consultationRemaining: 0,
         });
       },
     }),
@@ -131,6 +195,7 @@ export const useCreditStore = create<CreditState>()(
         sunBalance: state.sunBalance,
         moonBalance: state.moonBalance,
         lastFetched: state.lastFetched,
+        consultationRemaining: state.consultationRemaining,
       }),
     }
   )

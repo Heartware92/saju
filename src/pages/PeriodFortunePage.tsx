@@ -10,11 +10,13 @@
  * 사주 원국은 URL query 또는 대표 프로필에서 가져와 계산한다.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
+import { useCreditStore } from '../store/useCreditStore';
+import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { calculateSaju } from '../utils/sajuCalculator';
 import { calculatePeriodFortune, type FortuneScope, type FortuneGrade, type PeriodFortune } from '../engine/periodFortune';
@@ -218,6 +220,9 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
   // 신년운세 종합 리포트 (scope='year'에서만 사용)
   const [newyearReport, setNewyearReport] = useState<NewyearReportAIResult | null>(null);
   const [newyearReportLoading, setNewyearReportLoading] = useState(false);
+  const chargeForContent = useCreditStore(s => s.chargeForContent);
+  // scope+키(연도/날짜) 별 중복 차감 방지
+  const chargedKeyRef = useRef<string | null>(null);
 
   // 기간/대상 바뀔 때마다 초기화 + AI 호출
   useEffect(() => {
@@ -229,7 +234,15 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
       setNewyearReport(null);
       setNewyearReportLoading(true);
       getNewyearReport(saju, fortune, targetYear)
-        .then(r => { if (!cancelled) setNewyearReport(r); })
+        .then(r => {
+          if (cancelled) return;
+          setNewyearReport(r);
+          const key = `year:${targetYear}`;
+          if (r.success && chargedKeyRef.current !== key) {
+            chargedKeyRef.current = key;
+            chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.newyear).catch(() => {});
+          }
+        })
         .finally(() => { if (!cancelled) setNewyearReportLoading(false); });
       return () => { cancelled = true; };
     }
@@ -259,7 +272,16 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     })
       .then(r => {
         if (cancelled) return;
-        if (r.success && r.descriptions) setDomainAI(r.descriptions);
+        if (r.success && r.descriptions) {
+          setDomainAI(r.descriptions);
+          // scope + 날짜 기준 중복 차감 방지
+          const key = scope === 'day' ? `day:${today}` : `date:${pickedDate}`;
+          const reason = scope === 'day' ? CHARGE_REASONS.today : CHARGE_REASONS.date;
+          if (chargedKeyRef.current !== key) {
+            chargedKeyRef.current = key;
+            chargeForContent('sun', SUN_COST_BIG, reason).catch(() => {});
+          }
+        }
       })
       .finally(() => {
         if (!cancelled) setDomainAILoading(false);

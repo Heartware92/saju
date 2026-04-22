@@ -21,7 +21,9 @@ import {
 import { buildZamidusuReading, type ZamidusuReading } from '../engine/zamidusu/reading';
 import styles from './ZamidusuResultPage.module.css';
 import { useProfileStore } from '../store/useProfileStore';
+import { useCreditStore } from '../store/useCreditStore';
 import { getZamidusuReading, type ZamidusuAIResult } from '../services/fortuneService';
+import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { ZAMIDUSU_SECTION_KEYS, ZAMIDUSU_SECTION_LABELS } from '../constants/prompts';
 import { MAJOR_STARS_META, MINOR_STARS_META, MUTAGEN_META, PALACE_ROLE_META } from '../engine/zamidusu/knowledge';
 import { AILoadingBar } from '../components/AILoadingBar';
@@ -48,6 +50,8 @@ export default function ZamidusuResultPage() {
   const [aiResult, setAiResult] = useState<ZamidusuAIResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
+  const chargeForContent = useCreditStore(s => s.chargeForContent);
+  const chargedRef = useRef(false);
 
   const hasUrlBirth = !!(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
   const primaryHourUnknown = !!primary && !primary.birth_time;
@@ -134,6 +138,10 @@ export default function ZamidusuResultPage() {
         clearTimeout(timeoutId);
         setAiResult(r);
         setAiLoading(false);
+        if (r.success && !chargedRef.current) {
+          chargedRef.current = true;
+          chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.zamidusu).catch(() => {});
+        }
       })
       .catch(err => {
         if (cancelled) return;

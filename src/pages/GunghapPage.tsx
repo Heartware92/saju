@@ -4,6 +4,8 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
+import { useCreditStore } from '../store/useCreditStore';
+import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import type { BirthProfile } from '../types/credit';
 import {
@@ -266,6 +268,9 @@ export default function GunghapPage() {
         .trim();
       setResult(cleaned);
       setStep('result');
+      useCreditStore.getState()
+        .chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.gunghap)
+        .catch(() => {});
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '분석 중 오류가 발생했습니다.');
     } finally {

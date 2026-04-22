@@ -18,8 +18,11 @@ import { computeSajuFromProfile } from '../utils/profileSaju';
 import { buildConsultationSystemPrompt, type ConsultationStatus } from '../constants/prompts';
 import { sanitizeAIOutput } from '../services/fortuneService';
 import { supabase } from '../services/supabase';
-
-const MOON_COST_PER_QUESTION = 1;
+import {
+  CONSULTATION_QUESTIONS_PER_PACK,
+  CONSULTATION_PACK_SUN_COST,
+  CONSULTATION_PACK_MOON_COST,
+} from '../constants/creditCosts';
 
 // ──────────────────────────────────────────────
 // 타입·상수
@@ -95,7 +98,12 @@ function formatRelativeTime(ts: number): string {
 export default function ConsultationPage() {
   const { user } = useUserStore();
   const { profiles, fetchProfiles } = useProfileStore();
-  const { moonBalance, consumeCredit, fetchBalance } = useCreditStore();
+  const {
+    sunBalance, moonBalance, fetchBalance,
+    consultationRemaining, purchaseConsultationPack, useConsultationQuestion,
+  } = useCreditStore();
+  const [packBuying, setPackBuying] = useState(false);
+  const [showPackModal, setShowPackModal] = useState(false);
 
   const [selectedProfileId, setSelectedProfileId] = useState<string>('');
   const [status, setStatus] = useState<ConsultationStatus>({});
@@ -317,9 +325,15 @@ export default function ConsultationPage() {
     const question = (questionOverride ?? inputText).trim();
     if (!question || loading || !saju || !selectedProfile) return;
 
-    // 크레딧 체크
-    if (moonBalance < MOON_COST_PER_QUESTION) {
-      setError('달 크레딧이 부족해요. 크레딧을 충전해주세요.');
+    // 팩 잔량 체크 — 남은 질문이 0이면 구매 모달 열기
+    if (consultationRemaining <= 0) {
+      setShowPackModal(true);
+      return;
+    }
+    // 팩에서 1질문 차감 (크레딧은 이미 팩 구매 시점에 차감됨)
+    const ok = useConsultationQuestion();
+    if (!ok) {
+      setShowPackModal(true);
       return;
     }
 
@@ -453,11 +467,7 @@ export default function ConsultationPage() {
         ));
       }
 
-      // 응답 성공 후 크레딧 차감
-      const consumed = await consumeCredit('moon', MOON_COST_PER_QUESTION, `상담소:${question.slice(0, 20)}`);
-      if (!consumed) {
-        console.error('크레딧 차감 실패 (응답은 이미 생성됨)');
-      }
+      // 팩 모델: 질문은 팩 구매 시점에 이미 차감됨. 여기서 추가 차감 없음.
 
       // 후속 질문 제안 (fire-and-forget — 실패해도 메인 UX 영향 없음)
       if (selectedProfileId === profileAtSend && cleaned) {
@@ -574,7 +584,9 @@ export default function ConsultationPage() {
             <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
               상담소
             </h1>
-            <p className="text-[13px] text-text-tertiary mt-0.5">사주 기반 1:1 AI 상담 · 1회 🌙 {MOON_COST_PER_QUESTION}</p>
+            <p className="text-[13px] text-text-tertiary mt-0.5">
+              사주 기반 1:1 AI 상담 · 질문팩 ☀️ {CONSULTATION_PACK_SUN_COST} 또는 🌙 {CONSULTATION_PACK_MOON_COST} → {CONSULTATION_QUESTIONS_PER_PACK}질문
+            </p>
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -764,7 +776,7 @@ export default function ConsultationPage() {
                       <button
                         key={i}
                         onClick={() => handleSend(s)}
-                        disabled={loading || moonBalance < MOON_COST_PER_QUESTION}
+                        disabled={loading}
                         className="text-left px-3 py-2 rounded-xl bg-cta/10 border border-cta/30 text-[14px] text-cta hover:bg-cta/20 hover:border-cta/50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         {s}
@@ -817,7 +829,7 @@ export default function ConsultationPage() {
           />
           <button
             onClick={() => handleSend()}
-            disabled={!inputText.trim() || loading || moonBalance < MOON_COST_PER_QUESTION}
+            disabled={!inputText.trim() || loading}
             className="flex-shrink-0 w-11 h-11 rounded-full bg-cta text-white flex items-center justify-center active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label="전송"
           >
@@ -827,13 +839,88 @@ export default function ConsultationPage() {
             </svg>
           </button>
         </div>
-        <div className="flex items-center justify-between mt-1.5 px-1">
+        <div className="flex items-center justify-between mt-1.5 px-1 flex-wrap gap-y-1">
           <span className="text-[12px] text-text-tertiary">{inputText.length}/300</span>
           <span className="text-[12px] text-text-tertiary">
-            보유 🌙 {moonBalance} · 1회 🌙 {MOON_COST_PER_QUESTION}
+            남은 질문 {consultationRemaining} · 보유 ☀️ {sunBalance} 🌙 {moonBalance}
+            {consultationRemaining <= 0 && (
+              <button
+                onClick={() => setShowPackModal(true)}
+                className="ml-2 text-cta underline font-semibold"
+              >
+                질문팩 구매
+              </button>
+            )}
           </span>
         </div>
       </div>
+
+      {/* ── 질문팩 구매 모달 ── */}
+      <AnimatePresence>
+        {showPackModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !packBuying && setShowPackModal(false)}
+              className="fixed inset-0 z-[80] bg-black/60"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed inset-0 z-[81] flex items-center justify-center px-5 pointer-events-none"
+            >
+              <div className="w-full max-w-sm rounded-2xl bg-[rgba(20,12,38,0.98)] border border-cta/40 p-5 pointer-events-auto">
+                <h3 className="text-lg font-bold text-text-primary mb-1">질문팩 구매</h3>
+                <p className="text-[13px] text-text-secondary mb-4 leading-relaxed">
+                  질문팩 1개로 <b className="text-cta">{CONSULTATION_QUESTIONS_PER_PACK}번</b> 연속으로 상담할 수 있어요.
+                  결제 방식을 선택해 주세요.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <button
+                    disabled={packBuying || sunBalance < CONSULTATION_PACK_SUN_COST}
+                    onClick={async () => {
+                      setPackBuying(true);
+                      const ok = await purchaseConsultationPack('sun');
+                      setPackBuying(false);
+                      if (ok) setShowPackModal(false);
+                      else setError('구매에 실패했어요. 잠시 후 다시 시도해 주세요.');
+                    }}
+                    className="py-3 rounded-xl bg-cta text-white font-semibold text-[15px] disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    ☀️ {CONSULTATION_PACK_SUN_COST} 해로 구매 ({CONSULTATION_QUESTIONS_PER_PACK}질문)
+                  </button>
+                  <button
+                    disabled={packBuying || moonBalance < CONSULTATION_PACK_MOON_COST}
+                    onClick={async () => {
+                      setPackBuying(true);
+                      const ok = await purchaseConsultationPack('moon');
+                      setPackBuying(false);
+                      if (ok) setShowPackModal(false);
+                      else setError('구매에 실패했어요. 잠시 후 다시 시도해 주세요.');
+                    }}
+                    className="py-3 rounded-xl bg-white/10 border border-white/20 text-text-primary font-semibold text-[15px] disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    🌙 {CONSULTATION_PACK_MOON_COST} 달로 구매 ({CONSULTATION_QUESTIONS_PER_PACK}질문)
+                  </button>
+                  <button
+                    disabled={packBuying}
+                    onClick={() => setShowPackModal(false)}
+                    className="py-2 text-[13px] text-text-tertiary"
+                  >
+                    취소
+                  </button>
+                </div>
+                <p className="text-[11px] text-text-tertiary mt-3">
+                  보유: ☀️ {sunBalance} · 🌙 {moonBalance}
+                </p>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* ── 대화 목록 드로어 ── */}
       <AnimatePresence>

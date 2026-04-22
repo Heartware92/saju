@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
+import { useCreditStore } from '../store/useCreditStore';
 import { computeSajuFromProfile } from '../utils/profileSaju';
+import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { calculateSaju, type SajuResult } from '../utils/sajuCalculator';
 import { getTodayFortuneReport, type TodayFortuneAIResult } from '../services/fortuneService';
 import { TODAY_SECTION_KEYS, TODAY_SECTION_LABELS } from '../constants/prompts';
@@ -90,6 +92,8 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
   const [result, setResult] = useState<SajuResult | null>(null);
   const [report, setReport] = useState<TodayFortuneAIResult | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const chargeForContent = useCreditStore(s => s.chargeForContent);
+  const chargedDateRef = useRef<string | null>(null);
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
@@ -117,7 +121,15 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
     setReport(null);
     setReportLoading(true);
     getTodayFortuneReport(result, confirmedDate)
-      .then(r => { if (!cancelled) setReport(r); })
+      .then(r => {
+        if (cancelled) return;
+        setReport(r);
+        // 날짜별 1회 차감 (날짜 바꾸면 새 차감)
+        if (r.success && chargedDateRef.current !== confirmedDate) {
+          chargedDateRef.current = confirmedDate;
+          chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.today).catch(() => {});
+        }
+      })
       .finally(() => { if (!cancelled) setReportLoading(false); });
     return () => { cancelled = true; };
   }, [result, confirmedDate]);

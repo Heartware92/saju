@@ -64,7 +64,7 @@ export default function MoreFortunePage({ category }: Props) {
   const router = useRouter();
   const { user } = useUserStore();
   const { profiles, fetchProfiles } = useProfileStore();
-  const { moonBalance, consumeCredit, fetchBalance } = useCreditStore();
+  const { moonBalance, chargeForContent, fetchBalance } = useCreditStore();
 
   const isValidCategory = !!category && (category in MORE_FORTUNE_CONFIGS);
   const cfg = isValidCategory ? MORE_FORTUNE_CONFIGS[category as MoreFortuneId] : null;
@@ -176,7 +176,7 @@ export default function MoreFortunePage({ category }: Props) {
       }
 
       // 응답 성공 후 크레딧 차감
-      const consumed = await consumeCredit('moon', MOON_COST_PER_FORTUNE, `더많은운세:${cfg.title}`);
+      const consumed = await chargeForContent('moon', MOON_COST_PER_FORTUNE, `더많은운세:${cfg.title}`);
       if (!consumed) {
         console.error('크레딧 차감 실패 (응답은 이미 생성됨)');
       }

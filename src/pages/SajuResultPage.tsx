@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Lunar } from 'lunar-javascript';
@@ -8,7 +8,9 @@ import { calculateSaju, type SajuResult } from '../utils/sajuCalculator';
 import { getJungtongsajuReport, type JungtongsajuAIResult } from '../services/fortuneService';
 import { JUNGTONGSAJU_SECTION_KEYS, JUNGTONGSAJU_SECTION_LABELS } from '../constants/prompts';
 import { useProfileStore } from '../store/useProfileStore';
+import { useCreditStore } from '../store/useCreditStore';
 import { computeSajuFromProfile } from '../utils/profileSaju';
+import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import SajuReport from '../components/saju/SajuReport';
 import { AdviceCard } from '../components/saju/AdviceCard';
 import { AILoadingBar } from '../components/AILoadingBar';
@@ -31,6 +33,8 @@ export default function SajuResultPage() {
   const [result, setResult] = useState<SajuResult | null>(null);
   const [report, setReport] = useState<JungtongsajuAIResult | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const chargeForContent = useCreditStore(s => s.chargeForContent);
+  const chargedRef = useRef(false);
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
@@ -82,7 +86,14 @@ export default function SajuResultPage() {
     let cancelled = false;
     setReportLoading(true);
     getJungtongsajuReport(result)
-      .then(r => { if (!cancelled) setReport(r); })
+      .then(r => {
+        if (cancelled) return;
+        setReport(r);
+        if (r.success && !chargedRef.current) {
+          chargedRef.current = true;
+          chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.traditional).catch(() => {});
+        }
+      })
       .finally(() => { if (!cancelled) setReportLoading(false); });
     return () => { cancelled = true; };
   }, [result]);
