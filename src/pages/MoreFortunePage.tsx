@@ -34,6 +34,7 @@ import {
   getChildrenShort,
   getPersonalityShort,
   getNameFortune,
+  getDreamInterpretation,
 } from '../services/fortuneService';
 import { analyzeKoreanName } from '../utils/nameEumRyeong';
 import { AILoadingBar } from '../components/AILoadingBar';
@@ -54,6 +55,7 @@ const LOADING_MESSAGES: Record<MoreFortuneId, string[]> = {
   children:    ['자녀성과 자녀궁을 확인 중입니다', '식상·관성 흐름 분석 중입니다', '출산 유리한 시기 짚는 중입니다'],
   personality: ['일주 60갑자 특성 확인 중입니다', '격국·신강신약 종합 중입니다', '간여지동과 신살 분석 중입니다'],
   name:        ['초성 오행을 계산 중입니다', '사주 용신과 이름 오행 비교 중입니다', '이름이 주는 기운을 분석 중입니다'],
+  dream:       ['전통 꿈해몽 사전을 찾는 중입니다', '꿈속 상징과 사주 오행을 맞춰보는 중입니다', '올해 세운과 꿈의 연결점을 짚는 중입니다'],
 };
 
 export default function MoreFortunePage({ category }: Props) {
@@ -79,6 +81,11 @@ export default function MoreFortunePage({ category }: Props) {
   // 이름 풀이 전용 state
   const [koreanName, setKoreanName] = useState('');
   const [hanjaName, setHanjaName] = useState('');
+
+  // 꿈 해몽 전용 state
+  const [dreamText, setDreamText] = useState('');
+  const DREAM_MIN_LEN = 10;
+  const DREAM_MAX_LEN = 800;
 
   // 결과 state
   const [loading, setLoading] = useState(false);
@@ -114,8 +121,12 @@ export default function MoreFortunePage({ category }: Props) {
     if (category === 'name') {
       return koreanName.trim().length >= 1;
     }
+    if (category === 'dream') {
+      const len = dreamText.trim().length;
+      return len >= DREAM_MIN_LEN && len <= DREAM_MAX_LEN;
+    }
     return true;
-  }, [saju, category, koreanName]);
+  }, [saju, category, koreanName, dreamText]);
 
   const handleRead = async () => {
     if (!saju || !canSubmit || loading) return;
@@ -150,6 +161,10 @@ export default function MoreFortunePage({ category }: Props) {
             hanjaName: hanjaName.trim() || undefined,
             hanjaElements: undefined,
           });
+          break;
+        }
+        case 'dream': {
+          resp = await getDreamInterpretation(saju, dreamText.trim());
           break;
         }
       }
@@ -257,6 +272,50 @@ export default function MoreFortunePage({ category }: Props) {
             {cfg.longDesc}
           </p>
         </div>
+
+        {/* 꿈 해몽 전용 입력 */}
+        {category === 'dream' && (
+          <div className={styles.section}>
+            <h2 style={{ fontSize: 14 }}>꿈 내용 입력</h2>
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '6px 0 10px' }}>
+              간밤에 꾼 꿈을 떠오르는 대로 자유롭게 적어주세요. 상징(동물·사람·장소·행동·감정)을 구체적으로 쓸수록 해석이 정확해집니다.
+            </p>
+            <textarea
+              value={dreamText}
+              onChange={(e) => setDreamText(e.target.value.slice(0, DREAM_MAX_LEN))}
+              placeholder={'예) 큰 구렁이가 몸을 감는데 무섭지 않고 따뜻했어요. 그 뒤 맑은 물에서 헤엄치고 있었고, 돌아가신 할머니가 웃으며 떡을 건네주셨어요.'}
+              rows={8}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 12,
+                color: 'var(--text-primary)',
+                fontSize: 14,
+                lineHeight: 1.7,
+                resize: 'vertical',
+                minHeight: 160,
+                fontFamily: 'inherit',
+              }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginTop: 6,
+              fontSize: 11,
+              color: 'var(--text-tertiary)',
+            }}>
+              <span>
+                {dreamText.trim().length < DREAM_MIN_LEN
+                  ? `최소 ${DREAM_MIN_LEN}자 이상 적어주세요`
+                  : '분석 가능'}
+              </span>
+              <span>{dreamText.length} / {DREAM_MAX_LEN}</span>
+            </div>
+          </div>
+        )}
 
         {/* 이름 풀이 전용 입력 */}
         {category === 'name' && (

@@ -8,6 +8,12 @@ import { determineGyeokguk, analyzeGyeokgukStatus } from '../engine/gyeokguk';
 import { getDayPillarTraits } from './gapjaTraits';
 import type { TarotCardInfo } from '../services/api';
 import type { TaekilResult, TaekilDay } from '../engine/taekil';
+import {
+  matchDreamSymbols,
+  buildMatchedSymbolsBlock,
+  DREAM_FRAMEWORK,
+  REVERSE_DREAM_NOTES,
+} from './dreamSymbols';
 
 // ── 오행 상생/상극 (프롬프트 유틸용)
 const EL_GEN: Record<string, string> = { '목':'화', '화':'토', '토':'금', '금':'수', '수':'목' };
@@ -3604,8 +3610,7 @@ ${monthStr}
 
 9. **대화 연속성**: 이전 대화 내용이 있으면 참고해서 일관된 페르소나 유지.
 
-${METAPHOR_KB}
-${METAPHOR_TITLE_RULE}
+${METAPHOR_SHORT_GUIDE}
 `;
 }
 
@@ -3958,4 +3963,45 @@ ${MORE_COMMON_RULES}
 ${hanjaName ? '3단락 — 자원오행(한자 뜻·부수)이 이름에 더하는 기운 분석' : ''}
 ${hanjaName ? '4' : '3'}단락 — 개명이 필요한 수준인지, 보완책이 충분한지 단정적으로 평가
 마지막 — "- " 불릿 3개로 실천 조언 (필명·SNS ID·자주 쓰는 색 등 이름 대안 보완)`;
+};
+
+// ─────────────────────────────────────────────
+// 10. 꿈 해몽 — 사용자 꿈 서술 + 전통 꿈해몽 KB + 사주 원국 결합
+// ─────────────────────────────────────────────
+export const generateDreamInterpretationPrompt = (
+  result: SajuResult,
+  dreamText: string,
+): string => {
+  const trimmed = (dreamText || '').trim().slice(0, 800); // 과대 방지
+  const matches = matchDreamSymbols(trimmed, 5);
+  const symbolsBlock = buildMatchedSymbolsBlock(matches);
+  const reverseNotes = REVERSE_DREAM_NOTES.map((n, i) => `${i + 1}. ${n}`).join('\n');
+
+  return `당신은 35년 경력의 한국 전통 꿈해몽 전문가이자 사주명리가입니다. 아래 사람의 꿈을 전통 해몽 + 사주 원국의 현재 국면과 결합해 풀어주세요.
+
+${buildMoreFortuneBlock(result)}
+
+[사용자가 꾼 꿈]
+${trimmed || '(내용 미입력)'}
+
+${symbolsBlock}
+
+${DREAM_FRAMEWORK}
+
+[역몽(逆夢) 주의]
+${reverseNotes}
+
+${MORE_COMMON_RULES}
+
+[작성 지침] 450~650자 내외
+1단락 — 은유 제목 + 꿈의 전체 인상 1줄(길몽/흉몽/혼재 중 단정)
+2단락 — 매칭된 상징 2~3개를 구체적으로 인용해 어떤 의미로 해석되는지 — 사용자의 문장 그대로 한 번 되짚어 주세요
+3단락 — 이 꿈이 지금 당신의 사주 원국·올해 세운(${result.currentSeWoon?.gan}${result.currentSeWoon?.zhi})과 어떻게 맞물리는지 — 재·관·인·식·비 중 어느 기운의 신호인지 지목
+4단락 — 꿈이 가리키는 현실의 구체적 국면(재물/관계/건강/일 중 무엇인지) — 단정적 톤
+마지막 — "- " 불릿 3개로 실천 조언: (1) 앞으로 한 달간 해야 할 일 1개, (2) 피해야 할 행동 1개, (3) 꿈이 길몽이라면 활용법·흉몽이라면 액막이 조언 1개
+
+[중요]
+- 상징이 매칭되지 않았다면 단정적 해석을 피하고 "꿈 조각"과 감정을 토대로 보수적으로 풀이.
+- 역몽 규칙을 반드시 고려해 "피·죽음·불·똥"이 나왔다면 길몽 가능성을 먼저 검토.
+- 꿈 내용이 너무 짧거나 없으면 "내일 다시 적어보시면 더 정확한 풀이가 가능합니다"로 마무리.`;
 };

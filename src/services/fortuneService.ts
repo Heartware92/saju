@@ -26,6 +26,7 @@ import {
   generatePersonalityShortPrompt,
   generateNameFortunePrompt,
   type NameAnalysisInput,
+  generateDreamInterpretationPrompt,
   generateTojeongPrompt,
   generateZamidusuPrompt,
   ZAMIDUSU_SECTION_KEYS,
@@ -828,6 +829,19 @@ export const getNameFortune = async (
 ): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generateNameFortunePrompt(result, nameInput), 1300);
+    return { success: true, content };
+  } catch (e: any) { return { success: false, error: e.message }; }
+};
+
+export const getDreamInterpretation = async (
+  result: SajuResult,
+  dreamText: string,
+): Promise<FortuneResponse> => {
+  try {
+    if (!dreamText || dreamText.trim().length < 5) {
+      return { success: false, error: '꿈 내용을 5자 이상 적어주세요.' };
+    }
+    const content = await callGPT(generateDreamInterpretationPrompt(result, dreamText), 1500);
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };

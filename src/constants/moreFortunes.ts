@@ -14,7 +14,8 @@ export type MoreFortuneId =
   | 'people'       // 인간관계·귀인운
   | 'children'     // 자녀·출산운
   | 'personality'  // 성격 심층 분석
-  | 'name';        // 이름 풀이 (추가 입력 필요)
+  | 'name'         // 이름 풀이 (추가 입력 필요)
+  | 'dream';       // 꿈 해몽 (꿈 서술 입력 필요)
 
 export interface MoreFortuneConfig {
   id: MoreFortuneId;
@@ -25,6 +26,7 @@ export interface MoreFortuneConfig {
   ctaButton: string;       // 풀이 버튼 문구
   maxTokens: number;       // AI 응답 길이 (토큰)
   needsNameInput?: boolean;
+  needsDreamInput?: boolean;
 }
 
 export const MORE_FORTUNE_CONFIGS: Record<MoreFortuneId, MoreFortuneConfig> = {
@@ -75,7 +77,7 @@ export const MORE_FORTUNE_CONFIGS: Record<MoreFortuneId, MoreFortuneConfig> = {
   },
   people: {
     id: 'people',
-    title: '인간관계·귀인운',
+    title: '귀인운',
     icon: '★',
     shortDesc: '귀인·경계할 관계',
     longDesc: '천을귀인과 비겁·인성·관성 배치를 바탕으로 올해 누가 도움이 될지, 조심해야 할 관계 유형이 무엇인지 알려드려요.',
@@ -110,12 +112,23 @@ export const MORE_FORTUNE_CONFIGS: Record<MoreFortuneId, MoreFortuneConfig> = {
     maxTokens: 1300,
     needsNameInput: true,
   },
+  dream: {
+    id: 'dream',
+    title: '꿈 해몽',
+    icon: '☾',
+    shortDesc: '간밤의 꿈 풀이',
+    longDesc: '간밤에 꾼 꿈을 적어주세요. 전통 꿈해몽 지식베이스와 당신의 사주 원국·올해 세운을 함께 해석해 꿈이 가리키는 현실의 힌트를 구체적으로 알려드려요.',
+    ctaButton: '내 꿈 풀이 보기',
+    maxTokens: 1500,
+    needsDreamInput: true,
+  },
 };
 
 export const MORE_FORTUNE_ORDER: MoreFortuneId[] = [
   'love', 'wealth', 'career',
   'health', 'study', 'people',
   'children', 'personality', 'name',
+  'dream',
 ];
 
 export const MOON_COST_PER_FORTUNE = 1;
