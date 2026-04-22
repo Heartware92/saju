@@ -1918,13 +1918,14 @@ export const generateWealthFortunePrompt = (result: SajuResult): string => {
 /**
  * 택일 AI 추천 프롬프트
  * - 엔진이 계산한 길흉 날 목록 → AI가 명리 이유를 담아 추천 내러티브 생성
- * - 짧고 실용적 (350~450자)
+ * - 일반: 350~450자 / 출산 택일: 500~650자 (산모·태아 안전 강조)
  */
 export const generateTaekilAdvicePrompt = (
   saju: SajuResult,
   taekil: TaekilResult,
 ): string => {
-  const bestDays = taekil.bestDays.slice(0, 5);
+  const isBirth = taekil.category === 'birth';
+  const bestDays = taekil.bestDays.slice(0, isBirth ? 3 : 5);
   const worstDays = taekil.days
     .filter(d => d.grade === '흉')
     .sort((a, b) => a.score - b.score)
@@ -1941,12 +1942,36 @@ export const generateTaekilAdvicePrompt = (
     : '없음';
 
   const elPct = saju.elementPercent;
+  const gyeokguk = determineGyeokguk(saju);
 
-  return `[사주 원국]
+  // 출산 택일 전용 인풋 블록
+  const birthBlock = isBirth ? `
+[출산 택일 명리 분석 인풋]
+산모 일주: ${saju.pillars.day.gan}${saju.pillars.day.zhi} / 일간 오행: ${saju.dayMasterElement}
+격국: ${gyeokguk.name}(${gyeokguk.traits?.slice(0, 3).join('·') || ''})
+신강신약: ${saju.strengthStatus} / 용신: ${saju.yongSinElement}(${saju.yongSin}) / 기신: ${saju.giSin}
+식신 강도: ${computeSipseongCounts(saju)['식신']?.toFixed(1) || '0'} (자녀·출산 에너지)
+편인 강도: ${computeSipseongCounts(saju)['편인']?.toFixed(1) || '0'} (식신 극하는 기운 — 높을수록 출산일 신중 선택)
+일지 지지: ${saju.pillars.day.zhi} / 오행: ${saju.pillars.day.zhiElement}
+` : '';
+
+  const birthRules = isBirth ? `
+[출산 택일 전용 규칙]
+- 산모 일간 기준 식신(食神)이 강한 날 = 아이 에너지가 살아있는 날. 우선 추천.
+- 편인(偏印)이 식신을 克하는 날 = 모자(母子) 에너지 충돌. 반드시 피할 날로 언급.
+- 12운성 사(死)·절(絶)일 = 생명 기운 약함. 강력 기피.
+- 12운성 장생(長生)·제왕(帝旺)·건록(建祿)일 = 생명력이 넘치는 날. 적극 추천.
+- 편관(七殺)일 = 산모·태아 모두 부담. 반드시 경고.
+- 공망일 = 허한 날. 출산 기피.
+- 추천 날짜는 반드시 위 엔진 계산 길일 목록에서만 선택. 임의 추천 금지.
+- 마지막에 면책 문구 1문장 필수: "이 분석은 명리학적 참고 자료이며, 최종 출산 날짜는 담당 의사와 상의해 결정해 주세요."
+` : '';
+
+  return `[사주 원국 — 산모]
 일간: ${saju.dayMaster}(${saju.dayMasterElement}) / 일주: ${saju.pillars.day.gan}${saju.pillars.day.zhi}
 오행: 목${elPct.목}% 화${elPct.화}% 토${elPct.토}% 금${elPct.금}% 수${elPct.수}%
-용신: ${saju.yongSinElement} / 기신: ${saju.giSin}
-
+신강신약: ${saju.strengthStatus} / 용신: ${saju.yongSinElement} / 기신: ${saju.giSin}
+${birthBlock}
 [택일 검색 정보]
 카테고리: ${taekil.categoryLabel}
 기간: ${taekil.startDate} ~ ${taekil.endDate}
@@ -1960,12 +1985,12 @@ ${worstList}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [작성 규칙]
 1) Markdown 절대 금지. 이모지 금지.
-2) 총 350~450자. 짧고 실용적으로.
+2) 총 ${isBirth ? '500~650' : '350~450'}자. 짧고 실용적으로.
 3) 추천일은 위 엔진 계산 결과(길일)에서만 고를 것. 임의로 다른 날 추천 금지.
 4) 명리 이유(십성·12운성·신살 중 1~2개)를 근거로 왜 좋은지 설명.
 5) 피해야 할 날도 반드시 언급.
 6) 출력은 [taekil_advice] 마커부터 시작. 마커 이전 텍스트 없어야 함.
-
+${birthRules}
 ${METAPHOR_SHORT_GUIDE}
 
 [taekil_advice]
@@ -1974,7 +1999,7 @@ ${taekil.categoryLabel} 택일 추천을 아래 구조로 작성하세요:
 - 차선 추천일 1개 (있으면): 날짜 + 한 문장
 - 피해야 할 날 1개: 날짜 + 이유 한 문장
 - 길시 안내: 추천일 중 길시가 있으면 1문장으로 안내
-- 주의사항 1문장: ${taekil.categoryLabel}에 특화된 명리 조언`;
+- 주의사항 1문장: ${taekil.categoryLabel}에 특화된 명리 조언${isBirth ? '\n- 면책 문구 (반드시 마지막 줄에): 명리학적 참고 자료이며, 최종 날짜는 담당 의사와 상의해 결정해 주세요.' : ''}`;
 };
 
 // ============================================================

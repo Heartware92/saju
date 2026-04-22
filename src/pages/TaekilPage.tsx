@@ -68,7 +68,7 @@ export default function TaekilPage() {
   }, [primary]);
 
   // 카테고리 선택
-  const [category, setCategory] = useState<TaekilCategory>('general');
+  const [category, setCategory] = useState<TaekilCategory>('marriage');
 
   // 오늘/연도 제한 — 오늘 연도 ~ +5년 범위만 허용
   const today = new Date();

@@ -28,21 +28,19 @@ export type TaekilCategory =
   | 'marriage'   // 결혼·혼례
   | 'moving'     // 이사·입택
   | 'business'   // 개업·창업
-  | 'contract'   // 계약·거래
+  | 'contract'   // 계약·거래·차량 구매
   | 'travel'     // 여행·출행
   | 'surgery'    // 수술
-  | 'vehicle'    // 차량 출고·인수
-  | 'general';   // 일반 (범용)
+  | 'birth';     // 출산 택일 (제왕절개)
 
 export const TAEKIL_CATEGORIES: { id: TaekilCategory; label: string; desc: string }[] = [
   { id: 'marriage', label: '결혼·혼례', desc: '결혼식, 약혼, 상견례' },
   { id: 'moving', label: '이사·입택', desc: '이사, 새집 입주' },
   { id: 'business', label: '개업·창업', desc: '가게 오픈, 사업 시작' },
-  { id: 'contract', label: '계약·거래', desc: '부동산, 큰 계약' },
+  { id: 'contract', label: '계약·거래', desc: '부동산, 큰 계약, 차량 구매' },
   { id: 'travel', label: '여행·출행', desc: '해외여행, 장거리 이동' },
   { id: 'surgery', label: '수술', desc: '수술, 시술 일정' },
-  { id: 'vehicle', label: '차량 출고', desc: '자동차 인수, 출고' },
-  { id: 'general', label: '일반 택일', desc: '범용 길일 탐색' },
+  { id: 'birth', label: '출산 택일', desc: '제왕절개, 출산 날짜 선정' },
 ];
 
 export type TaekilGrade = '대길' | '길' | '평' | '흉';
@@ -85,8 +83,8 @@ const CATEGORY_BOOST: Record<TaekilCategory, Record<string, number>> = {
   contract: { '정재': 14, '정관': 12, '정인': 8, '편관': -8, '겁재': -10 },
   travel:   { '식신': 12, '정인': 10, '편재': 6, '편관': -10, '겁재': -4 },
   surgery:  { '정인': 14, '식신': 10, '편인': 6, '편관': -12, '상관': -10 },
-  vehicle:  { '편재': 12, '정재': 10, '식신': 8, '편관': -6, '겁재': -4 },
-  general:  {},
+  // 출산 택일: 식신(子息 에너지) 최우선, 정인(보호·양육), 편인 극식신으로 강하게 감점
+  birth:    { '식신': 18, '정인': 14, '정재': 6, '편인': -14, '편관': -16, '상관': -12, '겁재': -6 },
 };
 
 // 육충
@@ -141,7 +139,7 @@ const SAMHAP: [string, string, string, string][] = [
 ];
 
 // 시작 행사 카테고리 (공망 감점이 큰 카테고리)
-const START_CATEGORIES: TaekilCategory[] = ['marriage', 'moving', 'business', 'contract', 'vehicle'];
+const START_CATEGORIES: TaekilCategory[] = ['marriage', 'moving', 'business', 'contract', 'birth'];
 
 // ============================================
 // 헬퍼 함수
@@ -233,7 +231,7 @@ function scoreOneDay(
   // 3) 카테고리별 천간 십신 보정
   const catGanBoost = catBoost[tenGodGan] ?? 0;
   base += catGanBoost * 0.5;
-  if (catGanBoost > 0) reasons.push(`${tenGodGan} — ${category === 'general' ? '기운 상승' : '행사에 유리'}`);
+  if (catGanBoost > 0) reasons.push(`${tenGodGan} — 행사에 유리`);
   if (catGanBoost < 0) reasons.push(`${tenGodGan} — 행사에 불리`);
 
   // 3) 용신 일치
@@ -328,7 +326,18 @@ function scoreOneDay(
     }
   }
 
-  // 10) clamp + grade
+  // 10) 출산 택일 전용 — 사(死)·절(絶) 강화 패널티 / 장생·제왕 보너스
+  if (category === 'birth') {
+    if (stage === '사' || stage === '절') {
+      base -= 12;
+      reasons.push(`12운성 ${stage} — 출산 택일 기피일`);
+    } else if (stage === '장생' || stage === '제왕' || stage === '건록') {
+      base += 6;
+      reasons.push(`12운성 ${stage} — 출산에 강한 생명 에너지`);
+    }
+  }
+
+  // 11) clamp + grade
   const score = Math.max(5, Math.min(95, Math.round(base)));
   const grade = gradeFromScore(score);
   if (reasons.length === 0) {
