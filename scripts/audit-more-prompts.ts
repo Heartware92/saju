@@ -95,7 +95,6 @@ const checks: Check[] = [
     hanjaElements: undefined,
   }) },
   { name: '10. 꿈 해몽',         run: () => generateDreamInterpretationPrompt(
-    mockSaju,
     '큰 구렁이가 몸을 감았는데 따뜻했고, 그 뒤 맑은 물에서 헤엄치고 있었어요. 돌아가신 할머니가 웃으며 떡을 건네주셨어요.'
   ) },
 ];
@@ -114,8 +113,11 @@ const must = {
 const dreamOnly = {
   dreamInput: '[사용자가 꾼 꿈]',
   symbols: '[꿈속 상징 매칭 결과]',
-  framework: '[꿈해몽 해석 프레임]',
-  reverse: '[역몽(逆夢) 주의]',
+  framework: '[꿈해몽 해석 프레임',
+  reverse: '[역몽(逆夢) 규칙',
+  types: '[꿈 종류 체크리스트]',
+  contextRules: '[맥락 규칙',
+  emotionRules: '[감정 규칙',
 };
 
 const nameOnly = {
@@ -146,24 +148,36 @@ for (const c of checks) {
   const body = c.run();
   const length = body.length;
 
-  const common = [
-    assertIncludes(body, must.block, '원국 블록'),
-    assertIncludes(body, must.rules, '공통 규칙'),
-    assertIncludes(body, must.kb, '은유 KB'),
-    assertIncludes(body, must.persona, '35년 경력 페르소나'),
-    assertIncludes(body, must.writeGuide, '작성 지침'),
-  ];
+  // 꿈 해몽은 사주 블록을 의도적으로 쓰지 않는다 — 별도 기준 적용
+  const isDream = c.name.startsWith('10.');
 
-  // currentSeWoon 2026 주입 체크 (원국 블록에 들어감)
-  common.push(assertIncludes(body, '세운(2026)', '현재 세운(2026)'));
+  const common: string[] = [];
+  if (isDream) {
+    common.push(assertIncludes(body, '35년 경력', '페르소나'));
+    common.push(assertIncludes(body, must.writeGuide, '작성 지침'));
+    // 의도적으로 원국·세운 없음을 확인
+    common.push(!body.includes('[원국]') ? '✓ 사주 원국 미포함(의도대로)' : '✗ 사주 원국 누출');
+    common.push(!body.includes('세운(2026)') ? '✓ 세운 미포함(의도대로)' : '✗ 세운 누출');
+  } else {
+    common.push(
+      assertIncludes(body, must.block, '원국 블록'),
+      assertIncludes(body, must.rules, '공통 규칙'),
+      assertIncludes(body, must.kb, '은유 KB'),
+      assertIncludes(body, must.persona, '35년 경력 페르소나'),
+      assertIncludes(body, must.writeGuide, '작성 지침'),
+      assertIncludes(body, '세운(2026)', '현재 세운(2026)'),
+    );
+  }
 
   const extras: string[] = [];
-  if (c.name.startsWith('10.')) {
+  if (isDream) {
     extras.push(assertIncludes(body, dreamOnly.dreamInput, '꿈 입력'));
     extras.push(assertIncludes(body, dreamOnly.symbols, '꿈 상징 매칭'));
     extras.push(assertIncludes(body, dreamOnly.framework, '해석 프레임'));
-    extras.push(assertIncludes(body, dreamOnly.reverse, '역몽 노트'));
-    // KB 실제 매칭 확인 (구렁이·뱀 / 돌아가신 / 물 중 하나 포함되어야)
+    extras.push(assertIncludes(body, dreamOnly.reverse, '역몽 규칙'));
+    extras.push(assertIncludes(body, dreamOnly.types, '꿈 종류 체크리스트'));
+    extras.push(assertIncludes(body, dreamOnly.contextRules, '맥락 규칙'));
+    extras.push(assertIncludes(body, dreamOnly.emotionRules, '감정 규칙'));
     const hasMatch = /뱀|구렁이|돌아가신|물/.test(body);
     extras.push(hasMatch ? '✓ 꿈 키워드 매칭(뱀/구렁이/물/돌아가신)' : '✗ 꿈 키워드 매칭 실패');
   }

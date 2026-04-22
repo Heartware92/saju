@@ -833,15 +833,18 @@ export const getNameFortune = async (
   } catch (e: any) { return { success: false, error: e.message }; }
 };
 
+/**
+ * 꿈 해몽 — 사주 무관, 꿈 내용만으로 해석.
+ * dreamText는 선명 모드의 원문 또는 흐릿 모드에서 구조화 입력을 composeDreamTextFromStructured로 합성한 텍스트.
+ */
 export const getDreamInterpretation = async (
-  result: SajuResult,
   dreamText: string,
 ): Promise<FortuneResponse> => {
   try {
     if (!dreamText || dreamText.trim().length < 5) {
-      return { success: false, error: '꿈 내용을 5자 이상 적어주세요.' };
+      return { success: false, error: '꿈 내용을 조금 더 적어주세요. (등장물·행동·감정 중 하나만이라도 있으면 좋아요)' };
     }
-    const content = await callGPT(generateDreamInterpretationPrompt(result, dreamText), 1500);
+    const content = await callGPT(generateDreamInterpretationPrompt(dreamText), 1500);
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };

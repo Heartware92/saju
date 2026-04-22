@@ -361,12 +361,189 @@ export const REVERSE_DREAM_NOTES = [
 ];
 
 /** 공통 해석 프레임 — 프롬프트에 상수 블록으로 주입 */
-export const DREAM_FRAMEWORK = `[꿈해몽 해석 프레임]
-1) 상징(무엇이 나타났나) — 전통 해석과 심리 상징을 동시에 고려
-2) 맥락(무엇을 하고 있었나) — 같은 상징도 보는 것/당하는 것/소유하는 것이 다름
-3) 감정(꿈속 나의 기분) — 길흉을 가르는 핵심 단서
-4) 현실 연결 — 사주 원국·올해 세운과 연결해 어떤 국면을 암시하는지
-5) 실천 — 꿈이 주는 현실의 힌트(피할 것/취할 것)`;
+export const DREAM_FRAMEWORK = `[꿈해몽 해석 프레임 — 순서대로 적용]
+1) 꿈 종류 판별 — 태몽/예지몽/심리몽/길몽/흉몽 중 어느 유형에 가까운지 [꿈 종류 체크리스트] 근거로 추정
+2) 상징 추출 — 매칭된 [꿈속 상징]의 전통 의미를 우선 인용
+3) 맥락 가중 — [맥락 규칙]에 따라 "보는/당하는/품는/쫓기는" 의미 강도를 조정
+4) 감정 가중 — [감정 규칙]으로 길흉 방향을 최종 조정(감정이 상징보다 우선)
+5) 역몽 확인 — [역몽 규칙]에 해당하면 반대 해석을 먼저 검토
+6) 최종 해석 — 사용자의 현실에 어떤 힌트를 주는지 단정적으로 제시`;
+
+/**
+ * 꿈 종류 판별 체크리스트
+ * - 사주처럼 수식적 계산은 없으나, 해몽가들이 통상 쓰는 판별 기준을 명문화.
+ * - AI는 각 체크리스트에 몇 개 부합하는지 추정해 "가능성 높음/경향 있음/해당 없음"으로 판정.
+ */
+export const DREAM_TYPE_CHECKLIST = `[꿈 종류 체크리스트]
+■ 태몽(胎夢) 가능성 — 아래 중 2개 이상 부합 시 태몽 가능성 높음
+  1) 본인/배우자/가까운 가족 중 임신 가능성 있는 사람이 있다
+  2) 용·뱀·호랑이·돼지·물고기·과일·해·달·꽃·보석 중 하나 이상 등장
+  3) 그 대상을 "본 것"이 아니라 품에 안거나, 잡거나, 먹거나, 받았다
+  4) 꿈이 유난히 생생하고 깼을 때 "이건 특별한 꿈"이라는 직감이 있다
+
+■ 예지몽 가능성 — 아래 중 2개 이상 부합 시 예지몽 경향
+  1) 새벽 3~7시에 꾼 꿈이다(전통적으로 예지력 높다고 본다)
+  2) 꿈이 생생·논리적이고 현실처럼 일관되게 진행됐다
+  3) 같은 꿈을 반복해서 꾼다
+  4) 꿈의 구체적 장면이 최근 현실의 특정 상황과 바로 연결된다
+
+■ 심리몽 가능성 — 아래 중 2개 이상 부합 시 심리몽 경향(무의식의 반영)
+  1) 최근 스트레스·고민·관계 문제가 장면에 그대로 투영되어 있다
+  2) 비논리적·조각난 전개이고 깨고 나면 내용이 쉽게 흐려진다
+  3) 시험·추락·쫓김·발가벗음·늦음 같은 스트레스 정형 장면이다
+  4) 반복되는 악몽 성격이다
+
+■ 길몽 신호 — 빛·상승·풍요·따뜻함·깨끗한 물·해·달·용·봉황·돼지·똥·피(역몽)
+■ 흉몽 신호 — 어둠·추락·끊김·더러움·쫓김·무서움. 단 [역몽 규칙]으로 재판정 필요.
+
+[주의] 태몽·예지몽·심리몽은 서로 배타적이지 않다. 동시에 해당할 수 있다.
+판별 근거를 반드시 본문에서 한 문장으로 명시할 것("새벽에 반복해서 꾸셨다고 하셔서 예지몽 경향으로 봅니다" 식).`;
+
+/**
+ * 맥락 규칙 — 같은 상징도 "어떻게 등장했는가"로 의미가 달라진다.
+ * 키워드 매칭 결과 폴라리티에 가중치를 주는 개념적 지침.
+ */
+export interface ContextRule {
+  action: string;
+  keywords: string[];
+  strengthNote: string;
+}
+
+export const CONTEXT_RULES: ContextRule[] = [
+  { action: '보다(관찰)',    keywords: ['봤', '보았', '보이', '보더라', '나타났'],
+    strengthNote: '의미 세기 중간. 객관 상태 확인의 성격.' },
+  { action: '품다/안다/소유', keywords: ['품', '안았', '껴안', '받았', '얻었', '가졌'],
+    strengthNote: '의미 세기 최강(+). 내 것이 됨 — 길몽은 더 길몽, 흉몽은 나에게 직접 영향.' },
+  { action: '먹다/마시다',   keywords: ['먹', '마셨', '삼켰'],
+    strengthNote: '의미 세기 강(+). 내면화 — 태몽 맥락에서는 아기를 잉태하는 암시.' },
+  { action: '타다/운전',     keywords: ['탔', '타고', '운전', '몰고'],
+    strengthNote: '의미 세기 강. 주도권·추진력 상승/하락의 신호.' },
+  { action: '당하다/물리다', keywords: ['물렸', '당했', '맞았', '잡혔'],
+    strengthNote: '의미 세기 강(-). 수동적 영향 — 좋은 상징이면 귀인 개입, 나쁜 상징이면 공격.' },
+  { action: '쫓기다/도망',   keywords: ['쫓겼', '도망', '쫓아', '피했'],
+    strengthNote: '의미 세기 강. 회피 중인 현실 문제의 투영이 큼.' },
+  { action: '싸우다/다투다', keywords: ['싸웠', '다퉜', '공격'],
+    strengthNote: '의미 세기 중간. 갈등 상황 — 이겼는지 졌는지가 길흉을 가름.' },
+  { action: '죽다/죽이다',   keywords: ['죽', '죽었', '죽였'],
+    strengthNote: '역몽 1순위. 내가 죽으면 재생·변화, 남을 죽이면 관계 종결.' },
+  { action: '날다/오르다',   keywords: ['날았', '올라', '비행', '솟아'],
+    strengthNote: '의미 세기 강(+). 성취·해방·상승.' },
+  { action: '떨어지다',      keywords: ['떨어', '추락', '빠졌'],
+    strengthNote: '의미 세기 강(-). 통제 상실. 부드럽게 착지하면 연착륙의 길조.' },
+  { action: '찾다/잃다',     keywords: ['찾았', '잃었', '잃어'],
+    strengthNote: '의미 세기 중간. 잃는 쪽이 더 직접적.' },
+];
+
+/**
+ * 감정 규칙 — 꿈 속에서 느낀 감정은 길흉을 결정적으로 가름.
+ * 같은 뱀이라도 따뜻했는가/무서웠는가로 해석이 180도 바뀐다.
+ */
+export interface EmotionRule {
+  emotion: string;
+  keywords: string[];
+  modifier: 'strong+' | 'mild+' | 'neutral' | 'mild-' | 'strong-';
+  note: string;
+}
+
+export const EMOTION_RULES: EmotionRule[] = [
+  { emotion: '따뜻함/편안함',  keywords: ['따뜻', '편안', '포근', '안심', '평온'],
+    modifier: 'strong+', note: '흉몽 상징이어도 길몽 쪽으로 전환 가능. 관계·재물·건강 개선 신호.' },
+  { emotion: '기쁨/설렘',      keywords: ['기뻤', '즐거', '설렜', '행복', '웃었'],
+    modifier: 'strong+', note: '기대했던 일이 이뤄진다는 신호.' },
+  { emotion: '평온/담담',      keywords: ['담담', '평범', '그냥', '덤덤'],
+    modifier: 'neutral', note: '감정 단서 약함. 상징과 맥락 위주로 해석.' },
+  { emotion: '찜찜함/불안',    keywords: ['찜찜', '불안', '께름', '이상'],
+    modifier: 'mild-', note: '완전한 흉몽은 아니지만 주의 신호. 현실의 불편함 점검 필요.' },
+  { emotion: '슬픔/외로움',    keywords: ['슬펐', '외로', '쓸쓸', '눈물'],
+    modifier: 'mild-', note: '정리·이별의 시기. 시원한 눈물이었다면 오히려 해소.' },
+  { emotion: '무서움/공포',    keywords: ['무서', '두려', '겁났', '끔찍'],
+    modifier: 'strong-', note: '길몽 상징이어도 길함을 잃을 수 있음. 회피 중인 현실 문제의 강력한 신호.' },
+  { emotion: '분노/짜증',      keywords: ['화났', '분노', '짜증', '격분'],
+    modifier: 'mild-', note: '억눌린 갈등. 가까운 관계에서 풀어야 할 실마리가 있음.' },
+];
+
+/** Mode B(흐릿) 가이드용 칩 그룹 — UI에서 다중 선택으로 노출 */
+export interface ChipGroup {
+  id: 'people' | 'animal' | 'nature' | 'object' | 'place' | 'action' | 'emotion';
+  label: string;
+  question: string;
+  items: string[];
+}
+
+export const DREAM_CHIP_GROUPS: ChipGroup[] = [
+  {
+    id: 'people',
+    label: '사람',
+    question: '꿈속에 누가 나왔나요?',
+    items: ['돌아가신 분', '가족', '연인·배우자', '친구', '직장 사람', '낯선 사람', '아기', '아이', '유명인', '자기 자신'],
+  },
+  {
+    id: 'animal',
+    label: '동물',
+    question: '어떤 동물이 나왔나요?',
+    items: ['돼지', '뱀·구렁이', '용', '호랑이', '개', '고양이', '쥐', '새·까치', '물고기·잉어', '소·말'],
+  },
+  {
+    id: 'nature',
+    label: '자연',
+    question: '어떤 자연 요소가 보였나요?',
+    items: ['물·바다·강', '불·화재', '해·태양', '달', '별', '산', '나무·숲', '비·눈', '하늘·구름', '땅·흙'],
+  },
+  {
+    id: 'object',
+    label: '사물',
+    question: '어떤 사물이 등장했나요?',
+    items: ['돈·금', '보석', '집·방', '차·교통수단', '음식·떡', '꽃·과일', '칼·무기', '옷', '책', '거울·유리'],
+  },
+  {
+    id: 'place',
+    label: '장소',
+    question: '어디서 일어난 꿈인가요?',
+    items: ['집', '학교', '직장', '길거리', '바다·강가', '산·숲', '모르는 곳', '과거 살던 곳', '병원', '결혼식장·장례식장'],
+  },
+  {
+    id: 'action',
+    label: '행동',
+    question: '꿈에서 무슨 행동을 했나요?',
+    items: ['봤다', '품었다/받았다', '먹었다', '탔다', '싸웠다', '쫓겼다', '날았다', '떨어졌다', '죽었다/죽였다', '울었다', '웃었다', '결혼/장례'],
+  },
+  {
+    id: 'emotion',
+    label: '감정',
+    question: '꿈속에서 느낀 기분은?',
+    items: ['따뜻함/편안함', '기쁨/설렘', '평온/담담', '찜찜함/불안', '슬픔/외로움', '무서움/공포', '분노/짜증'],
+  },
+];
+
+/** 구조화된 선택지 + 자유 메모를 프롬프트용 자연어 문장으로 합성 */
+export interface StructuredDreamInput {
+  selections: Partial<Record<ChipGroup['id'], string[]>>;
+  note?: string;
+  timeOfNight?: '새벽' | '한밤' | '아침' | '모름';
+  isRepeating?: boolean;
+}
+
+export function composeDreamTextFromStructured(input: StructuredDreamInput): string {
+  const parts: string[] = [];
+  const groups = DREAM_CHIP_GROUPS;
+
+  for (const g of groups) {
+    const sel = input.selections[g.id];
+    if (sel && sel.length > 0) {
+      parts.push(`${g.label}: ${sel.join(', ')}`);
+    }
+  }
+  if (input.timeOfNight && input.timeOfNight !== '모름') {
+    parts.push(`꾼 시간대: ${input.timeOfNight}`);
+  }
+  if (input.isRepeating) {
+    parts.push('반복해서 꾸는 꿈');
+  }
+  if (input.note && input.note.trim()) {
+    parts.push(`추가 기억: ${input.note.trim()}`);
+  }
+  return parts.join('\n');
+}
 
 /**
  * 사용자 꿈 설명에서 KB 상징을 매칭한다.

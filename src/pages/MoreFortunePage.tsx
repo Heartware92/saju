@@ -38,6 +38,7 @@ import {
 } from '../services/fortuneService';
 import { analyzeKoreanName } from '../utils/nameEumRyeong';
 import { AILoadingBar } from '../components/AILoadingBar';
+import { DreamInputPanel } from '../components/dream/DreamInputPanel';
 import styles from './SajuResultPage.module.css';
 
 interface Props {
@@ -82,10 +83,9 @@ export default function MoreFortunePage({ category }: Props) {
   const [koreanName, setKoreanName] = useState('');
   const [hanjaName, setHanjaName] = useState('');
 
-  // 꿈 해몽 전용 state
+  // 꿈 해몽 전용 state — DreamInputPanel에서 onChange로 주입되는 합성 텍스트/유효성
   const [dreamText, setDreamText] = useState('');
-  const DREAM_MIN_LEN = 10;
-  const DREAM_MAX_LEN = 800;
+  const [dreamValid, setDreamValid] = useState(false);
 
   // 결과 state
   const [loading, setLoading] = useState(false);
@@ -117,19 +117,19 @@ export default function MoreFortunePage({ category }: Props) {
   if (!cfg) return null;
 
   const canSubmit = useMemo(() => {
+    // 꿈 해몽은 사주 원국을 쓰지 않는다 — 프로필 없어도 DreamInputPanel 입력만으로 가능
+    if (category === 'dream') return dreamValid;
     if (!saju) return false;
     if (category === 'name') {
       return koreanName.trim().length >= 1;
     }
-    if (category === 'dream') {
-      const len = dreamText.trim().length;
-      return len >= DREAM_MIN_LEN && len <= DREAM_MAX_LEN;
-    }
     return true;
-  }, [saju, category, koreanName, dreamText]);
+  }, [saju, category, koreanName, dreamValid]);
 
   const handleRead = async () => {
-    if (!saju || !canSubmit || loading) return;
+    // 꿈 해몽은 saju 없이도 실행 가능
+    if (category !== 'dream' && !saju) return;
+    if (!canSubmit || loading) return;
 
     if (moonBalance < MOON_COST_PER_FORTUNE) {
       setError('달 크레딧이 부족해요. 크레딧을 충전해주세요.');
@@ -143,29 +143,31 @@ export default function MoreFortunePage({ category }: Props) {
     try {
       type FortuneResp = { success: boolean; content?: string; error?: string };
       let resp: FortuneResp = { success: false, error: '알 수 없는 카테고리' };
-      switch (category) {
-        case 'love':        resp = await getLoveShort(saju); break;
-        case 'wealth':      resp = await getWealthShort(saju); break;
-        case 'career':      resp = await getCareerShort(saju); break;
-        case 'health':      resp = await getHealthShort(saju); break;
-        case 'study':       resp = await getStudyShort(saju); break;
-        case 'people':      resp = await getPeopleShort(saju); break;
-        case 'children':    resp = await getChildrenShort(saju); break;
-        case 'personality': resp = await getPersonalityShort(saju); break;
-        case 'name': {
-          const kor = analyzeKoreanName(koreanName);
-          // 한자 자원오행은 MVP에선 빈 배열 — 프롬프트에서 "한자 미입력"으로 처리
-          resp = await getNameFortune(saju, {
-            koreanName: koreanName.trim(),
-            koreanInitialsElements: kor.elements,
-            hanjaName: hanjaName.trim() || undefined,
-            hanjaElements: undefined,
-          });
-          break;
-        }
-        case 'dream': {
-          resp = await getDreamInterpretation(saju, dreamText.trim());
-          break;
+
+      if (category === 'dream') {
+        resp = await getDreamInterpretation(dreamText.trim());
+      } else {
+        // 여기서 saju는 이미 위 가드로 보장됨
+        const s = saju!;
+        switch (category) {
+          case 'love':        resp = await getLoveShort(s); break;
+          case 'wealth':      resp = await getWealthShort(s); break;
+          case 'career':      resp = await getCareerShort(s); break;
+          case 'health':      resp = await getHealthShort(s); break;
+          case 'study':       resp = await getStudyShort(s); break;
+          case 'people':      resp = await getPeopleShort(s); break;
+          case 'children':    resp = await getChildrenShort(s); break;
+          case 'personality': resp = await getPersonalityShort(s); break;
+          case 'name': {
+            const kor = analyzeKoreanName(koreanName);
+            resp = await getNameFortune(s, {
+              koreanName: koreanName.trim(),
+              koreanInitialsElements: kor.elements,
+              hanjaName: hanjaName.trim() || undefined,
+              hanjaElements: undefined,
+            });
+            break;
+          }
         }
       }
 
@@ -197,7 +199,8 @@ export default function MoreFortunePage({ category }: Props) {
     );
   }
 
-  if (!primary) {
+  // 꿈 해몽은 사주와 무관 — 프로필 없어도 진입 가능
+  if (category !== 'dream' && !primary) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
         <p className="text-text-secondary mb-4">{cfg.title}을 보려면 대표 프로필이 필요해요.</p>
@@ -206,7 +209,7 @@ export default function MoreFortunePage({ category }: Props) {
     );
   }
 
-  if (!saju) {
+  if (category !== 'dream' && !saju) {
     return <div className={styles.loading}>사주 계산 중...</div>;
   }
 
@@ -273,47 +276,14 @@ export default function MoreFortunePage({ category }: Props) {
           </p>
         </div>
 
-        {/* 꿈 해몽 전용 입력 */}
+        {/* 꿈 해몽 전용 입력 — 선명/흐릿 두 모드 */}
         {category === 'dream' && (
           <div className={styles.section}>
-            <h2 style={{ fontSize: 14 }}>꿈 내용 입력</h2>
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '6px 0 10px' }}>
-              간밤에 꾼 꿈을 떠오르는 대로 자유롭게 적어주세요. 상징(동물·사람·장소·행동·감정)을 구체적으로 쓸수록 해석이 정확해집니다.
-            </p>
-            <textarea
-              value={dreamText}
-              onChange={(e) => setDreamText(e.target.value.slice(0, DREAM_MAX_LEN))}
-              placeholder={'예) 큰 구렁이가 몸을 감는데 무섭지 않고 따뜻했어요. 그 뒤 맑은 물에서 헤엄치고 있었고, 돌아가신 할머니가 웃으며 떡을 건네주셨어요.'}
-              rows={8}
-              style={{
-                width: '100%',
-                padding: '12px 14px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: 12,
-                color: 'var(--text-primary)',
-                fontSize: 14,
-                lineHeight: 1.7,
-                resize: 'vertical',
-                minHeight: 160,
-                fontFamily: 'inherit',
-              }}
+            <h2 style={{ fontSize: 14, marginBottom: 10 }}>꿈 내용 입력</h2>
+            <DreamInputPanel
+              onTextChange={setDreamText}
+              onValidChange={setDreamValid}
             />
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginTop: 6,
-              fontSize: 11,
-              color: 'var(--text-tertiary)',
-            }}>
-              <span>
-                {dreamText.trim().length < DREAM_MIN_LEN
-                  ? `최소 ${DREAM_MIN_LEN}자 이상 적어주세요`
-                  : '분석 가능'}
-              </span>
-              <span>{dreamText.length} / {DREAM_MAX_LEN}</span>
-            </div>
           </div>
         )}
 

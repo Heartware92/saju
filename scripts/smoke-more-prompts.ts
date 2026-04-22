@@ -91,7 +91,6 @@ const cases: Case[] = [
       hanjaName: undefined, hanjaElements: undefined,
     }), tokens: 1300 },
   { label: '10. 꿈 해몽',       prompt: generateDreamInterpretationPrompt(
-      mockSaju,
       '큰 구렁이가 몸을 감았는데 따뜻했고, 그 뒤 맑은 물에서 헤엄치고 있었어요. 돌아가신 할머니가 웃으며 떡을 건네주셨어요.'
     ), tokens: 1500 },
 ];
