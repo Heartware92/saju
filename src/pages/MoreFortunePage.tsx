@@ -279,7 +279,7 @@ export default function MoreFortunePage({ category }: Props) {
         {/* 꿈 해몽 전용 입력 — 선명/흐릿 두 모드 */}
         {category === 'dream' && (
           <div className={styles.section}>
-            <h2 style={{ fontSize: 14, marginBottom: 10 }}>꿈 내용 입력</h2>
+            <h2 style={{ fontSize: 18, marginBottom: 14, fontWeight: 700 }}>꿈 내용 입력</h2>
             <DreamInputPanel
               onTextChange={setDreamText}
               onValidChange={setDreamValid}

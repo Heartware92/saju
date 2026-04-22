@@ -90,14 +90,14 @@ export function DreamInputPanel({ onTextChange, onValidChange }: Props) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* ── 모드 선택 ───────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <ModeButton
           active={mode === 'vivid'}
           onClick={() => setMode('vivid')}
           title="꿈이 선명해요"
-          sub="내용이 또렷이 기억나요"
+          sub="또렷이 기억나요"
         />
         <ModeButton
           active={mode === 'foggy'}
@@ -110,31 +110,31 @@ export function DreamInputPanel({ onTextChange, onValidChange }: Props) {
       {/* ── Mode A: vivid ──────────────────────────── */}
       {mode === 'vivid' && (
         <div>
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8, lineHeight: 1.6 }}>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 10, lineHeight: 1.7 }}>
             간밤에 꾼 꿈을 떠오르는 대로 자유롭게 적어주세요. 등장한 사람·동물·장소·행동·느낀 감정을 구체적으로 쓸수록 해석이 정확해져요.
           </p>
           <textarea
             value={vividText}
             onChange={(e) => setVividText(e.target.value.slice(0, VIVID_MAX))}
             placeholder={'예) 큰 구렁이가 몸을 감는데 무섭지 않고 따뜻했어요. 그 뒤 맑은 물에서 헤엄치고 있었고, 돌아가신 할머니가 웃으며 떡을 건네주셨어요.'}
-            rows={8}
+            rows={9}
             style={{
               width: '100%',
-              padding: '12px 14px',
+              padding: '14px 16px',
               background: 'rgba(255,255,255,0.05)',
               border: '1px solid rgba(255,255,255,0.12)',
               borderRadius: 12,
               color: 'var(--text-primary)',
-              fontSize: 14,
-              lineHeight: 1.7,
+              fontSize: 16,
+              lineHeight: 1.75,
               resize: 'vertical',
-              minHeight: 160,
+              minHeight: 180,
               fontFamily: 'inherit',
             }}
           />
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            marginTop: 6, fontSize: 11, color: 'var(--text-tertiary)',
+            marginTop: 8, fontSize: 13, color: 'var(--text-tertiary)',
           }}>
             <span>
               {vividText.trim().length < VIVID_MIN
@@ -148,9 +148,9 @@ export function DreamInputPanel({ onTextChange, onValidChange }: Props) {
 
       {/* ── Mode B: foggy (guided) ─────────────────── */}
       {mode === 'foggy' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6, marginTop: 2 }}>
-            기억나는 조각만 골라주세요. 해당되는 게 없으면 각 칸 아래 직접 입력칸에 자유롭게 적어도 됩니다. 한두 개만 골라도 해몽 가능해요.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7, marginTop: 2 }}>
+            기억나는 조각만 골라주세요. 여러 개 선택할 수 있고, 해당되는 게 없으면 각 항목 아래 직접 입력칸에 적어도 됩니다. 한두 개만 골라도 해몽할 수 있어요.
           </p>
 
           {DREAM_CHIP_GROUPS.map((g) => (
@@ -166,8 +166,9 @@ export function DreamInputPanel({ onTextChange, onValidChange }: Props) {
 
           {/* 꾼 시간대 */}
           <div>
-            <h3 style={labelStyle}>꿈 꾼 시간대 (예지몽 판별에 사용)</h3>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <h3 style={labelStyle}>꿈 꾼 시간대</h3>
+            <p style={subLabelStyle}>예지몽 판별에 쓰여요 (새벽 3~7시가 전통적으로 예지력 높음)</p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {(['새벽','한밤','아침','모름'] as const).map(t => (
                 <button
                   key={t}
@@ -182,39 +183,44 @@ export function DreamInputPanel({ onTextChange, onValidChange }: Props) {
           </div>
 
           {/* 반복 여부 */}
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            fontSize: 15, color: 'var(--text-primary)',
+            cursor: 'pointer', padding: '4px 0',
+          }}>
             <input
               type="checkbox"
               checked={isRepeating}
               onChange={(e) => setIsRepeating(e.target.checked)}
-              style={{ width: 16, height: 16 }}
+              style={{ width: 18, height: 18, flexShrink: 0 }}
             />
-            반복해서 꾸는 꿈이에요
+            <span>반복해서 꾸는 꿈이에요</span>
           </label>
 
           {/* 자유 메모 */}
           <div>
-            <h3 style={labelStyle}>추가 기억 (선택)</h3>
+            <h3 style={labelStyle}>추가로 기억나는 내용 (선택)</h3>
+            <p style={subLabelStyle}>남은 조각이 있으면 자유롭게 적어주세요.</p>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value.slice(0, NOTE_MAX))}
-              placeholder="남은 조각이 있으면 자유롭게 적어주세요."
+              placeholder="예) 꿈이 끝날 때쯤 누가 이름을 불렀어요."
               rows={3}
               style={{
                 width: '100%',
-                padding: '10px 12px',
+                padding: '12px 14px',
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(255,255,255,0.12)',
                 borderRadius: 10,
                 color: 'var(--text-primary)',
-                fontSize: 13,
-                lineHeight: 1.6,
+                fontSize: 15,
+                lineHeight: 1.7,
                 resize: 'vertical',
-                minHeight: 60,
+                minHeight: 80,
                 fontFamily: 'inherit',
               }}
             />
-            <div style={{ textAlign: 'right', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+            <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--text-tertiary)', marginTop: 6 }}>
               {note.length} / {NOTE_MAX}
             </div>
           </div>
@@ -222,16 +228,19 @@ export function DreamInputPanel({ onTextChange, onValidChange }: Props) {
           {/* 요약 미리보기 */}
           {foggyComposedText && (
             <div style={{
-              padding: 10, borderRadius: 10,
+              padding: 14, borderRadius: 12,
               background: 'rgba(139,92,246,0.08)',
               border: '1px solid rgba(139,92,246,0.20)',
             }}>
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>해몽에 전달될 내용</div>
+              <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8, fontWeight: 600 }}>
+                해몽에 전달될 내용
+              </div>
               <pre style={{
                 whiteSpace: 'pre-wrap', margin: 0,
-                fontSize: 12, lineHeight: 1.7,
+                fontSize: 14, lineHeight: 1.8,
                 color: 'var(--text-secondary)',
                 fontFamily: 'inherit',
+                wordBreak: 'keep-all',
               }}>{foggyComposedText}</pre>
             </div>
           )}
@@ -243,21 +252,31 @@ export function DreamInputPanel({ onTextChange, onValidChange }: Props) {
 
 // ── 작은 UI 컴포넌트 ─────────────────────────────────
 const labelStyle: React.CSSProperties = {
-  fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
-  margin: '0 0 8px 0',
+  fontSize: 16, fontWeight: 700, color: 'var(--text-primary)',
+  margin: '0 0 6px 0',
+  lineHeight: 1.5,
+  wordBreak: 'keep-all',
+};
+
+const subLabelStyle: React.CSSProperties = {
+  fontSize: 13, color: 'var(--text-tertiary)',
+  margin: '0 0 10px 0',
+  lineHeight: 1.6,
 };
 
 function chipStyle(active: boolean): React.CSSProperties {
   return {
-    padding: '6px 12px',
+    padding: '10px 16px',
     borderRadius: 999,
-    border: active ? '1px solid var(--cta-primary)' : '1px solid rgba(255,255,255,0.15)',
-    background: active ? 'rgba(139,92,246,0.18)' : 'rgba(255,255,255,0.04)',
-    color: active ? '#D8BFFD' : 'var(--text-secondary)',
-    fontSize: 12,
-    fontWeight: active ? 600 : 500,
+    border: active ? '1.5px solid var(--cta-primary)' : '1px solid rgba(255,255,255,0.18)',
+    background: active ? 'rgba(139,92,246,0.20)' : 'rgba(255,255,255,0.05)',
+    color: active ? '#E9D5FF' : 'var(--text-primary)',
+    fontSize: 14,
+    fontWeight: active ? 700 : 500,
     cursor: 'pointer',
     transition: 'all 0.15s',
+    whiteSpace: 'nowrap',     // 칩 내부 줄바꿈 방지 — 흉하게 2줄 되는 것 방지
+    lineHeight: 1.3,
   };
 }
 
@@ -269,18 +288,18 @@ function ModeButton({ active, onClick, title, sub }: {
       type="button"
       onClick={onClick}
       style={{
-        padding: '14px 12px',
-        borderRadius: 12,
-        border: active ? '1.5px solid var(--cta-primary)' : '1px solid rgba(255,255,255,0.12)',
-        background: active ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.04)',
-        color: active ? '#D8BFFD' : 'var(--text-secondary)',
+        padding: '18px 14px',
+        borderRadius: 14,
+        border: active ? '2px solid var(--cta-primary)' : '1px solid rgba(255,255,255,0.15)',
+        background: active ? 'rgba(139,92,246,0.16)' : 'rgba(255,255,255,0.04)',
+        color: active ? '#E9D5FF' : 'var(--text-primary)',
         cursor: 'pointer',
         textAlign: 'center',
         transition: 'all 0.15s',
       }}
     >
-      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{title}</div>
-      <div style={{ fontSize: 11, opacity: 0.85 }}>{sub}</div>
+      <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 4, whiteSpace: 'nowrap' }}>{title}</div>
+      <div style={{ fontSize: 13, opacity: 0.85, whiteSpace: 'nowrap' }}>{sub}</div>
     </button>
   );
 }
@@ -295,7 +314,7 @@ function ChipGroupSection({ group, selected, customValue, onToggle, onCustomChan
   return (
     <div>
       <h3 style={labelStyle}>{group.question}</h3>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
         {group.items.map(item => (
           <button
             key={item}
@@ -314,12 +333,12 @@ function ChipGroupSection({ group, selected, customValue, onToggle, onCustomChan
         placeholder={`그 외 ${group.label} 직접 입력 (선택)`}
         style={{
           width: '100%',
-          padding: '8px 12px',
+          padding: '11px 14px',
           background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.10)',
+          border: '1px solid rgba(255,255,255,0.12)',
           borderRadius: 10,
           color: 'var(--text-primary)',
-          fontSize: 12,
+          fontSize: 14,
         }}
       />
     </div>
