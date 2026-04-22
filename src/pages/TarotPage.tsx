@@ -15,7 +15,7 @@ import type { SajuResult } from '../utils/sajuCalculator';
 import { AILoadingBar } from '../components/AILoadingBar';
 
 type TarotMode = 'today' | 'monthly' | 'question';
-type AutoState = 'idle' | 'shuffling' | 'facedown' | 'revealed';
+type AutoState = 'idle' | 'shuffling' | 'spread' | 'revealed';
 type QuestionState = 'select' | 'shuffling' | 'spread' | 'revealed';
 
 function drawnToCardInfo(drawn: DrawnCard): TarotCardInfo {
@@ -360,6 +360,9 @@ export default function TarotPage() {
   // 오늘/이달
   const [autoState, setAutoState] = useState<AutoState>('idle');
   const [autoDrawn, setAutoDrawn] = useState<DrawnCard[]>([]);
+  const [autoSpread, setAutoSpread] = useState<number[]>([]);
+  const [autoSpreadReversed, setAutoSpreadReversed] = useState<boolean[]>([]);
+  const [selectedSpreadIdxs, setSelectedSpreadIdxs] = useState<number[]>([]);
 
   // 질문 모드
   const [qState, setQState] = useState<QuestionState>('select');
@@ -381,6 +384,9 @@ export default function TarotPage() {
   useEffect(() => {
     setAutoState('idle');
     setAutoDrawn([]);
+    setAutoSpread([]);
+    setAutoSpreadReversed([]);
+    setSelectedSpreadIdxs([]);
     setQState('select');
     setQSpread([]);
     setQDrawn(null);
@@ -415,37 +421,16 @@ export default function TarotPage() {
   const resetAuto = () => {
     setAutoState('idle');
     setAutoDrawn([]);
+    setAutoSpread([]);
+    setAutoSpreadReversed([]);
+    setSelectedSpreadIdxs([]);
     setAiContent(null);
     setAiError(null);
     setAiLoading(false);
   };
 
-  // 셔플 → facedown (버튼 클릭 대기)
-  const startShuffle = (drawn: DrawnCard[], currentMode: TarotMode) => {
-    setAutoState('shuffling');
-    setTimeout(() => {
-      setAutoDrawn(drawn);
-      setAutoState('facedown');
-    }, 2500);
-  };
-
-  // 버튼 클릭 → flip + AI 호출
-  const revealCards = (drawn: DrawnCard[], currentMode: TarotMode) => {
-    setAutoState('revealed');
-    const aiDelay = currentMode === 'monthly' ? 1400 : 950;
-    setTimeout(() => callAI(drawn, currentMode), aiDelay);
-  };
-
-  const runToday = () => {
-    if (autoState !== 'idle') return;
-    if (!sajuResult) { setShowNoPrimaryModal(true); return; }
-    const cardIndex = Math.floor(Math.random() * TAROT_DECK.length);
-    const isReversed = Math.random() < 0.35;
-    const drawn: DrawnCard[] = [{ card: TAROT_DECK[cardIndex], isReversed, position: '오늘' }];
-    startShuffle(drawn, 'today');
-  };
-
-  const runMonthly = () => {
+  // 셔플 → 팬 스프레드 (22장 펼치기)
+  const startAutoShuffle = (currentMode: TarotMode) => {
     if (autoState !== 'idle') return;
     if (!sajuResult) { setShowNoPrimaryModal(true); return; }
     const pool = Array.from({ length: TAROT_DECK.length }, (_, i) => i);
@@ -453,12 +438,36 @@ export default function TarotPage() {
       const j = Math.floor(Math.random() * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
-    const drawn: DrawnCard[] = pool.slice(0, 3).map((cardIndex, i) => ({
-      card: TAROT_DECK[cardIndex],
-      isReversed: Math.random() < 0.35,
-      position: ['상순', '중순', '하순'][i],
-    }));
-    startShuffle(drawn, 'monthly');
+    setAutoSpread(pool.slice(0, 22));
+    setAutoSpreadReversed(Array.from({ length: 22 }, () => Math.random() < 0.35));
+    setSelectedSpreadIdxs([]);
+    setAutoDrawn([]);
+    setAutoState('shuffling');
+    setTimeout(() => setAutoState('spread'), 2500);
+  };
+
+  // 팬에서 카드 선택 — 오늘 1장, 이달 3장
+  const pickAutoCard = (spreadIdx: number, currentMode: TarotMode) => {
+    if (autoState !== 'spread') return;
+    if (selectedSpreadIdxs.includes(spreadIdx)) return;
+    const neededCount = currentMode === 'monthly' ? 3 : 1;
+    if (selectedSpreadIdxs.length >= neededCount) return;
+
+    const newSelected = [...selectedSpreadIdxs, spreadIdx];
+    setSelectedSpreadIdxs(newSelected);
+
+    if (newSelected.length >= neededCount) {
+      const positions = currentMode === 'monthly' ? ['상순', '중순', '하순'] : ['오늘'];
+      const drawn: DrawnCard[] = newSelected.map((sIdx, i) => ({
+        card: TAROT_DECK[autoSpread[sIdx]],
+        isReversed: autoSpreadReversed[sIdx],
+        position: positions[i],
+      }));
+      setAutoDrawn(drawn);
+      setAutoState('revealed');
+      const aiDelay = currentMode === 'monthly' ? 1400 : 950;
+      setTimeout(() => callAI(drawn, currentMode), aiDelay);
+    }
   };
 
   const shuffleForQuestion = () => {
@@ -533,15 +542,15 @@ export default function TarotPage() {
                 </p>
                 <p className="text-[16px] text-text-secondary leading-relaxed mb-5">
                   {mode === 'today'
-                    ? '오늘 당신의 한 장 — 사주와 카드가 만나 오늘의 흐름을 읽어드립니다.'
-                    : '이달의 흐름을 세 장으로 짚고, 사주와 함께 이달의 기운을 풀어드립니다.'}
+                    ? '카드를 섞고, 마음이 끌리는 한 장을 직접 선택하세요.'
+                    : '카드를 섞고, 이달을 담을 세 장을 순서대로 직접 선택하세요.'}
                 </p>
                 <motion.button
-                  onClick={mode === 'today' ? runToday : runMonthly}
+                  onClick={() => startAutoShuffle(mode)}
                   whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
                   className="px-6 py-3 rounded-xl font-bold text-white"
                   style={{ background: 'var(--cta-primary)', boxShadow: '0 4px 16px rgba(124,92,252,0.35)' }}>
-                  {mode === 'today' ? '오늘의 카드 펼치기' : '이달의 카드 펼치기'}
+                  {mode === 'today' ? '카드 섞고 펼치기' : '카드 섞고 펼치기'}
                 </motion.button>
               </motion.div>
             )}
@@ -552,55 +561,85 @@ export default function TarotPage() {
               </motion.div>
             )}
 
-            {(autoState === 'facedown' || autoState === 'revealed') && (
-              <motion.div key="cards" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-                {/* 카드 플립 */}
+            {autoState === 'spread' && (
+              <motion.div key="spread" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                {(() => {
+                  const neededCount = mode === 'monthly' ? 3 : 1;
+                  const remaining = neededCount - selectedSpreadIdxs.length;
+                  const positions = mode === 'monthly' ? ['상순', '중순', '하순'] : ['오늘'];
+                  return (
+                    <div className="relative flex justify-center items-center" style={{ minHeight: 220, marginTop: 40, marginBottom: 56 }}>
+                      {autoSpread.map((_, i) => {
+                        const isSelected = selectedSpreadIdxs.includes(i);
+                        const selectedOrder = selectedSpreadIdxs.indexOf(i);
+                        return (
+                          <motion.div
+                            key={i}
+                            onClick={() => pickAutoCard(i, mode)}
+                            whileHover={!isSelected ? { y: 28, scale: 1.13, zIndex: 50 } : {}}
+                            initial={{ x: 0, y: 0, rotate: 0 }}
+                            animate={{ x: (i - 10.5) * 14, y: Math.sin((i - 10.5) * 0.3) * 18, rotate: (i - 10.5) * 2 }}
+                            transition={{ duration: 0.5, delay: i * 0.02 }}
+                            className="absolute"
+                            style={{
+                              width: 58, height: 92, borderRadius: 8, overflow: 'hidden',
+                              boxShadow: isSelected ? '0 0 14px rgba(124,92,252,0.9)' : '0 3px 10px rgba(0,0,0,0.4)',
+                              border: `2px solid ${isSelected ? 'rgba(124,92,252,1)' : 'rgba(124,92,252,0.5)'}`,
+                              cursor: isSelected ? 'default' : 'pointer',
+                            }}
+                          >
+                            <img src="/tarot/back.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+                            {isSelected && (
+                              <div style={{
+                                position: 'absolute', inset: 0,
+                                background: 'rgba(124,92,252,0.78)',
+                                display: 'flex', flexDirection: 'column',
+                                alignItems: 'center', justifyContent: 'center',
+                                gap: 3,
+                              }}>
+                                <span style={{ fontSize: 15, color: '#fff' }}>✓</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{positions[selectedOrder]}</span>
+                              </div>
+                            )}
+                          </motion.div>
+                        );
+                      })}
+                      <motion.p
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+                        className="absolute w-full text-center text-[14px] text-text-tertiary"
+                        style={{ bottom: -40 }}
+                      >
+                        {remaining > 0
+                          ? (mode === 'today' ? '마음이 끌리는 카드를 선택하세요' : `마음이 끌리는 카드를 ${remaining}장 더 선택하세요`)
+                          : '카드를 확인하는 중...'}
+                      </motion.p>
+                    </div>
+                  );
+                })()}
+              </motion.div>
+            )}
+
+            {autoState === 'revealed' && (
+              <motion.div key="revealed" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="flex justify-center gap-4 flex-wrap mb-6">
                   {autoDrawn.map((d, i) => (
                     <FlipCard
                       key={i}
                       drawn={d}
                       width={mode === 'monthly' ? 98 : 145}
-                      shouldFlip={autoState === 'revealed'}
+                      shouldFlip={true}
                       flipDelay={i * 0.28}
                     />
                   ))}
                 </div>
-
-                {/* 카드 공개 버튼 */}
-                {autoState === 'facedown' && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="text-center mb-4"
-                  >
-                    <p className="text-[15px] text-text-tertiary mb-3">카드가 정해졌습니다</p>
-                    <motion.button
-                      onClick={() => revealCards(autoDrawn, mode)}
-                      whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
-                      className="px-6 py-3 rounded-xl font-bold text-white"
-                      style={{ background: 'var(--cta-primary)', boxShadow: '0 4px 16px rgba(124,92,252,0.35)' }}
-                    >
-                      카드 공개하기
-                    </motion.button>
-                  </motion.div>
+                {aiLoading && <LoadingSpinner />}
+                {aiError && (
+                  <div className="rounded-2xl p-4 text-center bg-[rgba(248,113,113,0.1)] border border-[rgba(248,113,113,0.3)]">
+                    <p className="text-[15px] text-[#F87171] mb-3">{aiError}</p>
+                    <button onClick={() => callAI(autoDrawn, mode)} className="text-[14px] text-text-secondary underline">다시 시도</button>
+                  </div>
                 )}
-
-                {/* 리딩 결과 — aiLoading 중엔 ReadingView 숨김(플래시 방지) */}
-                {autoState === 'revealed' && (
-                  <>
-                    {aiLoading && <LoadingSpinner />}
-                    {aiError && (
-                      <div className="rounded-2xl p-4 text-center bg-[rgba(248,113,113,0.1)] border border-[rgba(248,113,113,0.3)]">
-                        <p className="text-[15px] text-[#F87171] mb-3">{aiError}</p>
-                        <button onClick={() => callAI(autoDrawn, mode)} className="text-[14px] text-text-secondary underline">다시 시도</button>
-                      </div>
-                    )}
-                    {aiContent && <AIReadingView content={aiContent} color={primaryColor} />}
-                  </>
-                )}
-
+                {aiContent && <AIReadingView content={aiContent} color={primaryColor} />}
                 <button onClick={resetAuto}
                   className="w-full mt-4 py-3 rounded-xl border border-[var(--border-subtle)] text-[15px] text-text-secondary">
                   다시 펼치기
