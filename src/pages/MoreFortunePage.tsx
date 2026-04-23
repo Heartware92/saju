@@ -308,7 +308,7 @@ export default function MoreFortunePage({ category }: Props) {
                   type="text"
                   value={koreanName}
                   onChange={(e) => setKoreanName(e.target.value)}
-                  placeholder="예: 허진우"
+                  placeholder="예: 홍길동"
                   maxLength={10}
                   style={{
                     width: '100%',
@@ -329,7 +329,7 @@ export default function MoreFortunePage({ category }: Props) {
                   type="text"
                   value={hanjaName}
                   onChange={(e) => setHanjaName(e.target.value)}
-                  placeholder="예: 許珍宇 (몰라도 됩니다)"
+                  placeholder="예: 洪吉童 (몰라도 됩니다)"
                   maxLength={10}
                   style={{
                     width: '100%',

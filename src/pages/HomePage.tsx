@@ -428,7 +428,7 @@ export default function HomePage() {
               <Link href={svc.href}>
                 <div className="flex flex-col items-center justify-center aspect-square p-3 rounded-xl bg-space-surface/60 border border-[var(--border-subtle)] hover:border-cta/40 hover:bg-space-surface transition-all active:scale-[0.95]">
                   <span className="text-[17px] font-bold text-text-primary text-center leading-tight mb-1 whitespace-nowrap">{svc.title}</span>
-                  <span className="text-[13px] text-text-tertiary text-center leading-tight line-clamp-1">{svc.desc}</span>
+                  <span className="text-[12px] text-text-tertiary text-center leading-tight line-clamp-2">{svc.desc}</span>
                 </div>
               </Link>
             </motion.div>
