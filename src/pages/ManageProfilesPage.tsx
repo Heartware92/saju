@@ -59,7 +59,7 @@ export default function ManageProfilesPage() {
       <div className="min-h-[60vh] flex flex-col items-center justify-center px-6 text-center">
         <p className="text-text-secondary mb-4">로그인이 필요해요</p>
         <Link
-          href="/login"
+          href="/login?from=/saju/profile"
           className="px-5 py-2.5 rounded-xl bg-cta text-white text-sm font-semibold"
         >
           로그인

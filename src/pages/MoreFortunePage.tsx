@@ -202,7 +202,7 @@ export default function MoreFortunePage({ category }: Props) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
         <p className="text-text-secondary mb-4">{cfg.title} 풀이는 로그인 후 이용 가능해요.</p>
-        <Link href="/login" className="text-cta font-semibold underline">로그인하기</Link>
+        <Link href={`/login?from=${encodeURIComponent(`/saju/more/${category ?? ''}`)}`} className="text-cta font-semibold underline">로그인하기</Link>
       </div>
     );
   }

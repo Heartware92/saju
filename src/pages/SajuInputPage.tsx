@@ -64,6 +64,14 @@ export default function SajuInputPage() {
     }
   }, [user])
 
+  // 프로필 저장 전용 모드로 진입한 비로그인 사용자는 로그인 페이지로
+  // — 일반 체험(사주 계산만)은 기존처럼 허용
+  useEffect(() => {
+    if (!user && isProfileOnly) {
+      router.replace(`/login?from=${encodeURIComponent('/saju/input?mode=profile-only')}`)
+    }
+  }, [user, isProfileOnly, router])
+
   // 프로필 선택 시 폼에 반영
   const selectProfile = (profile: BirthProfile) => {
     setSelectedProfileId(profile.id)

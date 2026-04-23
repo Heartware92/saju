@@ -78,8 +78,8 @@ export const MyPage: React.FC = () => {
           <p className="text-sm text-text-secondary">내 정보와 활동 내역을 확인하세요</p>
         </div>
 
-        {/* 탭 네비게이션 */}
-        <div className="flex gap-1 mb-5 overflow-x-auto bg-space-surface rounded-xl p-1">
+        {/* 탭 네비게이션 — 좁은 화면에서 가로 스크롤 가능하되 스크롤바는 숨김 */}
+        <div className="flex gap-1 mb-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-space-surface rounded-xl p-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}

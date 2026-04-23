@@ -5,7 +5,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { computeSajuFromProfile } from '../utils/profileSaju';
@@ -114,12 +113,15 @@ const fadeUp = {
 
 export default function HomePage() {
   const { user } = useUserStore();
-  const { profiles, fetchProfiles } = useProfileStore();
+  const { profiles, fetchProfiles, loading: profilesLoading } = useProfileStore();
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     if (user) fetchProfiles();
   }, [user, fetchProfiles]);
+
+  // 로그인 직후 첫 진입 — 프로필 페치 완료 전에 "등록 유도" 카드가 flash되는 현상 방지
+  const showProfileSkeleton = !!user && profilesLoading && profiles.length === 0;
 
   // 대표 프로필
   const primary = useMemo(
@@ -144,15 +146,26 @@ export default function HomePage() {
       <section className="relative overflow-hidden">
         <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 pt-10 pb-8">
 
+          {/* CASE 0: 로그인 직후 프로필 페치 중 — 스켈레톤 */}
+          {showProfileSkeleton && (
+            <div className="w-full max-w-[340px] mx-auto" aria-hidden="true">
+              <div className="rounded-2xl px-6 py-8 bg-[rgba(124,92,252,0.06)] border border-[var(--border-subtle)] animate-pulse">
+                <div className="mx-auto w-16 h-16 mb-3 rounded-full bg-[rgba(255,255,255,0.06)]" />
+                <div className="h-5 w-40 mx-auto rounded bg-[rgba(255,255,255,0.06)] mb-2" />
+                <div className="h-3 w-32 mx-auto rounded bg-[rgba(255,255,255,0.04)]" />
+              </div>
+            </div>
+          )}
+
           {/* CASE 1: 대표 프로필 없음 → 등록 유도 */}
-          {!primary && (
+          {!showProfileSkeleton && !primary && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
               className="w-full"
             >
-              <Link href="/saju/input" className="block">
+              <Link href={user ? "/saju/input" : "/login?from=/saju/input"} className="block">
                 <div className="relative mx-auto w-full max-w-[340px] rounded-2xl px-6 py-8
                                 bg-gradient-to-br from-[rgba(124,92,252,0.18)] to-[rgba(201,166,255,0.08)]
                                 border border-[var(--border-subtle)] hover:border-cta/50
@@ -182,7 +195,7 @@ export default function HomePage() {
           )}
 
           {/* CASE 2: 대표 프로필 있음 → 캐릭터 + 만세력 */}
-          {primary && sajuData && sajuData.character && (
+          {!showProfileSkeleton && primary && sajuData && sajuData.character && (
             <>
               {/* 캐릭터 이미지 */}
               <motion.div
@@ -449,22 +462,6 @@ export default function HomePage() {
         </motion.div>
       </section>
 
-      {/* 하단 CTA */}
-      <section className="px-4 mb-16 text-center">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="py-6"
-        >
-          <p className="text-sm font-medium text-text-secondary mb-3">아직 사주를 모르시나요?</p>
-          <Link href="/saju/input">
-            <Button variant="outline" size="md">
-              무료 사주 계산
-            </Button>
-          </Link>
-        </motion.div>
-      </section>
     </div>
   );
 }
