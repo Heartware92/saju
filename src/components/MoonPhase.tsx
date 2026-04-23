@@ -69,12 +69,27 @@ export default function MoonPhase({ size = 76, fallbackLunarDay = 15 }: MoonPhas
     return () => { cancelled = true; };
   }, []);
 
-  const phaseName = lunarPhaseName(lunarDay);
+  // ── 엣지 케이스 가드 ─────────────────────────────
+  // 삭(음력 1/30) = 달이 안 보이는 상태 → 배경에서 사라지면 안 되므로 보름달로 대체.
+  // 개기일식은 항상 삭에 발생하므로 이 규칙으로 함께 커버됨.
+  // 월식은 보름달에 발생하지만 보름달은 그대로 렌더하면 되므로 별도 처리 불필요.
+  // NaN·경계값도 방어적으로 보름달 처리.
+  const safeLunarDay = typeof lunarDay === 'number' && !isNaN(lunarDay)
+    ? lunarDay
+    : 15;
+  const isInvisibleNight = safeLunarDay <= 1 || safeLunarDay >= 30;
+  /** 화면에 그릴 모양을 결정하는 음력일 — 삭이면 보름달로 fallback */
+  const renderDay = isInvisibleNight ? 15 : safeLunarDay;
+
+  const phaseName = lunarPhaseName(safeLunarDay);
+  const ariaLabel = isInvisibleNight
+    ? `오늘 달: 음력 ${safeLunarDay}일 ${phaseName} — 달이 보이지 않는 날이라 보름달로 표시합니다`
+    : `오늘 달: 음력 ${safeLunarDay}일 ${phaseName}`;
 
   // ── 기하 계산 ────────────────────────────────────
   const R = (size - 8) / 2;          // 실제 달 반지름 (여백 4px)
   const viewR = R + 4;
-  const phase = (lunarDay - 1) / 29.53;  // 0 ~ 1
+  const phase = (renderDay - 1) / 29.53;  // 0 ~ 1
   const waxing = phase < 0.5;
   const cos = Math.cos(2 * Math.PI * phase);
   const rx = Math.abs(cos) * R;
@@ -97,7 +112,7 @@ export default function MoonPhase({ size = 76, fallbackLunarDay = 15 }: MoonPhas
       width={size}
       height={size}
       style={{ display: 'block' }}
-      aria-label={`오늘 달: 음력 ${lunarDay}일 ${phaseName}`}
+      aria-label={ariaLabel}
       role="img"
     >
       <defs>
@@ -125,7 +140,7 @@ export default function MoonPhase({ size = 76, fallbackLunarDay = 15 }: MoonPhas
       />
 
       {/* 옅은 크레이터 음영 (보름달 가까울 때만 살짝 보이도록 밝은 면 위에) */}
-      {lunarDay >= 11 && lunarDay <= 19 && (
+      {renderDay >= 11 && renderDay <= 19 && (
         <g opacity="0.15">
           <circle cx={R * 0.2} cy={-R * 0.15} r={R * 0.12} fill="#8a6a4a" />
           <circle cx={-R * 0.1} cy={R * 0.22} r={R * 0.08} fill="#8a6a4a" />
