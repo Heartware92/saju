@@ -151,6 +151,9 @@ export default function AdminPage() {
   const [recordCategory, setRecordCategory] = useState('');
   const [categorySummary, setCategorySummary] = useState<{ [k: string]: number }>({});
 
+  // CSV export — 훅 순서 보존을 위해 early return 앞에서 선언
+  const [exporting, setExporting] = useState(false);
+
   // 세션 토큰
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -357,7 +360,6 @@ export default function AdminPage() {
   ];
 
   // ── CSV export ──
-  const [exporting, setExporting] = useState(false);
   const exportMembersCsv = async () => {
     if (!token) return;
     setExporting(true);
