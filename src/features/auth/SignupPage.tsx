@@ -61,7 +61,8 @@ export const SignupPage: React.FC = () => {
       await signup(email, password);
       setSuccess(true);
       setTimeout(() => {
-        router.push('/login');
+        // replace — 가입 완료 후 뒤로가기로 가입 폼 돌아가지 않도록
+        router.replace('/login');
       }, 2000);
     } catch (err: any) {
       const msg = err?.message || '회원가입에 실패했습니다.';

@@ -125,8 +125,9 @@ export default function SajuInputPage() {
     setProfileForm({ name: '', memo: '' })
 
     // 프로필 저장 전용 모드: 저장 직후 프로필 목록으로 복귀
+    // replace — 저장 완료된 폼이 history에 남으면 뒤로가기 시 빈 폼으로 돌아가는 UX 버그 발생
     if (isProfileOnly) {
-      router.push('/saju/profile')
+      router.replace('/saju/profile')
     }
   }
 

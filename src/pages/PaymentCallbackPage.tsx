@@ -80,7 +80,7 @@ export default function PaymentCallbackPage() {
         <div className="flex gap-2 justify-center">
           {status === 'success' && (
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.replace('/')}
               className="px-4 py-2 rounded-lg bg-cta text-white text-sm font-bold"
             >
               홈으로
@@ -89,13 +89,13 @@ export default function PaymentCallbackPage() {
           {status === 'failed' && (
             <>
               <button
-                onClick={() => router.push('/credit')}
+                onClick={() => router.replace('/credit')}
                 className="px-4 py-2 rounded-lg bg-cta text-white text-sm font-bold"
               >
                 다시 시도
               </button>
               <button
-                onClick={() => router.push('/')}
+                onClick={() => router.replace('/')}
                 className="px-4 py-2 rounded-lg bg-space-elevated text-text-primary border border-[var(--border-default)] text-sm"
               >
                 홈으로

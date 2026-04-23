@@ -19,7 +19,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push(`/login?from=${encodeURIComponent(pathname || '/')}`);
+      // replace — 보호된 페이지를 history에 남기지 않음
+      // (남기면 로그인 후 뒤로가기 시 다시 이 가드에 걸려 무한 반복)
+      router.replace(`/login?from=${encodeURIComponent(pathname || '/')}`);
     }
   }, [user, loading, router, pathname]);
 
@@ -56,7 +58,8 @@ export const GuestRoute: React.FC<GuestRouteProps> = ({ children }) => {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push('/');
+      // replace — 이미 로그인된 유저가 로그인/가입 페이지 진입 시 history에 남기지 않음
+      router.replace('/');
     }
   }, [user, loading, router]);
 

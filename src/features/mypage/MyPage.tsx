@@ -59,7 +59,8 @@ export const MyPage: React.FC = () => {
 
   const handleLogout = async () => {
     await logout();
-    router.push('/');
+    // replace — 로그아웃 후 뒤로가기로 마이페이지(인증 상태) 돌아가면 안 되므로
+    router.replace('/');
   };
 
   const tabs: { id: TabType; label: string; icon: string | React.ReactNode }[] = [

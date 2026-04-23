@@ -5,7 +5,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUserStore } from '../../store/useUserStore';
 import { auth } from '../../services/supabase';
@@ -13,7 +13,13 @@ import { ArrowLeft } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, loading } = useUserStore();
+
+  // ProtectedRoute 에서 리다이렉트될 때 `?from=/원래페이지` 로 넘어옴.
+  // 내부 경로만 허용(open-redirect 방어): `/` 로 시작하고 `//` 외부 URL 아닌 것만.
+  const fromParam = searchParams?.get('from') || '/';
+  const safeFrom = (fromParam.startsWith('/') && !fromParam.startsWith('//')) ? fromParam : '/';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,7 +50,9 @@ export const LoginPage: React.FC = () => {
       await login(email, password);
       setSuccess(true);
       setTimeout(() => {
-        router.push('/');
+        // replace — 로그인 완료 후 뒤로가기로 로그인 페이지 돌아가지 않도록
+        // from 파라미터가 있으면 원래 가려던 페이지로, 없으면 홈으로
+        router.replace(safeFrom);
       }, 500);
     } catch (err: any) {
       const msg = err?.message || '로그인에 실패했습니다.';
