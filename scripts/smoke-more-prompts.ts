@@ -87,9 +87,9 @@ const cases: Case[] = [
   { label: '8. 성격 심층 분석', prompt: generatePersonalityShortPrompt(mockSaju), tokens: 1800 },
   { label: '9. 이름 풀이',      prompt: generateNameFortunePrompt(mockSaju, {
       koreanName: '허진우',
-      koreanInitialsElements: ['土','金','土'],
-      hanjaName: undefined, hanjaElements: undefined,
-    }), tokens: 1300 },
+      koreanInitialsElements: ['토','금','토'],
+      hanjaName: undefined,
+    }), tokens: 1400 },
   { label: '10. 꿈 해몽',       prompt: generateDreamInterpretationPrompt(
       '큰 구렁이가 몸을 감았는데 따뜻했고, 그 뒤 맑은 물에서 헤엄치고 있었어요. 돌아가신 할머니가 웃으며 떡을 건네주셨어요.'
     ), tokens: 1500 },

@@ -828,7 +828,9 @@ export const getNameFortune = async (
   nameInput: NameAnalysisInput,
 ): Promise<FortuneResponse> => {
   try {
-    const content = await callGPT(generateNameFortunePrompt(result, nameInput), 1300);
+    // 한자 입력 시 자원오행 판정 블록이 앞에 붙으므로 토큰 한도 여유 있게
+    const maxTokens = nameInput.hanjaName ? 1700 : 1400;
+    const content = await callGPT(generateNameFortunePrompt(result, nameInput), maxTokens);
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };

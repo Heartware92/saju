@@ -136,6 +136,15 @@ export default function MoreFortunePage({ category }: Props) {
       return;
     }
 
+    // 이름풀이 사전 validation: 한글 이름이 실제 한글인지 로딩 시작 전에 확인
+    if (category === 'name') {
+      const kor = analyzeKoreanName(koreanName);
+      if (kor.elements.length === 0) {
+        setError('한글 이름은 반드시 한글로 입력해주세요. 한자는 아래 "한자 이름" 칸에 따로 입력하면 됩니다.');
+        return;
+      }
+    }
+
     setError(null);
     setResult(null);
     setLoading(true);
@@ -164,7 +173,6 @@ export default function MoreFortunePage({ category }: Props) {
               koreanName: koreanName.trim(),
               koreanInitialsElements: kor.elements,
               hanjaName: hanjaName.trim() || undefined,
-              hanjaElements: undefined,
             });
             break;
           }
@@ -321,7 +329,7 @@ export default function MoreFortunePage({ category }: Props) {
                   type="text"
                   value={hanjaName}
                   onChange={(e) => setHanjaName(e.target.value)}
-                  placeholder="예: 許珍雨 (몰라도 됩니다)"
+                  placeholder="예: 許珍宇 (몰라도 됩니다)"
                   maxLength={10}
                   style={{
                     width: '100%',
@@ -334,7 +342,8 @@ export default function MoreFortunePage({ category }: Props) {
                   }}
                 />
                 <p style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                  한자를 모르시면 비워두세요. 한글만으로도 음령오행 분석 가능합니다.
+                  한자를 모르시면 비워두세요. 한글만 있어도 음령오행으로 완결 분석됩니다.
+                  한자를 입력하면 부수 기반 자원오행까지 교차 분석해 더 정밀한 풀이가 나옵니다.
                 </p>
               </div>
             </div>

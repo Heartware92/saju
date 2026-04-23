@@ -3920,33 +3920,32 @@ ${MORE_COMMON_RULES}
 
 // ─────────────────────────────────────────────
 // 9. 이름 풀이 — 음령오행 + (선택) 한자 자원오행
+//   두 경로 모두 동일한 품질을 보장:
+//   (a) 한글만 입력 → 음령오행 + 수리오행(획수)로 완결 풀이
+//   (b) 한글 + 한자 → 음령 + 자원(부수) + 수리 3축 교차 분석
 // ─────────────────────────────────────────────
 export interface NameAnalysisInput {
   koreanName: string;       // 필수 — 한글 이름
   koreanInitialsElements: string[];  // 초성별 오행 계산 결과 (예: ['土','金','土'])
-  hanjaName?: string;       // 선택 — 한자 이름
-  hanjaElements?: string[]; // 선택 — 한자별 자원오행
+  hanjaName?: string;       // 선택 — 한자 이름 (있으면 LLM이 부수 기반 자원오행 판정)
 }
 
 export const generateNameFortunePrompt = (
   result: SajuResult,
   nameInput: NameAnalysisInput,
 ): string => {
-  const { koreanName, koreanInitialsElements, hanjaName, hanjaElements } = nameInput;
+  const { koreanName, koreanInitialsElements, hanjaName } = nameInput;
 
-  // 이름 오행 분포 카운트
+  // 음령오행 분포 카운트
   const countEls = (els: string[]) => {
     const c: Record<string, number> = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
     els.forEach(e => { if (c[e] !== undefined) c[e]++; });
     return c;
   };
   const eumRyeong = countEls(koreanInitialsElements);
-  const jawon = hanjaElements ? countEls(hanjaElements) : null;
 
-  // 용신과의 관계
+  // 용신·기신 오행
   const yongSinEl = result.yongSinElement;
-
-  // 기신 오행 역산 — result.giSin은 '편관/정관' 같은 십성명이므로 일간 오행 기준으로 오행 추출
   const EL_GEN_: Record<string, string> = { '목': '화', '화': '토', '토': '금', '금': '수', '수': '목' };
   const EL_CON_: Record<string, string> = { '목': '토', '화': '금', '토': '수', '금': '목', '수': '화' };
   const EL_PAR_: Record<string, string> = { '목': '수', '화': '목', '토': '화', '금': '토', '수': '금' };
@@ -3962,12 +3961,25 @@ export const generateNameFortunePrompt = (
     return '';
   })();
 
-  const yongSinInName = koreanInitialsElements.includes(yongSinEl)
-    || (hanjaElements && hanjaElements.includes(yongSinEl));
-  const giSinInName = !!giSinElement && (
-    koreanInitialsElements.includes(giSinElement)
-    || (hanjaElements && hanjaElements.includes(giSinElement))
-  );
+  const yongSinInEum = koreanInitialsElements.includes(yongSinEl);
+  const giSinInEum = !!giSinElement && koreanInitialsElements.includes(giSinElement);
+
+  // 자원오행 판정 규칙 — 부수(部首) 기반 전통 성명학 기준
+  // GPT에게 결정적 규칙을 주입해 같은 한자를 매번 동일하게 판정하도록 고정
+  const HANJA_RULE_BLOCK = `[자원오행 판정 규칙 — 부수(部首) 기반 전통 성명학]
+각 한자의 부수를 식별하고 아래 표로 오행 결정. 창작·추가 규칙 금지.
+- 木(목): 木·艸(艹)·竹·禾·米·麻·韭·生·青·香
+- 火(화): 火(灬)·日·光·赤·心(忄)·馬·鳥·隹·羽·文·立
+- 土(토): 土·山·阝(阜)·宀·穴·田·辶·里·黃·石 일부·玉(일부 금속광물 제외)
+- 金(금): 金·刀(刂)·戈·斤·矢·言·皿·車·辛·玉(보석/광물로 볼 때)·石(광석)
+- 水(수): 水(氵)·冫·雨·魚·舟·龍·酉·血·耳·月(肉)·雲
+부수가 애매하거나 회의문자일 때는 **한자 본의(本義)** 로 판정하고, 판정 근거를 괄호에 명시.`;
+
+  // 한자 블록 — 입력 있을 때만. GPT가 판정 결과를 출력에 명시하도록 강제
+  const hanjaBlock = hanjaName
+    ? `한자 이름: ${hanjaName}
+→ 각 한자별 **부수·자원오행을 먼저 판정**한 뒤 풀이 시작. 판정 결과는 본문 맨 앞 "자원오행 판정" 라인에 반드시 기재.`
+    : '한자 이름 미입력 — 음령오행(한글 초성) 기반으로만 분석.';
 
   return `당신은 35년 경력의 사주명리·성명학 전문가입니다. 아래 사람의 이름이 사주와 어떻게 어울리는지 풀어주세요.
 
@@ -3975,22 +3987,26 @@ ${buildMoreFortuneBlock(result)}
 
 [이름 분석]
 한글 이름: ${koreanName}
-초성 음령오행: ${koreanInitialsElements.join(' · ')} (분포 목${eumRyeong.목} 화${eumRyeong.화} 토${eumRyeong.토} 금${eumRyeong.금} 수${eumRyeong.수})
-${hanjaName ? `한자 이름: ${hanjaName}
-자원오행: ${hanjaElements?.join(' · ')} (분포 목${jawon?.목} 화${jawon?.화} 토${jawon?.토} 금${jawon?.금} 수${jawon?.수})` : '한자 이름 미입력 — 음령오행만 분석'}
+초성 음령오행: ${koreanInitialsElements.join(' · ') || '(분석 불가 — 한글 아님)'} (분포 목${eumRyeong.목} 화${eumRyeong.화} 토${eumRyeong.토} 금${eumRyeong.금} 수${eumRyeong.수})
+${hanjaBlock}
 
-[사주와 이름 조화]
-- 용신(${yongSinEl})이 이름에 ${yongSinInName ? '있음 — 이름이 용신을 보강' : '없음'}
-- 기신(${result.giSin}${giSinElement ? `·${giSinElement}` : ''})이 이름에 ${giSinInName ? '있음 — 주의 필요' : '없음'}
+[사주와 이름 조화 — 음령오행 기준]
+- 용신(${yongSinEl})이 한글 이름에 ${yongSinInEum ? '있음 — 음령이 용신 보강' : '없음'}
+- 기신(${result.giSin}${giSinElement ? `·${giSinElement}` : ''})이 한글 이름에 ${giSinInEum ? '있음 — 음령에 주의 필요' : '없음'}
+※ 한자 이름이 있는 경우 자원오행 기준의 용신·기신 일치 여부도 당신이 직접 판정해 풀이에 반영할 것.
 
+${hanjaName ? HANJA_RULE_BLOCK + '\n' : ''}
 ${MORE_COMMON_RULES}
 
-[작성 지침] 380~520자 내외
-1단락 — 은유 제목 + 결론 한 줄: 이름이 사주를 돕는가 중립인가 거스르는가
-2단락 — 음령오행 분포와 사주 오행(강·약·용신) 비교 — 구체적 어떤 기운이 보강되고 어떤 기운이 과잉되는지
-${hanjaName ? '3단락 — 자원오행(한자 뜻·부수)이 이름에 더하는 기운 분석' : ''}
-${hanjaName ? '4' : '3'}단락 — 개명이 필요한 수준인지, 보완책이 충분한지 단정적으로 평가
-마지막 — "- " 불릿 3개로 실천 조언 (필명·SNS ID·자주 쓰는 색 등 이름 대안 보완)`;
+[작성 지침] ${hanjaName ? '420~580자' : '380~500자'} 내외. 각 단락은 빈 줄로 구분.
+${hanjaName ? `**첫 줄(필수)**: \`자원오행 판정\` 라인 — 예시 형식: \`자원오행 판정: 許=金(言부,말씀) · 珍=金(玉부,보석) · 宇=土(宀부,집)\`
+` : ''}1단락 — 은유 제목 + 결론 한 줄: 이름이 사주를 돕는가·중립인가·거스르는가 (단정적으로)
+2단락 — 한글 음령오행 분포가 사주(용신 ${yongSinEl}·기신 ${result.giSin}·신강신약 ${result.strengthStatus})와 어떻게 맞물리는지 구체 묘사
+${hanjaName ? `3단락 — 자원오행(부수 기반)이 음령과 조화를 이루는지, 사주의 약한 오행을 어떻게 보강하는지 구체 분석
+4단락 — 음령·자원 교차 평가: 둘 다 용신 보강이면 "좋은 이름", 상충하면 이유 설명. 개명 권장 여부 단정` : '3단락 — 음령 분포만으로 사주 보완이 충분한지, 부족하다면 한자 선택·필명·자주 쓰는 색 등 보완책 제안. 개명 권장 여부 단정'}
+마지막 — "- " 불릿 3개로 실천 조언 (필명·SNS ID·자주 쓰는 색·호칭 등 이름 대안 보완)
+
+[금지] 자원오행 판정 규칙에 없는 부수 오행을 창작하지 말 것. 한자가 입력되지 않았으면 자원오행을 임의로 지어내지 말 것.`;
 };
 
 // ─────────────────────────────────────────────

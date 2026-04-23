@@ -90,9 +90,8 @@ const checks: Check[] = [
   { name: '8. 성격 심층 분석',   run: () => generatePersonalityShortPrompt(mockSaju) },
   { name: '9. 이름 풀이',        run: () => generateNameFortunePrompt(mockSaju, {
     koreanName: '허진우',
-    koreanInitialsElements: ['土', '金', '土'],
+    koreanInitialsElements: ['토', '금', '토'],
     hanjaName: undefined,
-    hanjaElements: undefined,
   }) },
   { name: '10. 꿈 해몽',         run: () => generateDreamInterpretationPrompt(
     '큰 구렁이가 몸을 감았는데 따뜻했고, 그 뒤 맑은 물에서 헤엄치고 있었어요. 돌아가신 할머니가 웃으며 떡을 건네주셨어요.'
