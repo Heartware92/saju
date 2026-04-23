@@ -29,7 +29,10 @@ export function OpsSection({
 }) {
   if (!summary) return <div className="text-[14px] text-text-tertiary py-6">로딩 중…</div>;
 
-  const { kpi, adjustments, banned, noted } = summary;
+  const kpi = summary.kpi ?? { adjustmentCount: 0, bannedCount: 0, notedCount: 0 };
+  const adjustments = Array.isArray(summary.adjustments) ? summary.adjustments : [];
+  const banned = Array.isArray(summary.banned) ? summary.banned : [];
+  const noted = Array.isArray(summary.noted) ? summary.noted : [];
 
   return (
     <div className="space-y-6">

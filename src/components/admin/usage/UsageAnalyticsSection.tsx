@@ -35,7 +35,12 @@ const MORE_SET = new Set<string>(SAJU_MORE_CATEGORIES);
 export function UsageAnalyticsSection({ summary }: { summary: UsageSummary | null }) {
   if (!summary) return <div className="text-[14px] text-text-tertiary py-6">로딩 중…</div>;
 
-  const { kpi, sajuRanking, tarotRanking, daily, heatmap, credit } = summary;
+  const kpi = summary.kpi ?? { sajuTotal: 0, tarotTotal: 0, grandTotal: 0, uniqueSajuUsers: 0, uniqueTarotUsers: 0 };
+  const sajuRanking = Array.isArray(summary.sajuRanking) ? summary.sajuRanking : [];
+  const tarotRanking = Array.isArray(summary.tarotRanking) ? summary.tarotRanking : [];
+  const daily = Array.isArray(summary.daily) ? summary.daily : [];
+  const heatmap = Array.isArray(summary.heatmap) ? summary.heatmap : [];
+  const credit = summary.credit ?? { sunConsumed: 0, moonConsumed: 0, sunTxn: 0, moonTxn: 0 };
 
   // 사주 랭킹 분리 (큰 8 vs 더많은 10)
   const bigSajuBars = sajuRanking

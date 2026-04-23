@@ -63,7 +63,16 @@ export function OrdersSummarySection({ summary }: { summary: OrdersSummary | nul
     );
   }
 
-  const { kpi, packages, methods, monthly } = summary;
+  const kpi = summary.kpi ?? {
+    totalRevenue: 0, refundedAmount: 0, netRevenue: 0,
+    orderCount: 0, refundCount: 0, failCount: 0,
+    refundRate: 0, failRate: 0,
+    arpu: 0, ltv: 0, aov: 0,
+    payingUsers: 0, totalUsers: 0, paidRate: 0,
+  };
+  const packages = Array.isArray(summary.packages) ? summary.packages : [];
+  const methods = Array.isArray(summary.methods) ? summary.methods : [];
+  const monthly = Array.isArray(summary.monthly) ? summary.monthly : [];
 
   const packageSlices = packages.slice(0, 7).map((p, i) => ({
     key: p.id,

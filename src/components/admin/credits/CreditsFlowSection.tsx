@@ -40,7 +40,17 @@ const TXN_TYPE_LABEL: Record<string, string> = {
 export function CreditsFlowSection({ summary }: { summary: CreditsSummary | null }) {
   if (!summary) return <div className="text-[14px] text-text-tertiary py-6">로딩 중…</div>;
 
-  const { kpi, reasonBreakdown, monthly, txnTypes } = summary;
+  const kpi = summary.kpi ?? {
+    sunIssued: 0, sunConsumed: 0, sunBalance: 0,
+    moonIssued: 0, moonConsumed: 0, moonBalance: 0,
+    sunConsumeRate: 0, moonConsumeRate: 0,
+    debtWon: 0,
+    withSun: 0, withMoon: 0, withAny: 0,
+    txnCount: 0,
+  };
+  const reasonBreakdown = Array.isArray(summary.reasonBreakdown) ? summary.reasonBreakdown : [];
+  const monthly = Array.isArray(summary.monthly) ? summary.monthly : [];
+  const txnTypes = Array.isArray(summary.txnTypes) ? summary.txnTypes : [];
 
   const reasonBars = reasonBreakdown.slice(0, 12).map(r => ({
     key: r.reason,

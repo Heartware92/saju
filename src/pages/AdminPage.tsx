@@ -348,12 +348,12 @@ export default function AdminPage() {
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'overview', label: '대시보드' },
-    { key: 'members',  label: `회원 관리${memberSummary ? ` (${memberSummary.kpi.totalUsers})` : ''}` },
+    { key: 'members',  label: `회원 관리${memberSummary?.kpi?.totalUsers !== undefined ? ` (${memberSummary.kpi.totalUsers})` : ''}` },
     { key: 'orders',   label: `매출·결제 (${orderTotal || '…'})` },
-    { key: 'usage',    label: `이용 분석${usageSummary ? ` (${usageSummary.kpi.grandTotal})` : ''}` },
-    { key: 'credits',  label: `크레딧 흐름${creditsSummary ? ` (${creditsSummary.kpi.txnCount})` : ''}` },
+    { key: 'usage',    label: `이용 분석${usageSummary?.kpi?.grandTotal !== undefined ? ` (${usageSummary.kpi.grandTotal})` : ''}` },
+    { key: 'credits',  label: `크레딧 흐름${creditsSummary?.kpi?.txnCount !== undefined ? ` (${creditsSummary.kpi.txnCount})` : ''}` },
     { key: 'records',  label: `이용 기록 (${recordTotal || '…'})` },
-    { key: 'ops',      label: `운영${opsSummary ? ` (${opsSummary.kpi.bannedCount + opsSummary.kpi.notedCount})` : ''}` },
+    { key: 'ops',      label: `운영${opsSummary?.kpi ? ` (${(opsSummary.kpi.bannedCount ?? 0) + (opsSummary.kpi.notedCount ?? 0)})` : ''}` },
   ];
 
   // ── CSV export ──

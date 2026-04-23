@@ -434,8 +434,8 @@ function OpsTab({ data, token, onRefresh }: { data: DetailData; token: string | 
               className="w-32 px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[14px] text-text-primary tabular-nums focus:outline-none focus:border-cta/50"
             />
             <p className="self-center text-[12px] text-text-tertiary">
-              현재 {creditType === 'sun' ? data.credit?.sun_balance : data.credit?.moon_balance} →{' '}
-              <b className="text-text-primary">{(creditType === 'sun' ? data.credit?.sun_balance : data.credit?.moon_balance) + delta}</b>
+              현재 {creditType === 'sun' ? (data.credit?.sun_balance ?? 0) : (data.credit?.moon_balance ?? 0)} →{' '}
+              <b className="text-text-primary">{(creditType === 'sun' ? (data.credit?.sun_balance ?? 0) : (data.credit?.moon_balance ?? 0)) + delta}</b>
             </p>
           </div>
           <input

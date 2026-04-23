@@ -18,8 +18,14 @@ export function HeatmapChart({
   baseColor = [251, 191, 36], // amber
   emptyMessage = '데이터 없음',
 }: Props) {
-  const max = Math.max(1, ...matrix.flat());
-  const total = matrix.flat().reduce((s, v) => s + v, 0);
+  // 방어: matrix가 null/undefined이거나 비정상 구조일 때 빈 상태 렌더
+  if (!Array.isArray(matrix) || matrix.length === 0) {
+    return <p className="text-[13px] text-text-tertiary py-6 text-center">{emptyMessage}</p>;
+  }
+  const safeMatrix: number[][] = matrix.map(row => Array.isArray(row) ? row : []);
+  const flat = safeMatrix.flat();
+  const max = Math.max(1, ...flat);
+  const total = flat.reduce((s, v) => s + (Number(v) || 0), 0);
 
   if (total === 0) {
     return <p className="text-[13px] text-text-tertiary py-6 text-center">{emptyMessage}</p>;
@@ -39,7 +45,7 @@ export function HeatmapChart({
         </div>
 
         {/* 7행 요일 × 24열 시간 */}
-        {matrix.map((row, d) => (
+        {safeMatrix.map((row, d) => (
           <div key={d} className="grid grid-cols-[32px_repeat(24,1fr)] gap-[2px] mb-[2px]">
             <div className="text-[11px] text-text-secondary flex items-center">{DAY_LABEL[d]}</div>
             {row.map((v, h) => {
