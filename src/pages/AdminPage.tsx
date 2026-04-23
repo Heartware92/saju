@@ -1,7 +1,12 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../services/supabase';
+import { DemographicsSummary, type MemberSummary } from '@/components/admin/members/DemographicsSummary';
+import { MembersFilterBar } from '@/components/admin/members/MembersFilterBar';
+import { MembersTable, type MemberRow } from '@/components/admin/members/MembersTable';
+import { MemberDetailDrawer } from '@/components/admin/members/MemberDetailDrawer';
+import { SAJU_CATEGORY_LABEL, TAROT_SPREAD_LABEL, ORDER_STATUS_LABEL, type UserSegment, type AgeBucketKey } from '@/constants/adminLabels';
 
 // ── 타입 ──────────────────────────────────────────────────
 interface Stats {
@@ -13,12 +18,6 @@ interface Stats {
     sun: { issued: number; consumed: number; balance: number };
     moon: { issued: number; consumed: number; balance: number };
   };
-}
-
-interface AdminUser {
-  id: string; email: string; provider: string; createdAt: string; lastSignIn: string | null;
-  profileCount: number; sunBalance: number; moonBalance: number;
-  totalSpent: number; orderCount: number; lastOrderAt: string | null; lastPackage: string | null;
 }
 
 interface Order {
@@ -33,21 +32,8 @@ interface UsageRecord {
   credit_type: string; credit_used: number; created_at: string;
 }
 
-type Tab = 'overview' | 'users' | 'orders' | 'records';
-
-const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
-  completed: { text: '완료', cls: 'bg-green-500/20 text-green-300 border-green-500/30' },
-  pending:   { text: '대기', cls: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' },
-  refunded:  { text: '환불', cls: 'bg-red-500/20 text-red-300 border-red-500/30' },
-  failed:    { text: '실패', cls: 'bg-gray-500/20 text-gray-400 border-gray-500/30' },
-};
-
-const CATEGORY_LABEL: Record<string, string> = {
-  traditional: '정통사주', today: '오늘운세', love: '애정운', wealth: '재물운',
-  career: '직업운', health: '건강운', study: '학업운', people: '대인관계',
-  children: '자녀운', personality: '성격분석', tojeong: '토정비결',
-  zamidusu: '자미두수', gunghap: '궁합', hybrid: '사주타로', name: '이름분석',
-};
+type Tab = 'overview' | 'members' | 'orders' | 'records';
+type SortKey = 'joined' | 'lastSeen' | 'totalSpent' | 'analysisCount' | 'orderCount';
 
 // ── 유틸 ──────────────────────────────────────────────────
 const fmt = (n: number) => n.toLocaleString('ko-KR');
@@ -65,7 +51,7 @@ function MetricCard({ label, value, sub, color }: { label: string; value: string
 }
 
 function Badge({ status }: { status: string }) {
-  const s = STATUS_LABEL[status] ?? { text: status, cls: 'bg-gray-500/20 text-gray-400 border-gray-500/30' };
+  const s = ORDER_STATUS_LABEL[status] ?? { text: status, cls: 'bg-gray-500/20 text-gray-400 border-gray-500/30' };
   return <span className={`px-2 py-0.5 text-[12px] rounded-full border ${s.cls}`}>{s.text}</span>;
 }
 
@@ -79,11 +65,18 @@ export default function AdminPage() {
   // Overview
   const [stats, setStats] = useState<Stats | null>(null);
 
-  // Users
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [userPage, setUserPage] = useState(1);
-  const [userTotal, setUserTotal] = useState(0);
-  const [userSearch, setUserSearch] = useState('');
+  // Members
+  const [memberSummary, setMemberSummary] = useState<MemberSummary | null>(null);
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [memberPage, setMemberPage] = useState(1);
+  const [memberTotal, setMemberTotal] = useState(0);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [memberGender, setMemberGender] = useState<'male' | 'female' | 'unknown' | ''>('');
+  const [memberAgeBucket, setMemberAgeBucket] = useState<AgeBucketKey | ''>('');
+  const [memberSegment, setMemberSegment] = useState<UserSegment | ''>('');
+  const [memberSort, setMemberSort] = useState<SortKey>('joined');
+  const [memberOrder, setMemberOrder] = useState<'asc' | 'desc'>('desc');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   // Orders
   const [orders, setOrders] = useState<Order[]>([]);
@@ -107,66 +100,142 @@ export default function AdminPage() {
     });
   }, []);
 
-  const headers = useCallback(() => ({
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
-  }), [token]);
+  /**
+   * 공통 어드민 fetcher — sessionStorage 경유.
+   *  - force=true: 캐시 무시 + 서버 캐시도 force=1 로 무효화
+   *  - force=false: stale sessionStorage 를 즉시 반영 + 백그라운드 갱신
+   */
+  const adminFetch = useCallback(async <T,>(path: string, force = false): Promise<T | null> => {
+    if (!token) return null;
+    const cacheKey = `admin:${path}`;
+    const STALE_MS = 30_000;
 
-  const fetchStats = useCallback(async () => {
+    // 1) sessionStorage 히트 — fresh 면 즉시 반환, stale 이면 일단 표시하고 백그라운드 재호출
+    let staleData: T | null = null;
+    if (!force) {
+      try {
+        const raw = sessionStorage.getItem(cacheKey);
+        if (raw) {
+          const { data, savedAt } = JSON.parse(raw);
+          const age = Date.now() - savedAt;
+          if (age <= STALE_MS) return data as T;
+          staleData = data as T;
+        }
+      } catch { /* ignore */ }
+    }
+
+    const url = force ? path + (path.includes('?') ? '&' : '?') + 'force=1' : path;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+    try {
+      sessionStorage.setItem(cacheKey, JSON.stringify({ data: json, savedAt: Date.now() }));
+    } catch { /* storage quota */ }
+    // staleData 가 있었다면 이미 UI 에 표시됐을 수 있음 — 어쨌든 최신으로 덮어씀
+    return (json ?? staleData) as T;
+  }, [token]);
+
+  const fetchStats = useCallback(async (force = false) => {
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/stats', { headers: headers() });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setStats(data);
+      const data = await adminFetch<Stats>('/api/admin/stats', force);
+      if (data) setStats(data);
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [token, headers]);
+  }, [token, adminFetch]);
 
-  const fetchUsers = useCallback(async () => {
+  const fetchMemberSummary = useCallback(async (force = false) => {
+    if (!token) return;
+    try {
+      const data = await adminFetch<MemberSummary>('/api/admin/users/summary', force);
+      if (data) setMemberSummary(data);
+    } catch (e: any) { setError(e.message); }
+  }, [token, adminFetch]);
+
+  const fetchMembers = useCallback(async (force = false) => {
     if (!token) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(userPage), search: userSearch });
-      const res = await fetch(`/api/admin/users?${params}`, { headers: headers() });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setUsers(data.users); setUserTotal(data.total);
+      const params = new URLSearchParams({
+        page: String(memberPage),
+        search: memberSearch,
+        gender: memberGender,
+        ageBucket: memberAgeBucket,
+        segment: memberSegment,
+        sort: memberSort,
+        order: memberOrder,
+      });
+      const data = await adminFetch<{ users: MemberRow[]; total: number }>(`/api/admin/users?${params}`, force);
+      if (data) { setMembers(data.users); setMemberTotal(data.total); }
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [token, headers, userPage, userSearch]);
+  }, [token, adminFetch, memberPage, memberSearch, memberGender, memberAgeBucket, memberSegment, memberSort, memberOrder]);
 
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (force = false) => {
     if (!token) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(orderPage), status: orderStatus, search: orderSearch });
-      const res = await fetch(`/api/admin/orders?${params}`, { headers: headers() });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setOrders(data.orders); setOrderTotal(data.total);
+      const data = await adminFetch<{ orders: Order[]; total: number }>(`/api/admin/orders?${params}`, force);
+      if (data) { setOrders(data.orders); setOrderTotal(data.total); }
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [token, headers, orderPage, orderStatus, orderSearch]);
+  }, [token, adminFetch, orderPage, orderStatus, orderSearch]);
 
-  const fetchRecords = useCallback(async () => {
+  const fetchRecords = useCallback(async (force = false) => {
     if (!token) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(recordPage), type: recordType, category: recordCategory });
-      const res = await fetch(`/api/admin/records?${params}`, { headers: headers() });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setRecords(data.records); setRecordTotal(data.total); setCategorySummary(data.categorySummary ?? {});
+      const data = await adminFetch<{ records: UsageRecord[]; total: number; categorySummary: Record<string, number> }>(`/api/admin/records?${params}`, force);
+      if (data) { setRecords(data.records); setRecordTotal(data.total); setCategorySummary(data.categorySummary ?? {}); }
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [token, headers, recordPage, recordType, recordCategory]);
+  }, [token, adminFetch, recordPage, recordType, recordCategory]);
 
-  useEffect(() => { if (tab === 'overview') fetchStats(); }, [tab, fetchStats]);
-  useEffect(() => { if (tab === 'users') fetchUsers(); }, [tab, fetchUsers]);
-  useEffect(() => { if (tab === 'orders') fetchOrders(); }, [tab, fetchOrders]);
-  useEffect(() => { if (tab === 'records') fetchRecords(); }, [tab, fetchRecords]);
+  // ── 탭 진입 시: 이미 state 에 데이터 있으면 스킵, 없으면 fetch
+  useEffect(() => { if (tab === 'overview' && !stats) fetchStats(); }, [tab, stats, fetchStats]);
+  useEffect(() => {
+    if (tab !== 'members') return;
+    if (!memberSummary) fetchMemberSummary();
+    if (members.length === 0) fetchMembers();
+  }, [tab, memberSummary, members.length, fetchMemberSummary, fetchMembers]);
+  useEffect(() => { if (tab === 'orders' && orders.length === 0) fetchOrders(); }, [tab, orders.length, fetchOrders]);
+  useEffect(() => { if (tab === 'records' && records.length === 0) fetchRecords(); }, [tab, records.length, fetchRecords]);
+
+  // ── 필터·정렬 변경 시 members 재호출
+  const memberFilterKey = `${memberSearch}|${memberGender}|${memberAgeBucket}|${memberSegment}|${memberSort}|${memberOrder}|${memberPage}`;
+  const lastMemberFilterKey = useRef<string>('');
+  useEffect(() => {
+    if (tab !== 'members') return;
+    if (lastMemberFilterKey.current === memberFilterKey) return;
+    lastMemberFilterKey.current = memberFilterKey;
+    fetchMembers();
+  }, [tab, memberFilterKey, fetchMembers]);
+
+  // ── orders 필터 변경 시 재호출
+  const orderFilterKey = `${orderStatus}|${orderSearch}|${orderPage}`;
+  const lastOrderFilterKey = useRef<string>('');
+  useEffect(() => {
+    if (tab !== 'orders') return;
+    if (lastOrderFilterKey.current === orderFilterKey) return;
+    lastOrderFilterKey.current = orderFilterKey;
+    fetchOrders();
+  }, [tab, orderFilterKey, fetchOrders]);
+
+  // ── records 필터 변경 시 재호출
+  const recordFilterKey = `${recordType}|${recordCategory}|${recordPage}`;
+  const lastRecordFilterKey = useRef<string>('');
+  useEffect(() => {
+    if (tab !== 'records') return;
+    if (lastRecordFilterKey.current === recordFilterKey) return;
+    lastRecordFilterKey.current = recordFilterKey;
+    fetchRecords();
+  }, [tab, recordFilterKey, fetchRecords]);
+
+  // 검색·필터 바뀌면 1페이지로
+  useEffect(() => { setMemberPage(1); }, [memberSearch, memberGender, memberAgeBucket, memberSegment, memberSort, memberOrder]);
 
   if (!token) return (
     <div className="min-h-screen flex items-center justify-center text-text-secondary">
@@ -175,11 +244,19 @@ export default function AdminPage() {
   );
 
   const TABS: { key: Tab; label: string }[] = [
-    { key: 'overview', label: '개요' },
-    { key: 'users', label: `사용자 (${userTotal || '…'})` },
-    { key: 'orders', label: `주문 (${orderTotal || '…'})` },
-    { key: 'records', label: `이용 기록 (${recordTotal || '…'})` },
+    { key: 'overview', label: '대시보드' },
+    { key: 'members',  label: `회원 관리${memberSummary ? ` (${memberSummary.kpi.totalUsers})` : ''}` },
+    { key: 'orders',   label: `주문 (${orderTotal || '…'})` },
+    { key: 'records',  label: `이용 기록 (${recordTotal || '…'})` },
   ];
+
+  const refreshCurrentTab = () => {
+    setError('');
+    if (tab === 'overview') fetchStats(true);
+    else if (tab === 'members') { fetchMemberSummary(true); fetchMembers(true); }
+    else if (tab === 'orders') fetchOrders(true);
+    else fetchRecords(true);
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0614] text-text-primary">
@@ -190,7 +267,7 @@ export default function AdminPage() {
           <p className="text-[13px] text-text-tertiary mt-0.5">Admin Dashboard</p>
         </div>
         <button
-          onClick={() => { if (tab === 'overview') fetchStats(); else if (tab === 'users') fetchUsers(); else if (tab === 'orders') fetchOrders(); else fetchRecords(); }}
+          onClick={refreshCurrentTab}
           className="text-[14px] text-cta hover:text-cta/80 border border-cta/30 hover:border-cta/60 px-3 py-1.5 rounded-lg transition-all"
         >
           새로고침
@@ -198,12 +275,12 @@ export default function AdminPage() {
       </div>
 
       {/* 탭 */}
-      <div className="border-b border-white/10 px-6 flex gap-1">
+      <div className="border-b border-white/10 px-6 flex gap-1 overflow-x-auto">
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => { setTab(t.key); setError(''); }}
-            className={`px-4 py-3 text-[15px] font-medium border-b-2 transition-colors ${tab === t.key ? 'border-cta text-cta' : 'border-transparent text-text-tertiary hover:text-text-secondary'}`}
+            className={`px-4 py-3 text-[15px] font-medium border-b-2 whitespace-nowrap transition-colors ${tab === t.key ? 'border-cta text-cta' : 'border-transparent text-text-tertiary hover:text-text-secondary'}`}
           >
             {t.label}
           </button>
@@ -220,7 +297,7 @@ export default function AdminPage() {
           <div className="mb-4 text-[14px] text-text-tertiary">로딩 중…</div>
         )}
 
-        {/* ── 개요 ── */}
+        {/* ── 대시보드 ── */}
         {tab === 'overview' && stats && (
           <div className="space-y-6">
             <div>
@@ -273,52 +350,32 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ── 사용자 ── */}
-        {tab === 'users' && (
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="이메일 검색"
-                value={userSearch}
-                onChange={e => { setUserSearch(e.target.value); setUserPage(1); }}
-                className="flex-1 max-w-sm px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-cta/50"
+        {/* ── 회원 관리 ── */}
+        {tab === 'members' && (
+          <div className="space-y-6">
+            <DemographicsSummary
+              summary={memberSummary}
+              activeSegment={memberSegment}
+              onSegmentChange={setMemberSegment}
+            />
+
+            <div className="space-y-3">
+              <MembersFilterBar
+                search={memberSearch} onSearchChange={setMemberSearch}
+                gender={memberGender} onGenderChange={setMemberGender}
+                ageBucket={memberAgeBucket} onAgeBucketChange={setMemberAgeBucket}
+                totalCount={memberTotal}
               />
+              <MembersTable
+                rows={members}
+                loading={loading}
+                sort={memberSort}
+                order={memberOrder}
+                onSortChange={(s, o) => { setMemberSort(s); setMemberOrder(o); }}
+                onRowClick={setSelectedUserId}
+              />
+              <Pagination page={memberPage} total={memberTotal} pageSize={20} onChange={setMemberPage} />
             </div>
-
-            <div className="overflow-x-auto rounded-xl border border-white/10">
-              <table className="w-full text-[14px]">
-                <thead>
-                  <tr className="border-b border-white/10 bg-white/3">
-                    {['이메일', '가입일', '마지막 로그인', '로그인 방식', '프로필 수', '해 잔액', '달 잔액', '총 결제', '주문 수'].map(h => (
-                      <th key={h} className="px-3 py-2.5 text-left text-[12px] text-text-tertiary uppercase tracking-wider font-medium">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map(u => (
-                    <tr key={u.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
-                      <td className="px-3 py-2.5 text-text-primary font-medium">{u.email}</td>
-                      <td className="px-3 py-2.5 text-text-tertiary">{fmtDate(u.createdAt)}</td>
-                      <td className="px-3 py-2.5 text-text-tertiary">{fmtDate(u.lastSignIn)}</td>
-                      <td className="px-3 py-2.5">
-                        <span className="px-1.5 py-0.5 rounded text-[12px] bg-white/8 text-text-secondary">{u.provider}</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-center text-text-secondary">{u.profileCount}</td>
-                      <td className="px-3 py-2.5 text-center text-amber-300">☀️ {u.sunBalance}</td>
-                      <td className="px-3 py-2.5 text-center text-indigo-300">🌙 {u.moonBalance}</td>
-                      <td className="px-3 py-2.5 text-right text-text-primary">{fmtWon(u.totalSpent)}</td>
-                      <td className="px-3 py-2.5 text-center text-text-secondary">{u.orderCount}</td>
-                    </tr>
-                  ))}
-                  {users.length === 0 && !loading && (
-                    <tr><td colSpan={9} className="px-3 py-8 text-center text-text-tertiary">데이터 없음</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <Pagination page={userPage} total={userTotal} pageSize={20} onChange={setUserPage} />
           </div>
         )}
 
@@ -403,7 +460,9 @@ export default function AdminPage() {
                 >
                   <option value="">전체 카테고리</option>
                   {Object.entries(categorySummary).sort((a, b) => (b[1] as number) - (a[1] as number)).map(([cat, cnt]) => (
-                    <option key={cat} value={cat}>{CATEGORY_LABEL[cat] ?? cat} ({fmt(cnt as number)})</option>
+                    <option key={cat} value={cat}>
+                      {(recordType === 'tarot' ? TAROT_SPREAD_LABEL[cat] : SAJU_CATEGORY_LABEL[cat]) ?? cat} ({fmt(cnt as number)})
+                    </option>
                   ))}
                 </select>
               )}
@@ -414,13 +473,14 @@ export default function AdminPage() {
               <div className="flex flex-wrap gap-2">
                 {Object.entries(categorySummary).sort((a, b) => (b[1] as number) - (a[1] as number)).map(([cat, cnt]) => {
                   const total = Object.values(categorySummary).reduce((s: number, v) => s + (v as number), 0);
+                  const label = (recordType === 'tarot' ? TAROT_SPREAD_LABEL[cat] : SAJU_CATEGORY_LABEL[cat]) ?? cat;
                   return (
                     <button
                       key={cat}
                       onClick={() => { setRecordCategory(recordCategory === cat ? '' : cat); setRecordPage(1); }}
                       className={`px-2.5 py-1 rounded-full text-[13px] border transition-all ${recordCategory === cat ? 'bg-cta/20 border-cta/50 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
                     >
-                      {CATEGORY_LABEL[cat] ?? cat} <span className="text-text-tertiary">{Math.round((cnt as number) / total * 100)}%</span>
+                      {label} <span className="text-text-tertiary">{Math.round((cnt as number) / total * 100)}%</span>
                     </button>
                   );
                 })}
@@ -441,7 +501,7 @@ export default function AdminPage() {
                     <tr key={r.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
                       <td className="px-3 py-2.5 text-text-secondary max-w-[200px] truncate">{r.userEmail}</td>
                       <td className="px-3 py-2.5 text-text-primary">
-                        {CATEGORY_LABEL[r.category ?? r.spread_type ?? ''] ?? (r.category ?? r.spread_type ?? '-')}
+                        {SAJU_CATEGORY_LABEL[r.category ?? ''] ?? TAROT_SPREAD_LABEL[r.spread_type ?? ''] ?? (r.category ?? r.spread_type ?? '-')}
                       </td>
                       <td className="px-3 py-2.5">
                         {r.credit_type === 'sun'
@@ -463,6 +523,15 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+      {/* ── 회원 상세 Drawer ── */}
+      {selectedUserId && (
+        <MemberDetailDrawer
+          userId={selectedUserId}
+          token={token}
+          onClose={() => setSelectedUserId(null)}
+        />
+      )}
     </div>
   );
 }

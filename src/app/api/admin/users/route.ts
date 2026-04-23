@@ -1,12 +1,41 @@
 /**
- * GET /api/admin/users?page=1&search=&limit=20
- * 사용자 목록 — 프로필·크레딧·최근 주문 포함
+ * GET /api/admin/users
+ *   ?page=1&pageSize=20
+ *   &search=email
+ *   &gender=male|female|unknown
+ *   &ageBucket=twenties|...
+ *   &segment=new|active|dormant|vip|paying|free
+ *   &sort=joined|lastSeen|totalSpent|analysisCount|orderCount
+ *   &order=asc|desc
+ *
+ * 회원 목록 — 인구통계 + 세그먼트 + LTV + 최근활동 포함.
+ * 자세한 집계는 _userAggregates.ts 참고.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/services/supabaseAdmin';
 import { requireAdmin } from '../_auth';
+import { cachedLoadAdminBundle, aggregateUsers, type AggregatedUser } from '../_userAggregates';
+import { shouldForce } from '../_cache';
+import type { UserSegment, AgeBucketKey } from '@/constants/adminLabels';
 
-const PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
+type SortKey = 'joined' | 'lastSeen' | 'totalSpent' | 'analysisCount' | 'orderCount';
+
+function compareUsers(a: AggregatedUser, b: AggregatedUser, sort: SortKey, order: 'asc' | 'desc'): number {
+  const dir = order === 'asc' ? 1 : -1;
+  switch (sort) {
+    case 'joined': return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir;
+    case 'lastSeen': {
+      const at = a.lastSignIn ? new Date(a.lastSignIn).getTime() : 0;
+      const bt = b.lastSignIn ? new Date(b.lastSignIn).getTime() : 0;
+      return (at - bt) * dir;
+    }
+    case 'totalSpent':     return (a.totalSpent - b.totalSpent) * dir;
+    case 'analysisCount':  return ((a.sajuCount + a.tarotCount) - (b.sajuCount + b.tarotCount)) * dir;
+    case 'orderCount':     return (a.orderCount - b.orderCount) * dir;
+  }
+}
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request);
@@ -14,69 +43,38 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'));
-  const search = searchParams.get('search')?.trim() ?? '';
-  const from = (page - 1) * PAGE_SIZE;
+  const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(searchParams.get('pageSize') ?? String(DEFAULT_PAGE_SIZE))));
+  const search = (searchParams.get('search') ?? '').trim().toLowerCase();
+  const gender = (searchParams.get('gender') ?? '') as 'male' | 'female' | 'unknown' | '';
+  const ageBucket = (searchParams.get('ageBucket') ?? '') as AgeBucketKey | '';
+  const segment = (searchParams.get('segment') ?? '') as UserSegment | '';
+  const sort = (searchParams.get('sort') ?? 'joined') as SortKey;
+  const order = (searchParams.get('order') ?? 'desc') as 'asc' | 'desc';
 
-  // 1. Supabase Auth 사용자 목록 (관리자 API)
-  const { data: authList, error: authErr } = await supabaseAdmin.auth.admin.listUsers({
-    page,
-    perPage: PAGE_SIZE,
-  });
-  if (authErr) {
-    return NextResponse.json({ error: authErr.message }, { status: 500 });
-  }
+  const bundle = await cachedLoadAdminBundle({ force: shouldForce(request) });
+  let users = aggregateUsers(bundle);
 
-  let users = authList.users;
   if (search) {
-    users = users.filter(u =>
-      (u.email ?? '').toLowerCase().includes(search.toLowerCase())
-    );
+    users = users.filter(u => u.email.toLowerCase().includes(search));
+  }
+  if (gender) {
+    users = users.filter(u => u.gender === gender);
+  }
+  if (ageBucket) {
+    users = users.filter(u => u.ageBucket === ageBucket);
+  }
+  if (segment) {
+    users = users.filter(u => u.segments.includes(segment));
   }
 
-  const userIds = users.map(u => u.id);
+  users.sort((a, b) => compareUsers(a, b, sort, order));
 
-  // 2. 크레딧, 주문, 프로필 수를 병렬 조회
-  const [creditsRes, ordersRes, profilesRes] = await Promise.all([
-    supabaseAdmin.from('user_credits').select('user_id, sun_balance, moon_balance, total_sun_purchased, total_moon_purchased').in('user_id', userIds),
-    supabaseAdmin.from('orders').select('user_id, status, amount, created_at, package_name').in('user_id', userIds).eq('status', 'completed').order('created_at', { ascending: false }),
-    supabaseAdmin.from('birth_profiles').select('user_id', { count: 'exact' }).in('user_id', userIds),
-  ]);
+  const total = users.length;
+  const start = (page - 1) * pageSize;
+  const paged = users.slice(start, start + pageSize);
 
-  const creditMap = new Map((creditsRes.data ?? []).map(c => [c.user_id, c]));
-  const ordersByUser = new Map<string, typeof ordersRes.data>( );
-  for (const o of ordersRes.data ?? []) {
-    if (!ordersByUser.has(o.user_id)) ordersByUser.set(o.user_id, []);
-    ordersByUser.get(o.user_id)!.push(o);
-  }
-  const profileCountMap = new Map<string, number>();
-  for (const p of profilesRes.data ?? []) {
-    profileCountMap.set(p.user_id, (profileCountMap.get(p.user_id) ?? 0) + 1);
-  }
-
-  const result = users.map(u => {
-    const credit = creditMap.get(u.id);
-    const orders = ordersByUser.get(u.id) ?? [];
-    const lastOrder = orders[0] ?? null;
-    return {
-      id: u.id,
-      email: u.email ?? '',
-      provider: u.app_metadata?.provider ?? 'email',
-      createdAt: u.created_at,
-      lastSignIn: u.last_sign_in_at,
-      profileCount: profileCountMap.get(u.id) ?? 0,
-      sunBalance: credit?.sun_balance ?? 0,
-      moonBalance: credit?.moon_balance ?? 0,
-      totalSpent: orders.reduce((s, o) => s + (o.amount ?? 0), 0),
-      orderCount: orders.length,
-      lastOrderAt: lastOrder?.created_at ?? null,
-      lastPackage: lastOrder?.package_name ?? null,
-    };
-  });
-
-  return NextResponse.json({
-    users: result,
-    total: authList.total ?? users.length,
-    page,
-    pageSize: PAGE_SIZE,
-  });
+  return NextResponse.json(
+    { users: paged, total, page, pageSize, sort, order },
+    { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=60' } },
+  );
 }

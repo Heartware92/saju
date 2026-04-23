@@ -5,11 +5,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/services/supabaseAdmin';
 import { requireAdmin } from '../_auth';
+import { cached, shouldForce } from '../_cache';
 
-export async function GET(request: NextRequest) {
-  const auth = await requireAdmin(request);
-  if (auth instanceof Response) return auth;
+const STATS_CACHE_KEY = 'admin:stats:v1';
+const STATS_TTL_SECONDS = 30;
 
+async function computeStats() {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
   const totalSunBalance = credits.reduce((s, c) => s + (c.sun_balance ?? 0), 0);
   const totalMoonBalance = credits.reduce((s, c) => s + (c.moon_balance ?? 0), 0);
 
-  return NextResponse.json({
+  return {
     users: {
       total: usersRes.count ?? 0,
       today: todayUsersRes.count ?? 0,
@@ -102,5 +103,19 @@ export async function GET(request: NextRequest) {
       sun: { issued: totalSunIssued, consumed: totalSunConsumed, balance: totalSunBalance },
       moon: { issued: totalMoonIssued, consumed: totalMoonConsumed, balance: totalMoonBalance },
     },
+  };
+}
+
+export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (auth instanceof Response) return auth;
+
+  const stats = await cached(STATS_CACHE_KEY, computeStats, {
+    ttl: STATS_TTL_SECONDS,
+    force: shouldForce(request),
+  });
+
+  return NextResponse.json(stats, {
+    headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=60' },
   });
 }
