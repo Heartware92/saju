@@ -190,7 +190,7 @@ export default function HomePage() {
                 transition={{ duration: 0.6, ease: 'easeOut' }}
                 className="mb-3"
               >
-                <div className="relative w-28 h-28 mx-auto">
+                <div className="relative w-44 h-44 mx-auto">
                   {/* 오행 색 글로우 */}
                   <div
                     className="absolute inset-[-8px] rounded-full blur-xl"

@@ -95,6 +95,20 @@ export const CHARACTER_BY_ELEMENT: Record<Element, CharacterInfo> = {
   },
 };
 
+// 천간별 개별 캐릭터 이미지 매핑
+export const CHARACTER_IMAGE_BY_STEM: Record<string, string> = {
+  '갑': '/characters/갑.png',
+  '을': '/characters/을.png',
+  '병': '/characters/병.png',
+  '정': '/characters/정.png',
+  '무': '/characters/무.png',
+  '기': '/characters/기.png',
+  '경': '/characters/경.png',
+  '신': '/characters/신.png',
+  '임': '/characters/임.png',
+  '계': '/characters/계.png',
+};
+
 /** 만세력 셀(간·지) 배경/전경 색 — 전통 표기: 木=청, 火=적, 土=황, 金=백, 水=흑 */
 export const ELEMENT_CELL_COLORS: Record<Element, { bg: string; fg: string }> = {
   '목': { bg: '#22C55E', fg: '#0B2E16' },
@@ -107,7 +121,10 @@ export const ELEMENT_CELL_COLORS: Record<Element, { bg: string; fg: string }> = 
 export function getCharacterFromStem(gan: string): CharacterInfo | null {
   const element = STEM_TO_ELEMENT[gan];
   if (!element) return null;
-  return CHARACTER_BY_ELEMENT[element];
+  const base = CHARACTER_BY_ELEMENT[element];
+  const stemImage = CHARACTER_IMAGE_BY_STEM[gan];
+  if (!stemImage) return base;
+  return { ...base, image: stemImage };
 }
 
 export function stemToHanja(gan: string): string {
