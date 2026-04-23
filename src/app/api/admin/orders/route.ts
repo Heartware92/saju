@@ -6,7 +6,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/services/supabaseAdmin';
 import { requireAdmin } from '../_auth';
 
-const PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 10_000;
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request);
@@ -14,15 +15,16 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'));
+  const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(searchParams.get('pageSize') ?? String(DEFAULT_PAGE_SIZE))));
   const status = searchParams.get('status') ?? '';
   const search = searchParams.get('search')?.trim() ?? '';
-  const from = (page - 1) * PAGE_SIZE;
+  const from = (page - 1) * pageSize;
 
   let query = supabaseAdmin
     .from('orders')
     .select('*, user_id', { count: 'exact' })
     .order('created_at', { ascending: false })
-    .range(from, from + PAGE_SIZE - 1);
+    .range(from, from + pageSize - 1);
 
   if (status) query = query.eq('status', status);
 
@@ -47,5 +49,5 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ orders: result, total: count ?? result.length, page, pageSize: PAGE_SIZE });
+  return NextResponse.json({ orders: result, total: count ?? result.length, page, pageSize });
 }

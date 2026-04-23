@@ -1,6 +1,6 @@
 /**
  * GET /api/admin/stats
- * 어드민 대시보드 핵심 지표
+ * 어드민 대시보드 핵심 지표 + 30일 일별 시계열
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/services/supabaseAdmin';
@@ -10,11 +10,32 @@ import { cached, shouldForce } from '../_cache';
 const STATS_CACHE_KEY = 'admin:stats:v1';
 const STATS_TTL_SECONDS = 30;
 
+/** YYYY-MM-DD (KST 기준) */
+function dayKey(iso: string, tzOffsetMin = 540): string {
+  const d = new Date(iso);
+  const kst = new Date(d.getTime() + tzOffsetMin * 60_000);
+  return kst.toISOString().slice(0, 10);
+}
+
+/** 오늘 포함 N일 치 YYYY-MM-DD 역순 나열 (옛→최신) */
+function lastNDays(n: number, tzOffsetMin = 540): string[] {
+  const now = new Date();
+  const kstNow = new Date(now.getTime() + tzOffsetMin * 60_000);
+  const out: string[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(kstNow);
+    d.setUTCDate(d.getUTCDate() - i);
+    out.push(d.toISOString().slice(0, 10));
+  }
+  return out;
+}
+
 async function computeStats() {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString();
 
   const [
     usersRes,
@@ -28,32 +49,30 @@ async function computeStats() {
     tarotRes,
     todayTarotRes,
     creditsRes,
+    // 30일 시계열용
+    dailyOrdersRes,
+    dailySignupsRes,
+    dailySajuRes,
+    dailyTarotRes,
   ] = await Promise.all([
-    // 총 사용자 수
     supabaseAdmin.from('birth_profiles').select('user_id', { count: 'exact', head: true }).eq('is_primary', true),
-    // 오늘 신규 가입 (크레딧 레코드 생성 시점 기준)
     supabaseAdmin.from('user_credits').select('user_id', { count: 'exact', head: true }).gte('created_at', todayStart),
-    // 이번 달 신규 가입
     supabaseAdmin.from('user_credits').select('user_id', { count: 'exact', head: true }).gte('created_at', monthStart),
-    // 전체 주문 (status별)
     supabaseAdmin.from('orders').select('status, amount').not('status', 'eq', 'pending'),
-    // 이번 달 매출
     supabaseAdmin.from('orders').select('amount').eq('status', 'completed').gte('created_at', monthStart),
-    // 지난 달 매출
     supabaseAdmin.from('orders').select('amount').eq('status', 'completed').gte('created_at', prevMonthStart).lt('created_at', monthStart),
-    // 총 사주 분석 수
     supabaseAdmin.from('saju_records').select('id', { count: 'exact', head: true }),
-    // 오늘 사주 분석 수
     supabaseAdmin.from('saju_records').select('id', { count: 'exact', head: true }).gte('created_at', todayStart),
-    // 총 타로 분석 수
     supabaseAdmin.from('tarot_records').select('id', { count: 'exact', head: true }),
-    // 오늘 타로 분석 수
     supabaseAdmin.from('tarot_records').select('id', { count: 'exact', head: true }).gte('created_at', todayStart),
-    // 크레딧 총량 (발행 vs 소비)
     supabaseAdmin.from('user_credits').select('total_sun_purchased, total_moon_purchased, total_sun_consumed, total_moon_consumed, sun_balance, moon_balance'),
+    // 30일 시계열
+    supabaseAdmin.from('orders').select('amount, created_at').eq('status', 'completed').gte('created_at', thirtyDaysAgo),
+    supabaseAdmin.from('user_credits').select('created_at').gte('created_at', thirtyDaysAgo),
+    supabaseAdmin.from('saju_records').select('created_at').gte('created_at', thirtyDaysAgo),
+    supabaseAdmin.from('tarot_records').select('created_at').gte('created_at', thirtyDaysAgo),
   ]);
 
-  // 주문 통계 집계
   const orders = ordersRes.data ?? [];
   const completedOrders = orders.filter(o => o.status === 'completed');
   const refundedOrders = orders.filter(o => o.status === 'refunded');
@@ -62,7 +81,6 @@ async function computeStats() {
   const prevMonthRevenue = (prevMonthRevenueRes.data ?? []).reduce((s, o) => s + (o.amount ?? 0), 0);
   const refundedRevenue = refundedOrders.reduce((s, o) => s + (o.amount ?? 0), 0);
 
-  // 크레딧 집계
   const credits = creditsRes.data ?? [];
   const totalSunIssued = credits.reduce((s, c) => s + (c.total_sun_purchased ?? 0), 0);
   const totalMoonIssued = credits.reduce((s, c) => s + (c.total_moon_purchased ?? 0), 0);
@@ -70,6 +88,40 @@ async function computeStats() {
   const totalMoonConsumed = credits.reduce((s, c) => s + (c.total_moon_consumed ?? 0), 0);
   const totalSunBalance = credits.reduce((s, c) => s + (c.sun_balance ?? 0), 0);
   const totalMoonBalance = credits.reduce((s, c) => s + (c.moon_balance ?? 0), 0);
+
+  // ── 30일 일별 시계열 집계 (KST 기준) ──
+  const days = lastNDays(30);
+  const dayIndex = new Map(days.map((d, i) => [d, i]));
+  const revenueByDay = new Array(30).fill(0);
+  const signupsByDay = new Array(30).fill(0);
+  const sajuByDay = new Array(30).fill(0);
+  const tarotByDay = new Array(30).fill(0);
+
+  for (const o of dailyOrdersRes.data ?? []) {
+    const idx = dayIndex.get(dayKey(o.created_at));
+    if (idx !== undefined) revenueByDay[idx] += o.amount ?? 0;
+  }
+  for (const c of dailySignupsRes.data ?? []) {
+    const idx = dayIndex.get(dayKey(c.created_at));
+    if (idx !== undefined) signupsByDay[idx]++;
+  }
+  for (const r of dailySajuRes.data ?? []) {
+    const idx = dayIndex.get(dayKey(r.created_at));
+    if (idx !== undefined) sajuByDay[idx]++;
+  }
+  for (const r of dailyTarotRes.data ?? []) {
+    const idx = dayIndex.get(dayKey(r.created_at));
+    if (idx !== undefined) tarotByDay[idx]++;
+  }
+
+  const daily = days.map((d, i) => ({
+    date: d,
+    revenue: revenueByDay[i],
+    signups: signupsByDay[i],
+    saju: sajuByDay[i],
+    tarot: tarotByDay[i],
+    usage: sajuByDay[i] + tarotByDay[i],
+  }));
 
   return {
     users: {
@@ -103,6 +155,7 @@ async function computeStats() {
       sun: { issued: totalSunIssued, consumed: totalSunConsumed, balance: totalSunBalance },
       moon: { issued: totalMoonIssued, consumed: totalMoonConsumed, balance: totalMoonBalance },
     },
+    daily,
   };
 }
 

@@ -18,7 +18,7 @@ import { shouldForce } from '../_cache';
 import type { UserSegment, AgeBucketKey } from '@/constants/adminLabels';
 
 const DEFAULT_PAGE_SIZE = 20;
-const MAX_PAGE_SIZE = 100;
+const MAX_PAGE_SIZE = 5000; // CSV export용 한 번에 전체 받기 위해 상향
 
 type SortKey = 'joined' | 'lastSeen' | 'totalSpent' | 'analysisCount' | 'orderCount';
 

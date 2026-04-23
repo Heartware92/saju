@@ -6,7 +6,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/services/supabaseAdmin';
 import { requireAdmin } from '../_auth';
 
-const PAGE_SIZE = 30;
+const DEFAULT_PAGE_SIZE = 30;
+const MAX_PAGE_SIZE = 10_000;
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request);
@@ -14,9 +15,10 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'));
+  const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(searchParams.get('pageSize') ?? String(DEFAULT_PAGE_SIZE))));
   const type = searchParams.get('type') ?? 'saju';
   const category = searchParams.get('category') ?? '';
-  const from = (page - 1) * PAGE_SIZE;
+  const from = (page - 1) * pageSize;
 
   let data: any[] = [];
   let count = 0;
@@ -26,7 +28,7 @@ export async function GET(request: NextRequest) {
       .from('tarot_records')
       .select('id, user_id, spread_type, credit_type, credit_used, created_at', { count: 'exact' })
       .order('created_at', { ascending: false })
-      .range(from, from + PAGE_SIZE - 1);
+      .range(from, from + pageSize - 1);
     if (category) q = q.eq('spread_type', category);
     const res = await q;
     data = res.data ?? [];
@@ -36,7 +38,7 @@ export async function GET(request: NextRequest) {
       .from('saju_records')
       .select('id, user_id, category, gender, calendar_type, credit_type, credit_used, created_at', { count: 'exact' })
       .order('created_at', { ascending: false })
-      .range(from, from + PAGE_SIZE - 1);
+      .range(from, from + pageSize - 1);
     if (category) q = q.eq('category', category);
     const res = await q;
     data = res.data ?? [];
@@ -64,7 +66,7 @@ export async function GET(request: NextRequest) {
     records: data.map(r => ({ ...r, userEmail: emailMap.get(r.user_id) ?? r.user_id })),
     total: count,
     page,
-    pageSize: PAGE_SIZE,
+    pageSize,
     categorySummary: type === 'tarot' ? tarotCategories : sajuCategories,
   });
 }

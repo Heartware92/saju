@@ -5,7 +5,7 @@
  */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   GENDER_LABEL, PROVIDER_LABEL, ORDER_STATUS_LABEL,
   SAJU_CATEGORY_LABEL, TAROT_SPREAD_LABEL, CREDIT_REASON_LABEL,
@@ -24,6 +24,8 @@ interface DetailData {
     id: string; email: string; provider: string;
     createdAt: string; lastSignIn: string | null;
     emailConfirmed: boolean; phone: string | null;
+    bannedUntil?: string | null;
+    adminNote?: string;
   };
   primary: {
     name: string; gender: string;
@@ -45,7 +47,7 @@ interface DetailData {
   };
 }
 
-type DrawerTab = 'overview' | 'profiles' | 'orders' | 'records' | 'transactions';
+type DrawerTab = 'overview' | 'profiles' | 'orders' | 'records' | 'transactions' | 'ops';
 
 const fmtWon = (n: number) => `${(n ?? 0).toLocaleString('ko-KR')}원`;
 const fmtDate = (s: string | null) => s
@@ -57,6 +59,18 @@ export function MemberDetailDrawer({ userId, token, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<DrawerTab>('overview');
+
+  const reloadDetail = useCallback(async () => {
+    if (!userId || !token) return;
+    setError(''); setLoading(true);
+    try {
+      const r = await fetch(`/api/admin/users/${userId}?force=1`, { headers: { Authorization: `Bearer ${token}` } });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      setData(j);
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [userId, token]);
 
   useEffect(() => {
     if (!userId || !token) return;
@@ -106,6 +120,7 @@ export function MemberDetailDrawer({ userId, token, onClose }: Props) {
                 ['orders', `주문 (${data.orders.length})`],
                 ['records', `이용 (${data.sajuRecords.length + data.tarotRecords.length})`],
                 ['transactions', `거래 (${data.transactions.length})`],
+                ['ops', '관리자 작업'],
               ] as [DrawerTab, string][]).map(([k, label]) => (
                 <button
                   key={k}
@@ -123,6 +138,7 @@ export function MemberDetailDrawer({ userId, token, onClose }: Props) {
               {tab === 'orders' && <OrdersTab data={data} />}
               {tab === 'records' && <RecordsTab data={data} />}
               {tab === 'transactions' && <TransactionsTab data={data} />}
+              {tab === 'ops' && <OpsTab data={data} token={token} onRefresh={() => reloadDetail()} />}
             </div>
           </>
         )}
@@ -327,6 +343,165 @@ function TransactionsTab({ data }: { data: DetailData }) {
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ── 관리자 작업 ──────────────────────────────────────
+
+function OpsTab({ data, token, onRefresh }: { data: DetailData; token: string | null; onRefresh: () => void }) {
+  const [creditType, setCreditType] = useState<'sun' | 'moon'>('sun');
+  const [delta, setDelta] = useState<number>(1);
+  const [creditReason, setCreditReason] = useState('');
+  const [note, setNote] = useState(data.user.adminNote ?? '');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+  const isBanned = !!data.user.bannedUntil && new Date(data.user.bannedUntil) > new Date();
+
+  const run = async (label: string, fn: () => Promise<Response>) => {
+    if (!token) return;
+    setBusy(label); setMsg(null);
+    try {
+      const r = await fn();
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error ?? `HTTP ${r.status}`);
+      setMsg({ type: 'ok', text: `${label} 성공` });
+      onRefresh();
+    } catch (e: any) {
+      setMsg({ type: 'err', text: `${label} 실패: ${e.message}` });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const submitCredit = () => {
+    if (!creditReason.trim()) {
+      setMsg({ type: 'err', text: '사유를 입력하세요' });
+      return;
+    }
+    run('크레딧 조정', () => fetch(`/api/admin/users/${data.user.id}/adjust-credit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ creditType, delta, reason: creditReason }),
+    }));
+  };
+
+  const submitNote = () => {
+    run('메모 저장', () => fetch(`/api/admin/users/${data.user.id}/note`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ note }),
+    }));
+  };
+
+  const toggleBan = () => {
+    const action = isBanned ? 'unban' : 'ban';
+    if (!confirm(isBanned ? '차단을 해제하시겠습니까?' : '1년 차단을 적용하시겠습니까?')) return;
+    run(isBanned ? '차단 해제' : '차단', () => fetch(`/api/admin/users/${data.user.id}/ban`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action }),
+    }));
+  };
+
+  return (
+    <div className="space-y-5">
+      {msg && (
+        <div className={`px-3 py-2 rounded-lg text-[13px] border ${
+          msg.type === 'ok' ? 'bg-green-500/10 border-green-500/30 text-green-300' : 'bg-red-500/10 border-red-500/30 text-red-300'
+        }`}>{msg.text}</div>
+      )}
+
+      {/* 크레딧 수동 조정 */}
+      <Section title="크레딧 수동 조정">
+        <div className="space-y-2.5">
+          <div className="flex gap-2">
+            <div className="flex gap-1 p-1 bg-white/5 rounded-lg border border-white/10">
+              {(['sun', 'moon'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setCreditType(t)}
+                  className={`px-3 py-1.5 rounded text-[13px] font-medium transition-colors ${creditType === t ? 'bg-cta text-white' : 'text-text-tertiary hover:text-text-secondary'}`}
+                >{t === 'sun' ? '☀ 해' : '🌙 달'}</button>
+              ))}
+            </div>
+            <input
+              type="number"
+              value={delta}
+              onChange={e => setDelta(parseInt(e.target.value) || 0)}
+              placeholder="+10 또는 -5"
+              className="w-32 px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[14px] text-text-primary tabular-nums focus:outline-none focus:border-cta/50"
+            />
+            <p className="self-center text-[12px] text-text-tertiary">
+              현재 {creditType === 'sun' ? data.credit?.sun_balance : data.credit?.moon_balance} →{' '}
+              <b className="text-text-primary">{(creditType === 'sun' ? data.credit?.sun_balance : data.credit?.moon_balance) + delta}</b>
+            </p>
+          </div>
+          <input
+            type="text"
+            value={creditReason}
+            onChange={e => setCreditReason(e.target.value)}
+            placeholder="사유 (필수) — 예: 이벤트 보상, 오류 보상"
+            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[13px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-cta/50"
+          />
+          <button
+            onClick={submitCredit}
+            disabled={busy !== null || delta === 0 || !creditReason.trim()}
+            className="px-4 py-2 rounded-lg bg-cta text-white text-[13px] font-medium disabled:opacity-40 hover:bg-cta/90 transition-colors"
+          >
+            {busy === '크레딧 조정' ? '처리 중…' : '크레딧 조정 적용'}
+          </button>
+        </div>
+      </Section>
+
+      {/* 관리자 메모 */}
+      <Section title="관리자 메모">
+        <textarea
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          rows={4}
+          maxLength={2000}
+          placeholder="내부용 메모 — 2000자 이내"
+          className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[13px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-cta/50 resize-y"
+        />
+        <div className="flex justify-between items-center mt-2">
+          <p className="text-[11px] text-text-tertiary">{note.length} / 2000</p>
+          <button
+            onClick={submitNote}
+            disabled={busy !== null}
+            className="px-3 py-1.5 rounded-lg bg-white/10 text-text-primary text-[13px] font-medium disabled:opacity-40 hover:bg-white/15 transition-colors"
+          >
+            {busy === '메모 저장' ? '저장 중…' : '메모 저장'}
+          </button>
+        </div>
+      </Section>
+
+      {/* 계정 차단 */}
+      <Section title="계정 차단">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[13px] text-text-primary font-medium">
+              {isBanned ? '⛔ 차단됨' : '✓ 정상'}
+            </p>
+            {isBanned && data.user.bannedUntil && (
+              <p className="text-[11px] text-text-tertiary mt-0.5">해제일: {fmtDate(data.user.bannedUntil)}</p>
+            )}
+            <p className="text-[11px] text-text-tertiary mt-0.5">차단 시 1년간 로그인 불가</p>
+          </div>
+          <button
+            onClick={toggleBan}
+            disabled={busy !== null}
+            className={`px-4 py-2 rounded-lg text-[13px] font-medium disabled:opacity-40 transition-colors ${
+              isBanned
+                ? 'bg-green-500/20 text-green-300 border border-green-500/30 hover:bg-green-500/30'
+                : 'bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30'
+            }`}
+          >
+            {busy?.includes('차단') ? '처리 중…' : isBanned ? '차단 해제' : '계정 차단'}
+          </button>
+        </div>
+      </Section>
     </div>
   );
 }

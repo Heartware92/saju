@@ -6,9 +6,24 @@ import { DemographicsSummary, type MemberSummary } from '@/components/admin/memb
 import { MembersFilterBar } from '@/components/admin/members/MembersFilterBar';
 import { MembersTable, type MemberRow } from '@/components/admin/members/MembersTable';
 import { MemberDetailDrawer } from '@/components/admin/members/MemberDetailDrawer';
-import { SAJU_CATEGORY_LABEL, TAROT_SPREAD_LABEL, ORDER_STATUS_LABEL, type UserSegment, type AgeBucketKey } from '@/constants/adminLabels';
+import { VerticalBarChart } from '@/components/admin/charts/VerticalBarChart';
+import { OrdersSummarySection, type OrdersSummary } from '@/components/admin/orders/OrdersSummarySection';
+import { UsageAnalyticsSection, type UsageSummary } from '@/components/admin/usage/UsageAnalyticsSection';
+import { CreditsFlowSection, type CreditsSummary } from '@/components/admin/credits/CreditsFlowSection';
+import { OpsSection, type OpsSummary } from '@/components/admin/ops/OpsSection';
+import { toCsv, downloadCsv, timestampSuffix } from '@/components/admin/csvExport';
+import { SAJU_CATEGORY_LABEL, TAROT_SPREAD_LABEL, ORDER_STATUS_LABEL, GENDER_LABEL, PROVIDER_LABEL, CREDIT_REASON_LABEL, type UserSegment, type AgeBucketKey } from '@/constants/adminLabels';
 
 // ── 타입 ──────────────────────────────────────────────────
+interface DailyPoint {
+  date: string;
+  revenue: number;
+  signups: number;
+  saju: number;
+  tarot: number;
+  usage: number;
+}
+
 interface Stats {
   users: { total: number; today: number; thisMonth: number };
   orders: { completed: number; refunded: number; refundRate: number };
@@ -18,6 +33,7 @@ interface Stats {
     sun: { issued: number; consumed: number; balance: number };
     moon: { issued: number; consumed: number; balance: number };
   };
+  daily?: DailyPoint[];
 }
 
 interface Order {
@@ -32,7 +48,7 @@ interface UsageRecord {
   credit_type: string; credit_used: number; created_at: string;
 }
 
-type Tab = 'overview' | 'members' | 'orders' | 'records';
+type Tab = 'overview' | 'members' | 'orders' | 'usage' | 'credits' | 'records' | 'ops';
 type SortKey = 'joined' | 'lastSeen' | 'totalSpent' | 'analysisCount' | 'orderCount';
 
 // ── 유틸 ──────────────────────────────────────────────────
@@ -46,6 +62,37 @@ function MetricCard({ label, value, sub, color }: { label: string; value: string
       <p className="text-[13px] text-text-tertiary uppercase tracking-wider mb-1">{label}</p>
       <p className={`text-[22px] font-bold ${color ?? 'text-text-primary'}`}>{value}</p>
       {sub && <p className="text-[13px] text-text-tertiary mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+function TrendCard({
+  title, unit, data, field, color, totalLabel, sub,
+}: {
+  title: string;
+  unit: string;
+  data: DailyPoint[];
+  field: 'revenue' | 'signups' | 'usage';
+  color: string;
+  totalLabel: string;
+  sub?: (data: DailyPoint[]) => string;
+}) {
+  const total = data.reduce((s, d) => s + d[field], 0);
+  const bars = data.map(d => ({
+    key: d.date,
+    label: d.date.slice(5), // MM-DD
+    value: d[field],
+  }));
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+      <div className="flex items-baseline justify-between mb-3">
+        <h3 className="text-[14px] font-semibold text-text-primary">{title}</h3>
+        <p className="text-[13px] text-text-tertiary">
+          {totalLabel} <span className="text-text-primary font-medium">{total.toLocaleString()}{unit}</span>
+        </p>
+      </div>
+      <VerticalBarChart bars={bars} color={color} height={120} />
+      {sub && <p className="text-[12px] text-text-tertiary mt-2 text-right">{sub(data)}</p>}
     </div>
   );
 }
@@ -64,6 +111,7 @@ export default function AdminPage() {
 
   // Overview
   const [stats, setStats] = useState<Stats | null>(null);
+  const [dailyRange, setDailyRange] = useState<7 | 30>(7);
 
   // Members
   const [memberSummary, setMemberSummary] = useState<MemberSummary | null>(null);
@@ -84,6 +132,16 @@ export default function AdminPage() {
   const [orderTotal, setOrderTotal] = useState(0);
   const [orderStatus, setOrderStatus] = useState('');
   const [orderSearch, setOrderSearch] = useState('');
+  const [ordersSummary, setOrdersSummary] = useState<OrdersSummary | null>(null);
+
+  // Usage
+  const [usageSummary, setUsageSummary] = useState<UsageSummary | null>(null);
+
+  // Credits
+  const [creditsSummary, setCreditsSummary] = useState<CreditsSummary | null>(null);
+
+  // Ops
+  const [opsSummary, setOpsSummary] = useState<OpsSummary | null>(null);
 
   // Records
   const [records, setRecords] = useState<UsageRecord[]>([]);
@@ -183,6 +241,44 @@ export default function AdminPage() {
     finally { setLoading(false); }
   }, [token, adminFetch, orderPage, orderStatus, orderSearch]);
 
+  const fetchOrdersSummary = useCallback(async (force = false) => {
+    if (!token) return;
+    try {
+      const data = await adminFetch<OrdersSummary>('/api/admin/orders/summary', force);
+      if (data) setOrdersSummary(data);
+    } catch (e: any) { setError(e.message); }
+  }, [token, adminFetch]);
+
+  const fetchUsageSummary = useCallback(async (force = false) => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const data = await adminFetch<UsageSummary>('/api/admin/usage/summary', force);
+      if (data) setUsageSummary(data);
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [token, adminFetch]);
+
+  const fetchCreditsSummary = useCallback(async (force = false) => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const data = await adminFetch<CreditsSummary>('/api/admin/credits/summary', force);
+      if (data) setCreditsSummary(data);
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [token, adminFetch]);
+
+  const fetchOpsSummary = useCallback(async (force = false) => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const data = await adminFetch<OpsSummary>('/api/admin/ops/summary', force);
+      if (data) setOpsSummary(data);
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [token, adminFetch]);
+
   const fetchRecords = useCallback(async (force = false) => {
     if (!token) return;
     setLoading(true);
@@ -201,7 +297,14 @@ export default function AdminPage() {
     if (!memberSummary) fetchMemberSummary();
     if (members.length === 0) fetchMembers();
   }, [tab, memberSummary, members.length, fetchMemberSummary, fetchMembers]);
-  useEffect(() => { if (tab === 'orders' && orders.length === 0) fetchOrders(); }, [tab, orders.length, fetchOrders]);
+  useEffect(() => {
+    if (tab !== 'orders') return;
+    if (!ordersSummary) fetchOrdersSummary();
+    if (orders.length === 0) fetchOrders();
+  }, [tab, ordersSummary, orders.length, fetchOrdersSummary, fetchOrders]);
+  useEffect(() => { if (tab === 'usage' && !usageSummary) fetchUsageSummary(); }, [tab, usageSummary, fetchUsageSummary]);
+  useEffect(() => { if (tab === 'credits' && !creditsSummary) fetchCreditsSummary(); }, [tab, creditsSummary, fetchCreditsSummary]);
+  useEffect(() => { if (tab === 'ops' && !opsSummary) fetchOpsSummary(); }, [tab, opsSummary, fetchOpsSummary]);
   useEffect(() => { if (tab === 'records' && records.length === 0) fetchRecords(); }, [tab, records.length, fetchRecords]);
 
   // ── 필터·정렬 변경 시 members 재호출
@@ -246,15 +349,102 @@ export default function AdminPage() {
   const TABS: { key: Tab; label: string }[] = [
     { key: 'overview', label: '대시보드' },
     { key: 'members',  label: `회원 관리${memberSummary ? ` (${memberSummary.kpi.totalUsers})` : ''}` },
-    { key: 'orders',   label: `주문 (${orderTotal || '…'})` },
+    { key: 'orders',   label: `매출·결제 (${orderTotal || '…'})` },
+    { key: 'usage',    label: `이용 분석${usageSummary ? ` (${usageSummary.kpi.grandTotal})` : ''}` },
+    { key: 'credits',  label: `크레딧 흐름${creditsSummary ? ` (${creditsSummary.kpi.txnCount})` : ''}` },
     { key: 'records',  label: `이용 기록 (${recordTotal || '…'})` },
+    { key: 'ops',      label: `운영${opsSummary ? ` (${opsSummary.kpi.bannedCount + opsSummary.kpi.notedCount})` : ''}` },
   ];
+
+  // ── CSV export ──
+  const [exporting, setExporting] = useState(false);
+  const exportMembersCsv = async () => {
+    if (!token) return;
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({
+        page: '1', pageSize: '5000',
+        search: memberSearch, gender: memberGender,
+        ageBucket: memberAgeBucket, segment: memberSegment,
+        sort: memberSort, order: memberOrder,
+      });
+      const res = await fetch(`/api/admin/users?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? '실패');
+      const rows = (json.users as MemberRow[]).map(u => [
+        u.email, PROVIDER_LABEL[u.provider] ?? u.provider,
+        GENDER_LABEL[u.gender] ?? u.gender, u.age ?? '', u.birthDate ?? '',
+        u.ageBucket, u.segments?.join('|') ?? '',
+        u.sunBalance, u.moonBalance,
+        u.totalSpent, u.orderCount, u.sajuCount, u.tarotCount,
+        u.createdAt, u.lastSignIn ?? '', u.lastAnalysisAt ?? '',
+        u.daysSinceLastActivity ?? '',
+      ]);
+      const csv = toCsv(
+        ['이메일', '가입경로', '성별', '나이', '생년월일', '연령대', '세그먼트',
+         '해 잔액', '달 잔액', '누적결제', '주문수', '사주이용', '타로이용',
+         '가입일', '최종로그인', '최종이용', '미접속일'],
+        rows,
+      );
+      downloadCsv(`members-${timestampSuffix()}.csv`, csv);
+    } catch (e: any) { setError(e.message); }
+    finally { setExporting(false); }
+  };
+
+  const exportOrdersCsv = async () => {
+    if (!token) return;
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({ page: '1', pageSize: '10000', status: orderStatus, search: orderSearch });
+      const res = await fetch(`/api/admin/orders?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? '실패');
+      const rows = (json.orders as Order[]).map(o => [
+        o.id, o.userEmail,
+        ORDER_STATUS_LABEL[o.status]?.text ?? o.status,
+        o.package_name, o.package_id,
+        o.amount, o.sun_credit_amount, o.moon_credit_amount,
+        o.payment_method ?? '', o.created_at, o.completed_at ?? '',
+      ]);
+      const csv = toCsv(
+        ['주문ID', '이메일', '상태', '패키지', '패키지ID', '금액', '해', '달', '결제수단', '생성일', '완료일'],
+        rows,
+      );
+      downloadCsv(`orders-${timestampSuffix()}.csv`, csv);
+    } catch (e: any) { setError(e.message); }
+    finally { setExporting(false); }
+  };
+
+  const exportRecordsCsv = async () => {
+    if (!token) return;
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({ page: '1', pageSize: '10000', type: recordType, category: recordCategory });
+      const res = await fetch(`/api/admin/records?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? '실패');
+      const rows = (json.records as UsageRecord[]).map(r => [
+        r.userEmail,
+        recordType === 'saju'
+          ? (SAJU_CATEGORY_LABEL[r.category ?? ''] ?? r.category ?? '')
+          : (TAROT_SPREAD_LABEL[r.spread_type ?? ''] ?? r.spread_type ?? ''),
+        r.credit_type === 'sun' ? '해' : '달',
+        r.credit_used, r.created_at,
+      ]);
+      const csv = toCsv(['이메일', '서비스', '크레딧', '소비량', '일시'], rows);
+      downloadCsv(`${recordType}-records-${timestampSuffix()}.csv`, csv);
+    } catch (e: any) { setError(e.message); }
+    finally { setExporting(false); }
+  };
 
   const refreshCurrentTab = () => {
     setError('');
     if (tab === 'overview') fetchStats(true);
     else if (tab === 'members') { fetchMemberSummary(true); fetchMembers(true); }
-    else if (tab === 'orders') fetchOrders(true);
+    else if (tab === 'orders') { fetchOrdersSummary(true); fetchOrders(true); }
+    else if (tab === 'usage') fetchUsageSummary(true);
+    else if (tab === 'credits') fetchCreditsSummary(true);
+    else if (tab === 'ops') fetchOpsSummary(true);
     else fetchRecords(true);
   };
 
@@ -266,12 +456,23 @@ export default function AdminPage() {
           <h1 className="text-[18px] font-bold text-text-primary">사주 어드민</h1>
           <p className="text-[13px] text-text-tertiary mt-0.5">Admin Dashboard</p>
         </div>
-        <button
-          onClick={refreshCurrentTab}
-          className="text-[14px] text-cta hover:text-cta/80 border border-cta/30 hover:border-cta/60 px-3 py-1.5 rounded-lg transition-all"
-        >
-          새로고침
-        </button>
+        <div className="flex items-center gap-2">
+          {(tab === 'members' || tab === 'orders' || tab === 'records') && (
+            <button
+              onClick={tab === 'members' ? exportMembersCsv : tab === 'orders' ? exportOrdersCsv : exportRecordsCsv}
+              disabled={exporting}
+              className="text-[13px] text-text-secondary hover:text-text-primary border border-white/15 hover:border-white/30 px-3 py-1.5 rounded-lg transition-all disabled:opacity-40"
+            >
+              {exporting ? '다운로드 중…' : '📥 CSV 다운로드'}
+            </button>
+          )}
+          <button
+            onClick={refreshCurrentTab}
+            className="text-[14px] text-cta hover:text-cta/80 border border-cta/30 hover:border-cta/60 px-3 py-1.5 rounded-lg transition-all"
+          >
+            새로고침
+          </button>
+        </div>
       </div>
 
       {/* 탭 */}
@@ -347,6 +548,58 @@ export default function AdminPage() {
                 />
               </div>
             </div>
+
+            {/* ── 일별 시계열 ── */}
+            {stats.daily && stats.daily.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-[15px] font-semibold text-text-secondary uppercase tracking-wider">일별 추이</h2>
+                  <div className="flex gap-1 p-1 bg-white/5 rounded-lg border border-white/10">
+                    {([7, 30] as const).map(r => (
+                      <button
+                        key={r}
+                        onClick={() => setDailyRange(r)}
+                        className={`px-3 py-1 rounded text-[13px] font-medium transition-colors ${dailyRange === r ? 'bg-cta text-white' : 'text-text-tertiary hover:text-text-secondary'}`}
+                      >
+                        {r}일
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                  <TrendCard
+                    title="매출"
+                    unit="원"
+                    data={stats.daily.slice(-dailyRange)}
+                    field="revenue"
+                    color="rgba(52, 211, 153, 0.75)"
+                    totalLabel="합계"
+                  />
+                  <TrendCard
+                    title="신규 가입"
+                    unit="명"
+                    data={stats.daily.slice(-dailyRange)}
+                    field="signups"
+                    color="rgba(96, 165, 250, 0.75)"
+                    totalLabel="합계"
+                  />
+                  <TrendCard
+                    title="서비스 이용"
+                    unit="건"
+                    data={stats.daily.slice(-dailyRange)}
+                    field="usage"
+                    color="rgba(251, 191, 36, 0.75)"
+                    totalLabel="합계"
+                    sub={(data) => {
+                      const saju = data.reduce((s, d) => s + d.saju, 0);
+                      const tarot = data.reduce((s, d) => s + d.tarot, 0);
+                      return `사주 ${saju.toLocaleString()} · 타로 ${tarot.toLocaleString()}`;
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -381,7 +634,9 @@ export default function AdminPage() {
 
         {/* ── 주문 ── */}
         {tab === 'orders' && (
-          <div className="space-y-4">
+          <div className="space-y-6">
+            <OrdersSummarySection summary={ordersSummary} />
+
             <div className="flex gap-2 flex-wrap">
               <input
                 type="text"
@@ -434,6 +689,21 @@ export default function AdminPage() {
 
             <Pagination page={orderPage} total={orderTotal} pageSize={20} onChange={setOrderPage} />
           </div>
+        )}
+
+        {/* ── 이용 분석 ── */}
+        {tab === 'usage' && (
+          <UsageAnalyticsSection summary={usageSummary} />
+        )}
+
+        {/* ── 크레딧 흐름 ── */}
+        {tab === 'credits' && (
+          <CreditsFlowSection summary={creditsSummary} />
+        )}
+
+        {/* ── 운영 ── */}
+        {tab === 'ops' && (
+          <OpsSection summary={opsSummary} onOpenUser={setSelectedUserId} />
         )}
 
         {/* ── 이용 기록 ── */}

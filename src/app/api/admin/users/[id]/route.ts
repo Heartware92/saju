@@ -91,6 +91,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       lastSignIn: user.last_sign_in_at ?? null,
       emailConfirmed: !!user.email_confirmed_at,
       phone: user.phone ?? null,
+      bannedUntil: (user as any).banned_until ?? null,
+      adminNote: (user.user_metadata?.admin_note as string | undefined) ?? '',
     },
     primary: primary ? {
       name: primary.name,
