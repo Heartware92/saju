@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase, auth } from '../services/supabase';
 import { useCreditStore } from './useCreditStore';
+import { useProfileStore } from './useProfileStore';
 import type { AuthUser } from '../types/user';
 
 interface UserState {
@@ -53,6 +54,7 @@ export const useUserStore = create<UserState>()(
             } else {
               set({ user: null });
               useCreditStore.getState().reset();
+              useProfileStore.getState().reset();
             }
           });
         } catch (error: any) {
@@ -132,8 +134,9 @@ export const useUserStore = create<UserState>()(
 
           set({ user: null, loading: false });
 
-          // 크레딧 상태 초기화
+          // 크레딧 / 프로필 캐시 초기화 — localStorage persist된 대표 프로필이 다음 로그인 전까지 남는 이슈 방지
           useCreditStore.getState().reset();
+          useProfileStore.getState().reset();
         } catch (error: any) {
           console.error('Logout error:', error);
           set({ error: error.message, loading: false });
