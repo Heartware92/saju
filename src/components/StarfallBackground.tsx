@@ -30,65 +30,12 @@ export default function StarfallBackground() {
       {/* 듀스크 그라데이션 */}
       <div className={styles.gradient} />
 
-      {/* 옅은 은하수 밴드 — 좌상 → 우하 대각 */}
-      <div className={styles.milkyWay} />
-
       {/* 작은 별빛 레이어 (트윙클) */}
       <div className={`${styles.stars} ${styles.starsBack}`} />
       <div className={`${styles.stars} ${styles.starsFront}`} />
 
       {/* 은은한 성운(구름) */}
       <div className={styles.nebula} />
-
-      {/* 한국 전통 구름 문양(구름무늬) — 화면 하단에 은은하게 */}
-      <svg
-        className={styles.traditionalCloud}
-        viewBox="0 0 400 100"
-        preserveAspectRatio="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {/* 전통 구름무늬 스타일 — 둥근 소용돌이 세 덩어리 */}
-        <path
-          d="M 0 70
-             C 20 50, 40 45, 55 55
-             C 65 45, 80 42, 90 52
-             C 100 42, 115 40, 125 50
-             C 130 58, 128 68, 120 72
-             C 135 72, 145 80, 140 90
-             C 125 92, 115 85, 115 75
-             C 105 85, 85 85, 80 72
-             C 70 82, 50 80, 45 68
-             C 30 78, 10 78, 0 70 Z"
-          fill="currentColor"
-          opacity="0.5"
-        />
-        <path
-          d="M 160 75
-             C 175 55, 195 52, 210 62
-             C 220 52, 235 50, 245 60
-             C 255 50, 270 48, 280 58
-             C 285 66, 283 76, 275 80
-             C 285 82, 292 90, 285 96
-             C 272 96, 265 88, 265 80
-             C 258 88, 240 88, 235 76
-             C 225 84, 205 82, 200 72
-             C 185 82, 168 82, 160 75 Z"
-          fill="currentColor"
-          opacity="0.4"
-        />
-        <path
-          d="M 310 72
-             C 325 54, 345 50, 358 60
-             C 368 50, 383 48, 393 58
-             C 398 65, 396 75, 390 78
-             C 400 82, 400 90, 392 94
-             C 380 94, 372 86, 372 76
-             C 365 84, 348 84, 343 72
-             C 330 80, 315 80, 310 72 Z"
-          fill="currentColor"
-          opacity="0.45"
-        />
-      </svg>
 
       {/* 달 — 우상단, 은은한 후광 */}
       <div className={styles.moon}>
