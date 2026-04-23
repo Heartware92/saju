@@ -11,7 +11,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { CITY_COORDINATES } from '../utils/timeCorrection';
+import { computeSajuFromProfile } from '../utils/profileSaju';
+import { getCharacterFromStem } from '../lib/character';
 import type { BirthProfile } from '../types/credit';
+
+function preloadCharacterImage(profile: BirthProfile) {
+  try {
+    const result = computeSajuFromProfile(profile);
+    if (!result) return;
+    const character = getCharacterFromStem(result.pillars.day.gan);
+    if (!character?.image) return;
+    const img = new window.Image();
+    img.src = character.image;
+  } catch {}
+}
 
 export default function ManageProfilesPage() {
   const router = useRouter();
@@ -168,7 +181,7 @@ export default function ManageProfilesPage() {
               <div className="mt-3 flex items-center gap-1.5">
                 {!p.is_primary && (
                   <button
-                    onClick={() => setPrimary(p.id)}
+                    onClick={() => { preloadCharacterImage(p); setPrimary(p.id); }}
                     className="flex-1 py-1.5 rounded-lg bg-[rgba(124,92,252,0.14)] border border-cta/30 text-cta text-[14px] font-semibold hover:bg-[rgba(124,92,252,0.22)] active:scale-[0.97] transition-all"
                   >
                     대표로 지정
