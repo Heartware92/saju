@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -201,10 +202,12 @@ export default function HomePage() {
                                   bg-[rgba(20,12,38,0.85)] border border-[var(--border-subtle)]
                                   flex items-center justify-center">
                     {!imgError ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <Image
                         src={sajuData.character.image}
                         alt={sajuData.character.label}
+                        width={176}
+                        height={176}
+                        priority
                         className="w-full h-full object-cover"
                         onError={() => setImgError(true)}
                       />
