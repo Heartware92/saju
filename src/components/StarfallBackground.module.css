@@ -34,6 +34,45 @@
     );
 }
 
+/* 옅은 은하수 밴드 — 좌상단에서 우하단으로 뻗은 대각 띠
+   화면을 비스듬히 가로지르는 창백한 빛의 흐름. 중앙은 짙고 가장자리로 갈수록 사라짐.
+   내부의 촘촘한 점들은 무수히 많은 먼 별들의 집합체를 표현. */
+.milkyWay {
+  position: absolute;
+  left: -30%;
+  top: 10%;
+  width: 160%;
+  height: 40%;
+  transform: rotate(-18deg);
+  transform-origin: center center;
+  background:
+    /* 가장자리 페이드용 엘립스 */
+    radial-gradient(
+      ellipse 50% 100% at 50% 50%,
+      rgba(220, 210, 255, 0.22) 0%,
+      rgba(200, 180, 240, 0.12) 35%,
+      transparent 70%
+    ),
+    /* 내부 은하수 점들 */
+    radial-gradient(1.2px 1.2px at 8% 50%,  rgba(255, 255, 255, 0.7), transparent 70%),
+    radial-gradient(1px 1px at 15% 35%,    rgba(220, 200, 255, 0.6), transparent 70%),
+    radial-gradient(1.4px 1.4px at 22% 60%, rgba(255, 250, 230, 0.75), transparent 70%),
+    radial-gradient(1px 1px at 28% 45%,    rgba(240, 220, 255, 0.55), transparent 70%),
+    radial-gradient(1.2px 1.2px at 35% 55%, rgba(255, 245, 220, 0.7), transparent 70%),
+    radial-gradient(1.6px 1.6px at 42% 40%, rgba(255, 255, 255, 0.8), transparent 70%),
+    radial-gradient(1px 1px at 48% 60%,    rgba(220, 200, 255, 0.6), transparent 70%),
+    radial-gradient(1.4px 1.4px at 55% 50%, rgba(255, 245, 220, 0.75), transparent 70%),
+    radial-gradient(1.2px 1.2px at 62% 35%, rgba(240, 220, 255, 0.65), transparent 70%),
+    radial-gradient(1px 1px at 68% 55%,    rgba(255, 255, 255, 0.6), transparent 70%),
+    radial-gradient(1.4px 1.4px at 75% 45%, rgba(252, 232, 178, 0.7), transparent 70%),
+    radial-gradient(1.2px 1.2px at 82% 60%, rgba(220, 200, 255, 0.65), transparent 70%),
+    radial-gradient(1px 1px at 88% 40%,    rgba(255, 245, 220, 0.55), transparent 70%),
+    radial-gradient(1.4px 1.4px at 93% 55%, rgba(255, 255, 255, 0.65), transparent 70%);
+  filter: blur(0.5px);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
 /* 보랏빛 성운 (밤하늘 안개) */
 .nebula {
   position: absolute;
@@ -178,11 +217,89 @@
   100% { transform: translate(var(--tx, 150%), var(--ty, 100%));    opacity: 0; }
 }
 
+/* ─────────────────────────────────────────────
+   달 (Moon) — 우상단, 은은한 후광 + 부드러운 크레이터 느낌
+   해·달 크레딧 시스템과 테마 일관성. 정적이라 성능 부담 없음. */
+.moon {
+  position: absolute;
+  top: 7%;
+  right: 8%;
+  width: 76px;
+  height: 76px;
+  pointer-events: none;
+  animation: moon-float 14s ease-in-out infinite alternate;
+}
+
+.moonGlow {
+  position: absolute;
+  inset: -30px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 240, 200, 0.22) 0%,
+    rgba(255, 220, 180, 0.12) 35%,
+    transparent 70%
+  );
+  filter: blur(4px);
+}
+
+.moonBody {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    /* 옅은 크레이터 음영 */
+    radial-gradient(circle at 62% 38%, rgba(200, 170, 130, 0.25) 0%, transparent 18%),
+    radial-gradient(circle at 38% 62%, rgba(200, 170, 130, 0.2) 0%, transparent 15%),
+    radial-gradient(circle at 70% 65%, rgba(200, 170, 130, 0.15) 0%, transparent 12%),
+    /* 본체 */
+    radial-gradient(
+      circle at 35% 35%,
+      #fffdf5 0%,
+      #fff0cc 40%,
+      #f0d090 75%,
+      #d4a870 100%
+    );
+  box-shadow:
+    inset -4px -6px 10px rgba(160, 120, 80, 0.3),
+    inset 3px 3px 6px rgba(255, 250, 230, 0.4),
+    0 0 24px rgba(255, 230, 180, 0.35);
+  opacity: 0.92;
+}
+
+@keyframes moon-float {
+  0%   { transform: translate(0, 0); }
+  100% { transform: translate(-4px, 3px); }
+}
+
+/* ─────────────────────────────────────────────
+   한국 전통 구름 문양(구름무늬) — 화면 하단에 은은하게, 아주 천천히 흐름
+   너무 "고궁" 같아지지 않게 5~10% 수준 불투명도 + 흐린 블러. */
+.traditionalCloud {
+  position: absolute;
+  left: -10%;
+  bottom: 18%;
+  width: 120%;
+  height: 70px;
+  color: #E0C8FF; /* path fill: currentColor */
+  opacity: 0.1;
+  filter: blur(0.8px);
+  animation: cloud-drift 80s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes cloud-drift {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-8%); }
+}
+
 /* reduce-motion 사용자는 정적 별빛만 */
 @media (prefers-reduced-motion: reduce) {
   .nebula,
   .stars,
-  .shootingStar {
+  .shootingStar,
+  .moon,
+  .traditionalCloud {
     animation: none !important;
   }
   .shootingStar {
