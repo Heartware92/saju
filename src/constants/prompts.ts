@@ -3778,9 +3778,31 @@ export const generateHealthShortPrompt = (result: SajuResult): string => {
     '목': '간·담(쓸개)', '화': '심장·소장', '토': '비장·위장·췌장',
     '금': '폐·대장', '수': '신장·방광',
   };
+  // 지지 → 장부 매핑 (전통 한의학 경락 기준)
+  const BRANCH_ORGAN: Record<string, string> = {
+    '자': '신장·방광', '축': '비장', '인': '간·담', '묘': '간·담', '진': '비장·위',
+    '사': '심장·소장', '오': '심장·소장', '미': '비장', '신': '폐·대장',
+    '유': '폐·대장', '술': '위장·비장', '해': '신장·방광',
+  };
+  const parseOrganImpact = (desc: string): string => {
+    const zhis = ['자','축','인','묘','진','사','오','미','신','유','술','해'];
+    const found = zhis.filter(z => desc.includes(z));
+    if (found.length === 0) return '';
+    return ' → ' + found.map(z => `${z}(${BRANCH_ORGAN[z]})`).join(' vs ');
+  };
   const weakOrgan = organ[result.weakElement] || '';
   const strongOrgan = organ[result.strongElement] || '';
-  const chungHyeong = result.interactions.filter(i => ['충', '형'].includes(i.type)).map(i => i.description).join(' / ') || '없음';
+  // 충·형 구조를 장부 충돌까지 풀어서 제공 (예: "사해충 → 사(심장·소장) vs 해(신장·방광)")
+  const chungHyeongDetail = result.interactions
+    .filter(i => ['충', '형'].includes(i.type))
+    .map(i => `${i.description}${parseOrganImpact(i.description)}`)
+    .join(' / ') || '없음';
+  // 건강 관련 주의 신살 (혈광/급성)
+  const healthRiskKeys = ['백호','양인','겁살','재살','원진','급각','탕화'];
+  const healthRisk = result.sinSals
+    .filter(s => healthRiskKeys.some(k => s.name.includes(k)))
+    .map(s => `${s.name}(${s.type === 'good' ? '길' : s.type === 'bad' ? '흉' : '중'})`)
+    .join(' · ') || '없음';
 
   return `당신은 35년 경력의 사주명리 전문가입니다. 아래 사람의 건강운을 짧고 명확하게 풀어주세요.
 
@@ -3789,16 +3811,18 @@ ${buildMoreFortuneBlock(result)}
 [건강 관련 포커스]
 - 약한 오행 ${result.weakElement}(${result.elementPercent[result.weakElement as keyof typeof result.elementPercent]}%) → 취약 장부: ${weakOrgan}
 - 강한 오행 ${result.strongElement}(${result.elementPercent[result.strongElement as keyof typeof result.elementPercent]}%) → 과열 장부: ${strongOrgan}
-- 주요 충·형: ${chungHyeong}
+- 주요 충·형(장부 충돌): ${chungHyeongDetail}
+- 건강 주의 신살(혈광·급성·돌발): ${healthRisk}
 - 올해 세운 오행: ${result.currentSeWoon?.ganElement}·${result.currentSeWoon?.zhiElement}
 
 ${MORE_COMMON_RULES}
 
-[작성 지침] 350~480자 내외
-1단락 — 결론: 타고난 체질 한 줄 + 올해 특히 주의할 장부 1개
+[작성 지침] 380~520자 내외
+1단락 — 결론: 타고난 체질 한 줄 + 올해 특히 주의할 장부 1개 (충·형 장부 충돌 있으면 그걸 우선 지목)
 2단락 — 약한 오행(${result.weakElement})이 만드는 증상 2개 구체적 (피로·두통·소화 등 일상 감각으로 묘사)
-3단락 — 올해 세운이 건강에 미치는 영향 + 주의할 달 1개
-4단락 — "- " 불릿 3개로 실천 습관(피할 음식/추천 음식/생활 리듬)`;
+3단락 — 충·형 장부 충돌 또는 주의 신살이 있으면 그것이 일으킬 수 있는 급성 증상·돌발 상황 1개 구체적으로. 없으면 "특별한 혈광 위험은 없다"고 단정
+4단락 — 올해 세운이 건강에 미치는 영향 + 주의할 달 1개
+마지막 — "- " 불릿 3개로 실천 습관(피할 음식/추천 음식/생활 리듬)`;
 };
 
 // ─────────────────────────────────────────────
@@ -3838,6 +3862,31 @@ export const generatePeopleShortPrompt = (result: SajuResult): string => {
   const inseong = (counts['정인'] || 0) + (counts['편인'] || 0);
   const hasCheonEul = result.sinSals.some(s => s.name.includes('천을귀인'));
   const hasGongmang = result.sinSals.some(s => s.name.includes('공망'));
+  // 관계 주의 신살 — 배신·갈등·고독·극단성
+  const relationRiskMap: Record<string, string> = {
+    '백호': '배신·칼부림형 갈등',
+    '괴강': '극단적 성격·군림',
+    '원진': '미움이 쌓이는 관계',
+    '양인': '동업·재물 갈등 칼',
+    '고신': '인연 박한 자리(남)',
+    '과숙': '인연 박한 자리(여)',
+    '격각': '가까워도 멀어지는 관계',
+    '상문': '장례·이별 관련',
+    '조객': '조문·거리감',
+  };
+  const relationRisk = result.sinSals
+    .map(s => {
+      const key = Object.keys(relationRiskMap).find(k => s.name.includes(k));
+      return key ? `${s.name}(${relationRiskMap[key]})` : null;
+    })
+    .filter((x): x is string => x !== null)
+    .join(' · ') || '없음';
+  // 배우자궁 안정성 — 일지(배우자궁) 충·형·공망
+  const dayZhi = result.pillars.day.zhi;
+  const spouseTension = result.interactions
+    .filter(i => ['충', '형', '파', '해'].includes(i.type) && i.description.includes(dayZhi))
+    .map(i => `${i.type}(${i.description})`)
+    .join(' / ') || '안정';
 
   return `당신은 35년 경력의 사주명리 전문가입니다. 아래 사람의 인간관계·귀인운을 짧고 명확하게 풀어주세요.
 
@@ -3846,16 +3895,19 @@ ${buildMoreFortuneBlock(result)}
 [관계 관련 포커스]
 - 비겁(동료·경쟁자): ${bigyeop}개
 - 인성(윗사람·멘토): ${inseong}개
-- 천을귀인 성립: ${hasCheonEul ? '예' : '아니오'}
+- 천을귀인 성립(결정적 조력자): ${hasCheonEul ? '예' : '아니오'}
 - 공망 여부: ${hasGongmang ? '있음(인연 박한 자리)' : '없음'}
+- 경계 신살(배신·갈등·고독): ${relationRisk}
+- 배우자궁(일지 ${dayZhi}) 안정성: ${spouseTension}
 
 ${MORE_COMMON_RULES}
 
-[작성 지침] 400~550자 내외
+[작성 지침] 430~580자 내외
 1단락 — 결론: 넓은 인맥형 vs 좁고 깊은 우정형
-2단락 — 비겁·인성 배치로 본 올해 나를 돕는 사람 유형(연령·성별·관계 구체적으로)
-3단락 — 경계해야 할 관계 1가지와 원인 — 올해 세운 기준 갈등 유발 가능한 달 1개
-4단락 — "- " 불릿 2~3개로 관계 개선 실천 조언`;
+2단락 — 비겁·인성 배치로 본 올해 나를 돕는 사람 유형(연령·성별·관계 구체적으로). 천을귀인 성립 시 그 귀인의 특성을 꼭 묘사
+3단락 — **경계 신살이 있으면** 그 신살 원인으로 **구체적 관계 유형 1~2가지**(동업자·연인·가족 등) 명확히 지목. 없으면 "치명적 악연 흐름은 없다"고 단정. 올해 세운 기준 갈등 유발 가능한 달 1개
+${spouseTension !== '안정' ? '4단락 — 배우자궁이 흔들리는 구조라 동거·결혼·동업 같은 "장기 관계"에서 갈라짐·반복 이별이 일어나기 쉬움을 직설적으로 묘사' : ''}
+마지막 — "- " 불릿 2~3개로 관계 개선 실천 조언 (경계할 유형·거리 둘 타이밍·의지할 사람 포함)`;
 };
 
 // ─────────────────────────────────────────────
