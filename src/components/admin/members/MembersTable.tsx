@@ -42,6 +42,9 @@ interface Props {
   order: 'asc' | 'desc';
   onSortChange: (sort: SortKey, order: 'asc' | 'desc') => void;
   onRowClick: (id: string) => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onToggleAll?: () => void;
 }
 
 const fmt = (n: number) => n.toLocaleString('ko-KR');
@@ -50,17 +53,30 @@ const fmtDate = (s: string | null) => s
   ? new Date(s).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })
   : '-';
 
-export function MembersTable({ rows, loading, sort, order, onSortChange, onRowClick }: Props) {
+export function MembersTable({ rows, loading, sort, order, onSortChange, onRowClick, selectedIds, onToggleSelect, onToggleAll }: Props) {
   const toggleSort = (key: SortKey) => {
     if (sort === key) onSortChange(key, order === 'asc' ? 'desc' : 'asc');
     else onSortChange(key, 'desc');
   };
+  const showCheckbox = !!selectedIds && !!onToggleSelect;
+  const allSelected = showCheckbox && rows.length > 0 && rows.every(r => selectedIds!.has(r.id));
 
   return (
     <div className="overflow-x-auto rounded-xl border border-white/10">
       <table className="w-full text-[13px]">
         <thead>
           <tr className="border-b border-white/10 bg-white/3 text-[11px] text-text-tertiary uppercase tracking-wider">
+            {showCheckbox && (
+              <th className="px-3 py-2 w-[36px]">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={() => onToggleAll?.()}
+                  className="accent-cta cursor-pointer"
+                  aria-label="전체 선택"
+                />
+              </th>
+            )}
             <Th>이메일 / 가입</Th>
             <Th>성별·나이</Th>
             <Th sortable active={sort === 'joined'} order={order} onClick={() => toggleSort('joined')}>가입일</Th>
@@ -78,8 +94,19 @@ export function MembersTable({ rows, loading, sort, order, onSortChange, onRowCl
             <tr
               key={u.id}
               onClick={() => onRowClick(u.id)}
-              className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer"
+              className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${selectedIds?.has(u.id) ? 'bg-cta/5' : ''}`}
             >
+              {showCheckbox && (
+                <td className="px-3 py-2.5 w-[36px]" onClick={e => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds!.has(u.id)}
+                    onChange={() => onToggleSelect!(u.id)}
+                    className="accent-cta cursor-pointer"
+                    aria-label="선택"
+                  />
+                </td>
+              )}
               <td className="px-3 py-2.5">
                 <div className="font-medium text-text-primary truncate max-w-[200px]">{u.email}</div>
                 <div className="text-[11px] text-text-tertiary mt-0.5">

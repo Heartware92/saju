@@ -3,12 +3,13 @@
  * Body: { creditType: 'sun' | 'moon', delta: number, reason: string }
  *   delta: +로 지급, -로 차감 (양수·음수 모두 허용)
  *   reason: 필수 사유
- * 효과: user_credits 잔액 갱신 + credit_transactions insert (type='admin_adjust')
+ * 효과: user_credits 잔액 갱신 + credit_transactions insert (type='admin_adjust') + admin_audit_logs 기록
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/services/supabaseAdmin';
 import { requireAdmin } from '../../../_auth';
 import { invalidateAll } from '../../../_cache';
+import { writeAudit, clientMeta } from '../../../_audit';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin(request);
@@ -41,7 +42,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: 'delta 절댓값은 10,000 이하' }, { status: 400 });
   }
 
-  // 현재 잔액 조회 → 음수 방지
   const { data: current, error: cErr } = await supabaseAdmin
     .from('user_credits')
     .select('sun_balance, moon_balance, total_sun_purchased, total_moon_purchased, total_sun_consumed, total_moon_consumed')
@@ -60,17 +60,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }, { status: 400 });
   }
 
-  // 잔액 업데이트
-  const updatePayload: Record<string, number> = { [balanceField]: newBalance };
-  // 관리자 지급은 total_*_purchased 에 누적 (원가/매출과 구분을 위해 선택적)
-  // 현재 스키마에서는 잔액만 갱신하고 purchase 로 섞지 않음
   const { error: uErr } = await supabaseAdmin
     .from('user_credits')
-    .update(updatePayload)
+    .update({ [balanceField]: newBalance })
     .eq('user_id', userId);
   if (uErr) return NextResponse.json({ error: uErr.message }, { status: 500 });
 
-  // 거래 기록
   const { error: tErr } = await supabaseAdmin.from('credit_transactions').insert({
     user_id: userId,
     credit_type: creditType,
@@ -81,7 +76,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   });
   if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 });
 
-  // 서버 캐시 무효화
+  // ── 감사 로그 (best-effort) ──
+  const target = await supabaseAdmin.auth.admin.getUserById(userId);
+  const { ipAddress, userAgent } = clientMeta(request);
+  await writeAudit({
+    actorUserId: auth.userId,
+    actorEmail: auth.email,
+    targetUserId: userId,
+    targetEmail: target.data?.user?.email ?? null,
+    action: 'credit_adjust',
+    creditType,
+    amount: delta,
+    before: { [balanceField]: currentBalance },
+    after: { [balanceField]: newBalance },
+    reason,
+    ipAddress,
+    userAgent,
+  });
+
   await invalidateAll();
 
   return NextResponse.json({

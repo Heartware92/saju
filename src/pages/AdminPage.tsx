@@ -6,11 +6,14 @@ import { DemographicsSummary, type MemberSummary } from '@/components/admin/memb
 import { MembersFilterBar } from '@/components/admin/members/MembersFilterBar';
 import { MembersTable, type MemberRow } from '@/components/admin/members/MembersTable';
 import { MemberDetailDrawer } from '@/components/admin/members/MemberDetailDrawer';
+import { BulkActionBar } from '@/components/admin/members/BulkActionBar';
 import { VerticalBarChart } from '@/components/admin/charts/VerticalBarChart';
 import { OrdersSummarySection, type OrdersSummary } from '@/components/admin/orders/OrdersSummarySection';
 import { UsageAnalyticsSection, type UsageSummary } from '@/components/admin/usage/UsageAnalyticsSection';
 import { CreditsFlowSection, type CreditsSummary } from '@/components/admin/credits/CreditsFlowSection';
 import { OpsSection, type OpsSummary } from '@/components/admin/ops/OpsSection';
+import { InsightsSection, type Insights } from '@/components/admin/insights/InsightsSection';
+import { AuditLogSection, type AuditLog } from '@/components/admin/ops/AuditLogSection';
 import { toCsv, downloadCsv, timestampSuffix } from '@/components/admin/csvExport';
 import { SAJU_CATEGORY_LABEL, TAROT_SPREAD_LABEL, ORDER_STATUS_LABEL, GENDER_LABEL, PROVIDER_LABEL, CREDIT_REASON_LABEL, type UserSegment, type AgeBucketKey } from '@/constants/adminLabels';
 
@@ -48,7 +51,7 @@ interface UsageRecord {
   credit_type: string; credit_used: number; created_at: string;
 }
 
-type Tab = 'overview' | 'members' | 'orders' | 'usage' | 'credits' | 'records' | 'ops';
+type Tab = 'overview' | 'members' | 'orders' | 'usage' | 'credits' | 'records' | 'ops' | 'insights';
 type SortKey = 'joined' | 'lastSeen' | 'totalSpent' | 'analysisCount' | 'orderCount';
 
 // ── 유틸 ──────────────────────────────────────────────────
@@ -125,6 +128,7 @@ export default function AdminPage() {
   const [memberSort, setMemberSort] = useState<SortKey>('joined');
   const [memberOrder, setMemberOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Orders
   const [orders, setOrders] = useState<Order[]>([]);
@@ -142,6 +146,11 @@ export default function AdminPage() {
 
   // Ops
   const [opsSummary, setOpsSummary] = useState<OpsSummary | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [auditWarning, setAuditWarning] = useState<string | undefined>();
+
+  // Insights
+  const [insights, setInsights] = useState<Insights | null>(null);
 
   // Records
   const [records, setRecords] = useState<UsageRecord[]>([]);
@@ -282,6 +291,27 @@ export default function AdminPage() {
     finally { setLoading(false); }
   }, [token, adminFetch]);
 
+  const fetchAuditLogs = useCallback(async (force = false) => {
+    if (!token) return;
+    try {
+      const data = await adminFetch<{ logs: AuditLog[]; total: number; warning?: string }>('/api/admin/audit?pageSize=50', force);
+      if (data) {
+        setAuditLogs(data.logs ?? []);
+        setAuditWarning(data.warning);
+      }
+    } catch (e: any) { setError(e.message); }
+  }, [token, adminFetch]);
+
+  const fetchInsights = useCallback(async (force = false) => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const data = await adminFetch<Insights>('/api/admin/insights', force);
+      if (data) setInsights(data);
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [token, adminFetch]);
+
   const fetchRecords = useCallback(async (force = false) => {
     if (!token) return;
     setLoading(true);
@@ -307,7 +337,12 @@ export default function AdminPage() {
   }, [tab, ordersSummary, orders.length, fetchOrdersSummary, fetchOrders]);
   useEffect(() => { if (tab === 'usage' && !usageSummary) fetchUsageSummary(); }, [tab, usageSummary, fetchUsageSummary]);
   useEffect(() => { if (tab === 'credits' && !creditsSummary) fetchCreditsSummary(); }, [tab, creditsSummary, fetchCreditsSummary]);
-  useEffect(() => { if (tab === 'ops' && !opsSummary) fetchOpsSummary(); }, [tab, opsSummary, fetchOpsSummary]);
+  useEffect(() => {
+    if (tab !== 'ops') return;
+    if (!opsSummary) fetchOpsSummary();
+    if (auditLogs.length === 0 && !auditWarning) fetchAuditLogs();
+  }, [tab, opsSummary, auditLogs.length, auditWarning, fetchOpsSummary, fetchAuditLogs]);
+  useEffect(() => { if (tab === 'insights' && !insights) fetchInsights(); }, [tab, insights, fetchInsights]);
   useEffect(() => { if (tab === 'records' && records.length === 0) fetchRecords(); }, [tab, records.length, fetchRecords]);
 
   // ── 필터·정렬 변경 시 members 재호출
@@ -357,6 +392,7 @@ export default function AdminPage() {
     { key: 'credits',  label: `크레딧 흐름${creditsSummary?.kpi?.txnCount !== undefined ? ` (${creditsSummary.kpi.txnCount})` : ''}` },
     { key: 'records',  label: `이용 기록 (${recordTotal || '…'})` },
     { key: 'ops',      label: `운영${opsSummary?.kpi ? ` (${(opsSummary.kpi.bannedCount ?? 0) + (opsSummary.kpi.notedCount ?? 0)})` : ''}` },
+    { key: 'insights', label: '인사이트' },
   ];
 
   // ── CSV export ──
@@ -446,7 +482,8 @@ export default function AdminPage() {
     else if (tab === 'orders') { fetchOrdersSummary(true); fetchOrders(true); }
     else if (tab === 'usage') fetchUsageSummary(true);
     else if (tab === 'credits') fetchCreditsSummary(true);
-    else if (tab === 'ops') fetchOpsSummary(true);
+    else if (tab === 'ops') { fetchOpsSummary(true); fetchAuditLogs(true); }
+    else if (tab === 'insights') fetchInsights(true);
     else fetchRecords(true);
   };
 
@@ -614,6 +651,13 @@ export default function AdminPage() {
               onSegmentChange={setMemberSegment}
             />
 
+            <BulkActionBar
+              selectedIds={selectedIds}
+              token={token}
+              onClearSelection={() => setSelectedIds(new Set())}
+              onDone={() => { setSelectedIds(new Set()); fetchMembers(true); fetchMemberSummary(true); }}
+            />
+
             <div className="space-y-3">
               <MembersFilterBar
                 search={memberSearch} onSearchChange={setMemberSearch}
@@ -628,6 +672,27 @@ export default function AdminPage() {
                 order={memberOrder}
                 onSortChange={(s, o) => { setMemberSort(s); setMemberOrder(o); }}
                 onRowClick={setSelectedUserId}
+                selectedIds={selectedIds}
+                onToggleSelect={id => {
+                  setSelectedIds(prev => {
+                    const next = new Set(prev);
+                    if (next.has(id)) next.delete(id); else next.add(id);
+                    return next;
+                  });
+                }}
+                onToggleAll={() => {
+                  setSelectedIds(prev => {
+                    const allVisible = members.every(m => prev.has(m.id));
+                    if (allVisible) {
+                      const next = new Set(prev);
+                      for (const m of members) next.delete(m.id);
+                      return next;
+                    }
+                    const next = new Set(prev);
+                    for (const m of members) next.add(m.id);
+                    return next;
+                  });
+                }}
               />
               <Pagination page={memberPage} total={memberTotal} pageSize={20} onChange={setMemberPage} />
             </div>
@@ -705,7 +770,15 @@ export default function AdminPage() {
 
         {/* ── 운영 ── */}
         {tab === 'ops' && (
-          <OpsSection summary={opsSummary} onOpenUser={setSelectedUserId} />
+          <div className="space-y-6">
+            <OpsSection summary={opsSummary} onOpenUser={setSelectedUserId} />
+            <AuditLogSection logs={auditLogs} warning={auditWarning} onOpenUser={setSelectedUserId} />
+          </div>
+        )}
+
+        {/* ── 인사이트 ── */}
+        {tab === 'insights' && (
+          <InsightsSection insights={insights} onOpenUser={setSelectedUserId} />
         )}
 
         {/* ── 이용 기록 ── */}

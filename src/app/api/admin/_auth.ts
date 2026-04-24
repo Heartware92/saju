@@ -4,7 +4,12 @@
  */
 import { supabaseAdmin } from '@/services/supabaseAdmin';
 
-export async function requireAdmin(request: Request): Promise<{ userId: string } | Response> {
+export interface AdminActor {
+  userId: string;
+  email: string;
+}
+
+export async function requireAdmin(request: Request): Promise<AdminActor | Response> {
   const auth = request.headers.get('authorization') ?? '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
   if (!token) {
@@ -28,5 +33,5 @@ export async function requireAdmin(request: Request): Promise<{ userId: string }
     });
   }
 
-  return { userId: data.user.id };
+  return { userId: data.user.id, email: data.user.email ?? '' };
 }
