@@ -3,8 +3,7 @@
  */
 
 import { SajuResult } from '../utils/sajuCalculator';
-import { sajuDB } from './supabase';
-import { auth } from './supabase';
+import { archiveSaju, archiveTarot } from './archiveService';
 import {
   SYSTEM_PROMPT,
   generateBasicPrompt,
@@ -196,25 +195,7 @@ export const getDetailedInterpretation = async (
     const prompt = generateDetailedPrompt(result);
     // 2800~3500자 본문 → 넉넉히 5500 토큰
     const content = await callGPT(prompt, 5500);
-
-    // 기록 저장 (로그인 유저만 — 크레딧 차감 없음)
-    const user = await auth.getCurrentUser();
-    if (user) {
-      await sajuDB.saveRecord({
-        user_id: user.id,
-        birth_date: new Date(result.solarDate).toISOString(),
-        birth_place: undefined,
-        gender: result.gender,
-        calendar_type: 'solar',
-        category: 'traditional',
-        result_data: result as any,
-        interpretation_detailed: content,
-        credit_type: 'sun',
-        credit_used: 0,
-        is_detailed: true
-      });
-    }
-
+    archiveSaju({ category: 'traditional', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'sun', isDetailed: true });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -232,24 +213,7 @@ export const getTodayFortune = async (
     const todayGz = calcTodayGanZhi(result, isoDate);
     const prompt = generateTodayFortunePrompt(result, todayGz, isoDate);
     const content = await callGPT(prompt, 1600);
-
-    const user = await auth.getCurrentUser();
-    if (user) {
-      await sajuDB.saveRecord({
-        user_id: user.id,
-        birth_date: new Date(result.solarDate).toISOString(),
-        birth_place: undefined,
-        gender: result.gender,
-        calendar_type: 'solar',
-        category: 'today',
-        result_data: result as any,
-        interpretation_basic: content,
-        credit_type: 'moon',
-        credit_used: 0,
-        is_detailed: false
-      });
-    }
-
+    archiveSaju({ category: 'today', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', isDetailed: false });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -265,6 +229,7 @@ export const getLoveFortune = async (
   try {
     const prompt = generateLoveFortunePrompt(result);
     const content = await callGPT(prompt, 3200);
+    archiveSaju({ category: 'love', resultData: result as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -280,6 +245,7 @@ export const getWealthFortune = async (
   try {
     const prompt = generateWealthFortunePrompt(result);
     const content = await callGPT(prompt, 3200);
+    archiveSaju({ category: 'wealth', resultData: result as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -297,6 +263,7 @@ export const getTodayTarotReading = async (
   try {
     const prompt = generateTodayTarotPrompt(card, dateStr);
     const content = await callGPT(prompt, 1800);
+    archiveTarot({ spreadType: 'today', cards: { card, dateStr } as unknown as Record<string, unknown>, interpretation: content });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -313,6 +280,7 @@ export const getMonthlyTarotReading = async (
   try {
     const prompt = generateMonthlyTarotPrompt(cards, monthStr);
     const content = await callGPT(prompt, 3200);
+    archiveTarot({ spreadType: 'monthly-3card', cards: { ...cards, monthStr } as unknown as Record<string, unknown>, interpretation: content });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -329,6 +297,7 @@ export const getTarotReading = async (
   try {
     const prompt = generateTarotPrompt(card, question);
     const content = await callGPT(prompt, 1500);
+    archiveTarot({ spreadType: 'single', cards: { card } as unknown as Record<string, unknown>, question, interpretation: content });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -346,6 +315,7 @@ export const getTojeongReading = async (
     // 5200 → 3800 하향: 긴 프롬프트(12개월 키워드 + 고정 총평)와 결합되면
     // 55초 타임아웃 위험. 본문은 월별 80자×12 + 총운 400자 정도면 충분.
     const content = await callGPT(prompt, 3800);
+    archiveSaju({ category: 'tojeong', engineResult: tj as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -392,6 +362,7 @@ export const getZamidusuReading = async (
     // 장문일수록 Vercel 60초 타임아웃 + 55초 클라이언트 abort 위험 증가.
     const content = await callGPT(prompt, 3500);
     const sections = parseZamidusuSections(content);
+    archiveSaju({ category: 'zamidusu', engineResult: z as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
     return { success: true, content, sections };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -536,6 +507,7 @@ export const getJungtongsajuReport = async (result: SajuResult): Promise<Jungton
     // 11섹션 × 평균 300자 ≈ 3300자 → 넉넉히 6500 토큰
     const content = await callGPT(prompt, 6500);
     const sections = parseJungtongsaju(content);
+    archiveSaju({ category: 'traditional', resultData: result as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
 
     if (Object.keys(sections).length === 0) {
       return { success: true, rawText: content };
@@ -643,6 +615,7 @@ export const getTodayFortuneReport = async (
     // 5섹션 × 평균 120자 ≈ 600자 → 2000 토큰으로 충분
     const content = await callGPT(prompt, 2000);
     const sections = parseTodayFortune(content);
+    archiveSaju({ category: 'today', resultData: result as unknown as Record<string, unknown>, engineResult: { todayGz, isoDate: date }, interpretation: content });
 
     if (Object.keys(sections).length === 0) {
       return { success: true, rawText: content, todayGz, isoDate: date };
@@ -671,6 +644,7 @@ export const getTaekilAdvice = async (
     // [taekil_advice] 마커 제거하고 본문만 추출
     const match = raw.match(/\[taekil_advice\]\s*([\s\S]+)/);
     const advice = match ? match[1].trim() : raw.trim();
+    archiveSaju({ category: 'taekil', resultData: saju as unknown as Record<string, unknown>, engineResult: taekil as unknown as Record<string, unknown>, interpretation: advice });
     return { success: true, advice };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -734,6 +708,7 @@ export const getNewyearReport = async (
     // 8섹션 × 평균 300자 ≈ 2400자 → 여유있게 4500 토큰
     const content = await callGPT(prompt, 4500);
     const sections = parseNewyearReport(content);
+    archiveSaju({ category: 'newyear', resultData: result as unknown as Record<string, unknown>, engineResult: { year, seWoon, currentDaeWoon } as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
 
     if (Object.keys(sections).length === 0) {
       // 파싱 실패 시 원문 반환 — UI에서 단일 텍스트로 표시
@@ -756,6 +731,9 @@ export const getHybridReading = async (
   try {
     const prompt = generateHybridPrompt(sajuResult, tarotCard, question);
     const content = await callGPT(prompt, 3000);
+    // 사주+타로 하이브리드는 saju_records · tarot_records 양쪽에 기록 (유저가 어느 탭에서 찾든 보이도록)
+    archiveSaju({ category: 'gunghap', resultData: sajuResult as unknown as Record<string, unknown>, engineResult: { tarotCard, question } as unknown as Record<string, unknown>, interpretation: content });
+    archiveTarot({ spreadType: 'hybrid-saju', cards: { card: tarotCard } as unknown as Record<string, unknown>, question, interpretation: content });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -770,6 +748,7 @@ export const getHybridReading = async (
 export const getLoveShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generateLoveShortPrompt(result), 1500);
+    archiveSaju({ category: 'love', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -777,6 +756,7 @@ export const getLoveShort = async (result: SajuResult): Promise<FortuneResponse>
 export const getWealthShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generateWealthShortPrompt(result), 1500);
+    archiveSaju({ category: 'wealth', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -784,6 +764,7 @@ export const getWealthShort = async (result: SajuResult): Promise<FortuneRespons
 export const getCareerShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generateCareerShortPrompt(result), 1500);
+    archiveSaju({ category: 'career', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -791,6 +772,7 @@ export const getCareerShort = async (result: SajuResult): Promise<FortuneRespons
 export const getHealthShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generateHealthShortPrompt(result), 1300);
+    archiveSaju({ category: 'health', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -798,6 +780,7 @@ export const getHealthShort = async (result: SajuResult): Promise<FortuneRespons
 export const getStudyShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generateStudyShortPrompt(result), 1300);
+    archiveSaju({ category: 'study', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -805,6 +788,7 @@ export const getStudyShort = async (result: SajuResult): Promise<FortuneResponse
 export const getPeopleShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generatePeopleShortPrompt(result), 1500);
+    archiveSaju({ category: 'people', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -812,6 +796,7 @@ export const getPeopleShort = async (result: SajuResult): Promise<FortuneRespons
 export const getChildrenShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generateChildrenShortPrompt(result), 1300);
+    archiveSaju({ category: 'children', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -819,6 +804,7 @@ export const getChildrenShort = async (result: SajuResult): Promise<FortuneRespo
 export const getPersonalityShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generatePersonalityShortPrompt(result), 1800);
+    archiveSaju({ category: 'personality', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -831,6 +817,14 @@ export const getNameFortune = async (
     // 한자 입력 시 자원오행 판정 블록이 앞에 붙으므로 토큰 한도 여유 있게
     const maxTokens = nameInput.hanjaName ? 1700 : 1400;
     const content = await callGPT(generateNameFortunePrompt(result, nameInput), maxTokens);
+    archiveSaju({
+      category: 'name',
+      resultData: result as unknown as Record<string, unknown>,
+      engineResult: { koreanName: nameInput.koreanName, hanjaName: nameInput.hanjaName } as Record<string, unknown>,
+      interpretation: content,
+      creditType: 'moon',
+      creditUsed: 1,
+    });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -847,6 +841,8 @@ export const getDreamInterpretation = async (
       return { success: false, error: '꿈 내용을 조금 더 적어주세요. (등장물·행동·감정 중 하나만이라도 있으면 좋아요)' };
     }
     const content = await callGPT(generateDreamInterpretationPrompt(dreamText), 1500);
+    // 꿈 해몽은 사주 원국 무관하지만 유저가 본인의 풀이 기록으로 조회할 수 있게 대표 프로필에 붙여 저장
+    archiveSaju({ category: 'dream', engineResult: { dreamText } as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
