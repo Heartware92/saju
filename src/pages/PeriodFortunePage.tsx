@@ -587,6 +587,12 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
                 const isLucky = key === 'lucky';
                 const luckyEl = saju.yongSinElement ?? '목';
                 const el = ELEMENT_LUCKY[luckyEl] ?? ELEMENT_LUCKY['목'];
+
+                // 첫 줄 = 은유 제목, 나머지 = 본문 — 정통사주와 동일 포맷
+                const lines = text.trim().split('\n');
+                const metaphorTitle = lines[0]?.trim() ?? '';
+                const bodyText = lines.slice(1).join('\n').trim();
+
                 return (
                   <motion.div
                     key={key}
@@ -595,15 +601,25 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
                     transition={{ delay: 0.06 * idx }}
                     className="rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
                   >
+                    {/* 섹션 라벨 — 상단에 크게 강조 */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="inline-block w-1 h-5 rounded-full bg-cta" />
+                      <div
+                        className="text-[17px] font-bold text-text-primary tracking-tight break-keep"
+                        style={{ fontFamily: 'var(--font-serif)' }}
+                      >
+                        {NEWYEAR_SECTION_LABELS[key]}
+                      </div>
+                    </div>
+
+                    {/* 은유 제목 — 라벨 아래, 서브 톤 */}
                     <div
-                      className="text-[19px] font-bold leading-snug text-text-primary mb-1"
+                      className="text-[17px] font-medium leading-snug text-cta/90 mb-4 pl-3 break-keep"
                       style={{ fontFamily: 'var(--font-serif)' }}
                     >
-                      {text.split('\n')[0]?.trim()}
+                      {metaphorTitle}
                     </div>
-                    <div className="text-[13px] font-medium text-text-tertiary tracking-widest uppercase mb-4">
-                      {NEWYEAR_SECTION_LABELS[key]}
-                    </div>
+
                     {isLucky ? (
                       <LuckyVisualCard
                         colors={el.colors}
@@ -613,11 +629,11 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
                         timeSlot={el.timeSlot}
                         gem={el.gem}
                         activity={el.activity}
-                        extraText={text.split('\n').slice(1).join('\n').trim()}
+                        extraText={bodyText}
                       />
                     ) : (
-                      <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line">
-                        {text.split('\n').slice(1).join('\n').trim()}
+                      <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line break-keep">
+                        {bodyText}
                       </p>
                     )}
                   </motion.div>
