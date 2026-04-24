@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
@@ -164,6 +164,9 @@ export default function GunghapPage() {
   const [otherRole, setOtherRole] = useState('');
   const [myProfileId, setMyProfileId] = useState<string>('');
   const [other, setOther] = useState<OtherInput>(defaultOther);
+  // 상대방 입력 방식 — 'profile'은 내 등록 프로필에서 선택, 'manual'은 직접 입력
+  const [otherMode, setOtherMode] = useState<'profile' | 'manual'>('manual');
+  const [otherProfileId, setOtherProfileId] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string>('');
   const [error, setError] = useState<string>('');
@@ -174,7 +177,40 @@ export default function GunghapPage() {
     [profiles, myProfileId, primaryProfile],
   );
   const selectedCat = ALL_CATEGORIES.find(c => c.id === category)!;
-  const isOtherValid = other.name.trim() && other.birth_date && other.gender;
+
+  // 상대 후보 = 내 기준 프로필을 제외한 나머지 내 등록 프로필
+  const otherProfileChoices = useMemo(
+    () => profiles.filter(p => p.id !== selectedProfile?.id),
+    [profiles, selectedProfile],
+  );
+  const selectedOtherProfile = useMemo(
+    () => otherProfileChoices.find(p => p.id === otherProfileId) ?? null,
+    [otherProfileChoices, otherProfileId],
+  );
+
+  // 선택 가능한 다른 프로필이 1개 이상 생기면 자동으로 'profile' 모드 전환
+  // (사용자가 수동으로 manual을 고른 뒤엔 유지됨 — 아래 toggle 버튼만 반응)
+  useEffect(() => {
+    if (otherProfileChoices.length > 0 && otherMode === 'manual' && !other.name && !other.birth_date) {
+      setOtherMode('profile');
+    }
+    if (otherProfileChoices.length === 0 && otherMode === 'profile') {
+      setOtherMode('manual');
+    }
+    // 내 프로필이 변경되어 상대로 선택했던 프로필이 더 이상 후보에 없어졌으면 초기화
+    if (otherProfileId && !otherProfileChoices.some(p => p.id === otherProfileId)) {
+      setOtherProfileId('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otherProfileChoices.length, selectedProfile?.id]);
+
+  const otherDisplayName = otherMode === 'profile'
+    ? (selectedOtherProfile?.name ?? '')
+    : other.name.trim();
+
+  const isOtherValid = otherMode === 'profile'
+    ? !!selectedOtherProfile
+    : !!(other.name.trim() && other.birth_date && other.gender);
 
   const getCategoryDisplayLabel = () => {
     if (category === 'custom' && customLabel.trim()) return customLabel.trim();
@@ -189,24 +225,27 @@ export default function GunghapPage() {
       const myResult = computeSajuFromProfile(selectedProfile);
       if (!myResult) throw new Error('내 사주 계산 실패');
 
-      const otherProfile: BirthProfile = {
-        id: 'other',
-        user_id: '',
-        name: other.name.trim(),
-        birth_date: other.birth_date,
-        birth_time: other.birth_time || undefined,
-        birth_place: 'seoul',
-        gender: other.gender,
-        calendar_type: other.calendar_type,
-        is_primary: false,
-        created_at: '',
-        updated_at: '',
-      };
-      const otherResult = computeSajuFromProfile(otherProfile);
+      // 상대 사주 계산 — 등록 프로필 선택 모드면 해당 프로필 그대로 사용
+      const otherBase: BirthProfile = otherMode === 'profile' && selectedOtherProfile
+        ? selectedOtherProfile
+        : {
+            id: 'other',
+            user_id: '',
+            name: other.name.trim(),
+            birth_date: other.birth_date,
+            birth_time: other.birth_time || undefined,
+            birth_place: 'seoul',
+            gender: other.gender,
+            calendar_type: other.calendar_type,
+            is_primary: false,
+            created_at: '',
+            updated_at: '',
+          };
+      const otherResult = computeSajuFromProfile(otherBase);
       if (!otherResult) throw new Error('상대방 사주 계산 실패');
 
       const myName = selectedProfile.name;
-      const otherName = other.name.trim();
+      const otherName = otherBase.name;
       let prompt = '';
 
       switch (category) {
@@ -283,6 +322,9 @@ export default function GunghapPage() {
     setResult('');
     setError('');
     setOther(defaultOther);
+    setOtherProfileId('');
+    // 다시 다음 진입 시 useEffect가 상황에 맞게 모드 결정하도록 manual로 리셋
+    setOtherMode('manual');
     setMyRole('');
     setOtherRole('');
     setCustomLabel('');
@@ -539,70 +581,148 @@ export default function GunghapPage() {
             <div className="p-4 rounded-2xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] space-y-4">
               <p className="text-[15px] font-bold text-text-primary">상대방 정보</p>
 
-              <div>
-                <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">이름</label>
-                <input
-                  type="text"
-                  value={other.name}
-                  onChange={e => setOther(o => ({ ...o, name: e.target.value }))}
-                  placeholder="상대방 이름"
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[16px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none transition"
-                />
-              </div>
-
-              <div>
-                <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">생년월일</label>
-                <input
-                  type="date"
-                  value={other.birth_date}
-                  onChange={e => setOther(o => ({ ...o, birth_date: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[16px] focus:border-cta/50 focus:outline-none transition"
-                />
-              </div>
-
-              <div>
-                <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">
-                  출생시간 <span className="text-text-tertiary/60">(모르면 비워두세요)</span>
-                </label>
-                <input
-                  type="time"
-                  value={other.birth_time}
-                  onChange={e => setOther(o => ({ ...o, birth_time: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[16px] focus:border-cta/50 focus:outline-none transition"
-                />
-              </div>
-
-              <div>
-                <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">성별</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['male', 'female'] as const).map(g => (
-                    <button
-                      key={g}
-                      onClick={() => setOther(o => ({ ...o, gender: g }))}
-                      className={`py-2.5 rounded-xl text-[15px] font-medium border transition-all
-                        ${other.gender === g ? 'bg-cta/20 border-cta/50 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
-                    >
-                      {g === 'male' ? '남성' : '여성'}
-                    </button>
-                  ))}
+              {/* 모드 탭 — 내 등록 프로필 중 상대로 쓸 수 있는 게 있을 때만 노출 */}
+              {otherProfileChoices.length > 0 && (
+                <div className="flex gap-1 p-1 rounded-xl bg-white/5 border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setOtherMode('profile')}
+                    className={`flex-1 py-2 rounded-lg text-[14px] font-semibold transition-all
+                      ${otherMode === 'profile' ? 'bg-cta/20 text-cta' : 'text-text-secondary hover:text-text-primary'}`}
+                  >
+                    내 프로필에서
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOtherMode('manual')}
+                    className={`flex-1 py-2 rounded-lg text-[14px] font-semibold transition-all
+                      ${otherMode === 'manual' ? 'bg-cta/20 text-cta' : 'text-text-secondary hover:text-text-primary'}`}
+                  >
+                    직접 입력
+                  </button>
                 </div>
-              </div>
+              )}
 
-              <div>
-                <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">역법</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['solar', 'lunar'] as const).map(c => (
-                    <button
-                      key={c}
-                      onClick={() => setOther(o => ({ ...o, calendar_type: c }))}
-                      className={`py-2.5 rounded-xl text-[15px] font-medium border transition-all
-                        ${other.calendar_type === c ? 'bg-cta/20 border-cta/50 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
-                    >
-                      {c === 'solar' ? '양력' : '음력'}
-                    </button>
-                  ))}
+              {otherMode === 'profile' ? (
+                // ── 모드 A: 내 등록 프로필 중에서 선택 ──
+                <div>
+                  <p className="text-[13px] font-medium text-text-tertiary mb-2">
+                    상대로 분석할 프로필을 선택하세요
+                  </p>
+                  {otherProfileChoices.length === 0 ? (
+                    <p className="text-[13px] text-text-tertiary py-2">
+                      선택 가능한 다른 프로필이 없어요. 먼저 프로필을 추가하거나 직접 입력을 이용해주세요.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2">
+                      {otherProfileChoices.map(p => {
+                        const active = selectedOtherProfile?.id === p.id;
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setOtherProfileId(p.id)}
+                            className={`p-3 rounded-xl border text-left transition-all active:scale-[0.98]
+                              ${active ? 'bg-cta/15 border-cta/50' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-[rgba(124,92,252,0.12)] flex items-center justify-center text-lg shrink-0">
+                                {p.gender === 'male' ? '👨' : '👩'}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-[15px] font-semibold ${active ? 'text-cta' : 'text-text-primary'}`}>
+                                  {p.name}
+                                </p>
+                                <p className="text-[12px] text-text-tertiary mt-0.5">
+                                  {p.birth_date.replace(/-/g, '.')}
+                                  {p.birth_time ? ` ${p.birth_time}` : ' (시간 모름)'}
+                                  {' · '}
+                                  {p.gender === 'male' ? '남' : '여'}
+                                </p>
+                              </div>
+                              {active && (
+                                <span className="text-[12px] px-2 py-0.5 rounded-full bg-cta/20 text-cta font-semibold flex-shrink-0">
+                                  선택됨
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
+              ) : (
+                // ── 모드 B: 직접 입력 ──
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">이름</label>
+                    <input
+                      type="text"
+                      value={other.name}
+                      onChange={e => setOther(o => ({ ...o, name: e.target.value }))}
+                      placeholder="상대방 이름"
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[16px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">생년월일</label>
+                    <input
+                      type="date"
+                      value={other.birth_date}
+                      onChange={e => setOther(o => ({ ...o, birth_date: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[16px] focus:border-cta/50 focus:outline-none transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">
+                      출생시간 <span className="text-text-tertiary/60">(모르면 비워두세요)</span>
+                    </label>
+                    <input
+                      type="time"
+                      value={other.birth_time}
+                      onChange={e => setOther(o => ({ ...o, birth_time: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[16px] focus:border-cta/50 focus:outline-none transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">성별</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(['male', 'female'] as const).map(g => (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => setOther(o => ({ ...o, gender: g }))}
+                          className={`py-2.5 rounded-xl text-[15px] font-medium border transition-all
+                            ${other.gender === g ? 'bg-cta/20 border-cta/50 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
+                        >
+                          {g === 'male' ? '남성' : '여성'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">역법</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(['solar', 'lunar'] as const).map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setOther(o => ({ ...o, calendar_type: c }))}
+                          className={`py-2.5 rounded-xl text-[15px] font-medium border transition-all
+                            ${other.calendar_type === c ? 'bg-cta/20 border-cta/50 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
+                        >
+                          {c === 'solar' ? '양력' : '음력'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {error && (
@@ -648,13 +768,13 @@ export default function GunghapPage() {
                 <div className="flex-1">
                   <p className="text-[13px] text-text-tertiary uppercase tracking-wider">{getCategoryDisplayLabel()} 궁합</p>
                   <p className="text-[16px] font-bold text-text-primary mt-0.5">
-                    {selectedProfile?.name} · {other.name}
+                    {selectedProfile?.name} · {otherDisplayName}
                   </p>
                   {(myRole.trim() || otherRole.trim()) && (
                     <p className="text-[13px] text-text-secondary mt-0.5">
                       {myRole.trim() && `${selectedProfile?.name}: ${myRole}`}
                       {myRole.trim() && otherRole.trim() && ' / '}
-                      {otherRole.trim() && `${other.name}: ${otherRole}`}
+                      {otherRole.trim() && `${otherDisplayName}: ${otherRole}`}
                     </p>
                   )}
                 </div>
