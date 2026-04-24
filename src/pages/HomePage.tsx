@@ -372,8 +372,8 @@ export default function HomePage() {
                   flex flex-col items-center justify-center text-center gap-1
                   active:scale-[0.97]
                 `}>
-                  <h3 className="text-[17px] font-bold text-text-primary tracking-tight">{svc.title}</h3>
-                  <p className="text-[13px] font-medium text-text-secondary">{svc.desc}</p>
+                  <h3 className="text-[19px] font-bold text-text-primary tracking-tight">{svc.title}</h3>
+                  <p className="text-[15px] font-medium text-text-secondary">{svc.desc}</p>
                 </div>
               </Link>
             </motion.div>
@@ -401,8 +401,8 @@ export default function HomePage() {
                   flex flex-col items-center justify-center text-center gap-1
                   active:scale-[0.97]
                 `}>
-                  <h3 className="text-[17px] font-bold text-text-primary tracking-tight">{svc.title}</h3>
-                  <p className="text-[13px] font-medium text-text-secondary">{svc.desc}</p>
+                  <h3 className="text-[19px] font-bold text-text-primary tracking-tight">{svc.title}</h3>
+                  <p className="text-[15px] font-medium text-text-secondary">{svc.desc}</p>
                 </div>
               </Link>
             </motion.div>
@@ -428,7 +428,7 @@ export default function HomePage() {
               <Link href={svc.href}>
                 <div className="flex flex-col items-center justify-center aspect-square p-3 rounded-xl bg-space-surface/60 border border-[var(--border-subtle)] hover:border-cta/40 hover:bg-space-surface transition-all active:scale-[0.95]">
                   <span className="text-[17px] font-bold text-text-primary text-center leading-tight mb-1 whitespace-nowrap">{svc.title}</span>
-                  <span className="text-[12px] text-text-tertiary text-center leading-tight line-clamp-2">{svc.desc}</span>
+                  <span className="text-[14px] text-text-tertiary text-center leading-tight line-clamp-1 whitespace-nowrap">{svc.desc}</span>
                 </div>
               </Link>
             </motion.div>
