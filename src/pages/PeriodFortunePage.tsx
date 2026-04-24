@@ -24,6 +24,7 @@ import { getPeriodDomainsDescription, getNewyearReport, type NewyearReportAIResu
 import { NEWYEAR_SECTION_KEYS, NEWYEAR_SECTION_LABELS } from '../constants/prompts';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { LuckyVisualCard, ELEMENT_LUCKY } from '../components/saju/LuckyVisualCard';
+import { TermChip } from '../components/ui/TermChip';
 
 const NEWYEAR_MESSAGES = [
   '세운과 원국의 합충을 분석하는 중입니다',
@@ -40,15 +41,6 @@ const GRADE_COLOR: Record<FortuneGrade, string> = {
   '중흉': '#FB923C',
   '흉': '#F87171',
 };
-
-function GradeBadge({ grade }: { grade: FortuneGrade }) {
-  const c = GRADE_COLOR[grade];
-  return (
-    <span className="px-2 py-0.5 rounded-md text-[13px] font-bold" style={{ backgroundColor: `${c}22`, color: c }}>
-      {grade}
-    </span>
-  );
-}
 
 function ScoreRing({ score, grade }: { score: number; grade: FortuneGrade }) {
   const c = GRADE_COLOR[grade];
@@ -77,7 +69,7 @@ function DomainBar({ label, score, grade }: { label: string; score: number; grad
   const c = GRADE_COLOR[grade];
   return (
     <div className="flex items-center gap-2">
-      <div className="w-14 text-[14px] font-semibold text-text-secondary">{label}</div>
+      <div className="w-20 shrink-0 text-[14px] font-semibold text-text-secondary whitespace-nowrap">{label}</div>
       <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
         <motion.div
           className="h-full rounded-full"
@@ -383,21 +375,17 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
           <ScoreRing score={fortune.overallScore} grade={fortune.overallGrade} />
           <div className="flex-1 min-w-0">
             <div className="text-[14px] text-text-tertiary mb-1">{fortune.lunarLabel}</div>
-            <div className="text-[16px] font-bold text-text-primary leading-snug mb-1.5">
+            <div className="text-[16px] font-bold text-text-primary leading-snug mb-1.5 break-keep">
               {fortune.headline}
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[13px] px-2 py-0.5 rounded-md bg-white/5 text-text-secondary">
-                {fortune.targetGanZhi.ganZhi}
-              </span>
-              <span className="text-[13px] px-2 py-0.5 rounded-md bg-white/5 text-text-secondary">
-                {fortune.targetGanZhi.tenGodGan}
-              </span>
-              <GradeBadge grade={fortune.overallGrade} />
+              <TermChip term={fortune.targetGanZhi.ganZhi} />
+              <TermChip term={fortune.targetGanZhi.tenGodGan} />
+              <TermChip term={fortune.overallGrade} asGrade />
             </div>
           </div>
         </div>
-        <p className="text-[15px] text-text-secondary mt-3 leading-relaxed">
+        <p className="text-[15px] text-text-secondary mt-3 leading-relaxed break-keep">
           {fortune.summary}
         </p>
       </motion.section>
@@ -435,7 +423,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
                 <span className="text-[15px] font-bold text-text-primary">{d.label}</span>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[14px] font-bold" style={{ color: GRADE_COLOR[d.grade] }}>{d.score}점</span>
-                  <GradeBadge grade={d.grade} />
+                  <TermChip term={d.grade} asGrade />
                 </div>
               </div>
               {aiText ? (
