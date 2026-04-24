@@ -375,17 +375,157 @@ function buildHeadline(target: TargetGanZhi, grade: FortuneGrade, scope: Fortune
   return `${toneMap[grade]} — ${target.tenGodGan}의 기운`;
 }
 
+// 오행 상극 — 극하는 쪽 → 극당하는 쪽
+const EL_CONTROLS: Record<string, string> = {
+  '목': '토', '토': '수', '수': '화', '화': '금', '금': '목',
+};
+
+// 오행 → 취약 장부 (전통 명리 기준)
+const ELEMENT_TO_ORGAN: Record<string, string> = {
+  '목': '간·담(눈·근육)',
+  '화': '심장·소장(혈압·순환)',
+  '토': '비장·위(소화기)',
+  '금': '폐·대장(호흡기·피부)',
+  '수': '신장·방광(요통·생식)',
+};
+
+/** SajuResult의 4주 십성에서 특정 십성이 존재하는지 체크 */
+function hasTenGod(saju: SajuResult, target: string): boolean {
+  const p = saju.pillars;
+  return [
+    p.year.tenGodGan, p.year.tenGodZhi,
+    p.month.tenGodGan, p.month.tenGodZhi,
+    p.day.tenGodZhi,
+    p.hour.tenGodGan, p.hour.tenGodZhi,
+  ].some(tg => tg === target);
+}
+
+/**
+ * 주의점 생성 — 규칙 기반 지식베이스.
+ * LLM 없이 결정적으로 산출. 너무 많으면 가독성 저하되어 상위 5개만 반환.
+ *
+ * 규칙은 임팩트 순으로 정렬:
+ *   1) 지지 충·형 (어느 기둥에서 발생했나 세분)
+ *   2) 기신 강림 + 오행 장부 경고
+ *   3) 십성 특수 구조 (상관견관·겁재탈재·편관+신약 등)
+ *   4) 병존·삼존 증폭
+ *   5) 신강·신약 극단화
+ */
 function buildCautions(saju: SajuResult, target: TargetGanZhi, interactions: GanZhiInteraction[]): string[] {
   const out: string[] = [];
-  const badInters = interactions.filter(i => i.nature === 'bad');
-  if (badInters.length >= 2) out.push('충·형이 겹치는 구조 — 변동·분쟁 주의');
-  if (saju.giSin && target.ganElement === STEM_ELEMENT[saju.giSin]) {
-    out.push(`기신(${saju.giSin}) 기운이 드러나 — 관성적 선택 피하기`);
+
+  // ── 1) 지지 충·형 — 기둥별 의미 차별화 ──────────────────────
+  const byPillar = (label: string) => interactions.find(i => i.between.startsWith(label));
+
+  const dayInter = byPillar('일지');
+  if (dayInter?.nature === 'bad') {
+    out.push(
+      dayInter.kind === '육충'
+        ? '일지 충 — 본인·배우자궁 흔들림. 이사·이직·관계 큰 변화 가능'
+        : '일지 형 — 건강·사고·법적 시비 조심, 큰 결정은 한 달 미루기',
+    );
   }
-  if (target.tenGodGan === '상관') out.push('상관의 해 — 말·표현 관련 문제 조심');
-  if (target.tenGodGan === '겁재') out.push('겁재의 해 — 금전·동업 관련 이별 주의');
-  if (out.length === 0) out.push('특별한 흉조 없음 — 평소의 리듬 유지');
-  return out;
+
+  const monthInter = byPillar('월지');
+  if (monthInter?.nature === 'bad') {
+    out.push(
+      monthInter.kind === '육충'
+        ? '월지 충 — 직업·사회적 환경 변동. 조직 이동·업무 재편 신호'
+        : '월지 형 — 동료·상사와 갈등, 이직 타이밍은 신중히 판단',
+    );
+  }
+
+  const yearInter = byPillar('년지');
+  if (yearInter?.nature === 'bad') {
+    out.push('년지 충·형 — 부모·조상·가문 관련 이슈. 부동산·가족 결정 재점검');
+  }
+
+  const hourInter = byPillar('시지');
+  if (hourInter?.nature === 'bad' && !saju.hourUnknown) {
+    out.push('시지 충·형 — 자녀·말년 계획 흔들림. 장기 목표 재설계 필요');
+  }
+
+  // ── 2) 기신 강림 + 오행 취약점 경고 ─────────────────────────
+  if (saju.giSin && target.ganElement === STEM_ELEMENT[saju.giSin]) {
+    out.push(`기신(${saju.giSin}·${target.ganElement}) 기운 강림 — 습관적·관성적 결정 위험, 검증 한 번 더`);
+  }
+
+  // 약한 오행이 target 오행에게 극(克)당하는 해 → 해당 장부 경고
+  const weakEl = saju.weakElement;
+  if (weakEl && target.ganElement && EL_CONTROLS[target.ganElement] === weakEl) {
+    const organ = ELEMENT_TO_ORGAN[weakEl];
+    if (organ) {
+      out.push(`원국 약점(${weakEl})이 더 눌리는 구조 — ${organ} 건강 관리 특별 주의`);
+    }
+  }
+
+  // ── 3) 십성 특수 구조 ────────────────────────────────────────
+  if (target.tenGodGan === '상관') {
+    const jungGwan = hasTenGod(saju, '정관');
+    out.push(
+      jungGwan
+        ? '상관견관(傷官見官) — 직장·권위와 충돌 신호. 소송·상사 마찰·퇴사 충동 주의'
+        : '상관의 해 — 말·표현 관련 구설, 계약서는 두 번 읽기',
+    );
+  }
+
+  if (target.tenGodGan === '겁재') {
+    const jeongJae = hasTenGod(saju, '정재');
+    out.push(
+      jeongJae
+        ? '겁재탈재(劫財奪財) — 금전 사기·동업 이별 극도 경계. 보증·공동 투자 금지'
+        : '겁재의 해 — 돈이 새는 해, 지출 관리와 친구 간 금전 거래 주의',
+    );
+  }
+
+  if (target.tenGodGan === '편관' && !saju.isStrong) {
+    out.push('편관 강림 + 신약 — 과로·스트레스·사고 최고 위험. 업무량·속도 줄이기');
+  }
+
+  if (target.tenGodGan === '편재') {
+    const pyeonJaeCount = [
+      saju.pillars.year.tenGodGan, saju.pillars.month.tenGodGan,
+      saju.pillars.hour.tenGodGan,
+    ].filter(t => t === '편재').length;
+    if (pyeonJaeCount >= 2) {
+      out.push('편재 다봉의 해 — 투자·사업 확장 유혹 강화, 여러 곳에 벌이기보다 한 곳 집중');
+    }
+  }
+
+  if (target.tenGodGan === '편인') {
+    const sikSin = hasTenGod(saju, '식신');
+    if (sikSin) {
+      out.push('식신도식(食神倒食) — 창작·진로 막힘, 새 시작보다 기존 흐름 지키기');
+    }
+  }
+
+  // ── 4) 병존·삼존 + 같은 오행 강림 → 편향 극단화 ─────────────
+  const byeongjOn = saju.byeongjOn || [];
+  for (const b of byeongjOn) {
+    if (STEM_ELEMENT[b.gan] === target.ganElement) {
+      const label = b.isSamjon ? '삼존' : '병존';
+      out.push(`${b.gan}(${b.element}) ${label} + 동일 오행 강림 — 기존 편향이 극단으로, 고집·과열 경계`);
+      break;
+    }
+  }
+
+  // ── 5) 신강·신약 극단화 ────────────────────────────────────
+  if (saju.isStrong && target.tenGodGan === '비견') {
+    out.push('신강 + 비견의 해 — 자아 과잉, 주변 의견 차단되기 쉬움. 협력자와 자주 대화');
+  }
+  if (!saju.isStrong && target.tenGodGan === '편관') {
+    // 위 3)에서 이미 추가된 경우 중복 방지
+  } else if (!saju.isStrong && target.ganElement && EL_CONTROLS[target.ganElement] === STEM_ELEMENT[saju.dayMaster]) {
+    out.push('신약에 일간을 극하는 해 — 번아웃·무기력 경계, 쉼 없이 밀어붙이지 말기');
+  }
+
+  // Fallback
+  if (out.length === 0) {
+    out.push('특별한 흉조 없음 — 평소의 리듬 유지');
+  }
+
+  // 가독성 — 상위 5개만
+  return out.slice(0, 5);
 }
 
 // ============================================
