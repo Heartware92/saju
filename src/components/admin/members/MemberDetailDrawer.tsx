@@ -88,9 +88,9 @@ export function MemberDetailDrawer({ userId, token, onClose }: Props) {
   if (!userId) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-[60] flex justify-end">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <aside className="relative w-full max-w-[720px] bg-[#0a0614] border-l border-white/10 overflow-y-auto">
+      <aside className="relative w-full max-w-[720px] h-[100dvh] bg-[#0a0614] border-l border-white/10 overflow-y-auto pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
         {/* 헤더 */}
         <header className="sticky top-0 z-10 bg-[#0a0614]/95 backdrop-blur border-b border-white/10 px-5 py-4 flex items-center justify-between">
           <div className="min-w-0">

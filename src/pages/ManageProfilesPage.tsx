@@ -227,7 +227,7 @@ export default function ManageProfilesPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/60 flex items-end sm:items-center justify-center p-4"
+            className="fixed inset-0 z-[60] bg-black/60 flex items-end sm:items-center justify-center p-4 pb-[calc(16px+64px+env(safe-area-inset-bottom,0px))] sm:pb-4"
             onClick={() => setConfirmDelete(null)}
           >
             <motion.div
@@ -268,7 +268,7 @@ export default function ManageProfilesPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/60 flex items-end sm:items-center justify-center p-4"
+            className="fixed inset-0 z-[60] bg-black/60 flex items-end sm:items-center justify-center p-4 pb-[calc(16px+64px+env(safe-area-inset-bottom,0px))] sm:pb-4"
             onClick={() => { setEditing(null); setEditForm(null); }}
           >
             <motion.div

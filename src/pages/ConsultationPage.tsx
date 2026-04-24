@@ -870,7 +870,7 @@ export default function ConsultationPage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed inset-0 z-[81] flex items-center justify-center px-5 pointer-events-none"
+              className="fixed inset-0 z-[81] flex items-center justify-center px-5 pointer-events-none pb-[calc(64px+env(safe-area-inset-bottom,0px))] sm:pb-0"
             >
               <div className="w-full max-w-sm rounded-2xl bg-[rgba(20,12,38,0.98)] border border-cta/40 p-5 pointer-events-auto">
                 <h3 className="text-lg font-bold text-text-primary mb-1">질문팩 구매</h3>
@@ -938,7 +938,7 @@ export default function ConsultationPage() {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'tween', duration: 0.25 }}
-              className="fixed left-0 top-0 bottom-0 z-[76] w-[min(340px,85vw)] bg-[rgba(20,12,38,0.98)] border-r border-white/15 shadow-2xl flex flex-col"
+              className="fixed left-0 top-0 bottom-0 z-[76] w-[min(340px,85vw)] bg-[rgba(20,12,38,0.98)] border-r border-white/15 shadow-2xl flex flex-col pt-[env(safe-area-inset-top,0px)] pb-[calc(64px+env(safe-area-inset-bottom,0px))]"
             >
               <div className="flex-shrink-0 px-4 py-4 border-b border-white/10 flex items-center justify-between">
                 <div>
@@ -1030,7 +1030,7 @@ export default function ConsultationPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[81] w-[min(420px,calc(100vw-32px))] bg-[rgba(20,12,38,0.98)] border border-white/15 rounded-2xl p-5 shadow-2xl"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[81] w-[min(420px,calc(100vw-32px))] max-h-[calc(100dvh-80px-env(safe-area-inset-bottom,0px))] overflow-y-auto bg-[rgba(20,12,38,0.98)] border border-white/15 rounded-2xl p-5 shadow-2xl"
             >
               <div className="flex items-start justify-between mb-4">
                 <div>

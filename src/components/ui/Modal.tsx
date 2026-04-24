@@ -45,7 +45,11 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div
+      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center
+                 pt-[env(safe-area-inset-top,0px)]
+                 pb-[calc(64px+env(safe-area-inset-bottom,0px))] sm:pb-4 sm:pt-4"
+    >
       {/* Overlay */}
       <div
         className="absolute inset-0 bg-[var(--space-overlay)] backdrop-blur-sm"
@@ -57,7 +61,9 @@ export const Modal: React.FC<ModalProps> = ({
         className={`
           relative w-full ${sizes[size]}
           glass-strong rounded-t-2xl sm:rounded-2xl
-          max-h-[85vh] overflow-y-auto
+          max-h-[calc(100dvh-72px-env(safe-area-inset-bottom,0px)-env(safe-area-inset-top,0px))]
+          sm:max-h-[85dvh]
+          overflow-y-auto
           animate-slideUp
           mx-0 sm:mx-4
         `}

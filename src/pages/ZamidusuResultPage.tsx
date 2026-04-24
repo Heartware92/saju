@@ -422,6 +422,8 @@ export default function ZamidusuResultPage() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   padding: 16,
+                  paddingTop: 'calc(16px + env(safe-area-inset-top, 0px))',
+                  paddingBottom: 'calc(16px + 64px + env(safe-area-inset-bottom, 0px))',
                   overflowY: 'auto',
                 }}
               >
@@ -435,7 +437,7 @@ export default function ZamidusuResultPage() {
                   style={{
                     position: 'relative',
                     width: 'min(380px, 100%)',
-                    maxHeight: 'calc(100vh - 100px)',
+                    maxHeight: 'calc(100dvh - 120px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
                     overflowY: 'auto',
                     background: 'rgba(20, 12, 38, 0.98)',
                     border: '1px solid rgba(255,255,255,0.15)',

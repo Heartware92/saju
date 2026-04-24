@@ -119,10 +119,10 @@ export default function Layout({ children }: LayoutProps) {
         {menuOpen && (
           <>
             <div
-              className="fixed inset-0 z-50 bg-black/50"
+              className="fixed inset-0 z-[59] bg-black/50"
               onClick={() => setMenuOpen(false)}
             />
-            <div className="fixed top-0 right-0 w-[280px] h-full z-50 bg-[rgba(20,12,38,0.96)] backdrop-blur-xl border-l border-[var(--border-subtle)] p-6 shadow-2xl animate-slideInRight">
+            <div className="fixed top-0 right-0 w-[280px] h-[100dvh] z-[60] bg-[rgba(20,12,38,0.96)] backdrop-blur-xl border-l border-[var(--border-subtle)] p-6 pt-[calc(24px+env(safe-area-inset-top,0px))] pb-[calc(24px+env(safe-area-inset-bottom,0px))] shadow-2xl animate-slideInRight overflow-y-auto">
               <div className="flex items-center justify-between mb-8">
                 <span className="text-lg font-bold bg-gradient-to-r from-cta to-[#c9a6ff] bg-clip-text text-transparent">
                   이천점
