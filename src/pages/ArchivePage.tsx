@@ -1,7 +1,15 @@
 'use client';
 
+/**
+ * 보관함 — 이전에 본 풀이 기록 리스트.
+ *
+ * 클릭 시 원래 결과 페이지로 `?recordId=<id>` 쿼리와 함께 이동한다.
+ * 결과 페이지 각각이 recordId 를 감지해 AI 호출·크레딧 차감 없이
+ * 저장된 interpretation 을 그대로 렌더 (보관함 재생 모드).
+ */
+
 import { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Card } from '../components/ui/Card';
 import { sajuDB, tarotDB } from '../services/supabase';
@@ -30,9 +38,40 @@ function formatDate(iso: string): string {
 function extractTitle(record: SajuRecord): string {
   const body = record.interpretation_detailed || record.interpretation_basic || '';
   const firstLine = body.split(/\r?\n/).find((ln) => ln.trim().length > 0) || '';
-  // 40자 이상이면 자름
   const clean = firstLine.trim();
   return clean.length > 40 ? clean.slice(0, 40) + '…' : clean;
+}
+
+/** 사주 카테고리 → 결과 페이지 URL. recordId 를 쿼리로 붙인다. */
+function getSajuRoute(record: SajuRecord): string {
+  const cat = record.category;
+  const moreCategories = [
+    'love', 'wealth', 'career', 'health', 'study', 'people',
+    'children', 'personality', 'name', 'dream',
+  ];
+  if (moreCategories.includes(cat)) {
+    return `/saju/more/${cat}?recordId=${record.id}`;
+  }
+  const map: Record<string, string> = {
+    traditional: '/saju/result',
+    today: '/saju/today',
+    newyear: '/saju/newyear',
+    taekil: '/saju/taekil',
+    tojeong: '/saju/tojeong',
+    zamidusu: '/saju/zamidusu',
+    gunghap: '/saju/gunghap',
+    date: '/saju/date',
+    period: '/saju/date',
+    basic: '/saju/result',
+  };
+  const base = map[cat] ?? '/archive';
+  return `${base}?recordId=${record.id}`;
+}
+
+/** 타로 레코드 → 결과 페이지 URL. spread_type 에 따라 분기. */
+function getTarotRoute(record: TarotRecord): string {
+  // 타로 페이지는 /tarot 로 통일. 재생 모드는 recordId 쿼리로 감지.
+  return `/tarot?recordId=${record.id}`;
 }
 
 export default function ArchivePage() {
@@ -42,8 +81,6 @@ export default function ArchivePage() {
   const [tarotRecords, setTarotRecords] = useState<TarotRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSaju, setSelectedSaju] = useState<SajuRecord | null>(null);
-  const [selectedTarot, setSelectedTarot] = useState<TarotRecord | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -64,12 +101,8 @@ export default function ArchivePage() {
       .finally(() => setLoading(false));
   }, [user]);
 
-  const sajuByCategory = useMemo(() => {
-    // 그룹화는 일단 안 함 — 최신순 리스트 그대로
-    return sajuRecords;
-  }, [sajuRecords]);
+  const sajuSorted = useMemo(() => sajuRecords, [sajuRecords]);
 
-  // 비로그인 가드
   if (!user) {
     return (
       <div className="min-h-screen bg-space-deep px-4 pt-6 pb-4 flex flex-col items-center justify-center text-center">
@@ -84,7 +117,7 @@ export default function ArchivePage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-xl font-bold text-text-primary">보관함</h1>
-        <p className="text-sm text-text-secondary mt-1">이전에 진행한 풀이 기록</p>
+        <p className="text-sm text-text-secondary mt-1">이전에 본 풀이를 그대로 다시 볼 수 있어요</p>
       </div>
 
       {/* Tab Switcher */}
@@ -111,7 +144,6 @@ export default function ArchivePage() {
         </button>
       </div>
 
-      {/* 상태 */}
       {loading && (
         <div className="text-center py-12 text-text-tertiary text-sm">불러오는 중…</div>
       )}
@@ -119,7 +151,6 @@ export default function ArchivePage() {
         <div className="text-center py-8 text-text-secondary text-sm">{error}</div>
       )}
 
-      {/* Content */}
       {!loading && !error && (
         <motion.div
           key={activeTab}
@@ -129,13 +160,9 @@ export default function ArchivePage() {
         >
           {activeTab === 'saju' && (
             <div className="space-y-3">
-              {sajuByCategory.length > 0 ? (
-                sajuByCategory.map((record) => (
-                  <button
-                    key={record.id}
-                    onClick={() => setSelectedSaju(record)}
-                    className="w-full text-left"
-                  >
+              {sajuSorted.length > 0 ? (
+                sajuSorted.map((record) => (
+                  <Link key={record.id} href={getSajuRoute(record)} className="block">
                     <Card padding="md" hover>
                       <div className="flex items-center gap-3">
                         <div className="w-1 h-10 rounded-full bg-cta flex-shrink-0" />
@@ -149,7 +176,7 @@ export default function ArchivePage() {
                             )}
                           </div>
                           <p className="text-xs text-text-tertiary truncate">
-                            {extractTitle(record) || '풀이 보기'}
+                            {extractTitle(record) || '풀이 다시 보기'}
                           </p>
                         </div>
                         <span className="text-[11px] text-text-tertiary flex-shrink-0">
@@ -157,7 +184,7 @@ export default function ArchivePage() {
                         </span>
                       </div>
                     </Card>
-                  </button>
+                  </Link>
                 ))
               ) : (
                 <EmptyState type="saju" />
@@ -169,11 +196,7 @@ export default function ArchivePage() {
             <div className="space-y-3">
               {tarotRecords.length > 0 ? (
                 tarotRecords.map((record) => (
-                  <button
-                    key={record.id}
-                    onClick={() => setSelectedTarot(record)}
-                    className="w-full text-left"
-                  >
+                  <Link key={record.id} href={getTarotRoute(record)} className="block">
                     <Card padding="md" hover>
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-[rgba(165,180,252,0.12)] flex items-center justify-center text-lg flex-shrink-0">
@@ -192,7 +215,7 @@ export default function ArchivePage() {
                         </span>
                       </div>
                     </Card>
-                  </button>
+                  </Link>
                 ))
               ) : (
                 <EmptyState type="tarot" />
@@ -201,26 +224,6 @@ export default function ArchivePage() {
           )}
         </motion.div>
       )}
-
-      {/* 상세 모달 */}
-      <AnimatePresence>
-        {selectedSaju && (
-          <DetailModal
-            title={SAJU_CATEGORY_LABEL[selectedSaju.category] ?? selectedSaju.category}
-            subtitle={formatDate(selectedSaju.created_at)}
-            body={selectedSaju.interpretation_detailed || selectedSaju.interpretation_basic || '본문이 없어요.'}
-            onClose={() => setSelectedSaju(null)}
-          />
-        )}
-        {selectedTarot && (
-          <DetailModal
-            title={TAROT_SPREAD_LABEL[selectedTarot.spread_type] ?? selectedTarot.spread_type}
-            subtitle={`${formatDate(selectedTarot.created_at)}${selectedTarot.question ? ` · ${selectedTarot.question}` : ''}`}
-            body={selectedTarot.interpretation || '본문이 없어요.'}
-            onClose={() => setSelectedTarot(null)}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -241,56 +244,5 @@ function EmptyState({ type }: { type: 'saju' | 'tarot' }) {
         풀이를 진행하면 여기에 자동으로 저장됩니다
       </p>
     </div>
-  );
-}
-
-function DetailModal({
-  title,
-  subtitle,
-  body,
-  onClose,
-}: {
-  title: string;
-  subtitle: string;
-  body: string;
-  onClose: () => void;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
-      className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 pb-[calc(16px+64px+env(safe-area-inset-bottom,0px))] sm:pb-4"
-    >
-      <motion.div
-        initial={{ y: 40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 40, opacity: 0 }}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg max-h-[calc(100dvh-100px-env(safe-area-inset-bottom,0px))] overflow-y-auto rounded-2xl bg-[rgba(20,12,38,0.98)] border border-[var(--border-subtle)] shadow-2xl"
-      >
-        <header className="sticky top-0 bg-[rgba(20,12,38,0.98)] border-b border-[var(--border-subtle)] px-5 py-4 flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h2 className="text-base font-bold text-text-primary">{title}</h2>
-            <p className="text-[11px] text-text-tertiary mt-0.5">{subtitle}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-text-tertiary hover:text-text-primary p-1 rounded-lg"
-            aria-label="닫기"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </header>
-        <div className="px-5 py-4">
-          <pre className="whitespace-pre-wrap text-[14px] leading-relaxed text-text-secondary font-sans">
-            {body}
-          </pre>
-        </div>
-      </motion.div>
-    </motion.div>
   );
 }

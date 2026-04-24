@@ -13,7 +13,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
@@ -37,6 +37,7 @@ import {
   getNameFortune,
   getDreamInterpretation,
 } from '../services/fortuneService';
+import { sajuDB } from '../services/supabase';
 import { analyzeKoreanName } from '../utils/nameEumRyeong';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { DreamInputPanel } from '../components/dream/DreamInputPanel';
@@ -63,6 +64,10 @@ const LOADING_MESSAGES: Record<MoreFortuneId, string[]> = {
 export default function MoreFortunePage({ category }: Props) {
   // ── 모든 Hooks는 무조건 상단에 호출 (React Hooks 규칙) ──
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const recordId = searchParams?.get('recordId') ?? null;
+  const isArchiveMode = !!recordId;
+
   const { user } = useUserStore();
   const { profiles, fetchProfiles } = useProfileStore();
   const { moonBalance, chargeForContent, fetchBalance } = useCreditStore();
@@ -93,6 +98,9 @@ export default function MoreFortunePage({ category }: Props) {
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // 보관함 재생 메타 (원본 기록 시각 표시용)
+  const [archivedAt, setArchivedAt] = useState<string | null>(null);
+
   // Next.js pages-router 자동 라우팅으로 category 없이 진입될 수 있음 → 홈으로 보냄
   useEffect(() => {
     if (!isValidCategory && typeof window !== 'undefined') {
@@ -107,12 +115,52 @@ export default function MoreFortunePage({ category }: Props) {
     }
   }, [user, fetchProfiles, fetchBalance]);
 
-  // 이름 풀이: 프로필의 이름을 기본값으로
+  // 이름 풀이: 프로필의 이름을 기본값으로 — 보관함 재생 모드에서는 저장된 값 사용
   useEffect(() => {
+    if (isArchiveMode) return;
     if (category === 'name' && primary && !koreanName) {
       setKoreanName(primary.name);
     }
-  }, [category, primary, koreanName]);
+  }, [category, primary, koreanName, isArchiveMode]);
+
+  // ── 보관함 재생 모드 — recordId 쿼리가 있으면 저장된 기록으로 state 복원 ──
+  useEffect(() => {
+    if (!recordId) return;
+    let cancelled = false;
+    setLoading(true);
+    sajuDB.getRecordById(recordId)
+      .then((record) => {
+        if (cancelled) return;
+        if (!record) {
+          setError('기록을 불러오지 못했어요. 삭제되었거나 권한이 없는 기록일 수 있어요.');
+          return;
+        }
+        // 저장된 interpretation 을 결과로 바로 주입 (AI 호출 없이)
+        const content = record.interpretation_detailed ?? record.interpretation_basic ?? '';
+        setResult(content);
+        setArchivedAt(record.created_at);
+        // 이름 풀이면 저장된 한글/한자 이름 복원 (읽기 전용으로 표시)
+        if (record.category === 'name' && record.engine_result) {
+          const eng = record.engine_result as { koreanName?: string; hanjaName?: string };
+          if (typeof eng.koreanName === 'string') setKoreanName(eng.koreanName);
+          if (typeof eng.hanjaName === 'string') setHanjaName(eng.hanjaName);
+        }
+        // 꿈 해몽이면 저장된 꿈 텍스트 복원
+        if (record.category === 'dream' && record.engine_result) {
+          const eng = record.engine_result as { dreamText?: string };
+          if (typeof eng.dreamText === 'string') setDreamText(eng.dreamText);
+        }
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        console.error('[archive replay] load failed', e);
+        setError('보관된 풀이를 불러오는 중 오류가 발생했어요.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [recordId]);
 
   // 모든 Hooks 이후 guard: 유효하지 않은 카테고리면 렌더 중단
   if (!cfg) return null;
@@ -143,8 +191,9 @@ export default function MoreFortunePage({ category }: Props) {
     return sk;
   };
 
-  // 진입/입력 변경 시 캐시 자동 복원 — 같은 입력은 무조건 캐시 우선
+  // 진입/입력 변경 시 캐시 자동 복원 (보관함 모드는 이미 별도 복원 경로가 있어서 건너뜀)
   useEffect(() => {
+    if (isArchiveMode) return;
     const key = buildCacheKey();
     if (!key) return;
     const cached = useReportCacheStore.getState().getReport<string>(`more:${category}`, key);
@@ -152,10 +201,12 @@ export default function MoreFortunePage({ category }: Props) {
       setResult(cached.data);
       setError(null);
     } else {
+      // 키가 바뀌어 캐시가 없으면 이전 결과는 비움 (이름·꿈 입력 변화 시)
       setResult(null);
     }
+    // koreanName/hanjaName/dreamText 입력은 자주 바뀌지만, 빈 결과면 그냥 null 유지
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, saju, koreanName, hanjaName, dreamText]);
+  }, [category, saju, koreanName, hanjaName, dreamText, isArchiveMode]);
 
   const handleRead = async () => {
     // 꿈 해몽은 saju 없이도 실행 가능
@@ -257,8 +308,9 @@ export default function MoreFortunePage({ category }: Props) {
     );
   }
 
-  // 꿈 해몽은 사주와 무관 — 프로필 없어도 진입 가능
-  if (category !== 'dream' && !primary) {
+  // 꿈 해몽은 사주와 무관 — 프로필 없어도 진입 가능.
+  // 보관함 재생 모드는 프로필이 없어도 저장된 풀이만 보여주면 되므로 가드를 우회한다.
+  if (!isArchiveMode && category !== 'dream' && !primary) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
         <p className="text-text-secondary mb-4">{cfg.title}을 보려면 대표 프로필이 필요해요.</p>
@@ -267,12 +319,12 @@ export default function MoreFortunePage({ category }: Props) {
     );
   }
 
-  if (category !== 'dream' && !saju) {
+  if (!isArchiveMode && category !== 'dream' && !saju) {
     return <div className={styles.loading}>사주 계산 중...</div>;
   }
 
-  // 로딩 풀스크린
-  if (loading) {
+  // 로딩 풀스크린 — 보관함 재생 모드는 짧은 DB 조회라 AI 로딩 연출 대신 간단한 표시
+  if (loading && !isArchiveMode) {
     return (
       <AILoadingBar
         label={`${cfg.title} 분석 중`}
@@ -294,6 +346,9 @@ export default function MoreFortunePage({ category }: Props) {
       />
     );
   }
+  if (loading && isArchiveMode) {
+    return <div className={styles.loading}>보관된 풀이를 불러오는 중…</div>;
+  }
 
   return (
     <div className={styles.container}>
@@ -303,7 +358,13 @@ export default function MoreFortunePage({ category }: Props) {
         </button>
         <div className={styles.headerCenter}>
           <h1>{cfg.title}</h1>
-          <p className={styles.dateInfo}>{primary.name} · {primary.birth_date}</p>
+          {isArchiveMode && archivedAt ? (
+            <p className={styles.dateInfo}>
+              보관함 · {new Date(archivedAt).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })}
+            </p>
+          ) : primary ? (
+            <p className={styles.dateInfo}>{primary.name} · {primary.birth_date}</p>
+          ) : null}
         </div>
       </div>
 
@@ -334,14 +395,22 @@ export default function MoreFortunePage({ category }: Props) {
           </p>
         </div>
 
-        {/* 꿈 해몽 전용 입력 — 선명/흐릿 두 모드 */}
-        {category === 'dream' && (
+        {/* 꿈 해몽 전용 입력 — 선명/흐릿 두 모드. 보관함 재생 모드에서는 저장된 텍스트만 간단 표시 */}
+        {category === 'dream' && !isArchiveMode && (
           <div className={styles.section}>
             <h2 style={{ fontSize: 18, marginBottom: 14, fontWeight: 700 }}>꿈 내용 입력</h2>
             <DreamInputPanel
               onTextChange={setDreamText}
               onValidChange={setDreamValid}
             />
+          </div>
+        )}
+        {category === 'dream' && isArchiveMode && dreamText && (
+          <div className={styles.section}>
+            <h2 style={{ fontSize: 14, marginBottom: 8 }}>당신이 적은 꿈</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-line' }}>
+              {dreamText}
+            </p>
           </div>
         )}
 
@@ -352,7 +421,7 @@ export default function MoreFortunePage({ category }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
               <div>
                 <label style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>
-                  한글 이름 (필수)
+                  한글 이름 {isArchiveMode ? '' : '(필수)'}
                 </label>
                 <input
                   type="text"
@@ -360,6 +429,7 @@ export default function MoreFortunePage({ category }: Props) {
                   onChange={(e) => setKoreanName(e.target.value)}
                   placeholder="예: 홍길동"
                   maxLength={10}
+                  readOnly={isArchiveMode}
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -368,12 +438,13 @@ export default function MoreFortunePage({ category }: Props) {
                     borderRadius: 10,
                     color: 'var(--text-primary)',
                     fontSize: 14,
+                    cursor: isArchiveMode ? 'default' : 'text',
                   }}
                 />
               </div>
               <div>
                 <label style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>
-                  한자 이름 (선택)
+                  한자 이름 {isArchiveMode ? '' : '(선택)'}
                 </label>
                 <input
                   type="text"
@@ -381,6 +452,7 @@ export default function MoreFortunePage({ category }: Props) {
                   onChange={(e) => setHanjaName(e.target.value)}
                   placeholder="예: 洪吉童 (몰라도 됩니다)"
                   maxLength={10}
+                  readOnly={isArchiveMode}
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -389,43 +461,48 @@ export default function MoreFortunePage({ category }: Props) {
                     borderRadius: 10,
                     color: 'var(--text-primary)',
                     fontSize: 14,
+                    cursor: isArchiveMode ? 'default' : 'text',
                   }}
                 />
-                <p style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                  한자를 모르시면 비워두세요. 한글만 있어도 음령오행으로 완결 분석됩니다.
-                  한자를 입력하면 부수 기반 자원오행까지 교차 분석해 더 정밀한 풀이가 나옵니다.
-                </p>
+                {!isArchiveMode && (
+                  <p style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                    한자를 모르시면 비워두세요. 한글만 있어도 음령오행으로 완결 분석됩니다.
+                    한자를 입력하면 부수 기반 자원오행까지 교차 분석해 더 정밀한 풀이가 나옵니다.
+                  </p>
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* 풀이 보기 버튼 */}
-        <div className={styles.section} style={{ padding: 0, background: 'none', border: 'none' }}>
-          <button
-            onClick={handleRead}
-            disabled={!canSubmit || loading || moonBalance < MOON_COST_PER_FORTUNE}
-            style={{
-              width: '100%',
-              padding: '16px',
-              background: 'linear-gradient(135deg, var(--cta-primary), var(--cta-secondary, var(--cta-primary)))',
-              color: 'white',
-              border: 'none',
-              borderRadius: 14,
-              fontSize: 15,
-              fontWeight: 700,
-              cursor: (!canSubmit || loading || moonBalance < MOON_COST_PER_FORTUNE) ? 'not-allowed' : 'pointer',
-              opacity: (!canSubmit || loading || moonBalance < MOON_COST_PER_FORTUNE) ? 0.5 : 1,
-              boxShadow: '0 4px 20px rgba(139,92,246,0.3)',
-              transition: 'all 0.2s',
-            }}
-          >
-            {cfg.ctaButton} <span style={{ opacity: 0.85, fontSize: 13 }}>🌙 {MOON_COST_PER_FORTUNE}</span>
-          </button>
-          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 6 }}>
-            보유 🌙 {moonBalance} · 1회 {MOON_COST_PER_FORTUNE}개 소모
-          </p>
-        </div>
+        {/* 풀이 보기 버튼 — 보관함 재생 모드에서는 숨김 (이미 저장된 결과를 아래에 렌더) */}
+        {!isArchiveMode && (
+          <div className={styles.section} style={{ padding: 0, background: 'none', border: 'none' }}>
+            <button
+              onClick={handleRead}
+              disabled={!canSubmit || loading || moonBalance < MOON_COST_PER_FORTUNE}
+              style={{
+                width: '100%',
+                padding: '16px',
+                background: 'linear-gradient(135deg, var(--cta-primary), var(--cta-secondary, var(--cta-primary)))',
+                color: 'white',
+                border: 'none',
+                borderRadius: 14,
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: (!canSubmit || loading || moonBalance < MOON_COST_PER_FORTUNE) ? 'not-allowed' : 'pointer',
+                opacity: (!canSubmit || loading || moonBalance < MOON_COST_PER_FORTUNE) ? 0.5 : 1,
+                boxShadow: '0 4px 20px rgba(139,92,246,0.3)',
+                transition: 'all 0.2s',
+              }}
+            >
+              {cfg.ctaButton} <span style={{ opacity: 0.85, fontSize: 13 }}>🌙 {MOON_COST_PER_FORTUNE}</span>
+            </button>
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 6 }}>
+              보유 🌙 {moonBalance} · 1회 {MOON_COST_PER_FORTUNE}개 소모
+            </p>
+          </div>
+        )}
 
         {/* 에러 */}
         {error && (
@@ -465,24 +542,43 @@ export default function MoreFortunePage({ category }: Props) {
               </p>
 
               <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-                <button
-                  onClick={() => {
-                    setResult(null);
-                    setError(null);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: 10,
-                    color: 'var(--text-secondary)',
-                    fontSize: 12,
-                    cursor: 'pointer',
-                  }}
-                >
-                  다시 풀이 받기
-                </button>
+                {isArchiveMode ? (
+                  <Link
+                    href="/archive"
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 10,
+                      color: 'var(--text-secondary)',
+                      fontSize: 12,
+                      textAlign: 'center',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    보관함으로
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setResult(null);
+                      setError(null);
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 10,
+                      color: 'var(--text-secondary)',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    다시 풀이 받기
+                  </button>
+                )}
                 <Link
                   href="/"
                   style={{

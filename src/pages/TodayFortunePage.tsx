@@ -9,7 +9,8 @@ import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { calculateSaju, type SajuResult } from '../utils/sajuCalculator';
-import { getTodayFortuneReport, type TodayFortuneAIResult } from '../services/fortuneService';
+import { getTodayFortuneReport, parseTodayFortune, type TodayFortuneAIResult } from '../services/fortuneService';
+import { sajuDB } from '../services/supabase';
 import { TODAY_SECTION_KEYS, TODAY_SECTION_LABELS } from '../constants/prompts';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { LuckyVisualCard, ELEMENT_LUCKY } from '../components/saju/LuckyVisualCard';
@@ -79,6 +80,9 @@ function DatePicker({ value, onChange }: { value: string; onChange: (v: string) 
 export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 'date' }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const recordId = searchParams?.get('recordId') ?? null;
+  const isArchiveMode = !!recordId;
+
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
 
@@ -93,12 +97,55 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
   const [result, setResult] = useState<SajuResult | null>(null);
   const [report, setReport] = useState<TodayFortuneAIResult | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [archivedAt, setArchivedAt] = useState<string | null>(null);
   const chargeForContent = useCreditStore(s => s.chargeForContent);
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
-  // 사주 계산 (URL 파라미터 or 대표 프로필)
+  // ── 보관함 재생 모드 — recordId 가 있으면 DB에서 복원하고 AI 호출은 skip ──
   useEffect(() => {
+    if (!recordId) return;
+    let cancelled = false;
+    setReportLoading(true);
+    sajuDB.getRecordById(recordId)
+      .then((record) => {
+        if (cancelled || !record) return;
+        // birth 정보로 사주 원국 그대로 재계산 → 일진/합충 등 렌더에 필요한 값 확보
+        try {
+          const [yStr, mStr, dStr] = record.birth_date.split('-');
+          const year = parseInt(yStr, 10);
+          const month = parseInt(mStr, 10);
+          const day = parseInt(dStr, 10);
+          const hour = record.birth_time ? parseInt(record.birth_time.split(':')[0], 10) : 12;
+          const minute = record.birth_time ? parseInt(record.birth_time.split(':')[1] || '0', 10) : 0;
+          const unknownTime = !record.birth_time;
+          const calc = calculateSaju(year, month, day, hour, minute, record.gender, unknownTime);
+          setResult(calc);
+        } catch (e) {
+          console.error('[archive replay] saju recalc failed', e);
+        }
+        // 저장된 interpretation 을 sections 로 파싱 (rawText fallback 포함)
+        const content = record.interpretation_detailed ?? record.interpretation_basic ?? '';
+        const sections = parseTodayFortune(content);
+        const engine = (record.engine_result ?? {}) as { todayGz?: TodayFortuneAIResult['todayGz']; isoDate?: string };
+        const archivedReport: TodayFortuneAIResult = Object.keys(sections).length > 0
+          ? { success: true, sections, todayGz: engine.todayGz, isoDate: engine.isoDate }
+          : { success: true, rawText: content, todayGz: engine.todayGz, isoDate: engine.isoDate };
+        setReport(archivedReport);
+        setConfirmedDate(engine.isoDate ?? record.created_at.slice(0, 10));
+        setArchivedAt(record.created_at);
+      })
+      .catch((e) => {
+        console.error('[archive replay] load failed', e);
+        if (!cancelled) setReport({ success: false, error: '보관된 풀이를 불러오지 못했어요.' });
+      })
+      .finally(() => { if (!cancelled) setReportLoading(false); });
+    return () => { cancelled = true; };
+  }, [recordId]);
+
+  // 사주 계산 (URL 파라미터 or 대표 프로필) — 보관함 재생 모드에서는 위 useEffect 가 처리
+  useEffect(() => {
+    if (isArchiveMode) return;
     const hasUrlBirth = !!(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
     if (hasUrlBirth) {
       const year   = parseInt(searchParams!.get('year')!);
@@ -112,11 +159,11 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
     } else if (primary) {
       setResult(computeSajuFromProfile(primary));
     }
-  }, [searchParams, primary]);
+  }, [searchParams, primary, isArchiveMode]);
 
-  // 날짜 확정되면 AI 호출 (날짜 바뀔 때마다 리셋)
-  // 캐시 히트 시: AI 호출·차감 모두 건너뜀 → 탭 복귀/새로고침에도 재차감 없음
+  // 날짜 확정되면 AI 호출 — 보관함 재생 모드에서는 skip
   useEffect(() => {
+    if (isArchiveMode) return;
     if (!result || !confirmedDate) return;
     const cacheKey = `${sajuKey(result)}:${confirmedDate}`;
     const cached = useReportCacheStore.getState().getReport<TodayFortuneAIResult>('today', cacheKey);
@@ -144,7 +191,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
       })
       .finally(() => { if (!cancelled) setReportLoading(false); });
     return () => { cancelled = true; };
-  }, [result, confirmedDate, chargeForContent]);
+  }, [result, confirmedDate, chargeForContent, isArchiveMode]);
 
   // ── 로딩·빈 상태 ───────────────────────────────────────────
   if (!result) {
@@ -243,9 +290,16 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
-        <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
-          {pageTitle}
-        </h1>
+        <div className="flex-1 flex flex-col items-center">
+          <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+            {pageTitle}
+          </h1>
+          {isArchiveMode && archivedAt && (
+            <span className="text-[11px] text-text-tertiary mt-0.5">
+              보관함 · {new Date(archivedAt).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })}
+            </span>
+          )}
+        </div>
         <div className="w-9" />
       </div>
 

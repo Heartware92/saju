@@ -318,6 +318,21 @@ export const tarotDB = {
       return [];
     }
     return data ?? [];
+  },
+
+  // 특정 타로 기록 조회 (보관함 재생용)
+  getRecordById: async (recordId: string): Promise<TarotRecord | null> => {
+    const { data, error } = await supabase
+      .from('tarot_records')
+      .select('*')
+      .eq('id', recordId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching tarot record:', error);
+      return null;
+    }
+    return data;
   }
 };
 

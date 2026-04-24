@@ -24,6 +24,11 @@ import {
   generateSoulmateGunghapPrompt,
   generateRivalGunghapPrompt,
   generateMentorGunghapPrompt,
+  generatePetGunghapPrompt,
+  PET_SPECIES_VIBE,
+  PET_PERSONALITY_OPTIONS,
+  type PetSpecies,
+  type PetInput,
   injectRoleContext,
   type GunghapCategory,
 } from '../constants/prompts';
@@ -113,6 +118,16 @@ const defaultOther: OtherInput = {
   calendar_type: 'solar',
 };
 
+// 반려동물 입력 기본값
+const defaultPet: PetInput = {
+  name: '',
+  species: 'dog',
+  gender: 'unknown',
+  personalityKeywords: [],
+  birthDate: '',
+  adoptionDate: '',
+};
+
 type Step = 'category' | 'role' | 'input' | 'result';
 
 const STEP_LABELS: Record<Step, string> = {
@@ -165,6 +180,7 @@ export default function GunghapPage() {
   const [otherRole, setOtherRole] = useState('');
   const [myProfileId, setMyProfileId] = useState<string>('');
   const [other, setOther] = useState<OtherInput>(defaultOther);
+  const [pet, setPet] = useState<PetInput>(defaultPet);
   // 상대방 입력 방식 — 'profile'은 내 등록 프로필에서 선택, 'manual'은 직접 입력
   const [otherMode, setOtherMode] = useState<'profile' | 'manual'>('manual');
   const [otherProfileId, setOtherProfileId] = useState<string>('');
@@ -205,13 +221,26 @@ export default function GunghapPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otherProfileChoices.length, selectedProfile?.id]);
 
-  const otherDisplayName = otherMode === 'profile'
-    ? (selectedOtherProfile?.name ?? '')
-    : other.name.trim();
+  const isPetCategory = category === 'pet';
 
-  const isOtherValid = otherMode === 'profile'
-    ? !!selectedOtherProfile
-    : !!(other.name.trim() && other.birth_date && other.gender);
+  // 반려동물은 "역할" 입력이 의미 없으므로 role 단계 자동 스킵
+  useEffect(() => {
+    if (step === 'role' && isPetCategory) {
+      setStep('input');
+    }
+  }, [step, isPetCategory]);
+
+  const otherDisplayName = isPetCategory
+    ? pet.name.trim()
+    : otherMode === 'profile'
+      ? (selectedOtherProfile?.name ?? '')
+      : other.name.trim();
+
+  const isOtherValid = isPetCategory
+    ? !!pet.name.trim()
+    : otherMode === 'profile'
+      ? !!selectedOtherProfile
+      : !!(other.name.trim() && other.birth_date && other.gender);
 
   const getCategoryDisplayLabel = () => {
     if (category === 'custom' && customLabel.trim()) return customLabel.trim();
@@ -225,6 +254,52 @@ export default function GunghapPage() {
     try {
       const myResult = computeSajuFromProfile(selectedProfile);
       if (!myResult) throw new Error('내 사주 계산 실패');
+
+      // ── 반려동물 전용 분기 (사주 없이 주인 사주 + 동물 상징 기운으로 해석) ──
+      if (isPetCategory) {
+        const petTrimmed: PetInput = {
+          ...pet,
+          name: pet.name.trim(),
+          birthDate: pet.birthDate || undefined,
+          adoptionDate: pet.adoptionDate || undefined,
+        };
+        const petCacheKey = [
+          sajuKey(myResult),
+          'pet',
+          petTrimmed.species,
+          petTrimmed.gender,
+          petTrimmed.name,
+          petTrimmed.personalityKeywords.slice().sort().join(','),
+          petTrimmed.birthDate ?? '_',
+          petTrimmed.adoptionDate ?? '_',
+        ].join('|');
+        const petCached = useReportCacheStore.getState().getReport<string>('gunghap', petCacheKey);
+        if (petCached) {
+          setResult(petCached.data);
+          setStep('result');
+          setLoading(false);
+          return;
+        }
+        const petPrompt = generatePetGunghapPrompt(myResult, selectedProfile.name, petTrimmed);
+        const petText = await callGunghapGPT(petPrompt);
+        const petCleaned = petText
+          .replace(
+            /^\s*\[?(?:pet|secret_crush|som|lover|spouse|ex|soulmate|rival|friend|mentor|family|parent_child|sibling|work|business|general)_gunghap\]?\s*\n?/i,
+            '',
+          )
+          .trim();
+        setResult(petCleaned);
+        setStep('result');
+        const cache = useReportCacheStore.getState();
+        cache.setReport('gunghap', petCacheKey, petCleaned);
+        if (!cache.isCharged('gunghap', petCacheKey)) {
+          cache.markCharged('gunghap', petCacheKey);
+          useCreditStore.getState()
+            .chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.gunghap)
+            .catch(() => {});
+        }
+        return;
+      }
 
       // 상대 사주 계산 — 등록 프로필 선택 모드면 해당 프로필 그대로 사용
       const otherBase: BirthProfile = otherMode === 'profile' && selectedOtherProfile
@@ -321,8 +396,12 @@ export default function GunghapPage() {
       prompt = injectRoleContext(prompt, myName, myRole, otherName, otherRole);
 
       const text = await callGunghapGPT(prompt);
+      // 프롬프트 차원에서 제거했지만, 과거 패턴 잔재 방어용 — 대괄호 유무 관계없이 첫 줄의 xxx_gunghap 태그 소거
       const cleaned = text
-        .replace(/^\[(?:secret_crush|som|lover|spouse|ex|soulmate|rival|friend|mentor|family|work|business|general)_gunghap\]\s*/m, '')
+        .replace(
+          /^\s*\[?(?:secret_crush|som|lover|spouse|ex|soulmate|rival|friend|mentor|family|parent_child|sibling|work|business|general)_gunghap\]?\s*\n?/i,
+          '',
+        )
         .trim();
       setResult(cleaned);
       setStep('result');
@@ -346,6 +425,7 @@ export default function GunghapPage() {
     setResult('');
     setError('');
     setOther(defaultOther);
+    setPet(defaultPet);
     setOtherProfileId('');
     // 다시 다음 진입 시 useEffect가 상황에 맞게 모드 결정하도록 manual로 리셋
     setOtherMode('manual');
@@ -792,9 +872,16 @@ export default function GunghapPage() {
                 <div className="flex-1">
                   <p className="text-[13px] text-text-tertiary uppercase tracking-wider">{getCategoryDisplayLabel()} 궁합</p>
                   <p className="text-[16px] font-bold text-text-primary mt-0.5">
-                    {selectedProfile?.name} · {otherDisplayName}
+                    {selectedProfile?.name}
+                    {isPetCategory ? ' 🐾 ' : ' · '}
+                    {otherDisplayName}
+                    {isPetCategory && pet.species && (
+                      <span className="text-[13px] font-normal text-text-secondary ml-1">
+                        ({PET_SPECIES_VIBE[pet.species].label})
+                      </span>
+                    )}
                   </p>
-                  {(myRole.trim() || otherRole.trim()) && (
+                  {!isPetCategory && (myRole.trim() || otherRole.trim()) && (
                     <p className="text-[13px] text-text-secondary mt-0.5">
                       {myRole.trim() && `${selectedProfile?.name}: ${myRole}`}
                       {myRole.trim() && otherRole.trim() && ' / '}
@@ -804,6 +891,13 @@ export default function GunghapPage() {
                 </div>
               </div>
             </div>
+
+            {/* 반려동물 재미 해석 안내 — 결과 상단 */}
+            {isPetCategory && (
+              <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[13px] text-amber-200 leading-relaxed">
+                💡 이 결과는 <b>주인의 사주 + 동물 상징 기운</b>으로 풀어낸 재미 해석입니다. 정통 사주 풀이가 아닌 라이프스타일 참고용으로 가볍게 봐주세요.
+              </div>
+            )}
 
             {/* 결과 본문 */}
             <div className="p-5 rounded-2xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">

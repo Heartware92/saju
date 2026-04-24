@@ -338,7 +338,7 @@ const ZAMIDUSU_KEYS: ZamidusuSectionKey[] = [
   'overview', 'core', 'relations', 'wealth', 'body_mind', 'mutagen', 'daehan', 'advice',
 ];
 
-function parseZamidusuSections(raw: string): Partial<Record<ZamidusuSectionKey, string>> {
+export function parseZamidusuSections(raw: string): Partial<Record<ZamidusuSectionKey, string>> {
   const out: Partial<Record<ZamidusuSectionKey, string>> = {};
   const re = /^\s*\[(overview|core|relations|wealth|body_mind|mutagen|daehan|advice)\]\s*$/m;
   const parts = raw.split(re);
@@ -438,7 +438,7 @@ export interface AdviceMeta {
   actions: string[];
 }
 
-function parseAdviceMeta(text: string): AdviceMeta {
+export function parseAdviceMeta(text: string): AdviceMeta {
   const lines = text.split('\n').map(l => l.trim());
   let title = '';
   let timeSlot = '';
@@ -489,7 +489,7 @@ export interface JungtongsajuAIResult {
   adviceMeta?: AdviceMeta;
 }
 
-const parseJungtongsaju = (raw: string): Partial<Record<JungtongsajuSectionKey, string>> => {
+export const parseJungtongsaju = (raw: string): Partial<Record<JungtongsajuSectionKey, string>> => {
   const out: Partial<Record<JungtongsajuSectionKey, string>> = {};
   const keysPattern = JUNGTONGSAJU_SECTION_KEYS.join('|');
   const parts = raw.split(new RegExp(`^\\s*\\[(${keysPattern})\\]\\s*$`, 'm'));
@@ -592,7 +592,7 @@ function calcTodayGanZhi(result: SajuResult, isoDate: string): TodayGanZhi {
   };
 }
 
-const parseTodayFortune = (raw: string): Partial<Record<TodaySectionKey, string>> => {
+export const parseTodayFortune = (raw: string): Partial<Record<TodaySectionKey, string>> => {
   const out: Partial<Record<TodaySectionKey, string>> = {};
   const keysPattern = TODAY_SECTION_KEYS.join('|');
   const parts = raw.split(new RegExp(`^\\s*\\[(${keysPattern})\\]\\s*$`, 'm'));
@@ -663,7 +663,7 @@ export interface NewyearReportAIResult {
   error?: string;
 }
 
-const parseNewyearReport = (raw: string): Partial<Record<NewyearSectionKey, string>> => {
+export const parseNewyearReport = (raw: string): Partial<Record<NewyearSectionKey, string>> => {
   const out: Partial<Record<NewyearSectionKey, string>> = {};
   const keysPattern = NEWYEAR_SECTION_KEYS.join('|');
   const parts = raw.split(new RegExp(`^\\s*\\[(${keysPattern})\\]\\s*$`, 'm'));
