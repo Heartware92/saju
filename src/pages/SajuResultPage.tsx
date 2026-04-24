@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Lunar } from 'lunar-javascript';
@@ -9,6 +9,7 @@ import { getJungtongsajuReport, type JungtongsajuAIResult } from '../services/fo
 import { JUNGTONGSAJU_SECTION_KEYS, JUNGTONGSAJU_SECTION_LABELS } from '../constants/prompts';
 import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
+import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import SajuReport from '../components/saju/SajuReport';
@@ -34,7 +35,6 @@ export default function SajuResultPage() {
   const [report, setReport] = useState<JungtongsajuAIResult | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const chargeForContent = useCreditStore(s => s.chargeForContent);
-  const chargedRef = useRef(false);
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
@@ -80,18 +80,29 @@ export default function SajuResultPage() {
     }
   }, [searchParams, primary]);
 
-  // 결과 생기면 리포트 자동 호출
+  // 결과 생기면 리포트 자동 호출 — 캐시 우선
   useEffect(() => {
     if (!result || report || reportLoading) return;
+    const cacheKey = sajuKey(result);
+    const cached = useReportCacheStore.getState().getReport<JungtongsajuAIResult>('jungtong', cacheKey);
+    if (cached) {
+      setReport(cached.data);
+      return;
+    }
+
     let cancelled = false;
     setReportLoading(true);
     getJungtongsajuReport(result)
       .then(r => {
         if (cancelled) return;
         setReport(r);
-        if (r.success && !chargedRef.current) {
-          chargedRef.current = true;
-          chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.traditional).catch(() => {});
+        if (r.success) {
+          const cache = useReportCacheStore.getState();
+          cache.setReport('jungtong', cacheKey, r);
+          if (!cache.isCharged('jungtong', cacheKey)) {
+            cache.markCharged('jungtong', cacheKey);
+            chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.traditional).catch(() => {});
+          }
         }
       })
       .finally(() => { if (!cancelled) setReportLoading(false); });

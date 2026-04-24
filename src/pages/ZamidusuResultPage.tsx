@@ -22,6 +22,7 @@ import { buildZamidusuReading, type ZamidusuReading } from '../engine/zamidusu/r
 import styles from './ZamidusuResultPage.module.css';
 import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
+import { useReportCacheStore } from '../store/useReportCacheStore';
 import { getZamidusuReading, type ZamidusuAIResult } from '../services/fortuneService';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { ZAMIDUSU_SECTION_KEYS, ZAMIDUSU_SECTION_LABELS } from '../constants/prompts';
@@ -51,7 +52,6 @@ export default function ZamidusuResultPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
   const chargeForContent = useCreditStore(s => s.chargeForContent);
-  const chargedRef = useRef(false);
 
   const hasUrlBirth = !!(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
   const primaryHourUnknown = !!primary && !primary.birth_time;
@@ -76,47 +76,66 @@ export default function ZamidusuResultPage() {
     };
   }, [selectedPalace]);
 
+  // 명반 계산용 입력 — 캐시 키와 chart 둘 다 같은 입력에서 파생되도록 분리
+  const birthInput = useMemo(() => {
+    if (hourUnknown) return null;
+    if (hasUrlBirth) {
+      return {
+        year: parseInt(searchParams!.get('year')!),
+        month: parseInt(searchParams!.get('month')!),
+        day: parseInt(searchParams!.get('day')!),
+        hour: parseInt(searchParams!.get('hour') || '12'),
+        gender: (searchParams!.get('gender') || 'male') as 'male' | 'female',
+        calendarType: (searchParams!.get('calendarType') || 'solar') as 'solar' | 'lunar',
+      };
+    }
+    if (primary) {
+      const [y, m, d] = primary.birth_date.split('-').map(Number);
+      return {
+        year: y, month: m, day: d,
+        hour: primary.birth_time ? parseInt(primary.birth_time.split(':')[0]) : 12,
+        gender: primary.gender,
+        calendarType: primary.calendar_type,
+      };
+    }
+    return null;
+  }, [searchParams, hourUnknown, hasUrlBirth, primary]);
+
+  const cacheKey = useMemo(() => {
+    if (!birthInput) return null;
+    const b = birthInput;
+    return `${b.calendarType}_${b.year}-${b.month}-${b.day}_${b.hour}_${b.gender}`;
+  }, [birthInput]);
+
   // 명반 계산
   useEffect(() => {
-    if (hourUnknown) return;
+    if (!birthInput) return;
     try {
-      let year: number, month: number, day: number, hour: number;
-      let gender: 'male' | 'female';
-      let calendarType: 'solar' | 'lunar';
-
-      if (hasUrlBirth) {
-        year = parseInt(searchParams!.get('year')!);
-        month = parseInt(searchParams!.get('month')!);
-        day = parseInt(searchParams!.get('day')!);
-        hour = parseInt(searchParams!.get('hour') || '12');
-        gender = (searchParams!.get('gender') || 'male') as 'male' | 'female';
-        calendarType = (searchParams!.get('calendarType') || 'solar') as 'solar' | 'lunar';
-      } else if (primary) {
-        const [y, m, d] = primary.birth_date.split('-').map(Number);
-        year = y; month = m; day = d;
-        hour = primary.birth_time ? parseInt(primary.birth_time.split(':')[0]) : 12;
-        gender = primary.gender;
-        calendarType = primary.calendar_type;
-      } else {
-        return;
-      }
-
-      const result = calculateZamidusu(year, month, day, hour, gender, calendarType);
+      const b = birthInput;
+      const result = calculateZamidusu(b.year, b.month, b.day, b.hour, b.gender, b.calendarType);
       setChart(result);
     } catch (e: any) {
       setError(e?.message || '명반 계산 실패');
     }
-  }, [searchParams, hourUnknown, hasUrlBirth, primary]);
+  }, [birthInput]);
 
   const reading: ZamidusuReading | null = useMemo(() => {
     return chart ? buildZamidusuReading(chart) : null;
   }, [chart]);
 
-  // 명반 계산 완료되면 AI 풀이 호출 (45초 하드 타임아웃 — 어떤 경우든 로딩 해제 보장)
-  // useRef 가드로 StrictMode·재렌더에서 중복 호출 방지
+  // 명반 계산 완료되면 AI 풀이 호출 — 캐시 우선, 미스 시에만 호출 (45초 하드 타임아웃)
   const aiStartedRef = useRef(false);
   useEffect(() => {
-    if (!chart) return;
+    if (!chart || !cacheKey) return;
+
+    // 캐시 히트: AI 호출·차감 모두 건너뜀
+    const cached = useReportCacheStore.getState().getReport<ZamidusuAIResult>('zamidusu', cacheKey);
+    if (cached) {
+      setAiResult(cached.data);
+      setAiLoading(false);
+      return;
+    }
+
     if (aiStartedRef.current) return;
     aiStartedRef.current = true;
 
@@ -138,9 +157,13 @@ export default function ZamidusuResultPage() {
         clearTimeout(timeoutId);
         setAiResult(r);
         setAiLoading(false);
-        if (r.success && !chargedRef.current) {
-          chargedRef.current = true;
-          chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.zamidusu).catch(() => {});
+        if (r.success) {
+          const cache = useReportCacheStore.getState();
+          cache.setReport('zamidusu', cacheKey, r);
+          if (!cache.isCharged('zamidusu', cacheKey)) {
+            cache.markCharged('zamidusu', cacheKey);
+            chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.zamidusu).catch(() => {});
+          }
         }
       })
       .catch(err => {
@@ -154,7 +177,7 @@ export default function ZamidusuResultPage() {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [chart]);
+  }, [chart, cacheKey]);
 
   // ── 시간 미상 가드 ──
   if (hourUnknown) {

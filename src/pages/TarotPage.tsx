@@ -9,6 +9,7 @@ import { formatTodayString, formatMonthString } from '../utils/tarotSeed';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
+import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
 import { MOON_COST_TAROT, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { getHybridReading } from '../services/fortuneService';
@@ -400,6 +401,27 @@ export default function TarotPage() {
 
   const callAI = async (drawn: DrawnCard[], currentMode: TarotMode, userQuestion?: string) => {
     if (!sajuResult) { setShowNoPrimaryModal(true); return; }
+
+    // 캐시 키 — 사주 + 모드 + 카드(이름·정/역) + 질문 텍스트.
+    // 같은 사주가 같은 카드를 같은 질문으로 뽑으면 같은 풀이 → 재호출/재차감 없음.
+    const card = drawn[0];
+    const cacheKey = [
+      sajuKey(sajuResult),
+      currentMode,
+      `${card.card.name}:${card.isReversed ? 'R' : 'U'}`,
+      currentMode === 'today' ? formatTodayString() : '',
+      currentMode === 'monthly' ? formatMonthString() : '',
+      currentMode === 'question' ? (userQuestion || '').trim() : '',
+    ].join('|');
+
+    const cached = useReportCacheStore.getState().getReport<string>('tarot', cacheKey);
+    if (cached) {
+      setAiContent(cached.data);
+      setAiError(null);
+      setAiLoading(false);
+      return;
+    }
+
     setAiLoading(true);
     setAiError(null);
     setAiContent(null);
@@ -413,9 +435,14 @@ export default function TarotPage() {
       const res = await getHybridReading(sajuResult, cardInfo, questionMap[currentMode]);
       if (res.success && res.content) {
         setAiContent(res.content);
-        useCreditStore.getState()
-          .chargeForContent('moon', MOON_COST_TAROT, `${CHARGE_REASONS.tarotHybrid}:${currentMode}`)
-          .catch(() => {});
+        const cache = useReportCacheStore.getState();
+        cache.setReport('tarot', cacheKey, res.content);
+        if (!cache.isCharged('tarot', cacheKey)) {
+          cache.markCharged('tarot', cacheKey);
+          useCreditStore.getState()
+            .chargeForContent('moon', MOON_COST_TAROT, `${CHARGE_REASONS.tarotHybrid}:${currentMode}`)
+            .catch(() => {});
+        }
       } else {
         setAiError(res.error || '해석을 불러오지 못했습니다.');
       }

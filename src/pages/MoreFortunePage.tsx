@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
+import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import {
   MORE_FORTUNE_CONFIGS,
@@ -126,15 +127,40 @@ export default function MoreFortunePage({ category }: Props) {
     return true;
   }, [saju, category, koreanName, dreamValid]);
 
+  // 캐시 키 — 카테고리별로 식별자가 다름
+  const buildCacheKey = (): string | null => {
+    if (!category) return null;
+    if (category === 'dream') {
+      const t = dreamText.trim();
+      if (!t) return null;
+      return `dream:${t}`;
+    }
+    if (!saju) return null;
+    const sk = sajuKey(saju);
+    if (category === 'name') {
+      return `${sk}:${koreanName.trim()}|${hanjaName.trim()}`;
+    }
+    return sk;
+  };
+
+  // 진입/입력 변경 시 캐시 자동 복원 — 같은 입력은 무조건 캐시 우선
+  useEffect(() => {
+    const key = buildCacheKey();
+    if (!key) return;
+    const cached = useReportCacheStore.getState().getReport<string>(`more:${category}`, key);
+    if (cached) {
+      setResult(cached.data);
+      setError(null);
+    } else {
+      setResult(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category, saju, koreanName, hanjaName, dreamText]);
+
   const handleRead = async () => {
     // 꿈 해몽은 saju 없이도 실행 가능
     if (category !== 'dream' && !saju) return;
     if (!canSubmit || loading) return;
-
-    if (moonBalance < MOON_COST_PER_FORTUNE) {
-      setError('달 크레딧이 부족해요. 크레딧을 충전해주세요.');
-      return;
-    }
 
     // 이름풀이 사전 validation: 한글 이름이 실제 한글인지 로딩 시작 전에 확인
     if (category === 'name') {
@@ -143,6 +169,23 @@ export default function MoreFortunePage({ category }: Props) {
         setError('한글 이름은 반드시 한글로 입력해주세요. 한자는 아래 "한자 이름" 칸에 따로 입력하면 됩니다.');
         return;
       }
+    }
+
+    // 캐시 히트 — AI 호출도, 크레딧 차감도 건너뜀
+    const cacheKey = buildCacheKey();
+    const kindKey = `more:${category}` as const;
+    if (cacheKey) {
+      const cached = useReportCacheStore.getState().getReport<string>(kindKey, cacheKey);
+      if (cached) {
+        setResult(cached.data);
+        setError(null);
+        return;
+      }
+    }
+
+    if (moonBalance < MOON_COST_PER_FORTUNE) {
+      setError('달 크레딧이 부족해요. 크레딧을 충전해주세요.');
+      return;
     }
 
     setError(null);
@@ -183,13 +226,20 @@ export default function MoreFortunePage({ category }: Props) {
         throw new Error(resp?.error || '풀이 생성에 실패했어요.');
       }
 
-      // 응답 성공 후 크레딧 차감
-      const consumed = await chargeForContent('moon', MOON_COST_PER_FORTUNE, `더많은운세:${cfg.title}`);
-      if (!consumed) {
-        console.error('크레딧 차감 실패 (응답은 이미 생성됨)');
-      }
-
       setResult(resp!.content);
+
+      // 캐시 저장 + 미차감 시에만 차감
+      if (cacheKey) {
+        const cache = useReportCacheStore.getState();
+        cache.setReport(kindKey, cacheKey, resp.content);
+        if (!cache.isCharged(kindKey, cacheKey)) {
+          cache.markCharged(kindKey, cacheKey);
+          const consumed = await chargeForContent('moon', MOON_COST_PER_FORTUNE, `더많은운세:${cfg.title}`);
+          if (!consumed) {
+            console.error('크레딧 차감 실패 (응답은 이미 생성됨)');
+          }
+        }
+      }
     } catch (e: any) {
       setError(e?.message || '오류가 발생했어요.');
     } finally {

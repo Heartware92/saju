@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
+import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { calculateSaju, type SajuResult } from '../utils/sajuCalculator';
@@ -93,7 +94,6 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
   const [report, setReport] = useState<TodayFortuneAIResult | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const chargeForContent = useCreditStore(s => s.chargeForContent);
-  const chargedDateRef = useRef<string | null>(null);
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
@@ -115,8 +115,17 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
   }, [searchParams, primary]);
 
   // 날짜 확정되면 AI 호출 (날짜 바뀔 때마다 리셋)
+  // 캐시 히트 시: AI 호출·차감 모두 건너뜀 → 탭 복귀/새로고침에도 재차감 없음
   useEffect(() => {
     if (!result || !confirmedDate) return;
+    const cacheKey = `${sajuKey(result)}:${confirmedDate}`;
+    const cached = useReportCacheStore.getState().getReport<TodayFortuneAIResult>('today', cacheKey);
+    if (cached) {
+      setReport(cached.data);
+      setReportLoading(false);
+      return;
+    }
+
     let cancelled = false;
     setReport(null);
     setReportLoading(true);
@@ -124,15 +133,18 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
       .then(r => {
         if (cancelled) return;
         setReport(r);
-        // 날짜별 1회 차감 (날짜 바꾸면 새 차감)
-        if (r.success && chargedDateRef.current !== confirmedDate) {
-          chargedDateRef.current = confirmedDate;
-          chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.today).catch(() => {});
+        if (r.success) {
+          const cache = useReportCacheStore.getState();
+          cache.setReport('today', cacheKey, r);
+          if (!cache.isCharged('today', cacheKey)) {
+            cache.markCharged('today', cacheKey);
+            chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.today).catch(() => {});
+          }
         }
       })
       .finally(() => { if (!cancelled) setReportLoading(false); });
     return () => { cancelled = true; };
-  }, [result, confirmedDate]);
+  }, [result, confirmedDate, chargeForContent]);
 
   // ── 로딩·빈 상태 ───────────────────────────────────────────
   if (!result) {
@@ -243,7 +255,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
           <DatePicker value={pickedDate} onChange={setPickedDate} />
           <button
             onClick={() => setConfirmedDate(pickedDate)}
-            className="w-full py-3 rounded-2xl bg-cta text-white font-semibold text-[17px]"
+            className="w-full py-3 rounded-2xl bg-cta text-white font-semibold text-[17px] mb-6"
           >
             {(() => {
               const d = new Date(pickedDate);

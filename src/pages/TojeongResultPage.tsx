@@ -13,6 +13,7 @@ import { buildTojeongReading, type TojeongReading } from '../engine/tojeong/read
 import type { GwaeGrade } from '../engine/tojeong/gwae-table';
 import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
+import { useReportCacheStore } from '../store/useReportCacheStore';
 import { getTojeongReading } from '../services/fortuneService';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
@@ -44,11 +45,10 @@ export default function TojeongResultPage() {
   const [aiContent, setAiContent] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  const chargedRef = useRef(false);
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
-  const { tojeong, reading } = useMemo(() => {
+  const { tojeong, reading, cacheKey } = useMemo(() => {
     const hasUrlBirth = !!(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
     let year: number, month: number, day: number, calendarType: 'solar' | 'lunar';
     const targetYear = parseInt(searchParams?.get('targetYear') || String(new Date().getFullYear()));
@@ -63,22 +63,32 @@ export default function TojeongResultPage() {
       year = y; month = m; day = d;
       calendarType = primary.calendar_type;
     } else {
-      return { tojeong: null, reading: null };
+      return { tojeong: null, reading: null, cacheKey: null };
     }
 
     try {
       const t = calculateTojeong(year, month, day, calendarType, targetYear);
       const r = buildTojeongReading(t);
-      return { tojeong: t, reading: r };
+      const key = `${calendarType}_${year}-${month}-${day}_${targetYear}`;
+      return { tojeong: t, reading: r, cacheKey: key };
     } catch {
-      return { tojeong: null, reading: null };
+      return { tojeong: null, reading: null, cacheKey: null };
     }
   }, [searchParams, primary]);
 
-  // 심층 풀이 — 진입 즉시 자동 호출 (StrictMode·재렌더 중복 방지 + 45초 타임아웃)
+  // 심층 풀이 — 캐시 우선, 미스 시에만 호출 (45초 타임아웃)
   const aiStartedRef = useRef(false);
   useEffect(() => {
-    if (!tojeong) return;
+    if (!tojeong || !cacheKey) return;
+
+    // 캐시 히트: AI 호출·차감 모두 건너뜀
+    const cached = useReportCacheStore.getState().getReport<string>('tojeong', cacheKey);
+    if (cached) {
+      setAiContent(cached.data);
+      setAiLoading(false);
+      return;
+    }
+
     if (aiStartedRef.current) return;
     aiStartedRef.current = true;
 
@@ -99,8 +109,10 @@ export default function TojeongResultPage() {
           setAiError(r.error || '심층 풀이를 가져오지 못했어요.');
         } else {
           setAiContent(r.content);
-          if (!chargedRef.current) {
-            chargedRef.current = true;
+          const cache = useReportCacheStore.getState();
+          cache.setReport('tojeong', cacheKey, r.content);
+          if (!cache.isCharged('tojeong', cacheKey)) {
+            cache.markCharged('tojeong', cacheKey);
             chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.tojeong).catch(() => {});
           }
         }
@@ -117,16 +129,14 @@ export default function TojeongResultPage() {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [tojeong]);
+  }, [tojeong, cacheKey]);
 
   const retryAI = () => {
-    aiStartedRef.current = false;
+    if (!tojeong || !cacheKey) return;
+    // 재시도는 캐시를 의도적으로 무효화 후 다시 호출 (실패한 캐시는 어차피 저장 안 됨)
+    aiStartedRef.current = true;
     setAiContent(null);
     setAiError(null);
-    setAiLoading(false);
-    // useEffect의 tojeong 의존성은 변경 안 되므로 수동 재호출
-    if (!tojeong) return;
-    aiStartedRef.current = true;
     setAiLoading(true);
     getTojeongReading(tojeong)
       .then(r => {
@@ -134,8 +144,10 @@ export default function TojeongResultPage() {
           setAiError(r.error || '심층 풀이를 가져오지 못했어요.');
         } else {
           setAiContent(r.content);
-          if (!chargedRef.current) {
-            chargedRef.current = true;
+          const cache = useReportCacheStore.getState();
+          cache.setReport('tojeong', cacheKey, r.content);
+          if (!cache.isCharged('tojeong', cacheKey)) {
+            cache.markCharged('tojeong', cacheKey);
             chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.tojeong).catch(() => {});
           }
         }

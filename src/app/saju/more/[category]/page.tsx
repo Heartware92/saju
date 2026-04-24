@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import Layout from '@/components/Layout';
 import MoreFortunePage from '@/pages/MoreFortunePage';
@@ -14,7 +15,13 @@ export default async function Page({ params }: PageProps) {
   }
   return (
     <Layout>
-      <MoreFortunePage category={category as MoreFortuneId} />
+      {/*
+       * MoreFortunePage 내부에서 useSearchParams 를 사용 (보관함 재생 ?recordId 처리).
+       * SSG 프리렌더에서 Suspense 경계 없이 호출되면 빌드가 실패하므로 Suspense 로 감싼다.
+       */}
+      <Suspense fallback={<div className="min-h-screen" />}>
+        <MoreFortunePage category={category as MoreFortuneId} />
+      </Suspense>
     </Layout>
   );
 }

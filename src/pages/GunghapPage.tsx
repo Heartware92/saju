@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
+import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import type { BirthProfile } from '../types/credit';
@@ -244,6 +245,24 @@ export default function GunghapPage() {
       const otherResult = computeSajuFromProfile(otherBase);
       if (!otherResult) throw new Error('상대방 사주 계산 실패');
 
+      // 캐시 키 — 두 사주 + 카테고리 + 역할 + custom 라벨까지 포함해야 결과가 달라질 때 새로 호출
+      const cacheKey = [
+        sajuKey(myResult),
+        sajuKey(otherResult),
+        category,
+        myRole || '_',
+        otherRole || '_',
+        category === 'custom' ? customLabel.trim() : '_',
+      ].join('|');
+
+      const cached = useReportCacheStore.getState().getReport<string>('gunghap', cacheKey);
+      if (cached) {
+        setResult(cached.data);
+        setStep('result');
+        setLoading(false);
+        return;
+      }
+
       const myName = selectedProfile.name;
       const otherName = otherBase.name;
       let prompt = '';
@@ -307,9 +326,14 @@ export default function GunghapPage() {
         .trim();
       setResult(cleaned);
       setStep('result');
-      useCreditStore.getState()
-        .chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.gunghap)
-        .catch(() => {});
+      const cache = useReportCacheStore.getState();
+      cache.setReport('gunghap', cacheKey, cleaned);
+      if (!cache.isCharged('gunghap', cacheKey)) {
+        cache.markCharged('gunghap', cacheKey);
+        useCreditStore.getState()
+          .chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.gunghap)
+          .catch(() => {});
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '분석 중 오류가 발생했습니다.');
     } finally {

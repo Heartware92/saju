@@ -13,6 +13,7 @@ import { motion } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
+import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import {
@@ -91,7 +92,13 @@ export default function TaekilPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  // 연/월/카테고리 변경 시 자동으로 캘린더 재계산
+  // 캐시 키 — saju + 연·월 + 카테고리. 같은 조합은 같은 advice를 가짐.
+  const taekilCacheKey = useMemo(() => {
+    if (!saju) return null;
+    return `${sajuKey(saju)}:${viewYear}-${viewMonth}:${category}`;
+  }, [saju, viewYear, viewMonth, category]);
+
+  // 연/월/카테고리 변경 시 자동으로 캘린더 재계산 + 캐시된 advice 복원
   const compute = useCallback(() => {
     if (!saju) return;
     const start = `${viewYear}-${String(viewMonth).padStart(2, '0')}-01`;
@@ -100,9 +107,14 @@ export default function TaekilPage() {
     const r = calculateTaekil(saju, category, start, end);
     setResult(r);
     setSelectedDay(null);
-    setAiAdvice(null);
     setAiError(null);
-  }, [saju, viewYear, viewMonth, category]);
+
+    // 같은 키로 이미 풀이가 있으면 자동 복원
+    const cached = taekilCacheKey
+      ? useReportCacheStore.getState().getReport<string>('taekil', taekilCacheKey)
+      : null;
+    setAiAdvice(cached?.data ?? null);
+  }, [saju, viewYear, viewMonth, category, taekilCacheKey]);
 
   useEffect(() => {
     compute();
@@ -116,9 +128,17 @@ export default function TaekilPage() {
     if (viewYear < MAX_YEAR) setViewYear(y => y + 1);
   };
 
-  // 수동 AI 트리거
+  // 수동 AI 트리거 — 캐시 히트 시 호출·차감 모두 건너뜀
   const handleRequestAI = async () => {
-    if (!saju || !result || aiLoading) return;
+    if (!saju || !result || aiLoading || !taekilCacheKey) return;
+
+    const cached = useReportCacheStore.getState().getReport<string>('taekil', taekilCacheKey);
+    if (cached) {
+      setAiAdvice(cached.data);
+      setAiError(null);
+      return;
+    }
+
     setAiError(null);
     setAiLoading(true);
     try {
@@ -127,9 +147,14 @@ export default function TaekilPage() {
         throw new Error(r.error || '길일 분석을 가져오지 못했어요.');
       }
       setAiAdvice(r.advice);
-      useCreditStore.getState()
-        .chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.taekil)
-        .catch(() => {});
+      const cache = useReportCacheStore.getState();
+      cache.setReport('taekil', taekilCacheKey, r.advice);
+      if (!cache.isCharged('taekil', taekilCacheKey)) {
+        cache.markCharged('taekil', taekilCacheKey);
+        useCreditStore.getState()
+          .chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.taekil)
+          .catch(() => {});
+      }
     } catch (e: unknown) {
       setAiError(e instanceof Error ? e.message : '오류가 발생했어요.');
     } finally {
