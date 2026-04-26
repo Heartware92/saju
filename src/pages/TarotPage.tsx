@@ -415,9 +415,16 @@ export default function TarotPage() {
     ].join('|');
 
     const cached = useReportCacheStore.getState().getReport<string>('tarot', cacheKey);
-    if (cached) {
+    if (cached?.data) {
       setAiContent(cached.data);
       setAiError(null);
+      setAiLoading(false);
+      return;
+    }
+    if (cached?.error) {
+      // 1분 안 같은 카드 재호출 차단 (탭 복귀·새로고침 보호)
+      setAiError(cached.error);
+      setAiContent(null);
       setAiLoading(false);
       return;
     }
@@ -433,9 +440,9 @@ export default function TarotPage() {
         question: userQuestion || undefined,
       };
       const res = await getHybridReading(sajuResult, cardInfo, questionMap[currentMode]);
+      const cache = useReportCacheStore.getState();
       if (res.success && res.content) {
         setAiContent(res.content);
-        const cache = useReportCacheStore.getState();
         cache.setReport('tarot', cacheKey, res.content);
         if (!cache.isCharged('tarot', cacheKey)) {
           cache.markCharged('tarot', cacheKey);
@@ -444,10 +451,14 @@ export default function TarotPage() {
             .catch(() => {});
         }
       } else {
-        setAiError(res.error || '해석을 불러오지 못했습니다.');
+        const msg = res.error || '해석을 불러오지 못했습니다.';
+        setAiError(msg);
+        cache.setError('tarot', cacheKey, msg);
       }
     } catch (e: any) {
-      setAiError(e.message || '네트워크 오류가 발생했습니다.');
+      const msg = e.message || '네트워크 오류가 발생했습니다.';
+      setAiError(msg);
+      useReportCacheStore.getState().setError('tarot', cacheKey, msg);
     } finally {
       setAiLoading(false);
     }

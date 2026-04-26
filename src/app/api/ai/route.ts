@@ -7,11 +7,17 @@ export const maxDuration = 60;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
 
+interface AIResult {
+  content: string;
+  /** true면 max_tokens 한도에 걸려 응답이 잘림. 호출자에서 안내·재시도 처리 필요. */
+  truncated: boolean;
+}
+
 async function callClaude(
   prompt: string,
   maxTokens: number,
   systemPrompt: string,
-): Promise<string> {
+): Promise<AIResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('NO_ANTHROPIC_KEY');
 
@@ -36,7 +42,10 @@ async function callClaude(
   }
 
   const data = await res.json();
-  return data.content?.[0]?.text ?? '';
+  return {
+    content: data.content?.[0]?.text ?? '',
+    truncated: data.stop_reason === 'max_tokens',
+  };
 }
 
 // ── Gemini API ──────────────────────────────────────────────────────────────
@@ -48,7 +57,7 @@ async function callGemini(
   prompt: string,
   maxTokens: number,
   systemPrompt: string,
-): Promise<string> {
+): Promise<AIResult> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('NO_GEMINI_KEY');
 
@@ -82,10 +91,14 @@ async function callGemini(
   }
 
   const data = await res.json();
-  const parts: any[] = data.candidates?.[0]?.content?.parts ?? [];
+  const candidate = data.candidates?.[0];
+  const parts: any[] = candidate?.content?.parts ?? [];
   // 2.5-flash는 thinking 파트(thought:true)가 parts[0]에 올 수 있으므로 실제 텍스트 파트를 찾아야 함
   const textPart = parts.find((p: any) => p.text && !p.thought) ?? parts[0];
-  return textPart?.text ?? '';
+  return {
+    content: textPart?.text ?? '',
+    truncated: candidate?.finishReason === 'MAX_TOKENS',
+  };
 }
 
 // ── 메인 핸들러 ────────────────────────────────────────────────────────────
@@ -99,8 +112,8 @@ export async function POST(request: NextRequest) {
     // 1순위: Claude (ANTHROPIC_API_KEY 있을 때)
     if (process.env.ANTHROPIC_API_KEY) {
       try {
-        const content = await callClaude(prompt, maxTokens, sys);
-        return NextResponse.json({ content });
+        const r = await callClaude(prompt, maxTokens, sys);
+        return NextResponse.json({ content: r.content, truncated: r.truncated });
       } catch (claudeErr: any) {
         console.error('[AI Route] Claude 실패, Gemini로 폴백:', claudeErr.message);
         // Claude 실패 시 Gemini 폴백
@@ -109,8 +122,8 @@ export async function POST(request: NextRequest) {
 
     // 2순위: Gemini
     if (process.env.GEMINI_API_KEY) {
-      const content = await callGemini(prompt, maxTokens, sys);
-      return NextResponse.json({ content });
+      const r = await callGemini(prompt, maxTokens, sys);
+      return NextResponse.json({ content: r.content, truncated: r.truncated });
     }
 
     return NextResponse.json(

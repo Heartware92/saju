@@ -109,7 +109,7 @@ export default function TaekilPage() {
     setSelectedDay(null);
     setAiError(null);
 
-    // 같은 키로 이미 풀이가 있으면 자동 복원
+    // 같은 키로 이미 풀이가 있으면 자동 복원 (실패 캐시는 무시 — 사용자가 다시 클릭해야 보임)
     const cached = taekilCacheKey
       ? useReportCacheStore.getState().getReport<string>('taekil', taekilCacheKey)
       : null;
@@ -128,14 +128,19 @@ export default function TaekilPage() {
     if (viewYear < MAX_YEAR) setViewYear(y => y + 1);
   };
 
-  // 수동 AI 트리거 — 캐시 히트 시 호출·차감 모두 건너뜀
+  // 수동 AI 트리거 — 캐시 우선 (정상/실패 둘 다)
   const handleRequestAI = async () => {
     if (!saju || !result || aiLoading || !taekilCacheKey) return;
 
     const cached = useReportCacheStore.getState().getReport<string>('taekil', taekilCacheKey);
-    if (cached) {
+    if (cached?.data) {
       setAiAdvice(cached.data);
       setAiError(null);
+      return;
+    }
+    if (cached?.error) {
+      // 1분 안 같은 입력 재시도 차단 — API 비용 보호
+      setAiError(cached.error);
       return;
     }
 
@@ -156,7 +161,9 @@ export default function TaekilPage() {
           .catch(() => {});
       }
     } catch (e: unknown) {
-      setAiError(e instanceof Error ? e.message : '오류가 발생했어요.');
+      const msg = e instanceof Error ? e.message : '오류가 발생했어요.';
+      setAiError(msg);
+      useReportCacheStore.getState().setError('taekil', taekilCacheKey, msg);
     } finally {
       setAiLoading(false);
     }

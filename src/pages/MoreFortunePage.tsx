@@ -197,9 +197,12 @@ export default function MoreFortunePage({ category }: Props) {
     const key = buildCacheKey();
     if (!key) return;
     const cached = useReportCacheStore.getState().getReport<string>(`more:${category}`, key);
-    if (cached) {
+    if (cached?.data) {
       setResult(cached.data);
       setError(null);
+    } else if (cached?.error) {
+      // 실패 캐시는 자동 표시하지 않음 — 사용자가 수동으로 풀이 보기를 누를 때만 알림
+      setResult(null);
     } else {
       // 키가 바뀌어 캐시가 없으면 이전 결과는 비움 (이름·꿈 입력 변화 시)
       setResult(null);
@@ -227,9 +230,14 @@ export default function MoreFortunePage({ category }: Props) {
     const kindKey = `more:${category}` as const;
     if (cacheKey) {
       const cached = useReportCacheStore.getState().getReport<string>(kindKey, cacheKey);
-      if (cached) {
+      if (cached?.data) {
         setResult(cached.data);
         setError(null);
+        return;
+      }
+      if (cached?.error) {
+        // 1분 안 같은 입력 재시도 차단 — API 비용 보호
+        setError(cached.error);
         return;
       }
     }
@@ -292,7 +300,12 @@ export default function MoreFortunePage({ category }: Props) {
         }
       }
     } catch (e: any) {
-      setError(e?.message || '오류가 발생했어요.');
+      const msg = e?.message || '오류가 발생했어요.';
+      setError(msg);
+      // negative cache: 같은 입력 즉시 재시도 차단
+      if (cacheKey) {
+        useReportCacheStore.getState().setError(kindKey, cacheKey, msg);
+      }
     } finally {
       setLoading(false);
     }

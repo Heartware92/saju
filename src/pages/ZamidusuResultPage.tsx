@@ -128,10 +128,15 @@ export default function ZamidusuResultPage() {
   useEffect(() => {
     if (!chart || !cacheKey) return;
 
-    // 캐시 히트: AI 호출·차감 모두 건너뜀
+    // 캐시 우선: 정상 → 즉시 표시 / 실패 캐시 → 1분 재호출 차단
     const cached = useReportCacheStore.getState().getReport<ZamidusuAIResult>('zamidusu', cacheKey);
-    if (cached) {
+    if (cached?.data) {
       setAiResult(cached.data);
+      setAiLoading(false);
+      return;
+    }
+    if (cached?.error) {
+      setAiResult({ success: false, error: cached.error });
       setAiLoading(false);
       return;
     }
@@ -144,11 +149,11 @@ export default function ZamidusuResultPage() {
 
     const timeoutId = setTimeout(() => {
       if (cancelled) return;
-      setAiResult({
-        success: false,
-        error: '응답이 너무 오래 걸려요. 아래 명반은 정상이니 확인하시고, 풀이는 다시 시도해주세요.',
-      });
+      const timeoutMsg = '응답이 너무 오래 걸려요. 아래 명반은 정상이니 확인하시고, 풀이는 다시 시도해주세요.';
+      setAiResult({ success: false, error: timeoutMsg });
       setAiLoading(false);
+      // 타임아웃도 1분 negative cache — 즉시 재진입해도 또 호출되지 않게
+      useReportCacheStore.getState().setError('zamidusu', cacheKey, timeoutMsg);
     }, 45_000);
 
     getZamidusuReading(chart)
@@ -157,20 +162,24 @@ export default function ZamidusuResultPage() {
         clearTimeout(timeoutId);
         setAiResult(r);
         setAiLoading(false);
+        const cache = useReportCacheStore.getState();
         if (r.success) {
-          const cache = useReportCacheStore.getState();
           cache.setReport('zamidusu', cacheKey, r);
           if (!cache.isCharged('zamidusu', cacheKey)) {
             cache.markCharged('zamidusu', cacheKey);
             chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.zamidusu).catch(() => {});
           }
+        } else if (r.error) {
+          cache.setError('zamidusu', cacheKey, r.error);
         }
       })
       .catch(err => {
         if (cancelled) return;
         clearTimeout(timeoutId);
-        setAiResult({ success: false, error: err?.message || 'AI 풀이 실패' });
+        const msg = err?.message || 'AI 풀이 실패';
+        setAiResult({ success: false, error: msg });
         setAiLoading(false);
+        useReportCacheStore.getState().setError('zamidusu', cacheKey, msg);
       });
 
     return () => {

@@ -81,10 +81,15 @@ export default function TojeongResultPage() {
   useEffect(() => {
     if (!tojeong || !cacheKey) return;
 
-    // 캐시 히트: AI 호출·차감 모두 건너뜀
+    // 캐시 우선: 정상 → 즉시 표시 / 실패 캐시 → 1분 재호출 차단
     const cached = useReportCacheStore.getState().getReport<string>('tojeong', cacheKey);
-    if (cached) {
+    if (cached?.data) {
       setAiContent(cached.data);
+      setAiLoading(false);
+      return;
+    }
+    if (cached?.error) {
+      setAiError(cached.error);
       setAiLoading(false);
       return;
     }
@@ -97,19 +102,23 @@ export default function TojeongResultPage() {
 
     const timeoutId = setTimeout(() => {
       if (cancelled) return;
-      setAiError('응답이 너무 오래 걸려요. 아래 괘 풀이는 정상이니 확인해주세요.');
+      const timeoutMsg = '응답이 너무 오래 걸려요. 아래 괘 풀이는 정상이니 확인해주세요.';
+      setAiError(timeoutMsg);
       setAiLoading(false);
+      useReportCacheStore.getState().setError('tojeong', cacheKey, timeoutMsg);
     }, 45_000);
 
     getTojeongReading(tojeong)
       .then(r => {
         if (cancelled) return;
         clearTimeout(timeoutId);
+        const cache = useReportCacheStore.getState();
         if (!r.success || !r.content) {
-          setAiError(r.error || '심층 풀이를 가져오지 못했어요.');
+          const msg = r.error || '심층 풀이를 가져오지 못했어요.';
+          setAiError(msg);
+          cache.setError('tojeong', cacheKey, msg);
         } else {
           setAiContent(r.content);
-          const cache = useReportCacheStore.getState();
           cache.setReport('tojeong', cacheKey, r.content);
           if (!cache.isCharged('tojeong', cacheKey)) {
             cache.markCharged('tojeong', cacheKey);
@@ -121,8 +130,10 @@ export default function TojeongResultPage() {
       .catch(err => {
         if (cancelled) return;
         clearTimeout(timeoutId);
-        setAiError(err?.message || '오류가 발생했어요.');
+        const msg = err?.message || '오류가 발생했어요.';
+        setAiError(msg);
         setAiLoading(false);
+        useReportCacheStore.getState().setError('tojeong', cacheKey, msg);
       });
 
     return () => {
@@ -133,18 +144,21 @@ export default function TojeongResultPage() {
 
   const retryAI = () => {
     if (!tojeong || !cacheKey) return;
-    // 재시도는 캐시를 의도적으로 무효화 후 다시 호출 (실패한 캐시는 어차피 저장 안 됨)
+    // 재시도는 사용자 명시적 동작 — negative cache 도 함께 무효화
+    useReportCacheStore.getState().invalidate('tojeong', cacheKey);
     aiStartedRef.current = true;
     setAiContent(null);
     setAiError(null);
     setAiLoading(true);
     getTojeongReading(tojeong)
       .then(r => {
+        const cache = useReportCacheStore.getState();
         if (!r.success || !r.content) {
-          setAiError(r.error || '심층 풀이를 가져오지 못했어요.');
+          const msg = r.error || '심층 풀이를 가져오지 못했어요.';
+          setAiError(msg);
+          cache.setError('tojeong', cacheKey, msg);
         } else {
           setAiContent(r.content);
-          const cache = useReportCacheStore.getState();
           cache.setReport('tojeong', cacheKey, r.content);
           if (!cache.isCharged('tojeong', cacheKey)) {
             cache.markCharged('tojeong', cacheKey);
@@ -154,8 +168,10 @@ export default function TojeongResultPage() {
         setAiLoading(false);
       })
       .catch(err => {
-        setAiError(err?.message || '오류가 발생했어요.');
+        const msg = err?.message || '오류가 발생했어요.';
+        setAiError(msg);
         setAiLoading(false);
+        useReportCacheStore.getState().setError('tojeong', cacheKey, msg);
       });
   };
 

@@ -162,13 +162,19 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
   }, [searchParams, primary, isArchiveMode]);
 
   // 날짜 확정되면 AI 호출 — 보관함 재생 모드에서는 skip
+  // 캐시 우선: 정상 데이터 → 즉시 표시 / 실패 캐시 → 1분간 재호출 차단(API 토큰비 보호)
   useEffect(() => {
     if (isArchiveMode) return;
     if (!result || !confirmedDate) return;
     const cacheKey = `${sajuKey(result)}:${confirmedDate}`;
     const cached = useReportCacheStore.getState().getReport<TodayFortuneAIResult>('today', cacheKey);
-    if (cached) {
+    if (cached?.data) {
       setReport(cached.data);
+      setReportLoading(false);
+      return;
+    }
+    if (cached?.error) {
+      setReport({ success: false, error: cached.error });
       setReportLoading(false);
       return;
     }
@@ -180,14 +186,20 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
       .then(r => {
         if (cancelled) return;
         setReport(r);
+        const cache = useReportCacheStore.getState();
         if (r.success) {
-          const cache = useReportCacheStore.getState();
           cache.setReport('today', cacheKey, r);
           if (!cache.isCharged('today', cacheKey)) {
             cache.markCharged('today', cacheKey);
             chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.today).catch(() => {});
           }
+        } else if (r.error) {
+          cache.setError('today', cacheKey, r.error);
         }
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        useReportCacheStore.getState().setError('today', cacheKey, err?.message || '오류가 발생했어요.');
       })
       .finally(() => { if (!cancelled) setReportLoading(false); });
     return () => { cancelled = true; };

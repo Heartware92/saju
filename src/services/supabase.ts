@@ -149,6 +149,42 @@ export const creditDB = {
     return true;
   },
 
+  /**
+   * 크레딧 환불 — 차감했던 크레딧을 잔액에 되돌리고 'refund' 거래로 기록.
+   * 자동 환불(응답 검증 실패 후 즉시) + 어드민 수동 환불 양쪽에서 사용.
+   * total_consumed 도 차감해 통계 일관성을 유지한다.
+   */
+  refundCredit: async (userId: string, creditType: CreditType, amount: number, reason: string): Promise<boolean> => {
+    if (amount <= 0) return false;
+    const userCredit = await creditDB.getBalance(userId);
+    if (!userCredit) return false;
+
+    const currentBalance = creditType === 'sun' ? userCredit.sun_balance : userCredit.moon_balance;
+    const currentConsumed = creditType === 'sun' ? userCredit.total_sun_consumed : userCredit.total_moon_consumed;
+    const newBalance = currentBalance + amount;
+    const newConsumed = Math.max(0, currentConsumed - amount);
+    const balanceField = creditType === 'sun' ? 'sun_balance' : 'moon_balance';
+    const consumedField = creditType === 'sun' ? 'total_sun_consumed' : 'total_moon_consumed';
+
+    const { error: updateError } = await supabase
+      .from('user_credits')
+      .update({ [balanceField]: newBalance, [consumedField]: newConsumed })
+      .eq('user_id', userId);
+
+    if (updateError) throw updateError;
+
+    await creditDB.addTransaction({
+      user_id: userId,
+      credit_type: creditType,
+      type: 'refund',
+      amount, // 양수 — 환불은 잔액 증가
+      balance_after: newBalance,
+      reason: `[환불] ${reason}`,
+    });
+
+    return true;
+  },
+
   // 크레딧 거래 기록 추가
   addTransaction: async (transaction: Omit<CreditTransaction, 'id' | 'created_at'>) => {
     const { data, error } = await supabase

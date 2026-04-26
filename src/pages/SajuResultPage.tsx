@@ -80,13 +80,17 @@ export default function SajuResultPage() {
     }
   }, [searchParams, primary]);
 
-  // 결과 생기면 리포트 자동 호출 — 캐시 우선
+  // 결과 생기면 리포트 자동 호출 — 캐시 우선 (실패도 1분 negative cache)
   useEffect(() => {
     if (!result || report || reportLoading) return;
     const cacheKey = sajuKey(result);
     const cached = useReportCacheStore.getState().getReport<JungtongsajuAIResult>('jungtong', cacheKey);
-    if (cached) {
+    if (cached?.data) {
       setReport(cached.data);
+      return;
+    }
+    if (cached?.error) {
+      setReport({ success: false, error: cached.error });
       return;
     }
 
@@ -96,14 +100,20 @@ export default function SajuResultPage() {
       .then(r => {
         if (cancelled) return;
         setReport(r);
+        const cache = useReportCacheStore.getState();
         if (r.success) {
-          const cache = useReportCacheStore.getState();
           cache.setReport('jungtong', cacheKey, r);
           if (!cache.isCharged('jungtong', cacheKey)) {
             cache.markCharged('jungtong', cacheKey);
             chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.traditional).catch(() => {});
           }
+        } else if (r.error) {
+          cache.setError('jungtong', cacheKey, r.error);
         }
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        useReportCacheStore.getState().setError('jungtong', cacheKey, err?.message || '오류가 발생했어요.');
       })
       .finally(() => { if (!cancelled) setReportLoading(false); });
     return () => { cancelled = true; };

@@ -15,7 +15,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { SajuResult } from '../utils/sajuCalculator';
 
-const TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7일
+const TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7일 — 정상 응답
+const ERROR_TTL_MS = 60 * 1000;          // 1분 — 실패 응답 (즉시 재호출 차단으로 토큰비 절약, 1분 후 재시도 허용)
 const MAX_ENTRIES = 100; // LRU 상한 — localStorage 5MB 한도 보호
 
 export type ReportKind =
@@ -32,7 +33,10 @@ export type ReportKind =
   | `more:${string}`; // 더 많은 운세 카테고리 (love/wealth/career/...)
 
 interface CacheEntry {
-  data: unknown;
+  /** 정상 응답일 때만 채워짐. error 가 있으면 비어있음. */
+  data?: unknown;
+  /** 실패 응답(에러/타임아웃/잘림 등)일 때 채워짐 — UI 가 즉시 노출. */
+  error?: string;
   charged: boolean;
   createdAt: number;
 }
@@ -40,10 +44,15 @@ interface CacheEntry {
 interface ReportCacheState {
   entries: Record<string, CacheEntry>;
 
-  /** 캐시 조회 — 만료 시 null. */
-  getReport: <T = unknown>(kind: ReportKind, key: string) => { data: T; charged: boolean } | null;
-  /** 캐시 저장 — 기존 charged 플래그는 보존. */
+  /** 캐시 조회 — 만료 시 null. error 응답이면 1분 TTL, 정상은 7일 TTL. */
+  getReport: <T = unknown>(kind: ReportKind, key: string) => { data?: T; error?: string; charged: boolean } | null;
+  /** 정상 응답 저장 — 기존 charged 플래그는 보존, error 는 클리어. */
   setReport: (kind: ReportKind, key: string, data: unknown) => void;
+  /**
+   * 실패 응답 저장 (negative cache) — 같은 입력 즉시 재호출 시도 시 API 안 부르게 막아 토큰비 절약.
+   * 1분 TTL 후 자동 만료되어 진짜 재시도는 허용된다.
+   */
+  setError: (kind: ReportKind, key: string, error: string) => void;
   /** 차감 완료 표시. 두 번 호출돼도 한 번만 차감되도록 호출자가 isCharged로 가드. */
   markCharged: (kind: ReportKind, key: string) => void;
   /** 이미 차감됐는지 — true면 chargeForContent 호출 금지. */
@@ -64,8 +73,9 @@ export const useReportCacheStore = create<ReportCacheState>()(
       getReport: (kind, key) => {
         const e = get().entries[compose(kind, key)];
         if (!e) return null;
-        if (Date.now() - e.createdAt > TTL_MS) return null;
-        return { data: e.data as never, charged: e.charged };
+        const ttl = e.error ? ERROR_TTL_MS : TTL_MS;
+        if (Date.now() - e.createdAt > ttl) return null;
+        return { data: e.data as never, error: e.error, charged: e.charged };
       },
 
       setReport: (kind, key, data) => {
@@ -76,6 +86,8 @@ export const useReportCacheStore = create<ReportCacheState>()(
             ...state.entries,
             [composed]: {
               data,
+              // 정상 응답이 들어오면 직전 error 는 비움
+              error: undefined,
               charged: existing?.charged ?? false,
               createdAt: Date.now(),
             },
@@ -89,6 +101,25 @@ export const useReportCacheStore = create<ReportCacheState>()(
             }
           }
           return { entries: next };
+        });
+      },
+
+      setError: (kind, key, error) => {
+        set(state => {
+          const composed = compose(kind, key);
+          const existing = state.entries[composed];
+          // 이미 정상 데이터가 있으면 error 로 덮지 않는다 (이전 성공 결과 보존)
+          if (existing?.data !== undefined && !existing.error) return state;
+          return {
+            entries: {
+              ...state.entries,
+              [composed]: {
+                error,
+                charged: existing?.charged ?? false,
+                createdAt: Date.now(),
+              },
+            },
+          };
         });
       },
 

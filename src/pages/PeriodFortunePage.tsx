@@ -225,8 +225,13 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     if (scope === 'year') {
       const cacheKey = `${sk}:${targetYear}`;
       const cached = useReportCacheStore.getState().getReport<NewyearReportAIResult>('newyear', cacheKey);
-      if (cached) {
+      if (cached?.data) {
         setNewyearReport(cached.data);
+        setNewyearReportLoading(false);
+        return;
+      }
+      if (cached?.error) {
+        setNewyearReport({ success: false, error: cached.error });
         setNewyearReportLoading(false);
         return;
       }
@@ -237,14 +242,20 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
         .then(r => {
           if (cancelled) return;
           setNewyearReport(r);
+          const cache = useReportCacheStore.getState();
           if (r.success) {
-            const cache = useReportCacheStore.getState();
             cache.setReport('newyear', cacheKey, r);
             if (!cache.isCharged('newyear', cacheKey)) {
               cache.markCharged('newyear', cacheKey);
               chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.newyear).catch(() => {});
             }
+          } else if (r.error) {
+            cache.setError('newyear', cacheKey, r.error);
           }
+        })
+        .catch((err: any) => {
+          if (cancelled) return;
+          useReportCacheStore.getState().setError('newyear', cacheKey, err?.message || '오류가 발생했어요.');
         })
         .finally(() => { if (!cancelled) setNewyearReportLoading(false); });
       return () => { cancelled = true; };
@@ -255,8 +266,15 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     const targetDate = scope === 'day' ? today : pickedDate;
     const cacheKey = `${sk}:${targetDate}`;
     const cached = useReportCacheStore.getState().getReport<Partial<Record<'wealth' | 'career' | 'love' | 'health' | 'study', string>>>(kind, cacheKey);
-    if (cached) {
+    if (cached?.data) {
       setDomainAI(cached.data);
+      setDomainAILoading(false);
+      return;
+    }
+    if (cached?.error) {
+      // 도메인 AI 실패는 페이지 자체 에러 state 가 없어 console 만 남김 — 1분간 자동 재호출 차단
+      console.warn('[period] cached error', cached.error);
+      setDomainAI({});
       setDomainAILoading(false);
       return;
     }
@@ -285,16 +303,22 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     })
       .then(r => {
         if (cancelled) return;
+        const cache = useReportCacheStore.getState();
         if (r.success && r.descriptions) {
           setDomainAI(r.descriptions);
           const reason = scope === 'day' ? CHARGE_REASONS.today : CHARGE_REASONS.date;
-          const cache = useReportCacheStore.getState();
           cache.setReport(kind, cacheKey, r.descriptions);
           if (!cache.isCharged(kind, cacheKey)) {
             cache.markCharged(kind, cacheKey);
             chargeForContent('sun', SUN_COST_BIG, reason).catch(() => {});
           }
+        } else if (r.error) {
+          cache.setError(kind, cacheKey, r.error);
         }
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        useReportCacheStore.getState().setError(kind, cacheKey, err?.message || '오류가 발생했어요.');
       })
       .finally(() => {
         if (!cancelled) setDomainAILoading(false);

@@ -35,6 +35,12 @@ interface CreditState {
    */
   chargeForContent: (creditType: CreditType, amount: number, reason: string) => Promise<boolean>;
 
+  /**
+   * 잘못 차감된 크레딧 환불 — 응답 검증 실패 후 자동 환불 또는 어드민 수동 환불.
+   * 잔액 +amount, 'refund' 거래 기록.
+   */
+  refundCredit: (creditType: CreditType, amount: number, reason: string) => Promise<boolean>;
+
   /** 상담소 질문팩 구매 — sun 1 또는 moon 3 */
   purchaseConsultationPack: (payWith: 'sun' | 'moon') => Promise<boolean>;
   /** 상담소 질문 1개 사용 (팩에서 차감) */
@@ -150,6 +156,36 @@ export const useCreditStore = create<CreditState>()(
           }
         }
         return ok;
+      },
+
+      /** 환불 — 잔액 +amount, 'refund' 거래 기록. */
+      refundCredit: async (creditType, amount, reason) => {
+        try {
+          const user = await auth.getCurrentUser();
+          if (!user) return false;
+          const ok = await creditDB.refundCredit(user.id, creditType, amount, reason);
+          if (ok) {
+            // 잔액 즉시 반영 (낙관적 업데이트)
+            const currentBalance = creditType === 'sun' ? get().sunBalance : get().moonBalance;
+            set({
+              ...(creditType === 'sun'
+                ? { sunBalance: currentBalance + amount }
+                : { moonBalance: currentBalance + amount }),
+              lastFetched: Date.now(),
+            });
+            // 서버 진실 재조회
+            try {
+              await get().fetchBalance(user.id, { force: true });
+              await get().fetchTransactions(user.id);
+            } catch {
+              // 재조회 실패 무시
+            }
+          }
+          return ok;
+        } catch (e: any) {
+          console.error('refundCredit failed', e);
+          return false;
+        }
       },
 
       /**

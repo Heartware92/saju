@@ -138,8 +138,10 @@ const STEP_LABELS: Record<Step, string> = {
 };
 
 // ──────────────────────────────────────────────
-// GPT 호출 (55초 타임아웃 + 빈 응답 방어)
+// GPT 호출 (55초 타임아웃 + 빈 응답·잘림 방어)
 // ──────────────────────────────────────────────
+// 궁합 프롬프트별 본문 분량(2,000~2,600자, 8섹션이 가장 김)을 안전하게 수용:
+// 한국어 1자 ≈ 1.5~2 토큰 → 2,600자 ≈ 4,000~5,200 토큰. 보수적으로 4,500.
 async function callGunghapGPT(prompt: string): Promise<string> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 55_000);
@@ -147,7 +149,7 @@ async function callGunghapGPT(prompt: string): Promise<string> {
     const res = await fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, maxTokens: 900, systemPrompt: SYSTEM_PROMPT }),
+      body: JSON.stringify({ prompt, maxTokens: 4500, systemPrompt: SYSTEM_PROMPT }),
       signal: controller.signal,
     });
     const data = await res.json();
@@ -155,7 +157,17 @@ async function callGunghapGPT(prompt: string): Promise<string> {
     if (!data.content || typeof data.content !== 'string') {
       throw new Error('AI 응답이 비어 있습니다. 잠시 후 다시 시도해주세요.');
     }
-    return sanitizeAIOutput(data.content);
+    if (data.truncated === true) {
+      console.warn('[Gunghap] truncated response — bump maxTokens', { len: data.content.length });
+      throw new Error('응답이 길어서 일부 잘렸어요. 잠시 후 다시 시도해주세요.');
+    }
+    const sanitized = sanitizeAIOutput(data.content);
+    // 궁합 본문은 최소 700자 이상이어야 정상 (가장 짧은 ex 카테고리 1,000자 기준의 70%)
+    if (sanitized.length < 700) {
+      console.warn('[Gunghap] too-short response — likely refusal/garbage', { len: sanitized.length, snippet: sanitized.slice(0, 80) });
+      throw new Error('풀이 결과가 비정상적으로 짧아요. 잠시 후 다시 시도해주세요.');
+    }
+    return sanitized;
   } catch (err: any) {
     if (err?.name === 'AbortError') {
       throw new Error('응답이 너무 오래 걸려요. 잠시 후 다시 시도해주세요.');
@@ -251,6 +263,8 @@ export default function GunghapPage() {
     if (!selectedProfile || !isOtherValid) return;
     setLoading(true);
     setError('');
+    // catch 단계에서 negative cache 에 저장할 키. pet/normal 분기 어디서 실패했는지 추적.
+    let activeCacheKey: string | null = null;
     try {
       const myResult = computeSajuFromProfile(selectedProfile);
       if (!myResult) throw new Error('내 사주 계산 실패');
@@ -274,12 +288,18 @@ export default function GunghapPage() {
           petTrimmed.adoptionDate ?? '_',
         ].join('|');
         const petCached = useReportCacheStore.getState().getReport<string>('gunghap', petCacheKey);
-        if (petCached) {
+        if (petCached?.data) {
           setResult(petCached.data);
           setStep('result');
           setLoading(false);
           return;
         }
+        if (petCached?.error) {
+          setError(petCached.error);
+          setLoading(false);
+          return;
+        }
+        activeCacheKey = petCacheKey;
         const petPrompt = generatePetGunghapPrompt(myResult, selectedProfile.name, petTrimmed);
         const petText = await callGunghapGPT(petPrompt);
         const petCleaned = petText
@@ -331,12 +351,18 @@ export default function GunghapPage() {
       ].join('|');
 
       const cached = useReportCacheStore.getState().getReport<string>('gunghap', cacheKey);
-      if (cached) {
+      if (cached?.data) {
         setResult(cached.data);
         setStep('result');
         setLoading(false);
         return;
       }
+      if (cached?.error) {
+        setError(cached.error);
+        setLoading(false);
+        return;
+      }
+      activeCacheKey = cacheKey;
 
       const myName = selectedProfile.name;
       const otherName = otherBase.name;
@@ -414,7 +440,12 @@ export default function GunghapPage() {
           .catch(() => {});
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : '분석 중 오류가 발생했습니다.');
+      const msg = e instanceof Error ? e.message : '분석 중 오류가 발생했습니다.';
+      setError(msg);
+      // negative cache: 같은 입력 즉시 재시도 시 1분간 API 안 부르게 막아 토큰비 보호
+      if (activeCacheKey) {
+        useReportCacheStore.getState().setError('gunghap', activeCacheKey, msg);
+      }
     } finally {
       setLoading(false);
     }
