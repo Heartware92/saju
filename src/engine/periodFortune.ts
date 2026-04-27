@@ -532,7 +532,7 @@ function buildCautions(saju: SajuResult, target: TargetGanZhi, interactions: Gan
 // 월별 흐름 (신년운세 전용)
 // ============================================
 
-function buildMonthlyFlow(saju: SajuResult, year: number): { month: number; grade: FortuneGrade; keyword: string }[] {
+export function buildMonthlyFlow(saju: SajuResult, year: number): { month: number; grade: FortuneGrade; keyword: string }[] {
   const result: { month: number; grade: FortuneGrade; keyword: string }[] = [];
   for (let m = 1; m <= 12; m++) {
     const mid = Solar.fromYmd(year, m, 15);

@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SajuResult, TEN_GODS_MAP, type Interaction, type SinSal } from '../../utils/sajuCalculator';
 import { determineGyeokguk, analyzeGyeokgukStatus } from '../../engine/gyeokguk';
 import { stemToHanja, zhiToHanja } from '../../lib/character';
+import { buildMonthlyFlow, type FortuneGrade } from '../../engine/periodFortune';
 import styles from '../../pages/SajuResultPage.module.css';
 
 function CollapsibleSection({
@@ -201,6 +202,30 @@ const ELEMENT_COLORS: Record<string, string> = {
   '금': '#CBD5E1',
   '수': '#3B82F6',
 };
+
+// ── 용신·희신·기신 오행→천간 매핑 (직원 피드백: '편재' 만 보여주는 게 아니라 '병화·정화' 까지) ──
+const ELEMENT_TO_STEMS: Record<string, [string, string]> = {
+  '목': ['갑목', '을목'],
+  '화': ['병화', '정화'],
+  '토': ['무토', '기토'],
+  '금': ['경금', '신금'],
+  '수': ['임수', '계수'],
+};
+
+/** 십성명("편재" 또는 "편재/정재") + 일간 오행 → 그 십성이 가리키는 오행 */
+function tenGodToElement(tenGod: string, dayElement: string): string {
+  const GEN: Record<string, string>  = { '목': '화', '화': '토', '토': '금', '금': '수', '수': '목' };
+  const CTRL: Record<string, string> = { '목': '토', '화': '금', '토': '수', '금': '목', '수': '화' };
+  const PAR: Record<string, string>  = { '목': '수', '화': '목', '토': '화', '금': '토', '수': '금' };
+  const BY: Record<string, string>   = { '목': '금', '화': '수', '토': '목', '금': '화', '수': '토' };
+  const first = tenGod.split('/')[0];
+  if (first === '비견' || first === '겁재') return dayElement;
+  if (first === '식신' || first === '상관') return GEN[dayElement] || '';
+  if (first === '편재' || first === '정재') return CTRL[dayElement] || '';
+  if (first === '편관' || first === '정관') return BY[dayElement] || '';
+  if (first === '편인' || first === '정인') return PAR[dayElement] || '';
+  return '';
+}
 
 // ============== 오행 크리스털 다이아몬드 ==============
 const ELEMENT_GEMS = [
@@ -920,6 +945,14 @@ function SinSalBoard({
   );
 }
 
+/**
+ * 대운 → 세운 → 월운 드릴다운.
+ *
+ * 동작:
+ * 1) 대운 카드 클릭: 그 대운(10년)의 시작/끝 연도 범위로 세운 영역을 자동 스크롤·강조
+ * 2) 세운 카드 클릭: 그 연도의 12개월 월운 그리드 인라인 표시 (다시 클릭 시 닫힘)
+ * 3) 초기엔 현재 대운·세운이 강조된 채 가운데로 스크롤
+ */
 function DaeWoonSection({
   daeWoon,
   seWoon,
@@ -931,12 +964,35 @@ function DaeWoonSection({
 }) {
   const dwScrollRef = useRef<HTMLDivElement>(null);
   const swScrollRef = useRef<HTMLDivElement>(null);
-  const currentDwRef = useRef<HTMLDivElement>(null);
-  const currentSwRef = useRef<HTMLDivElement>(null);
+  // 카드를 button 으로 바꿔 클릭·키보드 접근성 확보 — ref 타입도 HTMLButtonElement 로
+  const currentDwRef = useRef<HTMLButtonElement>(null);
+  const currentSwRef = useRef<HTMLButtonElement>(null);
 
   const birthYear = parseInt(result.solarDate.split('-')[0]);
   const currentYear = new Date().getFullYear();
   const currentAge = currentYear - birthYear;
+
+  // 사용자가 선택한 대운(시작 나이) — null 이면 현재 대운 강조
+  const [selectedDwAge, setSelectedDwAge] = useState<number | null>(null);
+  // 사용자가 선택한 세운(연도) — 클릭 시 그 해 12개월 월운 표시
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+
+  // 선택된 대운의 [시작 연도, 끝 연도] — 세운 영역에서 그 범위만 강조
+  const selectedDwRange = useMemo(() => {
+    if (selectedDwAge == null) return null;
+    const startYear = birthYear + selectedDwAge;
+    return { startYear, endYear: startYear + 9 };
+  }, [selectedDwAge, birthYear]);
+
+  // 선택된 연도의 월운 — 클릭 시점에만 계산
+  const monthlyFlow = useMemo(() => {
+    if (selectedYear == null) return null;
+    try {
+      return buildMonthlyFlow(result, selectedYear);
+    } catch {
+      return null;
+    }
+  }, [selectedYear, result]);
 
   useEffect(() => {
     if (currentDwRef.current && dwScrollRef.current) {
@@ -956,18 +1012,41 @@ function DaeWoonSection({
     }
   }, []);
 
+  // 대운 선택 시 세운 영역에서 해당 범위 첫 카드로 스크롤
+  useEffect(() => {
+    if (!selectedDwRange || !swScrollRef.current) return;
+    const container = swScrollRef.current;
+    const targetCard = container.querySelector<HTMLElement>(`[data-sw-year="${selectedDwRange.startYear}"]`);
+    if (targetCard) {
+      const offset = targetCard.offsetLeft - container.offsetLeft - container.clientWidth / 2 + targetCard.clientWidth / 2;
+      container.scrollTo({ left: Math.max(0, offset), behavior: 'smooth' });
+    }
+  }, [selectedDwRange]);
+
+  const monthlyGradeColor: Record<FortuneGrade, string> = {
+    '대길': '#34D399', '길': '#86EFAC', '중길': '#FBBF24',
+    '평': '#CBD5E1', '중흉': '#FB923C', '흉': '#F87171',
+  };
+
   return (
     <>
       <div className={styles.subheading}>대운 (10년 주기)</div>
+      <p className={styles.sectionHint} style={{ margin: '0 0 8px' }}>
+        대운 카드를 누르면 해당 시기의 세운으로 이동, 세운을 누르면 그 해 12개월 월운이 펼쳐져요.
+      </p>
       <div className={styles.daewoonScroll} ref={dwScrollRef}>
         {daeWoon.slice(0, 10).map((dw, idx) => {
           const age = result.daeWoonStartAge + idx * 10;
           const isCurrent = currentAge >= age && currentAge < age + 10;
+          const isSelected = selectedDwAge === age;
           return (
-            <div
+            <button
+              type="button"
               key={idx}
               ref={isCurrent ? currentDwRef : undefined}
-              className={`${styles.daewoonCard} ${isCurrent ? styles.current : ''}`}
+              onClick={() => setSelectedDwAge(isSelected ? null : age)}
+              className={`${styles.daewoonCard} ${isCurrent ? styles.current : ''} ${isSelected ? styles.selected : ''}`}
+              aria-pressed={isSelected}
             >
               <div className={styles.dwAge}>{age}세</div>
               <div className={styles.dwGanZhi}>
@@ -978,20 +1057,36 @@ function DaeWoonSection({
                 <span>{dw.tenGod}</span>
                 <span>{dw.twelveStage}</span>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
 
-      <div className={styles.subheading} style={{ marginTop: 16 }}>세운 (연운)</div>
+      <div className={styles.subheading} style={{ marginTop: 16 }}>
+        세운 (연운)
+        {selectedDwRange && (
+          <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 400 }}>
+            · {selectedDwRange.startYear}~{selectedDwRange.endYear}년 강조 중
+          </span>
+        )}
+      </div>
       <div className={styles.daewoonScroll} ref={swScrollRef}>
         {seWoon.map((sw, idx) => {
           const isCurrent = sw.year === currentYear;
+          const inDwRange = selectedDwRange && sw.year >= selectedDwRange.startYear && sw.year <= selectedDwRange.endYear;
+          const isSelected = selectedYear === sw.year;
+          // 대운 선택돼있고 그 범위 밖이면 흐리게
+          const dimmed = selectedDwRange && !inDwRange;
           return (
-            <div
+            <button
+              type="button"
               key={idx}
               ref={isCurrent ? currentSwRef : undefined}
-              className={`${styles.sewoonCard} ${isCurrent ? styles.current : ''}`}
+              data-sw-year={sw.year}
+              onClick={() => setSelectedYear(isSelected ? null : sw.year)}
+              className={`${styles.sewoonCard} ${isCurrent ? styles.current : ''} ${isSelected ? styles.selected : ''}`}
+              style={dimmed ? { opacity: 0.35 } : undefined}
+              aria-pressed={isSelected}
             >
               <div className={styles.swYear}>{sw.year}년</div>
               <div className={styles.swAnimal}>{sw.animal}띠</div>
@@ -1003,10 +1098,59 @@ function DaeWoonSection({
                 <span>{sw.tenGod}</span>
                 <span>{sw.twelveStage}</span>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
+
+      {/* 월운 — 세운 카드 선택 시 인라인 그리드 */}
+      <AnimatePresence initial={false}>
+        {selectedYear != null && monthlyFlow && (
+          <motion.div
+            key={`monthly-${selectedYear}`}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div className={styles.subheading} style={{ marginTop: 14 }}>
+              월운 — {selectedYear}년
+            </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: 6,
+                marginTop: 6,
+              }}
+            >
+              {monthlyFlow.map((m) => {
+                const c = monthlyGradeColor[m.grade];
+                return (
+                  <div
+                    key={m.month}
+                    style={{
+                      padding: '10px 8px',
+                      borderRadius: 10,
+                      border: `1px solid ${c}55`,
+                      background: `${c}10`,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 700, color: c }}>{m.month}월</div>
+                    <div style={{ fontSize: 11, color: c, marginTop: 2, opacity: 0.85 }}>{m.grade}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>{m.keyword}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className={styles.sectionHint} style={{ margin: '8px 0 0' }}>
+              월별 등급은 일간(${result.dayMaster})에 대한 그 달 천간 십성과 용신 오행 부합 여부로 자동 계산됩니다.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
@@ -1223,18 +1367,41 @@ export default function SajuReport({
 
         <div className={styles.subheading} style={{ marginTop: 16 }}>용신 · 희신 · 기신</div>
         <div className={styles.yongshinBox}>
-          <div className={styles.yongshinItem}>
-            <span className={styles.yLabel}>용신</span>
-            <span className={styles.yValue}>{result.yongSinElement} ({result.yongSin})</span>
-          </div>
-          <div className={styles.yongshinItem}>
-            <span className={styles.yLabel}>희신</span>
-            <span className={styles.yValue}>{result.heeSin}</span>
-          </div>
-          <div className={styles.yongshinItem}>
-            <span className={styles.yLabel}>기신</span>
-            <span className={styles.yValue}>{result.giSin}</span>
-          </div>
+          {/*
+            직원 피드백: 십성만 표시 → 오행 + 구체 천간(병화·정화 등) 까지 보여 명리적 정확성↑.
+            tenGodToElement 가 십성명 → 오행 매핑, ELEMENT_TO_STEMS 가 오행 → 천간.
+          */}
+          {(() => {
+            const renderRow = (label: string, tenGod: string, element: string) => {
+              const stems = ELEMENT_TO_STEMS[element];
+              const color = ELEMENT_COLORS[element] ?? 'var(--text-secondary)';
+              return (
+                <div className={styles.yongshinItem}>
+                  <span className={styles.yLabel}>{label}</span>
+                  <span className={styles.yValue}>
+                    <span style={{ color, fontWeight: 700 }}>{element}</span>
+                    {stems && (
+                      <span style={{ color: 'var(--text-tertiary)', fontWeight: 500, marginLeft: 6 }}>
+                        ({stems[0]}·{stems[1]})
+                      </span>
+                    )}
+                    <span style={{ color: 'var(--text-tertiary)', fontWeight: 500, marginLeft: 6 }}>
+                      · {tenGod}
+                    </span>
+                  </span>
+                </div>
+              );
+            };
+            const heeEl = tenGodToElement(result.heeSin, result.dayMasterElement);
+            const giEl = tenGodToElement(result.giSin, result.dayMasterElement);
+            return (
+              <>
+                {renderRow('용신', result.yongSin, result.yongSinElement)}
+                {renderRow('희신', result.heeSin, heeEl)}
+                {renderRow('기신', result.giSin, giEl)}
+              </>
+            );
+          })()}
         </div>
 
         {gyeokguk && (

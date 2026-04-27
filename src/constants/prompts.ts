@@ -588,7 +588,7 @@ ${isStrong ? '신강' : '신약'}, 용신: ${yongSinElement}(${yongSin})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [작성 규칙 — 반드시 준수]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1) 총 분량: 2800~3500자. 각 섹션 분량 명시대로 맞출 것.
+1) 총 분량: 3100~3900자 (12개 섹션 — interaction 추가). 각 섹션 분량 명시대로 맞출 것.
 2) 섹션 헤더(###)는 아래 11개를 **순서·표기 그대로** 유지할 것. 새 섹션을 만들거나 순서를 바꾸지 말 것.
 3) 전문 용어(격국·용신·십성·상관견관·신살 등)는 첫 등장 시 괄호 속에 일상어로 풀어쓸 것.
    예: "정관격(바른 관직·책임감의 사주)", "식상(말·표현·자녀의 기운)".
@@ -776,25 +776,26 @@ ${METAPHOR_SHORT_GUIDE}
 /**
  * 정통사주 종합 리포트 프롬프트
  * - 원국 전체 분석: 격국·용신·성격·직업·재물·애정·건강·인간관계·대운·처방
- * - 9개 섹션, [key] 구분자 출력
+ * - 12개 섹션, [key] 구분자 출력 (interaction = 합·충·형·파·해)
  */
 export const JUNGTONGSAJU_SECTION_KEYS = [
-  'general', 'daymaster', 'element', 'character', 'career', 'wealth', 'love', 'health', 'relation', 'luck', 'advice'
+  'general', 'daymaster', 'element', 'interaction', 'character', 'career', 'wealth', 'love', 'health', 'relation', 'luck', 'advice'
 ] as const;
 export type JungtongsajuSectionKey = typeof JUNGTONGSAJU_SECTION_KEYS[number];
 
 export const JUNGTONGSAJU_SECTION_LABELS: Record<JungtongsajuSectionKey, string> = {
-  general:   '사주 총론',
-  daymaster: '일주 해석',
-  element:   '오행 분포',
-  character: '성격·기질',
-  career:    '직업·적성',
-  wealth:    '재물운',
-  love:      '애정·결혼운',
-  health:    '건강운',
-  relation:  '인간관계·가족',
-  luck:      '대운·세운 흐름',
-  advice:    '용신 처방',
+  general:     '사주 총론',
+  daymaster:   '일주 해석',
+  element:     '오행 분포',
+  interaction: '합·충·형·파·해',
+  character:   '성격·기질',
+  career:      '직업·적성',
+  wealth:      '재물운',
+  love:        '애정·결혼운',
+  health:      '건강운',
+  relation:    '인간관계·가족',
+  luck:        '대운·세운 흐름',
+  advice:      '용신 처방',
 };
 
 export const generateJungtongsajuPrompt = (result: SajuResult): string => {
@@ -944,6 +945,19 @@ ${METAPHOR_TITLE_RULE}
 첫 줄: 은유 제목 (오행 과다·결핍을 빛과 그림자·계절 이미지로 대비. 예: "한쪽에서만 쏟아지는 햇살, 반대편의 짙은 그늘" / "구름에 가린 봄비, 그래도 땅 아래 뿌리는 자란다")
 빈 줄
 본문: 제목 은유로 시작해 오행 분포(목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}%)를 "어떤 삶의 장면에서 어떻게 느껴지는가"로 풀어 쓴다. 사계절·하늘 은유(목=봄 새벽 햇살, 화=정오 태양, 토=환절기 구름, 금=서리 새벽, 수=겨울 은하수)를 활용해 각 오행의 질감을 묘사. 결핍 오행(${zeroElements.join('·') || '없음'})이 야기하는 구체적 생활 패턴 약점 2가지와 일상에서 보완할 실용 방법 1가지. 과다 오행(${maxEl[0]} ${maxEl[1]}%)의 편향성이 실제로 드러나는 장면 1개. 마지막 문장에서 제목 은유 회수.
+
+[interaction] — 360~440자
+작성 순서:
+첫 줄: 은유 제목 (지지 사이의 합/충/형/파/해 관계를 자연 현상이나 인간관계 구도로 비유. 예: "두 별자리가 손을 맞잡는 자리, 한쪽에서 부딪히는 별똥별" / "물과 불이 한 그릇에 담긴 균형, 갑작스레 쏟아지는 순간")
+빈 줄
+본문 작성 지침:
+- 입력 데이터의 "합충형파해: ${interactionStr}" 필드에 나오는 모든 관계를 빠짐없이 본문에서 한 번 이상 명시한다(예: "월지 ${pillars.month.zhi}와 일지 ${pillars.day.zhi}의 인사형(寅巳刑)은…"). 빈 칸 없으면 "특별한 충돌·결합 없이 안정적 구조"라고 단정.
+- 합(三合·六合): 어떤 에너지가 결합해 어떤 강점을 만드는지 + 그 결합이 인생에서 발현되는 장면 1개.
+- 충(沖): 어떤 두 기둥이 부딪히고 그 충돌이 일상에서 어떤 갈등 패턴으로 나타나는지 + 충을 완화하는 행동 1가지.
+- 형(刑): 자형·삼형·상형 중 어떤 유형인지 명시 + 그 형이 만드는 내적 긴장이나 외부 사건의 결.
+- 파(破)·해(害): 미묘한 마찰 패턴이 어떤 관계에서 반복적으로 등장하는지.
+- 본문 전체에서 "합/충/형/파/해" 한자어를 그대로 쓰되 처음 등장 시 괄호로 쉬운 말 병기(예: "충(서로 부딪힘)").
+- 마지막 문장에서 제목 은유 회수.
 
 [character] — 440~520자
 작성 순서:

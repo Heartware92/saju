@@ -1339,12 +1339,26 @@
   border: 1px solid var(--border-subtle);
   flex-shrink: 0;
   transition: all 0.2s;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.daewoonCard:hover {
+  border-color: rgba(124, 92, 252, 0.5);
 }
 
 .daewoonCard.current {
   border-color: var(--cta-primary);
   background: rgba(124, 92, 252, 0.15);
   box-shadow: 0 0 14px rgba(124, 92, 252, 0.25);
+}
+
+.daewoonCard.selected {
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.18);
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.35);
+  transform: translateY(-1px);
 }
 
 .dwAge {
@@ -1379,11 +1393,25 @@
   border: 1px solid var(--border-subtle);
   flex-shrink: 0;
   transition: all 0.2s;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.sewoonCard:hover {
+  border-color: rgba(124, 92, 252, 0.5);
 }
 
 .sewoonCard.current {
   border-color: var(--cta-primary);
   box-shadow: 0 0 12px rgba(124, 92, 252, 0.2);
+}
+
+.sewoonCard.selected {
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.18);
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.35);
+  transform: translateY(-1px);
 }
 
 .swYear {
