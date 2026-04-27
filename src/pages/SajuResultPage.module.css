@@ -682,31 +682,38 @@
   white-space: nowrap;
 }
 
-/* Yongshin (용신) */
+/* Yongshin (용신·희신·기신) — 3열 grid 였으나 "오행 + 천간 + 십성" 표기 도입으로
+   각 항목이 길어져 좁은 폭에서 줄바꿈이 발생. 1열 스택 + 좌우 정렬(라벨 ↔ 값)로 변경. */
 .yongshinBox {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .yongshinItem {
-  text-align: center;
-  padding: 12px 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
   background: var(--space-elevated);
   border-radius: 12px;
 }
 
 .yLabel {
-  display: block;
-  font-size: 11px;
+  flex-shrink: 0;
+  width: 44px;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--text-tertiary);
-  margin-bottom: 4px;
 }
 
 .yValue {
+  flex: 1;
   font-weight: 600;
   font-size: 14px;
-  color: var(--cta-primary);
+  color: var(--text-primary);
+  text-align: left;
+  line-height: 1.4;
 }
 
 /* Tojeong (토정비결) */
