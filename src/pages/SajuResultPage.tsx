@@ -5,7 +5,13 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Lunar } from 'lunar-javascript';
 import { calculateSaju, type SajuResult } from '../utils/sajuCalculator';
-import { getJungtongsajuReport, type JungtongsajuAIResult } from '../services/fortuneService';
+import {
+  getJungtongsajuReport,
+  parseJungtongsaju,
+  parseAdviceMeta,
+  type JungtongsajuAIResult,
+} from '../services/fortuneService';
+import { sajuDB } from '../services/supabase';
 import { JUNGTONGSAJU_SECTION_KEYS, JUNGTONGSAJU_SECTION_LABELS } from '../constants/prompts';
 import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
@@ -28,6 +34,8 @@ const JUNGTONGSAJU_MESSAGES = [
 export default function SajuResultPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const recordId = searchParams?.get('recordId') ?? null;
+  const isArchiveMode = !!recordId;
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
 
@@ -38,8 +46,46 @@ export default function SajuResultPage() {
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
-  // 사주 계산
+  // ── 보관함 재생 모드 — recordId 가 있으면 DB에서 복원, AI 호출·차감 모두 skip ──
   useEffect(() => {
+    if (!recordId) return;
+    let cancelled = false;
+    setReportLoading(true);
+    sajuDB.getRecordById(recordId)
+      .then((record) => {
+        if (cancelled || !record) return;
+        try {
+          const [yStr, mStr, dStr] = record.birth_date.split('-');
+          const year = parseInt(yStr, 10);
+          const month = parseInt(mStr, 10);
+          const day = parseInt(dStr, 10);
+          const hour = record.birth_time ? parseInt(record.birth_time.split(':')[0], 10) : 12;
+          const minute = record.birth_time ? parseInt(record.birth_time.split(':')[1] || '0', 10) : 0;
+          const unknownTime = !record.birth_time;
+          setResult(calculateSaju(year, month, day, hour, minute, record.gender, unknownTime));
+        } catch (e) {
+          console.error('[archive replay] saju recalc failed', e);
+        }
+        const content = record.interpretation_detailed ?? record.interpretation_basic ?? '';
+        const sections = parseJungtongsaju(content);
+        const adviceMeta = sections.advice ? parseAdviceMeta(sections.advice) : undefined;
+        setReport(
+          Object.keys(sections).length > 0
+            ? { success: true, sections, adviceMeta }
+            : { success: true, rawText: content },
+        );
+      })
+      .catch((e) => {
+        console.error('[archive replay] load failed', e);
+        if (!cancelled) setReport({ success: false, error: '보관된 풀이를 불러오지 못했어요.' });
+      })
+      .finally(() => { if (!cancelled) setReportLoading(false); });
+    return () => { cancelled = true; };
+  }, [recordId]);
+
+  // 사주 계산 — 보관함 모드에선 위 useEffect 가 처리
+  useEffect(() => {
+    if (isArchiveMode) return;
     const hasUrlBirth = !!(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
 
     if (hasUrlBirth) {
@@ -81,7 +127,9 @@ export default function SajuResultPage() {
   }, [searchParams, primary]);
 
   // 결과 생기면 리포트 자동 호출 — 캐시 우선 (실패도 1분 negative cache)
+  // 보관함 재생 모드에선 절대 AI 호출 금지
   useEffect(() => {
+    if (isArchiveMode) return;
     if (!result || report || reportLoading) return;
     const cacheKey = sajuKey(result);
     const cached = useReportCacheStore.getState().getReport<JungtongsajuAIResult>('jungtong', cacheKey);
@@ -117,7 +165,7 @@ export default function SajuResultPage() {
       })
       .finally(() => { if (!cancelled) setReportLoading(false); });
     return () => { cancelled = true; };
-  }, [result]);
+  }, [result, isArchiveMode]);
 
   // ── 로딩 / 빈 상태 ──────────────────────────────────
   if (!result) {

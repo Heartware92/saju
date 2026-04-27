@@ -8,7 +8,8 @@
  */
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { sajuDB } from '../services/supabase';
 import { motion } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
@@ -53,6 +54,9 @@ function daysInMonth(year: number, month: number) {
 
 export default function TaekilPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const recordId = searchParams?.get('recordId') ?? null;
+  const isArchiveMode = !!recordId;
   const { user } = useUserStore();
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
 
@@ -119,6 +123,20 @@ export default function TaekilPage() {
   useEffect(() => {
     compute();
   }, [compute]);
+
+  // ── 보관함 재생 모드 — recordId 가 있으면 DB 에서 advice 텍스트만 복원 (캘린더 calc 는 그대로 동작) ──
+  useEffect(() => {
+    if (!recordId) return;
+    let cancelled = false;
+    sajuDB.getRecordById(recordId)
+      .then((record) => {
+        if (cancelled || !record) return;
+        const content = record.interpretation_detailed ?? record.interpretation_basic ?? '';
+        if (content) setAiAdvice(content);
+      })
+      .catch((e) => console.error('[archive replay] taekil load failed', e));
+    return () => { cancelled = true; };
+  }, [recordId]);
 
   // 연도 네비 (월 단위 X, 연 단위)
   const prevYear = () => {

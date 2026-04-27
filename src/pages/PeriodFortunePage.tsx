@@ -17,6 +17,8 @@ import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
+import { sajuDB } from '../services/supabase';
+import { parseNewyearReport } from '../services/fortuneService';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { calculateSaju } from '../utils/sajuCalculator';
@@ -147,6 +149,8 @@ function CalendarPicker({ value, onChange }: { value: string; onChange: (v: stri
 export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'date' }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const recordId = searchParams?.get('recordId') ?? null;
+  const isArchiveMode = !!recordId;
   const { user } = useUserStore();
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
 
@@ -215,8 +219,35 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
   const [newyearReportLoading, setNewyearReportLoading] = useState(false);
   const chargeForContent = useCreditStore(s => s.chargeForContent);
 
-  // 기간/대상 바뀔 때마다 초기화 + AI 호출 — 캐시 우선
+  // ── 보관함 재생 모드 — recordId 가 있으면 DB에서 풀이 복원, AI 호출 skip ──
+  // (scope='year'·newyear 만 archive 저장됨. day/date 는 도메인 chunk 라 archive 미대상)
   useEffect(() => {
+    if (!recordId || scope !== 'year') return;
+    let cancelled = false;
+    setNewyearReportLoading(true);
+    sajuDB.getRecordById(recordId)
+      .then((record) => {
+        if (cancelled || !record) return;
+        const content = record.interpretation_detailed ?? record.interpretation_basic ?? '';
+        const sections = parseNewyearReport(content);
+        setNewyearReport(
+          Object.keys(sections).length > 0
+            ? { success: true, sections }
+            : { success: true, rawText: content },
+        );
+      })
+      .catch((e) => {
+        console.error('[archive replay] newyear load failed', e);
+        if (!cancelled) setNewyearReport({ success: false, error: '보관된 풀이를 불러오지 못했어요.' });
+      })
+      .finally(() => { if (!cancelled) setNewyearReportLoading(false); });
+    return () => { cancelled = true; };
+  }, [recordId, scope]);
+
+  // 기간/대상 바뀔 때마다 초기화 + AI 호출 — 캐시 우선
+  // 보관함 재생 모드에선 절대 AI 호출 금지
+  useEffect(() => {
+    if (isArchiveMode) return;
     if (!saju || !fortune) return;
     let cancelled = false;
     const sk = sajuKey(saju);
@@ -325,7 +356,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
       });
 
     return () => { cancelled = true; };
-  }, [saju, fortune, scope, pickedDate, targetYear, today, chargeForContent]);
+  }, [saju, fortune, scope, pickedDate, targetYear, today, chargeForContent, isArchiveMode]);
 
   if (!primary && !searchParams?.get('year')) {
     const profileStoreReady = hydrated && lastFetchedAt !== null && !profilesLoading;

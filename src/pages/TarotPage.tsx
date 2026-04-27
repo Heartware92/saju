@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { tarotDB } from '../services/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TAROT_DECK, ELEMENT_COLORS, getCardImg } from '../engine/tarot/deck';
 import { buildTarotReading, type DrawnCard, type TarotReading } from '../engine/tarot/reading';
@@ -354,6 +355,9 @@ function NoPrimaryModal({ onClose }: { onClose: () => void }) {
 // ── 메인 페이지 ───────────────────────────────────────────────────────────────
 export default function TarotPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const recordId = searchParams?.get('recordId') ?? null;
+  const isArchiveMode = !!recordId;
   const { user } = useUserStore();
   const { profiles, fetchProfiles } = useProfileStore();
 
@@ -383,8 +387,9 @@ export default function TarotPage() {
   const primary = useMemo(() => profiles.find((p) => p.is_primary) ?? null, [profiles]);
   const sajuResult = useMemo<SajuResult | null>(() => primary ? computeSajuFromProfile(primary) : null, [primary]);
 
-  // 모드 전환 시 리셋
+  // 모드 전환 시 리셋 — 보관함 재생 모드에선 리셋 금지 (저장된 결과 유지)
   useEffect(() => {
+    if (isArchiveMode) return;
     setAutoState('idle');
     setAutoDrawn([]);
     setAutoSpread([]);
@@ -397,7 +402,26 @@ export default function TarotPage() {
     setAiContent(null);
     setAiLoading(false);
     setAiError(null);
-  }, [mode]);
+  }, [mode, isArchiveMode]);
+
+  // ── 보관함 재생 모드 — recordId 가 있으면 DB 에서 풀이 복원 ──
+  useEffect(() => {
+    if (!recordId) return;
+    let cancelled = false;
+    setAiLoading(true);
+    tarotDB.getRecordById(recordId)
+      .then((record) => {
+        if (cancelled || !record) return;
+        if (record.interpretation) setAiContent(record.interpretation);
+        else setAiError('보관된 풀이 본문이 없어요.');
+      })
+      .catch((e) => {
+        console.error('[archive replay] tarot load failed', e);
+        if (!cancelled) setAiError('보관된 풀이를 불러오지 못했어요.');
+      })
+      .finally(() => { if (!cancelled) setAiLoading(false); });
+    return () => { cancelled = true; };
+  }, [recordId]);
 
   const callAI = async (drawn: DrawnCard[], currentMode: TarotMode, userQuestion?: string) => {
     if (!sajuResult) { setShowNoPrimaryModal(true); return; }

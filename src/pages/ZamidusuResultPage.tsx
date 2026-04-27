@@ -23,7 +23,12 @@ import styles from './ZamidusuResultPage.module.css';
 import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore } from '../store/useReportCacheStore';
-import { getZamidusuReading, type ZamidusuAIResult } from '../services/fortuneService';
+import {
+  getZamidusuReading,
+  parseZamidusuSections,
+  type ZamidusuAIResult,
+} from '../services/fortuneService';
+import { sajuDB } from '../services/supabase';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { ZAMIDUSU_SECTION_KEYS, ZAMIDUSU_SECTION_LABELS } from '../constants/prompts';
 import { MAJOR_STARS_META, MINOR_STARS_META, MUTAGEN_META, PALACE_ROLE_META } from '../engine/zamidusu/knowledge';
@@ -42,6 +47,8 @@ const LOADING_MESSAGES = [
 export default function ZamidusuResultPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const recordId = searchParams?.get('recordId') ?? null;
+  const isArchiveMode = !!recordId;
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
 
@@ -107,7 +114,7 @@ export default function ZamidusuResultPage() {
     return `${b.calendarType}_${b.year}-${b.month}-${b.day}_${b.hour}_${b.gender}`;
   }, [birthInput]);
 
-  // 명반 계산
+  // 명반 계산 — 보관함 재생 모드에서도 chart 는 birth_date 기반으로 재계산해 SVG 등 렌더 가능하게
   useEffect(() => {
     if (!birthInput) return;
     try {
@@ -119,13 +126,49 @@ export default function ZamidusuResultPage() {
     }
   }, [birthInput]);
 
+  // ── 보관함 재생 모드 — recordId 가 있으면 DB에서 풀이 복원, AI 호출 skip ──
+  useEffect(() => {
+    if (!recordId) return;
+    let cancelled = false;
+    setAiLoading(true);
+    sajuDB.getRecordById(recordId)
+      .then((record) => {
+        if (cancelled || !record) return;
+        // chart 는 위 useEffect 가 처리(birthInput → calculateZamidusu).
+        // 보관함 모드에서 birthInput 도출은 primary/searchParams 를 따르므로,
+        // 보관함 record 의 birth 로 강제 재계산.
+        try {
+          const [y, m, d] = record.birth_date.split('-').map(Number);
+          const h = record.birth_time ? parseInt(record.birth_time.split(':')[0], 10) : 12;
+          setChart(calculateZamidusu(y, m, d, h, record.gender, record.calendar_type));
+        } catch (e) {
+          console.error('[archive replay] zamidusu chart recalc failed', e);
+        }
+        const content = record.interpretation_detailed ?? record.interpretation_basic ?? '';
+        const sections = parseZamidusuSections(content);
+        setAiResult(
+          Object.keys(sections).length > 0
+            ? { success: true, content, sections }
+            : { success: true, content },
+        );
+      })
+      .catch((e) => {
+        console.error('[archive replay] load failed', e);
+        if (!cancelled) setAiResult({ success: false, error: '보관된 풀이를 불러오지 못했어요.' });
+      })
+      .finally(() => { if (!cancelled) setAiLoading(false); });
+    return () => { cancelled = true; };
+  }, [recordId]);
+
   const reading: ZamidusuReading | null = useMemo(() => {
     return chart ? buildZamidusuReading(chart) : null;
   }, [chart]);
 
   // 명반 계산 완료되면 AI 풀이 호출 — 캐시 우선, 미스 시에만 호출 (45초 하드 타임아웃)
+  // 보관함 재생 모드에선 절대 AI 호출 금지
   const aiStartedRef = useRef(false);
   useEffect(() => {
+    if (isArchiveMode) return;
     if (!chart || !cacheKey) return;
 
     // 캐시 우선: 정상 → 즉시 표시 / 실패 캐시 → 1분 재호출 차단
@@ -186,7 +229,7 @@ export default function ZamidusuResultPage() {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [chart, cacheKey]);
+  }, [chart, cacheKey, isArchiveMode]);
 
   // ── 시간 미상 가드 ──
   if (hourUnknown) {

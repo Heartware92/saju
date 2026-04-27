@@ -15,6 +15,7 @@ import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore } from '../store/useReportCacheStore';
 import { getTojeongReading } from '../services/fortuneService';
+import { sajuDB } from '../services/supabase';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 
@@ -37,6 +38,8 @@ const GRADE_COLOR: Record<GwaeGrade, string> = {
 export default function TojeongResultPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const recordId = searchParams?.get('recordId') ?? null;
+  const isArchiveMode = !!recordId;
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
   const chargeForContent = useCreditStore(s => s.chargeForContent);
@@ -47,6 +50,26 @@ export default function TojeongResultPage() {
   const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
+
+  // ── 보관함 재생 모드 — recordId 가 있으면 DB에서 풀이 복원, AI 호출 skip ──
+  useEffect(() => {
+    if (!recordId) return;
+    let cancelled = false;
+    setAiLoading(true);
+    sajuDB.getRecordById(recordId)
+      .then((record) => {
+        if (cancelled || !record) return;
+        const content = record.interpretation_detailed ?? record.interpretation_basic ?? '';
+        if (content) setAiContent(content);
+        else setAiError('보관된 풀이 본문이 없어요.');
+      })
+      .catch((e) => {
+        console.error('[archive replay] tojeong load failed', e);
+        if (!cancelled) setAiError('보관된 풀이를 불러오지 못했어요.');
+      })
+      .finally(() => { if (!cancelled) setAiLoading(false); });
+    return () => { cancelled = true; };
+  }, [recordId]);
 
   const { tojeong, reading, cacheKey } = useMemo(() => {
     const hasUrlBirth = !!(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
@@ -77,8 +100,10 @@ export default function TojeongResultPage() {
   }, [searchParams, primary]);
 
   // 심층 풀이 — 캐시 우선, 미스 시에만 호출 (45초 타임아웃)
+  // 보관함 재생 모드에선 AI 호출 금지
   const aiStartedRef = useRef(false);
   useEffect(() => {
+    if (isArchiveMode) return;
     if (!tojeong || !cacheKey) return;
 
     // 캐시 우선: 정상 → 즉시 표시 / 실패 캐시 → 1분 재호출 차단
@@ -140,7 +165,7 @@ export default function TojeongResultPage() {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [tojeong, cacheKey]);
+  }, [tojeong, cacheKey, isArchiveMode]);
 
   const retryAI = () => {
     if (!tojeong || !cacheKey) return;

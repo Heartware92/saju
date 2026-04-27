@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
+import { sajuDB } from '../services/supabase';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import type { BirthProfile } from '../types/credit';
@@ -182,6 +184,9 @@ async function callGunghapGPT(prompt: string): Promise<string> {
 // 컴포넌트
 // ──────────────────────────────────────────────
 export default function GunghapPage() {
+  const searchParams = useSearchParams();
+  const recordId = searchParams?.get('recordId') ?? null;
+  const isArchiveMode = !!recordId;
   const { user } = useUserStore();
   const { profiles } = useProfileStore();
 
@@ -241,6 +246,30 @@ export default function GunghapPage() {
       setStep('input');
     }
   }, [step, isPetCategory]);
+
+  // ── 보관함 재생 모드 — recordId 가 있으면 DB 에서 풀이 텍스트 복원, 바로 result step ──
+  useEffect(() => {
+    if (!recordId) return;
+    let cancelled = false;
+    setLoading(true);
+    sajuDB.getRecordById(recordId)
+      .then((record) => {
+        if (cancelled || !record) return;
+        const content = record.interpretation_detailed ?? record.interpretation_basic ?? '';
+        if (content) {
+          setResult(content);
+          setStep('result');
+        } else {
+          setError('보관된 풀이 본문이 없어요.');
+        }
+      })
+      .catch((e) => {
+        console.error('[archive replay] gunghap load failed', e);
+        if (!cancelled) setError('보관된 풀이를 불러오지 못했어요.');
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [recordId]);
 
   const otherDisplayName = isPetCategory
     ? pet.name.trim()
