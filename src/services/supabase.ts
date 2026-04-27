@@ -320,7 +320,20 @@ export const sajuDB = {
       return null;
     }
     return data;
-  }
+  },
+
+  // 사주 기록 삭제 (RLS 로 본인 user_id 만 삭제 가능)
+  deleteRecord: async (recordId: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from('saju_records')
+      .delete()
+      .eq('id', recordId);
+    if (error) {
+      console.error('Error deleting saju record:', error);
+      return false;
+    }
+    return true;
+  },
 };
 
 /**
@@ -369,7 +382,20 @@ export const tarotDB = {
       return null;
     }
     return data;
-  }
+  },
+
+  // 타로 기록 삭제
+  deleteRecord: async (recordId: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from('tarot_records')
+      .delete()
+      .eq('id', recordId);
+    if (error) {
+      console.error('Error deleting tarot record:', error);
+      return false;
+    }
+    return true;
+  },
 };
 
 /**
