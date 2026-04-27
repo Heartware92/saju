@@ -649,9 +649,6 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
               {NEWYEAR_SECTION_KEYS.map((key, idx) => {
                 const text = newyearReport.sections?.[key];
                 if (!text) return null;
-                const isLucky = key === 'lucky';
-                const luckyEl = saju.yongSinElement ?? '목';
-                const el = ELEMENT_LUCKY[luckyEl] ?? ELEMENT_LUCKY['목'];
 
                 // 첫 줄 = 은유 제목, 나머지 = 본문 — 정통사주와 동일 포맷
                 const lines = text.trim().split('\n');
@@ -685,22 +682,14 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
                       {metaphorTitle}
                     </div>
 
-                    {isLucky ? (
-                      <LuckyVisualCard
-                        colors={el.colors}
-                        colorCss={el.colorCss}
-                        numbers={el.numbers}
-                        direction={el.direction}
-                        timeSlot={el.timeSlot}
-                        gem={el.gem}
-                        activity={el.activity}
-                        extraText={bodyText}
-                      />
-                    ) : (
-                      <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line break-keep">
-                        {bodyText}
-                      </p>
-                    )}
+                    {/*
+                      [lucky] 섹션도 본문 텍스트만 표시.
+                      LuckyVisualCard(색·숫자·방향·시간대 등 시각 데이터)는 페이지 상단의
+                      "연간 행운 처방" 카드 한 곳에서만 노출 — 직원 피드백 "행운 처방·포인트 중복" 해결.
+                    */}
+                    <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line break-keep">
+                      {bodyText}
+                    </p>
                   </motion.div>
                 );
               })}

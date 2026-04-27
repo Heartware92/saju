@@ -1154,7 +1154,8 @@ export const NEWYEAR_SECTION_LABELS: Record<NewyearSectionKey, string> = {
   health: '건강운',
   relation: '인간관계운',
   monthly: '월별 흐름',
-  lucky: '행운 포인트',
+  // 직원 피드백: 상단 시각 카드("연간 행운 처방")와 라벨 통일 — 역할 = 텍스트 추천
+  lucky: '행운 처방',
 };
 
 export const generateNewyearReportPrompt = (
@@ -1172,7 +1173,15 @@ export const generateNewyearReportPrompt = (
   const { pillars, elementPercent, isStrong, yongSinElement, yongSin, hourUnknown, gender, dayMasterYinYang } = result;
   const { year, seWoon, currentDaeWoon, monthlyFlow, domains, overallScore, overallGrade } = opts;
   const gyeokguk = determineGyeokguk(result);
-  const sipseong = formatSipseongCounts(computeSipseongCounts(result));
+  const sipseongCounts = computeSipseongCounts(result);
+  const sipseong = formatSipseongCounts(sipseongCounts);
+  // 직원 피드백: 사주에 없는 십성(예: 편관 0개)이 본문에 등장하는 오류 방지.
+  // 0개 십성 목록을 명시 + 작성 규칙에서 해당 십성 사용 금지 강제.
+  const ALL_SIPSEONG = ['비견', '겁재', '식신', '상관', '편재', '정재', '편관', '정관', '편인', '정인'] as const;
+  const missingSipseongList = ALL_SIPSEONG.filter(s => (sipseongCounts[s] ?? 0) === 0);
+  const missingSipseongStr = missingSipseongList.length > 0 ? missingSipseongList.join(', ') : '없음(모든 십성이 1개 이상 분포)';
+  // 세운으로 들어오는 십성은 별도 — 본문에서 "올해 들어오는 ~십성"으로만 사용 가능
+  const seWoonTenGod = seWoon.tenGod;
 
   const pillarLine = hourUnknown
     ? `년주: ${pillars.year.gan}${pillars.year.zhi}  월주: ${pillars.month.gan}${pillars.month.zhi}  일주: ${pillars.day.gan}${pillars.day.zhi}  시주: 미상`
@@ -1204,6 +1213,9 @@ ${pillarLine}
 용신: ${yongSinElement}(${yongSin})  희신: ${result.heeSin}  기신: ${result.giSin}
 격국: ${gyeokguk.name} (판정 근거: ${gyeokguk.reason})
 십성 분포: ${sipseong}
+★ 원국에 0개인 십성: ${missingSipseongStr}
+   → 본문에서 이 십성을 "사주에 ~십성이 강하다/있다"고 서술하면 절대 안 됨.
+   → 단 세운 천간 십성(${seWoonTenGod})은 "올해 ~이 들어온다"로 사용 허용.
 간여지동: ${formatGanYeojidong(result)} / 병존·삼존: ${formatByeongjOn(result)}
 성별: ${gender === 'male' ? '남성' : '여성'}${hourNote}
 
@@ -1234,6 +1246,10 @@ ${monthlyLine}
 7) "~일 수 있습니다" "혹시" 같은 흐린 표현은 전체 답변에서 2회 이하. 단정적 어투 유지.
 8) 출력은 [general] 마커부터 시작. 마커 이전에 어떤 텍스트도 없어야 함.
 9) 아래 8개 마커를 정확히 사용. 마커는 줄 처음에 단독으로 위치. 마커 뒤 바로 내용 시작.
+10) ★ 데이터 무결성 — 위 "원국에 0개인 십성" 목록의 십성을 본문에서 "사주에 있다/강하다/약하다" 형태로 서술 절대 금지.
+    예시 금지: "당신 사주의 편관이 강해…" / "정관이 부족한 사주라…"
+    (단 세운으로 들어오는 ${seWoonTenGod}는 "올해 ${seWoonTenGod}(쉬운말)이 들어와…"로 사용 가능)
+11) [lucky] 섹션은 색상·방위·숫자·시간대를 본문에 절대 적지 말 것. 별도 시각 카드(LuckyVisualCard)에 이미 표시되므로 텍스트 중복 금지.
 
 ${METAPHOR_KB}
 
@@ -1272,20 +1288,27 @@ ${year}년 전체 기조 — 320~430자
 비겁·식상·관성 배치로 본 ${year}년 인간관계 전반적 기운. 의지할 관계 유형 1가지 (구체적 직업·성격 유형). 멀리해야 할 관계 유형 1가지 (왜 그런지 이유 포함). 이 해 특별히 도움이 되는 인연 특징 1가지.
 
 [monthly]
-월별 흐름 — 총 400~500자, 각 월 2~3문장
-1월부터 12월까지 순서대로. 위 월별 등급·키워드를 근거로 각 월의 핵심 기운 서술.
-포맷 예시: "1월(중길·축적): 새해 시작은..."
+월별 흐름 — 총 720~900자, 각 월 60~75자(3~4문장)
+1월부터 12월까지 순서대로. 위 월별 등급·키워드를 근거로 각 월의 핵심 기운을 충실히 서술.
+각 월에 다음 4가지를 모두 포함:
+1) 그 달 핵심 기운 (1문장 — 등급·키워드 풀이)
+2) 들어오는 십성 또는 오행이 일상에서 어떻게 나타나는지 (1~2문장 — 직장/관계/재물 중 하나의 구체 장면)
+3) 우선해야 할 행동 1개 (1문장 — 시작·결정·휴식·관망 중 어느 하나)
+4) 조심할 함정 또는 놓치기 쉬운 것 (선택, 등급에 따라 강도 조절)
+포맷 예시:
+"1월(중길·축적): 새해 시작은 정관이 들어와 직장에서 안정된 흐름이 열린다.
+ 작년 미뤄둔 정리부터 차근히 마무리하면 신뢰가 쌓인다.
+ 큰 결정보다는 다음 달 도약을 위한 기반 다지기에 집중할 것."
 
 [lucky]
-행운 처방 — 240~320자
-첫 줄: ${year}년을 관통하는 행운 테마를 은유적 제목(7~12자) 1줄로 시작.
-이어서 용신(${yongSinElement}) 기준 불릿(- ) 형식으로:
-- 보강 음식 2가지 (구체적 식재료·요리명, 왜 도움이 되는지 한 마디)
+행운 처방 — 280~360자, 텍스트 본문만 (시각 카드는 별도 컴포넌트로 자동 표시됨)
+첫 줄: ${year}년을 관통하는 행운 테마를 은유적 제목(7~12자) 1줄.
+빈 줄 후 본문 — 용신(${yongSinElement}) 기준 불릿(- ) 형식, 색상·방위·숫자·시간대 언급 절대 금지:
+- 보강 음식 2가지 (구체적 식재료·요리명 + 왜 도움이 되는지 한 마디)
 - 추천 향기·아로마 1가지 (언제 사용하면 좋은지)
 - ${year}년 개운 활동 2가지 (용신 오행 원소와 연결된 구체 취미·습관)
 - 보석·소품 1가지 (어떻게 활용하면 좋은지)
 - 이 해 특히 길한 계절·달 (이유 1문장)
-색상·방위·숫자·시간대는 UI에 표시되므로 중복 서술 금지.
 
 출력은 [general] 마커부터 시작. 마커 이전에 어떤 텍스트도 없어야 함.`;
 };
