@@ -56,6 +56,8 @@ function ShufflingDeck({ count }: { count: 1 | 3 }) {
                 overflow: 'hidden',
                 boxShadow: '0 6px 20px rgba(0,0,0,0.55)',
                 zIndex: i,
+                // 이미지 로딩 전 투명 보이는 문제 방지 — 카드백 톤 배경 미리 깔기
+                backgroundColor: '#2a1660',
               }}
               animate={{
                 x: [base, (i - 3) * 38, base, -(i - 3) * 28, base],
@@ -122,6 +124,7 @@ function FlipCard({
             overflow: 'hidden',
             border: '2px solid rgba(124,92,252,0.5)',
             boxShadow: '0 4px 18px rgba(0,0,0,0.45)',
+            backgroundColor: '#2a1660',
           }}>
             <img src="/tarot/back.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
           </div>
@@ -383,6 +386,12 @@ export default function TarotPage() {
   const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => { if (user) fetchProfiles(); }, [user, fetchProfiles]);
+
+  // 카드백 이미지 프리로드 — 셔플 첫 프레임에 투명 보이는 문제 방지
+  useEffect(() => {
+    const img = new Image();
+    img.src = '/tarot/back.png';
+  }, []);
 
   const primary = useMemo(() => profiles.find((p) => p.is_primary) ?? null, [profiles]);
   const sajuResult = useMemo<SajuResult | null>(() => primary ? computeSajuFromProfile(primary) : null, [primary]);
@@ -647,6 +656,7 @@ export default function TarotPage() {
                               boxShadow: isSelected ? '0 0 14px rgba(124,92,252,0.9)' : '0 3px 10px rgba(0,0,0,0.4)',
                               border: `2px solid ${isSelected ? 'rgba(124,92,252,1)' : 'rgba(124,92,252,0.5)'}`,
                               cursor: isSelected ? 'default' : 'pointer',
+                              backgroundColor: '#2a1660',
                             }}
                           >
                             <img src="/tarot/back.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
@@ -761,7 +771,8 @@ export default function TarotPage() {
                     transition={{ duration: 0.5, delay: i * 0.02 }}
                     className="absolute cursor-pointer"
                     style={{ width: 58, height: 92, borderRadius: 8, overflow: 'hidden',
-                      boxShadow: '0 3px 10px rgba(0,0,0,0.4)', border: '2px solid rgba(124,92,252,0.5)' }}
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.4)', border: '2px solid rgba(124,92,252,0.5)',
+                      backgroundColor: '#2a1660' }}
                   >
                     <img src="/tarot/back.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
                   </motion.div>
