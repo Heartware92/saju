@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Lunar } from 'lunar-javascript';
@@ -18,9 +19,21 @@ import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
-import SajuReport from '../components/saju/SajuReport';
+import { determineGyeokguk } from '../engine/gyeokguk';
+import { stemToHanja, zhiToHanja } from '../lib/character';
 import { AdviceCard } from '../components/saju/AdviceCard';
 import { AILoadingBar } from '../components/AILoadingBar';
+
+// 정통사주 = AI 풀이 가치, 만세력 = 무료 데이터.
+// 사용자가 풀이 맥락을 알 수 있도록 핵심 요약만 카드로 노출하고
+// 자세한 데이터 보드는 만세력 페이지로 위임 (직원 피드백: 두 페이지 데이터 중복 제거).
+const ELEMENT_COLORS: Record<string, string> = {
+  '목': '#34D399', '화': '#F43F5E', '토': '#F59E0B', '금': '#CBD5E1', '수': '#3B82F6',
+};
+const ELEMENT_TO_STEMS: Record<string, [string, string]> = {
+  '목': ['갑목', '을목'], '화': ['병화', '정화'], '토': ['무토', '기토'],
+  '금': ['경금', '신금'], '수': ['임수', '계수'],
+};
 
 const JUNGTONGSAJU_MESSAGES = [
   '격국과 용신을 계산하는 중입니다',
@@ -254,9 +267,69 @@ export default function SajuResultPage() {
         </div>
       )}
 
-      {/* 원국 차트 */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
-        <SajuReport result={result} hideManseryeok />
+      {/* 핵심 요약 카드 — 풀이 맥락만 짧게. 자세한 데이터는 만세력 페이지로 */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-4 rounded-2xl px-5 py-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
+      >
+        {(() => {
+          const gyeokguk = determineGyeokguk(result);
+          const yongStems = ELEMENT_TO_STEMS[result.yongSinElement];
+          const yongColor = ELEMENT_COLORS[result.yongSinElement] ?? 'var(--text-secondary)';
+          const dayPillarLabel = `${stemToHanja(result.pillars.day.gan)}${zhiToHanja(result.pillars.day.zhi)}`;
+          const dayKor = `${result.pillars.day.gan}${result.pillars.day.zhi}`;
+          const rows: Array<{ label: string; value: React.ReactNode }> = [
+            {
+              label: '일주',
+              value: (
+                <span>
+                  <span style={{ fontFamily: 'var(--font-serif)', marginRight: 6 }}>{dayPillarLabel}</span>
+                  <span className="text-text-tertiary text-[13px]">({dayKor})</span>
+                </span>
+              ),
+            },
+            { label: '격국', value: gyeokguk.name },
+            {
+              label: '용신',
+              value: (
+                <span>
+                  <span style={{ color: yongColor, fontWeight: 700 }}>{result.yongSinElement}</span>
+                  {yongStems && (
+                    <span className="text-text-tertiary text-[13px]" style={{ marginLeft: 6 }}>
+                      · {yongStems[0]}·{yongStems[1]}
+                    </span>
+                  )}
+                </span>
+              ),
+            },
+            {
+              label: '신강신약',
+              value: `${result.strengthStatus} (${result.strengthScore}점)`,
+            },
+          ];
+          return (
+            <>
+              <ul className="space-y-2">
+                {rows.map((r) => (
+                  <li key={r.label} className="flex items-center text-[14px]">
+                    <span className="w-16 flex-shrink-0 text-text-tertiary">{r.label}</span>
+                    <span className="text-text-primary font-semibold">{r.value}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/saju/manseryeok"
+                className="mt-3 inline-flex items-center gap-1 text-[13px] text-cta hover:underline"
+              >
+                만세력에서 자세히 보기
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </Link>
+            </>
+          );
+        })()}
       </motion.div>
 
       {/* 에러 */}
