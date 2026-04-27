@@ -317,13 +317,8 @@ export default function GunghapPage() {
           petTrimmed.birthDate ?? '_',
           petTrimmed.adoptionDate ?? '_',
         ].join('|');
+        // 정상 캐시 X (사용자가 분석 버튼 누름 = 새 풀이). 실패만 1분 차단.
         const petCached = useReportCacheStore.getState().getReport<string>('gunghap', petCacheKey);
-        if (petCached?.data) {
-          setResult(petCached.data);
-          setStep('result');
-          setLoading(false);
-          return;
-        }
         if (petCached?.error) {
           setError(petCached.error);
           setLoading(false);
@@ -341,7 +336,6 @@ export default function GunghapPage() {
         setResult(petCleaned);
         setStep('result');
         const cache = useReportCacheStore.getState();
-        cache.setReport('gunghap', petCacheKey, petCleaned);
         if (!cache.isCharged('gunghap', petCacheKey)) {
           cache.markCharged('gunghap', petCacheKey);
           useCreditStore.getState()
@@ -380,13 +374,8 @@ export default function GunghapPage() {
         category === 'custom' ? customLabel.trim() : '_',
       ].join('|');
 
+      // 정상 캐시 X (분석 버튼 = 새 풀이). 실패만 1분 차단.
       const cached = useReportCacheStore.getState().getReport<string>('gunghap', cacheKey);
-      if (cached?.data) {
-        setResult(cached.data);
-        setStep('result');
-        setLoading(false);
-        return;
-      }
       if (cached?.error) {
         setError(cached.error);
         setLoading(false);
@@ -462,7 +451,6 @@ export default function GunghapPage() {
       setResult(cleaned);
       setStep('result');
       const cache = useReportCacheStore.getState();
-      cache.setReport('gunghap', cacheKey, cleaned);
       if (!cache.isCharged('gunghap', cacheKey)) {
         cache.markCharged('gunghap', cacheKey);
         useCreditStore.getState()

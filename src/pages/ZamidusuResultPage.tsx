@@ -171,13 +171,8 @@ export default function ZamidusuResultPage() {
     if (isArchiveMode) return;
     if (!chart || !cacheKey) return;
 
-    // 캐시 우선: 정상 → 즉시 표시 / 실패 캐시 → 1분 재호출 차단
+    // 정상 응답은 캐시 안 씀 (홈 진입 = 새 풀이 의도). 실패만 1분 negative cache 로 재호출 차단.
     const cached = useReportCacheStore.getState().getReport<ZamidusuAIResult>('zamidusu', cacheKey);
-    if (cached?.data) {
-      setAiResult(cached.data);
-      setAiLoading(false);
-      return;
-    }
     if (cached?.error) {
       setAiResult({ success: false, error: cached.error });
       setAiLoading(false);
@@ -207,7 +202,6 @@ export default function ZamidusuResultPage() {
         setAiLoading(false);
         const cache = useReportCacheStore.getState();
         if (r.success) {
-          cache.setReport('zamidusu', cacheKey, r);
           if (!cache.isCharged('zamidusu', cacheKey)) {
             cache.markCharged('zamidusu', cacheKey);
             chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.zamidusu).catch(() => {});

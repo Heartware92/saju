@@ -126,17 +126,15 @@ export default function SajuResultPage() {
     }
   }, [searchParams, primary]);
 
-  // 결과 생기면 리포트 자동 호출 — 캐시 우선 (실패도 1분 negative cache)
-  // 보관함 재생 모드에선 절대 AI 호출 금지
+  // 결과 생기면 리포트 자동 호출. 보관함 재생 모드에선 AI 호출 금지.
+  // 정상 응답은 캐시하지 않음 — 홈에서 누를 때마다 새 호출(=새 결제) 의도 보장.
+  // 단, 실패 응답은 1분 negative cache 로 같은 키 즉시 재시도 차단(토큰비 보호).
+  // charged 플래그는 동시 호출 이중 차감 방어용으로 유지.
   useEffect(() => {
     if (isArchiveMode) return;
     if (!result || report || reportLoading) return;
     const cacheKey = sajuKey(result);
     const cached = useReportCacheStore.getState().getReport<JungtongsajuAIResult>('jungtong', cacheKey);
-    if (cached?.data) {
-      setReport(cached.data);
-      return;
-    }
     if (cached?.error) {
       setReport({ success: false, error: cached.error });
       return;
@@ -150,7 +148,6 @@ export default function SajuResultPage() {
         setReport(r);
         const cache = useReportCacheStore.getState();
         if (r.success) {
-          cache.setReport('jungtong', cacheKey, r);
           if (!cache.isCharged('jungtong', cacheKey)) {
             cache.markCharged('jungtong', cacheKey);
             chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.traditional).catch(() => {});

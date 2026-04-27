@@ -113,12 +113,10 @@ export default function TaekilPage() {
     setSelectedDay(null);
     setAiError(null);
 
-    // 같은 키로 이미 풀이가 있으면 자동 복원 (실패 캐시는 무시 — 사용자가 다시 클릭해야 보임)
-    const cached = taekilCacheKey
-      ? useReportCacheStore.getState().getReport<string>('taekil', taekilCacheKey)
-      : null;
-    setAiAdvice(cached?.data ?? null);
-  }, [saju, viewYear, viewMonth, category, taekilCacheKey]);
+    // 정상 응답 캐시 X (수동 트리거 페이지 — 사용자가 버튼 누를 때만 호출).
+    // 다음 카테고리/연월 전환 시 이전 advice 비움.
+    setAiAdvice(null);
+  }, [saju, viewYear, viewMonth, category]);
 
   useEffect(() => {
     compute();
@@ -146,18 +144,12 @@ export default function TaekilPage() {
     if (viewYear < MAX_YEAR) setViewYear(y => y + 1);
   };
 
-  // 수동 AI 트리거 — 캐시 우선 (정상/실패 둘 다)
+  // 수동 AI 트리거 — 정상 캐시 X (사용자가 누른다 = 새 풀이). 실패 1분 차단만.
   const handleRequestAI = async () => {
     if (!saju || !result || aiLoading || !taekilCacheKey) return;
 
     const cached = useReportCacheStore.getState().getReport<string>('taekil', taekilCacheKey);
-    if (cached?.data) {
-      setAiAdvice(cached.data);
-      setAiError(null);
-      return;
-    }
     if (cached?.error) {
-      // 1분 안 같은 입력 재시도 차단 — API 비용 보호
       setAiError(cached.error);
       return;
     }
@@ -171,7 +163,6 @@ export default function TaekilPage() {
       }
       setAiAdvice(r.advice);
       const cache = useReportCacheStore.getState();
-      cache.setReport('taekil', taekilCacheKey, r.advice);
       if (!cache.isCharged('taekil', taekilCacheKey)) {
         cache.markCharged('taekil', taekilCacheKey);
         useCreditStore.getState()

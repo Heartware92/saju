@@ -191,23 +191,10 @@ export default function MoreFortunePage({ category }: Props) {
     return sk;
   };
 
-  // 진입/입력 변경 시 캐시 자동 복원 (보관함 모드는 이미 별도 복원 경로가 있어서 건너뜀)
+  // 카테고리/입력 바뀔 때 이전 결과 비움 (정상 캐시 X — 사용자가 풀이 보기 누를 때만 호출)
   useEffect(() => {
     if (isArchiveMode) return;
-    const key = buildCacheKey();
-    if (!key) return;
-    const cached = useReportCacheStore.getState().getReport<string>(`more:${category}`, key);
-    if (cached?.data) {
-      setResult(cached.data);
-      setError(null);
-    } else if (cached?.error) {
-      // 실패 캐시는 자동 표시하지 않음 — 사용자가 수동으로 풀이 보기를 누를 때만 알림
-      setResult(null);
-    } else {
-      // 키가 바뀌어 캐시가 없으면 이전 결과는 비움 (이름·꿈 입력 변화 시)
-      setResult(null);
-    }
-    // koreanName/hanjaName/dreamText 입력은 자주 바뀌지만, 빈 결과면 그냥 null 유지
+    setResult(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category, saju, koreanName, hanjaName, dreamText, isArchiveMode]);
 
@@ -225,18 +212,12 @@ export default function MoreFortunePage({ category }: Props) {
       }
     }
 
-    // 캐시 히트 — AI 호출도, 크레딧 차감도 건너뜀
+    // 정상 캐시 X (풀이 보기 = 새 풀이 의도). 실패만 1분 차단.
     const cacheKey = buildCacheKey();
     const kindKey = `more:${category}` as const;
     if (cacheKey) {
       const cached = useReportCacheStore.getState().getReport<string>(kindKey, cacheKey);
-      if (cached?.data) {
-        setResult(cached.data);
-        setError(null);
-        return;
-      }
       if (cached?.error) {
-        // 1분 안 같은 입력 재시도 차단 — API 비용 보호
         setError(cached.error);
         return;
       }
@@ -287,10 +268,9 @@ export default function MoreFortunePage({ category }: Props) {
 
       setResult(resp!.content);
 
-      // 캐시 저장 + 미차감 시에만 차감
+      // 미차감 시에만 차감 (정상 캐시 저장은 안 함 — 사용자 의도)
       if (cacheKey) {
         const cache = useReportCacheStore.getState();
-        cache.setReport(kindKey, cacheKey, resp.content);
         if (!cache.isCharged(kindKey, cacheKey)) {
           cache.markCharged(kindKey, cacheKey);
           const consumed = await chargeForContent('moon', MOON_COST_PER_FORTUNE, `더많은운세:${cfg.title}`);

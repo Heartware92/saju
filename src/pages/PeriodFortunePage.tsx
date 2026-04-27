@@ -253,14 +253,10 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     const sk = sajuKey(saju);
 
     // scope=year: 신년운세 종합 리포트 호출 (도메인 상세는 패스)
+    // 정상 응답 캐시 X (홈 진입 = 새 풀이). 실패만 1분 negative cache.
     if (scope === 'year') {
       const cacheKey = `${sk}:${targetYear}`;
       const cached = useReportCacheStore.getState().getReport<NewyearReportAIResult>('newyear', cacheKey);
-      if (cached?.data) {
-        setNewyearReport(cached.data);
-        setNewyearReportLoading(false);
-        return;
-      }
       if (cached?.error) {
         setNewyearReport({ success: false, error: cached.error });
         setNewyearReportLoading(false);
@@ -275,7 +271,6 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
           setNewyearReport(r);
           const cache = useReportCacheStore.getState();
           if (r.success) {
-            cache.setReport('newyear', cacheKey, r);
             if (!cache.isCharged('newyear', cacheKey)) {
               cache.markCharged('newyear', cacheKey);
               chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.newyear).catch(() => {});
@@ -292,16 +287,11 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
       return () => { cancelled = true; };
     }
 
-    // scope=day/date: 영역별 5문장 상세
+    // scope=day/date: 영역별 5문장 상세 — 정상 캐시 X, 실패만 1분 차단
     const kind = scope === 'day' ? 'period_day' : 'period_date';
     const targetDate = scope === 'day' ? today : pickedDate;
     const cacheKey = `${sk}:${targetDate}`;
     const cached = useReportCacheStore.getState().getReport<Partial<Record<'wealth' | 'career' | 'love' | 'health' | 'study', string>>>(kind, cacheKey);
-    if (cached?.data) {
-      setDomainAI(cached.data);
-      setDomainAILoading(false);
-      return;
-    }
     if (cached?.error) {
       // 도메인 AI 실패는 페이지 자체 에러 state 가 없어 console 만 남김 — 1분간 자동 재호출 차단
       console.warn('[period] cached error', cached.error);
@@ -338,7 +328,6 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
         if (r.success && r.descriptions) {
           setDomainAI(r.descriptions);
           const reason = scope === 'day' ? CHARGE_REASONS.today : CHARGE_REASONS.date;
-          cache.setReport(kind, cacheKey, r.descriptions);
           if (!cache.isCharged(kind, cacheKey)) {
             cache.markCharged(kind, cacheKey);
             chargeForContent('sun', SUN_COST_BIG, reason).catch(() => {});
