@@ -291,11 +291,13 @@ export const sajuDB = {
     return data;
   },
 
-  // 사주 기록 조회
+  // 사주 기록 조회 (리스트용 — 무거운 컬럼 제외)
+  // result_data/engine_result/interpretation_basic/interpretation_detailed 제외 → 1MB → 30KB 수준
+  // 상세 본문은 카드 클릭 시 getRecordById 가 풀 row 가져옴
   getRecords: async (userId: string, limit = 50): Promise<SajuRecord[]> => {
     const { data, error } = await supabase
       .from('saju_records')
-      .select('*')
+      .select('id, user_id, profile_id, profile_name, partner_name, partner_birth_date, birth_date, birth_time, birth_place, gender, calendar_type, category, created_at, is_detailed, credit_type, credit_used')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -304,7 +306,8 @@ export const sajuDB = {
       console.error('Error fetching saju records:', error);
       return [];
     }
-    return data ?? [];
+    // 누락된 무거운 필드는 SajuRecord 타입상 optional 이거나 카드에 미사용. 캐스트 안전.
+    return (data ?? []) as SajuRecord[];
   },
 
   // 특정 사주 기록 조회
@@ -353,11 +356,12 @@ export const tarotDB = {
     return data;
   },
 
-  // 타로 기록 조회
+  // 타로 기록 조회 (리스트용 — 무거운 컬럼 제외)
+  // cards/interpretation 제외 → 상세 본문은 카드 클릭 시 getRecordById 가 풀 row 가져옴
   getRecords: async (userId: string, limit = 50): Promise<TarotRecord[]> => {
     const { data, error } = await supabase
       .from('tarot_records')
-      .select('*')
+      .select('id, user_id, spread_type, question, credit_type, credit_used, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -366,7 +370,7 @@ export const tarotDB = {
       console.error('Error fetching tarot records:', error);
       return [];
     }
-    return data ?? [];
+    return (data ?? []) as TarotRecord[];
   },
 
   // 특정 타로 기록 조회 (보관함 재생용)
