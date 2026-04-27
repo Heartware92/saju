@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Lunar } from 'lunar-javascript';
@@ -309,25 +308,14 @@ export default function SajuResultPage() {
             },
           ];
           return (
-            <>
-              <ul className="space-y-2">
-                {rows.map((r) => (
-                  <li key={r.label} className="flex items-center text-[14px]">
-                    <span className="w-16 flex-shrink-0 text-text-tertiary">{r.label}</span>
-                    <span className="text-text-primary font-semibold">{r.value}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/saju/manseryeok"
-                className="mt-3 inline-flex items-center gap-1 text-[13px] text-cta hover:underline"
-              >
-                만세력에서 자세히 보기
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
-              </Link>
-            </>
+            <ul className="space-y-2">
+              {rows.map((r) => (
+                <li key={r.label} className="flex items-center text-[14px]">
+                  <span className="w-16 flex-shrink-0 text-text-tertiary">{r.label}</span>
+                  <span className="text-text-primary font-semibold">{r.value}</span>
+                </li>
+              ))}
+            </ul>
           );
         })()}
       </motion.div>
