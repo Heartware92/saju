@@ -36,6 +36,7 @@ import {
   type GunghapCategory,
 } from '../constants/prompts';
 import { sanitizeAIOutput } from '../services/fortuneService';
+import { archiveSaju } from '../services/archiveService';
 import Link from 'next/link';
 import { AILoadingBar } from '../components/AILoadingBar';
 
@@ -342,6 +343,29 @@ export default function GunghapPage() {
             .chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.gunghap)
             .catch(() => {});
         }
+        // 보관함 저장 — 반려동물 분기. partner.birth_date 는 비어있어 메타로만 보존.
+        archiveSaju({
+          sourceBirth: {
+            birth_date: selectedProfile.birth_date,
+            birth_time: selectedProfile.birth_time ?? undefined,
+            gender: selectedProfile.gender,
+            calendar_type: selectedProfile.calendar_type,
+          },
+          category: 'gunghap',
+          engineResult: {
+            gunghapCategory: 'pet',
+            pet: petTrimmed,
+            myRole: myRole.trim(),
+            otherRole: otherRole.trim(),
+          } as unknown as Record<string, unknown>,
+          interpretation: petCleaned,
+          partner: {
+            name: petTrimmed.name || '반려동물',
+            birth_date: petTrimmed.birthDate ?? '',
+          },
+          creditType: 'sun',
+          creditUsed: SUN_COST_BIG,
+        }).catch(() => {});
         return;
       }
 
@@ -457,6 +481,29 @@ export default function GunghapPage() {
           .chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.gunghap)
           .catch(() => {});
       }
+      // 보관함 저장 — 카테고리/역할/상대방 메타 포함. archiveService 가 sourceBirth 로 자동 프로필 매칭.
+      archiveSaju({
+        sourceBirth: {
+          birth_date: selectedProfile.birth_date,
+          birth_time: selectedProfile.birth_time ?? undefined,
+          gender: selectedProfile.gender,
+          calendar_type: selectedProfile.calendar_type,
+        },
+        category: 'gunghap',
+        engineResult: {
+          gunghapCategory: category,
+          customLabel: category === 'custom' ? customLabel.trim() : undefined,
+          myRole: myRole.trim(),
+          otherRole: otherRole.trim(),
+        } as unknown as Record<string, unknown>,
+        interpretation: cleaned,
+        partner: {
+          name: otherName,
+          birth_date: otherBase.birth_date,
+        },
+        creditType: 'sun',
+        creditUsed: SUN_COST_BIG,
+      }).catch(() => {});
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '분석 중 오류가 발생했습니다.';
       setError(msg);

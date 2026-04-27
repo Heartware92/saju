@@ -962,7 +962,7 @@ ${dayTraitsBlock}
 6) "~일 수 있습니다" 흐린 표현은 전체 답변에서 2회 이하. 단정적 어투 유지.
 7) 각 섹션 첫 문장에서 결론 먼저, 근거를 이어붙이는 방식.
 8) 출력은 [general] 마커부터 시작. 마커 이전 텍스트 없어야 함.
-9) 아래 11개 마커를 정확히 사용. 마커는 줄 처음에 단독으로 위치.
+9) 아래 12개 마커를 정확히 사용. 마커는 줄 처음에 단독으로 위치.
 
 ${METAPHOR_KB}
 
@@ -2836,7 +2836,17 @@ ${myName}: ${myRole.trim() || '미지정'} / ${otherName}: ${otherRole.trim() ||
 - 역할이 "미지정"이면 그 사람에 대한 역할 언급은 생략하되, 미지정 자체를 "역할이 정해지지 않은 관계"로 해석에 반영한다.
 
 `;
-  return prompt.replace('[작성 지침]', block + '[작성 지침]');
+  // 모든 gunghap 프롬프트는 '[작성 지침 — ...]' 또는 '[작성 지침]' 둘 중 하나로 시작.
+  // 부분 일치(라인 시작) 로 찾아 그 라인 직전에 block 삽입 — 14개 프롬프트 모두 호환.
+  // (이전 정확 일치 replace 는 '[작성 지침 — ...]' 형태와 매치 실패하여 한 번도 작동하지 않았음 — 회귀 fix)
+  const lines = prompt.split('\n');
+  const insertIdx = lines.findIndex((ln) => ln.startsWith('[작성 지침'));
+  if (insertIdx === -1) {
+    // fallback — 매치 실패 시 프롬프트 끝에 추가 (전혀 안 들어가는 것보단 낫다)
+    return prompt + block;
+  }
+  lines.splice(insertIdx, 0, block);
+  return lines.join('\n');
 }
 
 // ─────────────────────────────────────────────
