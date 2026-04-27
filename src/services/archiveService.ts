@@ -174,11 +174,14 @@ interface ArchiveTarotParams {
   creditUsed?: number;
 }
 
-/** 타로 풀이 기록 저장 (silent). */
+/** 타로 풀이 기록 저장. 인증·DB 실패는 콘솔에 명시 로그 (silent X) — 보관함 미저장 디버깅용. */
 export async function archiveTarot(params: ArchiveTarotParams): Promise<void> {
   try {
     const user = await auth.getCurrentUser();
-    if (!user) return;
+    if (!user) {
+      console.warn('[archive] tarot save SKIPPED — no auth user. spreadType=', params.spreadType);
+      return;
+    }
 
     const payload = {
       user_id: user.id,
@@ -191,7 +194,8 @@ export async function archiveTarot(params: ArchiveTarotParams): Promise<void> {
     };
 
     await tarotDB.saveRecord(payload as unknown as Parameters<typeof tarotDB.saveRecord>[0]);
+    console.log('[archive] tarot saved', { spreadType: params.spreadType, userId: user.id });
   } catch (err) {
-    console.error('[archive] tarot save failed', err);
+    console.error('[archive] tarot save FAILED', { spreadType: params.spreadType, err });
   }
 }

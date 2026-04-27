@@ -405,7 +405,7 @@ export default function TarotPage() {
     setAiError(null);
   }, [mode, isArchiveMode]);
 
-  // ── 보관함 재생 모드 — recordId 가 있으면 DB 에서 풀이 복원 ──
+  // ── 보관함 재생 모드 — recordId 가 있으면 DB 에서 풀이·모드·카드 모두 복원 ──
   useEffect(() => {
     if (!recordId) return;
     let cancelled = false;
@@ -413,6 +413,49 @@ export default function TarotPage() {
     tarotDB.getRecordById(recordId)
       .then((record) => {
         if (cancelled || !record) return;
+
+        // 1) 모드 복원 — spread_type → today/monthly/question 매핑
+        const st = record.spread_type;
+        if (st === 'today' || st === 'monthly' || st === 'question') {
+          setMode(st);
+        } else if (st === 'monthly-3card') {
+          setMode('monthly');
+        } else if (st === 'single' || st === 'hybrid-saju') {
+          setMode('question');
+        }
+
+        // 2) 카드 복원 — cards 페이로드에서 추출 (신규: { mode, cards: TarotCardInfo[], card } / 레거시: { card })
+        try {
+          const c = record.cards as Record<string, unknown> | undefined;
+          const cardsArr = (c?.cards ?? (c?.card ? [c.card] : [])) as TarotCardInfo[];
+          if (cardsArr.length > 0) {
+            // TarotCardInfo → DrawnCard 역매핑 (deck 인덱스 + isReversed)
+            const restored: DrawnCard[] = cardsArr
+              .map((ci) => {
+                const idx = TAROT_DECK.findIndex((d) => d.name === ci.name || d.nameKr === ci.nameKr);
+                if (idx < 0) return null;
+                return { card: TAROT_DECK[idx], isReversed: ci.isReversed } as DrawnCard;
+              })
+              .filter((x): x is DrawnCard => !!x);
+
+            const targetMode: TarotMode = (st === 'today' || st === 'monthly' || st === 'question') ? st
+              : st === 'monthly-3card' ? 'monthly'
+              : 'question';
+
+            if (targetMode === 'question' && restored[0]) {
+              setQDrawn(restored[0]);
+              setQState('select');
+              if (record.question) setQuestion(record.question);
+            } else {
+              setAutoDrawn(restored);
+              setAutoState('revealed');
+            }
+          }
+        } catch (e) {
+          console.warn('[archive replay] tarot cards parse failed', e);
+        }
+
+        // 3) AI 풀이 본문 복원
         if (record.interpretation) setAiContent(record.interpretation);
         else setAiError('보관된 풀이 본문이 없어요.');
       })
@@ -453,12 +496,14 @@ export default function TarotPage() {
     setAiContent(null);
     try {
       const cardInfo = drawnToCardInfo(drawn[0]);
+      // 보관함 재생용 — 전체 뽑힌 카드 배열 (이달의 타로 3장 등)
+      const allCardsInfo = drawn.map(drawnToCardInfo);
       const questionMap: Record<TarotMode, string | undefined> = {
         today: undefined,
         monthly: '이달의 전체적인 흐름',
         question: userQuestion || undefined,
       };
-      const res = await getHybridReading(sajuResult, cardInfo, questionMap[currentMode], currentMode);
+      const res = await getHybridReading(sajuResult, cardInfo, questionMap[currentMode], currentMode, allCardsInfo);
       const cache = useReportCacheStore.getState();
       if (res.success && res.content) {
         setAiContent(res.content);

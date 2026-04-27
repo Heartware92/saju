@@ -769,13 +769,17 @@ export const getNewyearReport = async (
 
 /**
  * 사주 × 타로 하이브리드 (3엽전)
+ *
+ * @param mode TarotPage 의 currentMode — 보관함 spread_type 결정
+ * @param allDrawnCards (선택) 모드에서 뽑은 전체 카드 배열. 이달의 타로(3장) 등에서 모두 저장하기 위해.
+ *                     미전달 시 tarotCard 단일만 저장 (단일 카드 모드 호환).
  */
 export const getHybridReading = async (
   sajuResult: SajuResult,
   tarotCard: TarotCardInfo,
   question?: string,
-  /** TarotPage 의 currentMode — 보관함에 'today/monthly/question' 으로 구분 저장하기 위해. */
   mode?: 'today' | 'monthly' | 'question',
+  allDrawnCards?: TarotCardInfo[],
 ): Promise<FortuneResponse> => {
   try {
     const prompt = generateHybridPrompt(sajuResult, tarotCard, question);
@@ -788,7 +792,14 @@ export const getHybridReading = async (
       : mode === 'monthly' ? 'monthly'
       : mode === 'question' ? 'question'
       : 'hybrid-saju';
-    archiveTarot({ spreadType, cards: { card: tarotCard } as unknown as Record<string, unknown>, question, interpretation: content });
+    // cards 페이로드 — 재생용 전체 정보 저장 (mode/cards 배열/단일카드/질문)
+    const cardsPayload: Record<string, unknown> = {
+      mode: spreadType,
+      cards: allDrawnCards ?? [tarotCard],
+      // 호환 — 이전 단일 키
+      card: tarotCard,
+    };
+    archiveTarot({ spreadType, cards: cardsPayload, question, interpretation: content });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
