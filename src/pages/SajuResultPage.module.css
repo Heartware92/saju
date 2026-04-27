@@ -1328,6 +1328,15 @@
   overflow-x: auto;
   padding-bottom: 8px;
   -webkit-overflow-scrolling: touch;
+  /* 마우스 드래그 스크롤 활성화 — useDragScroll 훅과 짝 */
+  cursor: grab;
+  user-select: none;
+  /* 모바일 터치: 가로 스와이프만 → 세로 스크롤은 부모로 위임 */
+  touch-action: pan-x;
+}
+
+.daewoonScroll:active {
+  cursor: grabbing;
 }
 
 .daewoonCard {

@@ -946,12 +946,77 @@ function SinSalBoard({
 }
 
 /**
+ * 가로 스크롤 컨테이너에 마우스 드래그 + 터치 스와이프 추가.
+ *
+ * 데스크탑: 카드 위에서 마우스를 누른 채 드래그하면 컨테이너가 좌우로 스크롤됨.
+ * 모바일: 카드 button 의 클릭 처리가 native swipe 를 잡아먹는 케이스가 있어
+ *        pointer 이벤트로 직접 scrollLeft 제어 (단순 탭은 그대로 click 발화).
+ *
+ * 드래그 거리 6px 이상이면 그 직후의 click 이벤트를 한 번 막아 카드 onClick 이
+ * 의도치 않게 발생하는 것을 방지.
+ */
+function useDragScroll(ref: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    let isDown = false;
+    let startX = 0;
+    let scrollLeft = 0;
+    let dragged = false;
+    const DRAG_THRESHOLD = 6;
+
+    const onPointerDown = (e: PointerEvent) => {
+      isDown = true;
+      dragged = false;
+      startX = e.clientX;
+      scrollLeft = el.scrollLeft;
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (!isDown) return;
+      const dx = e.clientX - startX;
+      if (Math.abs(dx) > DRAG_THRESHOLD) {
+        dragged = true;
+        el.style.cursor = 'grabbing';
+        el.scrollLeft = scrollLeft - dx;
+      }
+    };
+    const onPointerUp = () => {
+      if (!isDown) return;
+      isDown = false;
+      el.style.cursor = '';
+      if (dragged) {
+        // 드래그 직후의 click 한 번만 차단 — 카드 onClick 오발화 방지
+        const block = (ev: MouseEvent) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+          el.removeEventListener('click', block, true);
+        };
+        el.addEventListener('click', block, true);
+      }
+    };
+
+    el.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
+    return () => {
+      el.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+    };
+  }, [ref]);
+}
+
+/**
  * 대운 → 세운 → 월운 드릴다운.
  *
  * 동작:
  * 1) 대운 카드 클릭: 그 대운(10년)의 시작/끝 연도 범위로 세운 영역을 자동 스크롤·강조
  * 2) 세운 카드 클릭: 그 연도의 12개월 월운 그리드 인라인 표시 (다시 클릭 시 닫힘)
  * 3) 초기엔 현재 대운·세운이 강조된 채 가운데로 스크롤
+ * 4) 가로 스크롤 영역은 마우스 드래그 / 터치 스와이프 모두 지원 (useDragScroll)
  */
 function DaeWoonSection({
   daeWoon,
@@ -967,6 +1032,10 @@ function DaeWoonSection({
   // 카드를 button 으로 바꿔 클릭·키보드 접근성 확보 — ref 타입도 HTMLButtonElement 로
   const currentDwRef = useRef<HTMLButtonElement>(null);
   const currentSwRef = useRef<HTMLButtonElement>(null);
+
+  // 가로 스크롤에 마우스 드래그 + 터치 스와이프 활성화
+  useDragScroll(dwScrollRef);
+  useDragScroll(swScrollRef);
 
   const birthYear = parseInt(result.solarDate.split('-')[0]);
   const currentYear = new Date().getFullYear();
