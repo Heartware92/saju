@@ -213,6 +213,21 @@ export const getBasicInterpretation = async (
 };
 
 /**
+ * SajuResult → archiveSaju 의 sourceBirth 형태로 변환.
+ * 보관함 저장 시 birth_profiles 와 자동 매칭(profile_id, profile_name 채움)에 사용.
+ *
+ * 주의: result.solarDate 는 항상 양력 변환된 값이라, 원본 입력이 음력인 프로필은
+ * birth_profiles.birth_date(음력 원본) 와 매칭이 안 될 수 있음. 그 경우 매칭 실패 →
+ * 대표 프로필 fallback (archiveService 내부) 으로 떨어진다. 정확 매칭이 필요하면
+ * 호출 페이지가 BirthProfile.id 를 직접 넘기는 방식으로 향후 확장.
+ */
+const sourceBirthFromSaju = (result: SajuResult) => ({
+  birth_date: result.solarDate,
+  gender: result.gender,
+  calendar_type: 'solar' as const,
+});
+
+/**
  * 상세 해석 (무료 공개)
  * - 대운/세운 + 신살 + 종합 상세 분석
  */
@@ -223,7 +238,7 @@ export const getDetailedInterpretation = async (
     const prompt = generateDetailedPrompt(result);
     // 2800~3500자 본문 → 넉넉히 5500 토큰
     const content = await callGPT(prompt, 5500);
-    archiveSaju({ category: 'traditional', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'sun', isDetailed: true });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'traditional', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'sun', isDetailed: true });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -241,7 +256,7 @@ export const getTodayFortune = async (
     const todayGz = calcTodayGanZhi(result, isoDate);
     const prompt = generateTodayFortunePrompt(result, todayGz, isoDate);
     const content = await callGPT(prompt, 1600);
-    archiveSaju({ category: 'today', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', isDetailed: false });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'today', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', isDetailed: false });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -258,7 +273,7 @@ export const getLoveFortune = async (
     const prompt = generateLoveFortunePrompt(result);
     // 본문 1,400~1,800자 × 한국어 토큰 비율 → 4,500 안전치
     const content = await callGPT(prompt, 4500);
-    archiveSaju({ category: 'love', resultData: result as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'love', resultData: result as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -275,7 +290,7 @@ export const getWealthFortune = async (
     const prompt = generateWealthFortunePrompt(result);
     // 본문 1,400~1,800자 — 4,500 안전치
     const content = await callGPT(prompt, 4500);
-    archiveSaju({ category: 'wealth', resultData: result as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'wealth', resultData: result as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -540,7 +555,7 @@ export const getJungtongsajuReport = async (result: SajuResult): Promise<Jungton
     // 프롬프트 명세: 총 2,800~3,500자 (11섹션). 한국어 토큰 비율 고려해 8,000.
     const content = await callGPT(prompt, 8000);
     const sections = parseJungtongsaju(content);
-    archiveSaju({ category: 'traditional', resultData: result as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'traditional', resultData: result as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
 
     if (Object.keys(sections).length === 0) {
       return { success: true, rawText: content };
@@ -648,7 +663,7 @@ export const getTodayFortuneReport = async (
     // 5섹션 × 평균 120자 ≈ 600자 → 2000 토큰으로 충분
     const content = await callGPT(prompt, 2000);
     const sections = parseTodayFortune(content);
-    archiveSaju({ category: 'today', resultData: result as unknown as Record<string, unknown>, engineResult: { todayGz, isoDate: date }, interpretation: content });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'today', resultData: result as unknown as Record<string, unknown>, engineResult: { todayGz, isoDate: date }, interpretation: content });
 
     if (Object.keys(sections).length === 0) {
       return { success: true, rawText: content, todayGz, isoDate: date };
@@ -678,7 +693,7 @@ export const getTaekilAdvice = async (
     // [taekil_advice] 마커 제거하고 본문만 추출
     const match = raw.match(/\[taekil_advice\]\s*([\s\S]+)/);
     const advice = match ? match[1].trim() : raw.trim();
-    archiveSaju({ category: 'taekil', resultData: saju as unknown as Record<string, unknown>, engineResult: taekil as unknown as Record<string, unknown>, interpretation: advice });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(saju), category: 'taekil', resultData: saju as unknown as Record<string, unknown>, engineResult: taekil as unknown as Record<string, unknown>, interpretation: advice });
     return { success: true, advice };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -742,7 +757,7 @@ export const getNewyearReport = async (
     // 프롬프트 명세: 총 2,500~3,200자 (8섹션). 한국어 토큰 비율 고려해 7,000.
     const content = await callGPT(prompt, 7000);
     const sections = parseNewyearReport(content);
-    archiveSaju({ category: 'newyear', resultData: result as unknown as Record<string, unknown>, engineResult: { year, seWoon, currentDaeWoon } as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'newyear', resultData: result as unknown as Record<string, unknown>, engineResult: { year, seWoon, currentDaeWoon } as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
 
     if (Object.keys(sections).length === 0) {
       // 파싱 실패 시 원문 반환 — UI에서 단일 텍스트로 표시
@@ -760,15 +775,22 @@ export const getNewyearReport = async (
 export const getHybridReading = async (
   sajuResult: SajuResult,
   tarotCard: TarotCardInfo,
-  question?: string
+  question?: string,
+  /** TarotPage 의 currentMode — 보관함에 'today/monthly/question' 으로 구분 저장하기 위해. */
+  mode?: 'today' | 'monthly' | 'question',
 ): Promise<FortuneResponse> => {
   try {
     const prompt = generateHybridPrompt(sajuResult, tarotCard, question);
     // 프롬프트 명세: 총 1,200~1,600자 (6섹션). 한국어 토큰 비율 고려해 4,000.
     const content = await callGPT(prompt, 4000);
     // 사주+타로 하이브리드는 saju_records · tarot_records 양쪽에 기록 (유저가 어느 탭에서 찾든 보이도록)
-    archiveSaju({ category: 'gunghap', resultData: sajuResult as unknown as Record<string, unknown>, engineResult: { tarotCard, question } as unknown as Record<string, unknown>, interpretation: content });
-    archiveTarot({ spreadType: 'hybrid-saju', cards: { card: tarotCard } as unknown as Record<string, unknown>, question, interpretation: content });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(sajuResult), category: 'gunghap', resultData: sajuResult as unknown as Record<string, unknown>, engineResult: { tarotCard, question } as unknown as Record<string, unknown>, interpretation: content });
+    // mode 별 spread_type — 보관함에서 "오늘의 타로" / "이달의 타로" / "질문 타로" 구분 표시
+    const spreadType = mode === 'today' ? 'today'
+      : mode === 'monthly' ? 'monthly'
+      : mode === 'question' ? 'question'
+      : 'hybrid-saju';
+    archiveTarot({ spreadType, cards: { card: tarotCard } as unknown as Record<string, unknown>, question, interpretation: content });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -785,7 +807,7 @@ export const getHybridReading = async (
 export const getLoveShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generateLoveShortPrompt(result), 2000);
-    archiveSaju({ category: 'love', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'love', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -793,7 +815,7 @@ export const getLoveShort = async (result: SajuResult): Promise<FortuneResponse>
 export const getWealthShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generateWealthShortPrompt(result), 2000);
-    archiveSaju({ category: 'wealth', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'wealth', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -801,7 +823,7 @@ export const getWealthShort = async (result: SajuResult): Promise<FortuneRespons
 export const getCareerShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generateCareerShortPrompt(result), 2000);
-    archiveSaju({ category: 'career', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'career', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -809,7 +831,7 @@ export const getCareerShort = async (result: SajuResult): Promise<FortuneRespons
 export const getHealthShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generateHealthShortPrompt(result), 2000);
-    archiveSaju({ category: 'health', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'health', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -817,7 +839,7 @@ export const getHealthShort = async (result: SajuResult): Promise<FortuneRespons
 export const getStudyShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generateStudyShortPrompt(result), 2000);
-    archiveSaju({ category: 'study', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'study', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -825,7 +847,7 @@ export const getStudyShort = async (result: SajuResult): Promise<FortuneResponse
 export const getPeopleShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generatePeopleShortPrompt(result), 2000);
-    archiveSaju({ category: 'people', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'people', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -833,7 +855,7 @@ export const getPeopleShort = async (result: SajuResult): Promise<FortuneRespons
 export const getChildrenShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
     const content = await callGPT(generateChildrenShortPrompt(result), 2000);
-    archiveSaju({ category: 'children', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'children', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -842,7 +864,7 @@ export const getPersonalityShort = async (result: SajuResult): Promise<FortuneRe
   try {
     // 명세 500~700자 — 가장 길어서 2,500
     const content = await callGPT(generatePersonalityShortPrompt(result), 2500);
-    archiveSaju({ category: 'personality', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
+    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'personality', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
 };
@@ -856,6 +878,7 @@ export const getNameFortune = async (
     const maxTokens = nameInput.hanjaName ? 2500 : 2000;
     const content = await callGPT(generateNameFortunePrompt(result, nameInput), maxTokens);
     archiveSaju({
+      sourceBirth: sourceBirthFromSaju(result),
       category: 'name',
       resultData: result as unknown as Record<string, unknown>,
       engineResult: { koreanName: nameInput.koreanName, hanjaName: nameInput.hanjaName } as Record<string, unknown>,

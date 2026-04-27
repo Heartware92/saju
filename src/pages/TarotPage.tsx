@@ -463,7 +463,7 @@ export default function TarotPage() {
         monthly: '이달의 전체적인 흐름',
         question: userQuestion || undefined,
       };
-      const res = await getHybridReading(sajuResult, cardInfo, questionMap[currentMode]);
+      const res = await getHybridReading(sajuResult, cardInfo, questionMap[currentMode], currentMode);
       const cache = useReportCacheStore.getState();
       if (res.success && res.content) {
         setAiContent(res.content);

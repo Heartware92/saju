@@ -62,6 +62,13 @@ export interface SajuRecord {
   credit_used: number;
   is_detailed: boolean;
   created_at: string;
+  /** birth_profiles FK — 풀이 시점 프로필. 프로필 삭제 시 NULL (스냅샷은 profile_name 으로 보존). */
+  profile_id?: string | null;
+  /** 저장 시점 프로필명 스냅샷 — 프로필 이름이 바뀌어도 풀이 시점 이름 유지. */
+  profile_name?: string | null;
+  /** 궁합용 — 상대방 이름·생일 스냅샷. */
+  partner_name?: string | null;
+  partner_birth_date?: string | null;
 }
 
 export interface TarotRecord {

@@ -47,6 +47,14 @@ export const SAJU_MORE_CATEGORIES = [
 
 // ── 타로 스프레드 ────────────────────────────────────────────
 export const TAROT_SPREAD_LABEL: Record<string, string> = {
+  // 실제 archiveTarot 가 저장하는 키
+  today: '오늘의 타로',
+  monthly: '이달의 타로',
+  'monthly-3card': '이달의 타로',
+  question: '질문 타로',
+  single: '카드 한 장',
+  'hybrid-saju': '사주 × 타로',
+  // 레거시
   oneCard: '원카드',
   threeCard: '쓰리카드',
   celticCross: '켈틱크로스',

@@ -19,16 +19,7 @@ import type { SajuRecord, TarotRecord } from '../types/credit';
 
 type TabType = 'saju' | 'tarot';
 
-// ── 카테고리별 아이콘·색 — 카드를 한눈에 구분 ─────────────────────────
-const SAJU_CATEGORY_ICON: Record<string, string> = {
-  traditional: '📜', newyear: '🌅', today: '☀️', date: '📆',
-  gunghap: '❤️', taekil: '🗓️', tojeong: '📖', zamidusu: '🌌',
-  love: '💕', wealth: '💰', career: '💼', health: '🌿',
-  study: '✏️', people: '✨', children: '👶', personality: '🎭',
-  name: '📝', dream: '🌙', basic: '📃', hybrid: '🔮',
-  period: '📆', relation: '🤝',
-};
-
+// ── 카테고리별 색 — 텍스트 컬러 칩으로 한눈에 구분 (아이콘 사용 X — 사용자 요청) ──
 const SAJU_CATEGORY_COLOR: Record<string, string> = {
   // 큰 8 — 비비드 톤
   traditional: '#fbbf24', newyear: '#fb923c', today: '#facc15', date: '#a3e635',
@@ -38,12 +29,6 @@ const SAJU_CATEGORY_COLOR: Record<string, string> = {
   study: '#fde047', people: '#e9d5ff', children: '#fbcfe8', personality: '#fdba74',
   name: '#bef264', dream: '#c4b5fd',
   basic: '#94a3b8', hybrid: '#a78bfa', period: '#a3e635', relation: '#94a3b8',
-};
-
-const TAROT_SPREAD_ICON: Record<string, string> = {
-  oneCard: '🃏', threeCard: '🎴', celticCross: '✦', love: '💖', hybrid: '🔮',
-  today: '☀️', monthly: '🌙', single: '🃏', 'monthly-3card': '🎴',
-  'hybrid-saju': '🔮',
 };
 
 /** YYYY-MM-DD HH:mm 형식 */
@@ -61,26 +46,14 @@ function formatDate(iso: string): string {
   }
 }
 
-/** 생년월일·시간 짧게 — "1992.09.14 13:22" */
-function formatBirth(birthDate: string, birthTime?: string | null): string {
-  const dot = (birthDate || '').replace(/-/g, '.');
-  return birthTime ? `${dot} ${birthTime}` : dot;
-}
-
-const GENDER_LABEL: Record<string, string> = { male: '남', female: '여' };
-const CALENDAR_LABEL: Record<string, string> = { solar: '양력', lunar: '음력' };
-
-/**
- * 풀이 본문에서 사용자에게 보여줄 첫 줄(은유 제목) 추출.
- * `[general]`·`[today_energy]` 같은 개발자용 섹션 마커는 건너뛰고 실제 본문 첫 줄을 찾는다.
- */
-function extractTitle(record: SajuRecord): string {
-  const body = record.interpretation_detailed || record.interpretation_basic || '';
-  const lines = body.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
-  // 섹션 키 패턴: [영문/숫자/언더스코어]만 있는 줄. 한글 본문은 안 걸림.
-  const SECTION_MARKER_RE = /^\[[\w-]+\]$/;
-  const firstReal = lines.find((l) => !SECTION_MARKER_RE.test(l)) ?? '';
-  return firstReal.length > 40 ? firstReal.slice(0, 40) + '…' : firstReal;
+/** 보관함에 표시할 프로필 라벨 — 신규 컬럼(profile_name) 우선, 없으면 생일로 fallback. */
+function getProfileLabel(record: SajuRecord): string {
+  if (record.profile_name) {
+    if (record.partner_name) return `${record.profile_name} × ${record.partner_name}`;
+    return record.profile_name;
+  }
+  // 옛날 데이터는 profile_name 이 NULL — 생일을 짧게 표시
+  return (record.birth_date || '').replace(/-/g, '.');
 }
 
 /** 사주 카테고리 → 결과 페이지 URL. recordId 를 쿼리로 붙인다. */
@@ -228,22 +201,20 @@ export default function ArchivePage() {
               {sajuSorted.length > 0 ? (
                 sajuSorted.map((record) => {
                   const categoryLabel = SAJU_CATEGORY_LABEL[record.category] ?? record.category;
-                  const icon = SAJU_CATEGORY_ICON[record.category] ?? '📖';
                   const color = SAJU_CATEGORY_COLOR[record.category] ?? '#94a3b8';
+                  const profileLabel = getProfileLabel(record);
                   return (
                     <div key={record.id} className="relative">
                       <Link href={getSajuRoute(record)} className="block">
                         <Card padding="md" hover>
-                          <div className="flex items-center gap-3">
-                            {/* 카테고리 아이콘 박스 — 색·아이콘으로 한눈에 구분 */}
+                          <div className="flex items-start gap-3">
+                            {/* 좌측 카테고리 색 바 */}
                             <div
-                              className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-                              style={{ backgroundColor: `${color}1f`, border: `1px solid ${color}55` }}
+                              className="w-1 self-stretch rounded-full flex-shrink-0"
+                              style={{ backgroundColor: color }}
                               aria-hidden="true"
-                            >
-                              {icon}
-                            </div>
-                            <div className="flex-1 min-w-0">
+                            />
+                            <div className="flex-1 min-w-0 pr-7">
                               <div className="flex items-center gap-2 mb-1">
                                 <h3
                                   className="text-sm font-bold truncate"
@@ -255,18 +226,12 @@ export default function ArchivePage() {
                                   <span className="text-[10px] text-cta border border-cta/40 px-1.5 py-[1px] rounded flex-shrink-0">상세</span>
                                 )}
                               </div>
-                              {/* 본문 첫 줄 — 섹션 마커는 extractTitle 이 걸러줌 */}
+                              {/* 누구의 풀이인지 — profile_name (없으면 생일 fallback) */}
                               <p className="text-[12px] text-text-secondary truncate mb-1">
-                                {extractTitle(record) || '풀이 다시 보기'}
-                              </p>
-                              {/* 누구의 사주인지 — 생일 + 성별 + 음/양력 (프로필명은 2단계에서 추가) */}
-                              <p className="text-[11px] text-text-tertiary truncate">
-                                {formatBirth(record.birth_date, record.birth_time)}
-                                {record.gender && ` · ${GENDER_LABEL[record.gender] ?? record.gender}`}
-                                {record.calendar_type && ` · ${CALENDAR_LABEL[record.calendar_type] ?? record.calendar_type}`}
+                                {profileLabel}
                               </p>
                             </div>
-                            <span className="text-[10px] text-text-tertiary flex-shrink-0 self-start mt-1 mr-7">
+                            <span className="text-[10px] text-text-tertiary flex-shrink-0 whitespace-nowrap mt-1">
                               {formatDate(record.created_at)}
                             </span>
                           </div>
@@ -280,7 +245,7 @@ export default function ArchivePage() {
                           e.stopPropagation();
                           setPendingDelete({ kind: 'saju', id: record.id, label: categoryLabel });
                         }}
-                        className="absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center text-text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        className="absolute bottom-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center text-text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-colors"
                         aria-label={`${categoryLabel} 기록 삭제`}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -304,16 +269,17 @@ export default function ArchivePage() {
               {tarotRecords.length > 0 ? (
                 tarotRecords.map((record) => {
                   const spreadLabel = TAROT_SPREAD_LABEL[record.spread_type] ?? record.spread_type;
-                  const icon = TAROT_SPREAD_ICON[record.spread_type] ?? '🎴';
                   return (
                     <div key={record.id} className="relative">
                       <Link href={getTarotRoute(record)} className="block">
                         <Card padding="md" hover>
-                          <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-xl bg-[rgba(165,180,252,0.12)] border border-[rgba(165,180,252,0.35)] flex items-center justify-center text-lg flex-shrink-0">
-                              {icon}
-                            </div>
-                            <div className="flex-1 min-w-0">
+                          <div className="flex items-start gap-3">
+                            <div
+                              className="w-1 self-stretch rounded-full flex-shrink-0"
+                              style={{ backgroundColor: '#a5b4fc' }}
+                              aria-hidden="true"
+                            />
+                            <div className="flex-1 min-w-0 pr-7">
                               <h3 className="text-sm font-bold text-[#a5b4fc] truncate mb-1">
                                 {spreadLabel}
                               </h3>
@@ -321,7 +287,7 @@ export default function ArchivePage() {
                                 {record.question || '질문 없음'}
                               </p>
                             </div>
-                            <span className="text-[10px] text-text-tertiary flex-shrink-0 self-start mt-1 mr-7">
+                            <span className="text-[10px] text-text-tertiary flex-shrink-0 whitespace-nowrap mt-1">
                               {formatDate(record.created_at)}
                             </span>
                           </div>
@@ -334,7 +300,7 @@ export default function ArchivePage() {
                           e.stopPropagation();
                           setPendingDelete({ kind: 'tarot', id: record.id, label: spreadLabel });
                         }}
-                        className="absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center text-text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        className="absolute bottom-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center text-text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-colors"
                         aria-label={`${spreadLabel} 기록 삭제`}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -47,36 +47,104 @@ interface ArchiveSajuParams {
   creditType?: 'sun' | 'moon';
   creditUsed?: number;
   isDetailed?: boolean;
+  /**
+   * 풀이가 본 사주의 birth 정보. 호출자(fortuneService) 가 SajuResult.solarDate / gender 등을
+   * 이 안으로 전달하면, 같은 birth_date + gender 를 가진 birth_profiles 행을 자동 매칭해서
+   * profile_id / profile_name 에 채워준다.
+   *
+   * 미전달 시 대표 프로필로 fallback (옛날 호출자 호환).
+   */
+  sourceBirth?: {
+    birth_date: string;          // YYYY-MM-DD
+    birth_time?: string;          // HH:mm
+    gender: 'male' | 'female';
+    calendar_type?: 'solar' | 'lunar';
+  };
+  /** 궁합 카테고리 전용 — 상대방 정보 스냅샷. */
+  partner?: {
+    name: string;
+    birth_date: string;
+  };
 }
 
 /**
  * 사주 기반 풀이 기록 저장 (silent).
- * - 프로필이 없어도 기본 정보를 기록에 남기고 싶으면 solarDate/gender를 별도로 넘길 수 있도록
- *   추후 확장. 현재는 "대표 프로필 있어야만 저장" 정책.
+ * - sourceBirth 가 있으면 그 birth 로 birth_profiles 매칭 → profile_id/name 자동 기록
+ * - 없으면 대표 프로필 사용 (옛날 호출자용)
+ * - 둘 다 없으면 skip
+ *
+ * 매칭 키: user_id + birth_date + gender (calendar_type 까지 일치하면 더 정확).
+ * 동일 birth 프로필이 여러 개면 대표 → 생성순으로 첫 번째.
  */
 export async function archiveSaju(params: ArchiveSajuParams): Promise<void> {
   try {
     const user = await auth.getCurrentUser();
     if (!user) return;
 
-    const { data: profile } = await supabase
-      .from('birth_profiles')
-      .select('birth_date, birth_time, birth_place, gender, calendar_type')
-      .eq('user_id', user.id)
-      .order('is_primary', { ascending: false })
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle();
+    // 1) sourceBirth 로 매칭 시도 (정확한 풀이 주체 식별)
+    type Profile = {
+      id: string;
+      name: string;
+      birth_date: string;
+      birth_time?: string | null;
+      birth_place?: string | null;
+      gender: 'male' | 'female';
+      calendar_type: 'solar' | 'lunar';
+    };
+    let profile: Profile | null = null;
 
-    if (!profile) return;
+    if (params.sourceBirth) {
+      let q = supabase
+        .from('birth_profiles')
+        .select('id, name, birth_date, birth_time, birth_place, gender, calendar_type')
+        .eq('user_id', user.id)
+        .eq('birth_date', params.sourceBirth.birth_date)
+        .eq('gender', params.sourceBirth.gender);
+      if (params.sourceBirth.calendar_type) {
+        q = q.eq('calendar_type', params.sourceBirth.calendar_type);
+      }
+      const { data: matches } = await q
+        .order('is_primary', { ascending: false })
+        .order('created_at', { ascending: true })
+        .limit(1);
+      if (matches && matches.length > 0) profile = matches[0] as Profile;
+    }
+
+    // 2) 매칭 실패 시 대표 프로필 fallback (URL 직접 입력으로 진입 등)
+    if (!profile) {
+      const { data } = await supabase
+        .from('birth_profiles')
+        .select('id, name, birth_date, birth_time, birth_place, gender, calendar_type')
+        .eq('user_id', user.id)
+        .order('is_primary', { ascending: false })
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (data) profile = data as Profile;
+    }
+
+    // 3) 프로필이 전혀 없으면 sourceBirth 라도 있어야 저장 (이름 없는 기록)
+    const birth = profile ?? (params.sourceBirth
+      ? {
+          id: '',
+          name: '',
+          birth_date: params.sourceBirth.birth_date,
+          birth_time: params.sourceBirth.birth_time ?? null,
+          birth_place: null,
+          gender: params.sourceBirth.gender,
+          calendar_type: params.sourceBirth.calendar_type ?? 'solar',
+        }
+      : null);
+
+    if (!birth) return;
 
     const payload = {
       user_id: user.id,
-      birth_date: profile.birth_date,
-      birth_time: profile.birth_time ?? undefined,
-      birth_place: profile.birth_place ?? undefined,
-      gender: profile.gender,
-      calendar_type: profile.calendar_type ?? 'solar',
+      birth_date: birth.birth_date,
+      birth_time: birth.birth_time ?? undefined,
+      birth_place: birth.birth_place ?? undefined,
+      gender: birth.gender,
+      calendar_type: birth.calendar_type ?? 'solar',
       category: params.category,
       result_data: (params.resultData ?? {}) as Record<string, unknown>,
       engine_result: params.engineResult,
@@ -84,10 +152,13 @@ export async function archiveSaju(params: ArchiveSajuParams): Promise<void> {
       credit_type: params.creditType,
       credit_used: params.creditUsed ?? 0,
       is_detailed: params.isDetailed ?? false,
+      // 신규 컬럼 — 누구의 풀이인지 식별 가능하게
+      profile_id: birth.id || null,
+      profile_name: birth.name || null,
+      partner_name: params.partner?.name ?? null,
+      partner_birth_date: params.partner?.birth_date ?? null,
     };
 
-    // sajuDB.saveRecord는 타입 엄격 — any 캐스팅으로 engine_result 등 옵셔널 컬럼 통과
-    // RLS 실패·네트워크 에러는 throw 되지만 바깥 catch 에서 잡힘
     await sajuDB.saveRecord(payload as unknown as Parameters<typeof sajuDB.saveRecord>[0]);
   } catch (err) {
     console.error('[archive] saju save failed', err);
