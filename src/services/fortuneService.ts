@@ -13,14 +13,12 @@ import {
   generateTodayTarotPrompt,
   generateMonthlyTarotPrompt,
   generateHybridPrompt,
-  generateLoveFortunePrompt,
-  generateWealthFortunePrompt,
-  generateLoveShortPrompt,
-  generateWealthShortPrompt,
-  generateCareerShortPrompt,
-  generateHealthShortPrompt,
+  // [B안] generateLoveFortunePrompt / generateWealthFortunePrompt — 호출처 함수 비활성. 복원 시 같이 풀기.
+  // generateLoveFortunePrompt, generateWealthFortunePrompt,
+  // [B안] love/wealth/career/health/people Short 프롬프트 비활성. 복원 시 같이 풀기.
+  // generateLoveShortPrompt, generateWealthShortPrompt, generateCareerShortPrompt,
+  // generateHealthShortPrompt, generatePeopleShortPrompt,
   generateStudyShortPrompt,
-  generatePeopleShortPrompt,
   generateChildrenShortPrompt,
   generatePersonalityShortPrompt,
   generateNameFortunePrompt,
@@ -264,38 +262,39 @@ export const getTodayFortune = async (
 };
 
 /**
- * 애정운 특화 분석 (전체 무료)
+ * [B안 — 호출처 없음 + 카테고리 비활성으로 동시 정리]
+ * getLoveFortune / getWealthFortune 은 정통사주 무료 분석으로 정의됐지만 실제 호출처가 없어
+ * 죽은 코드 상태. 이대로 살려두면 향후 누군가 호출 시 archive 카테고리 'love'/'wealth' 로
+ * 적재되어 비활성된 보관함 라우트로 떨어짐 → 사용자 좌초.
+ * 함수 정의 자체를 주석 보존. 복원 필요 시 카테고리도 'traditional' 로 정정 후 살릴 것.
  */
-export const getLoveFortune = async (
-  result: SajuResult
-): Promise<FortuneResponse> => {
-  try {
-    const prompt = generateLoveFortunePrompt(result);
-    // 본문 1,400~1,800자 × 한국어 토큰 비율 → 4,500 안전치
-    const content = await callGPT(prompt, 4500);
-    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'love', resultData: result as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
-    return { success: true, content };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-};
+// export const getLoveFortune = async (
+//   result: SajuResult
+// ): Promise<FortuneResponse> => {
+//   try {
+//     const prompt = generateLoveFortunePrompt(result);
+//     // 본문 1,400~1,800자 × 한국어 토큰 비율 → 4,500 안전치
+//     const content = await callGPT(prompt, 4500);
+//     archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'love', resultData: result as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
+//     return { success: true, content };
+//   } catch (error: any) {
+//     return { success: false, error: error.message };
+//   }
+// };
 
-/**
- * 재물운 특화 분석 (전체 무료)
- */
-export const getWealthFortune = async (
-  result: SajuResult
-): Promise<FortuneResponse> => {
-  try {
-    const prompt = generateWealthFortunePrompt(result);
-    // 본문 1,400~1,800자 — 4,500 안전치
-    const content = await callGPT(prompt, 4500);
-    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'wealth', resultData: result as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
-    return { success: true, content };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-};
+// export const getWealthFortune = async (
+//   result: SajuResult
+// ): Promise<FortuneResponse> => {
+//   try {
+//     const prompt = generateWealthFortunePrompt(result);
+//     // 본문 1,400~1,800자 — 4,500 안전치
+//     const content = await callGPT(prompt, 4500);
+//     archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'wealth', resultData: result as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
+//     return { success: true, content };
+//   } catch (error: any) {
+//     return { success: false, error: error.message };
+//   }
+// };
 
 /**
  * 오늘의 타로 (전체 무료) — 하루 1장 고정
@@ -798,43 +797,53 @@ export const getHybridReading = async (
 };
 
 // ============================================================
-// 더 많은 운세 — 9개 카테고리 서비스 함수
+// 더 많은 운세 — 카테고리 서비스 함수
 // (모두 달 크레딧 1개 소모, 짧은 형식)
+//
+// [B안 — 2026-04-27] 메인 8 (신년/정통사주/지정일/자미두수)과 중복되던 5종 비활성:
+//   getLoveShort, getWealthShort, getCareerShort, getHealthShort, getPeopleShort
+// 비활성 함수는 주석으로 보존 — 비즈니스 결정 변경 시 빠르게 복원.
+// MoreFortunePage.handleRead 의 switch 도 해당 case 들 동시 정리됨.
 // ============================================================
 
-// 더많은운세 short 9종 — 프롬프트 명세 350~700자 → 한국어 토큰 비율 보수적 2.5x로 잡아 2,000 일괄.
+// 더많은운세 short — 프롬프트 명세 350~700자 → 한국어 토큰 비율 보수적 2.5x로 잡아 2,000 일괄.
 // 개별 분량 차이는 작아 LRU 비용 영향 미미, 잘림 방지가 우선.
-export const getLoveShort = async (result: SajuResult): Promise<FortuneResponse> => {
-  try {
-    const content = await callGPT(generateLoveShortPrompt(result), 2000);
-    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'love', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
-    return { success: true, content };
-  } catch (e: any) { return { success: false, error: e.message }; }
-};
 
-export const getWealthShort = async (result: SajuResult): Promise<FortuneResponse> => {
-  try {
-    const content = await callGPT(generateWealthShortPrompt(result), 2000);
-    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'wealth', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
-    return { success: true, content };
-  } catch (e: any) { return { success: false, error: e.message }; }
-};
+// [비활성 — B안] 신년운세 연애·결혼운, 정통사주 애정·결혼운, 궁합 카테고리와 중복.
+// export const getLoveShort = async (result: SajuResult): Promise<FortuneResponse> => {
+//   try {
+//     const content = await callGPT(generateLoveShortPrompt(result), 2000);
+//     archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'love', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
+//     return { success: true, content };
+//   } catch (e: any) { return { success: false, error: e.message }; }
+// };
 
-export const getCareerShort = async (result: SajuResult): Promise<FortuneResponse> => {
-  try {
-    const content = await callGPT(generateCareerShortPrompt(result), 2000);
-    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'career', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
-    return { success: true, content };
-  } catch (e: any) { return { success: false, error: e.message }; }
-};
+// [비활성 — B안] 신년운세 재물운, 정통사주 재물운, 자미두수 재물·일의 하늘과 중복.
+// export const getWealthShort = async (result: SajuResult): Promise<FortuneResponse> => {
+//   try {
+//     const content = await callGPT(generateWealthShortPrompt(result), 2000);
+//     archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'wealth', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
+//     return { success: true, content };
+//   } catch (e: any) { return { success: false, error: e.message }; }
+// };
 
-export const getHealthShort = async (result: SajuResult): Promise<FortuneResponse> => {
-  try {
-    const content = await callGPT(generateHealthShortPrompt(result), 2000);
-    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'health', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
-    return { success: true, content };
-  } catch (e: any) { return { success: false, error: e.message }; }
-};
+// [비활성 — B안] 신년운세 직장·사업운, 정통사주 직업·적성과 중복.
+// export const getCareerShort = async (result: SajuResult): Promise<FortuneResponse> => {
+//   try {
+//     const content = await callGPT(generateCareerShortPrompt(result), 2000);
+//     archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'career', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
+//     return { success: true, content };
+//   } catch (e: any) { return { success: false, error: e.message }; }
+// };
+
+// [비활성 — B안] 신년운세 건강운, 정통사주 건강운, 자미두수 몸과 마음의 하늘과 중복.
+// export const getHealthShort = async (result: SajuResult): Promise<FortuneResponse> => {
+//   try {
+//     const content = await callGPT(generateHealthShortPrompt(result), 2000);
+//     archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'health', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
+//     return { success: true, content };
+//   } catch (e: any) { return { success: false, error: e.message }; }
+// };
 
 export const getStudyShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
@@ -844,13 +853,14 @@ export const getStudyShort = async (result: SajuResult): Promise<FortuneResponse
   } catch (e: any) { return { success: false, error: e.message }; }
 };
 
-export const getPeopleShort = async (result: SajuResult): Promise<FortuneResponse> => {
-  try {
-    const content = await callGPT(generatePeopleShortPrompt(result), 2000);
-    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'people', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
-    return { success: true, content };
-  } catch (e: any) { return { success: false, error: e.message }; }
-};
+// [비활성 — B안] 신년운세 인간관계운, 정통사주 인간관계·가족, 자미두수 관계 하늘과 중복.
+// export const getPeopleShort = async (result: SajuResult): Promise<FortuneResponse> => {
+//   try {
+//     const content = await callGPT(generatePeopleShortPrompt(result), 2000);
+//     archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'people', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
+//     return { success: true, content };
+//   } catch (e: any) { return { success: false, error: e.message }; }
+// };
 
 export const getChildrenShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {

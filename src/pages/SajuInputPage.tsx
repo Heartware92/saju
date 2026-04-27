@@ -13,6 +13,7 @@ type Gender = 'male' | 'female'
 type CalendarType = 'solar' | 'lunar'
 
 // 카테고리 정의 (앱과 동일)
+// [B안] love/wealth 입력 카드는 비활성. 외부에서 ?category=love 로 진입 시 traditional 로 fallback.
 const SAJU_CATEGORIES: Record<string, { title: string; icon: string; desc: string }> = {
   'today': { title: '오늘의 운세', icon: '☀️', desc: '하루의 흐름 미리보기' },
   'tomorrow': { title: '내일의 운세', icon: '🌙', desc: '미리 준비하는 내일' },
@@ -20,8 +21,9 @@ const SAJU_CATEGORIES: Record<string, { title: string; icon: string; desc: strin
   'newyear': { title: '2026 신년운세', icon: '🐍', desc: '병오년 청뱀띠 총운' },
   'tojeong': { title: '토정비결', icon: '📖', desc: '한 해의 길흉화복' },
   'zamidusu': { title: '자미두수', icon: '🌌', desc: '북두칠성과 12궁으로 보는 명운' },
-  'love': { title: '애정운', icon: '❤️', desc: '나의 인연과 연애 스타일' },
-  'wealth': { title: '재물운', icon: '💰', desc: '재물 모으는 법과 시기' },
+  // [비활성 — B안] 'love'/'wealth' 단독 카테고리는 메인 8 중복으로 제거
+  // 'love': { title: '애정운', icon: '❤️', desc: '나의 인연과 연애 스타일' },
+  // 'wealth': { title: '재물운', icon: '💰', desc: '재물 모으는 법과 시기' },
   'date': { title: '지정일 운세', icon: '📅', desc: '중요한 날의 기운 확인' },
 }
 
