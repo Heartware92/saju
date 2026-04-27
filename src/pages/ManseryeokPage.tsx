@@ -93,7 +93,7 @@ export default function ManseryeokPage() {
 
       <div className={styles.content}>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <SajuReport result={saju} />
+          <SajuReport result={saju} defaultExpanded />
         </motion.div>
       </div>
     </div>

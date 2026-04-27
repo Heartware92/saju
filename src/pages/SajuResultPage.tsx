@@ -211,7 +211,7 @@ export default function SajuResultPage() {
 
       {/* 원국 차트 */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
-        <SajuReport result={result} />
+        <SajuReport result={result} hideManseryeok />
       </motion.div>
 
       {/* 에러 */}

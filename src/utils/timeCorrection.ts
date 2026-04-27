@@ -1,8 +1,12 @@
 /**
- * 도시 좌표 데이터 — 출생지 선택 및 표시에 사용
+ * 도시 좌표 데이터 — 출생지 선택 및 표시에 사용 (대한민국 17개 시도 한정)
  *
  * 주의: 이 프로젝트는 진태양시(경도/EOT) 보정을 적용하지 않는다.
  * 시장 표준(점신/천을귀인 등 대중 앱) 과 일치시키기 위한 정책 결정.
+ *
+ * 국외 출생지 옵션은 제거됨 — 한국 표준시(동경 135°) 기준 보정 공식이
+ * 해외 현지시각에는 그대로 적용될 수 없어 잘못된 결과를 줬기 때문.
+ * 해외 출생자 지원은 추후 현지 표준자오선 데이터 추가 시 재도입.
  */
 
 export const CITY_COORDINATES: Record<string, { lat: number; lng: number; name: string; category?: string }> = {
@@ -27,39 +31,4 @@ export const CITY_COORDINATES: Record<string, { lat: number; lng: number; name: 
   'gyeongbuk': { lat: 36.5760, lng: 128.5056, name: '경상북도', category: '대한민국' },
   'gyeongnam': { lat: 35.2380, lng: 128.6924, name: '경상남도', category: '대한민국' },
   'jeju': { lat: 33.4996, lng: 126.5312, name: '제주특별자치도', category: '대한민국' },
-
-  // ========== 북한 ==========
-  'pyongyang': { lat: 39.0392, lng: 125.7625, name: '평양', category: '북한' },
-
-  // ========== 아시아 ==========
-  'tokyo': { lat: 35.6762, lng: 139.6503, name: '도쿄 (일본)', category: '아시아' },
-  'osaka': { lat: 34.6937, lng: 135.5023, name: '오사카 (일본)', category: '아시아' },
-  'beijing': { lat: 39.9042, lng: 116.4074, name: '베이징 (중국)', category: '아시아' },
-  'shanghai': { lat: 31.2304, lng: 121.4737, name: '상하이 (중국)', category: '아시아' },
-  'hongkong': { lat: 22.3193, lng: 114.1694, name: '홍콩', category: '아시아' },
-  'taipei': { lat: 25.0330, lng: 121.5654, name: '타이베이 (대만)', category: '아시아' },
-  'singapore': { lat: 1.3521, lng: 103.8198, name: '싱가포르', category: '아시아' },
-  'bangkok': { lat: 13.7563, lng: 100.5018, name: '방콕 (태국)', category: '아시아' },
-  'hanoi': { lat: 21.0285, lng: 105.8542, name: '하노이 (베트남)', category: '아시아' },
-  'manila': { lat: 14.5995, lng: 120.9842, name: '마닐라 (필리핀)', category: '아시아' },
-
-  // ========== 북미 ==========
-  'newyork': { lat: 40.7128, lng: -74.0060, name: '뉴욕 (미국)', category: '북미' },
-  'losangeles': { lat: 34.0522, lng: -118.2437, name: '로스앤젤레스 (미국)', category: '북미' },
-  'chicago': { lat: 41.8781, lng: -87.6298, name: '시카고 (미국)', category: '북미' },
-  'sanfrancisco': { lat: 37.7749, lng: -122.4194, name: '샌프란시스코 (미국)', category: '북미' },
-  'seattle': { lat: 47.6062, lng: -122.3321, name: '시애틀 (미국)', category: '북미' },
-  'vancouver': { lat: 49.2827, lng: -123.1207, name: '밴쿠버 (캐나다)', category: '북미' },
-  'toronto': { lat: 43.6532, lng: -79.3832, name: '토론토 (캐나다)', category: '북미' },
-
-  // ========== 유럽 ==========
-  'london': { lat: 51.5074, lng: -0.1278, name: '런던 (영국)', category: '유럽' },
-  'paris': { lat: 48.8566, lng: 2.3522, name: '파리 (프랑스)', category: '유럽' },
-  'berlin': { lat: 52.5200, lng: 13.4050, name: '베를린 (독일)', category: '유럽' },
-  'frankfurt': { lat: 50.1109, lng: 8.6821, name: '프랑크푸르트 (독일)', category: '유럽' },
-
-  // ========== 오세아니아 ==========
-  'sydney': { lat: -33.8688, lng: 151.2093, name: '시드니 (호주)', category: '오세아니아' },
-  'melbourne': { lat: -37.8136, lng: 144.9631, name: '멜버른 (호주)', category: '오세아니아' },
-  'auckland': { lat: -36.8509, lng: 174.7645, name: '오클랜드 (뉴질랜드)', category: '오세아니아' },
 };

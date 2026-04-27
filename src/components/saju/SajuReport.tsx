@@ -439,6 +439,13 @@ const SINSAL_TYPE_COLORS: Record<SinSal['type'], string> = {
   neutral: '#F59E0B',
 };
 
+// 직원 피드백: 색만으로 신살/길성 구분이 안 됨 → 라벨로 명시
+const SINSAL_TYPE_LABELS: Record<SinSal['type'], string> = {
+  good: '길성',
+  bad: '신살',
+  neutral: '중립',
+};
+
 function elementPosToCell(el: string): { col: PillarCol; row: PillarRow } | null {
   const pillarChar = el[0];
   const kindChar = el[1];
@@ -804,6 +811,21 @@ function SinSalBoard({
 
   return (
     <div className={styles.sinsalBoardWrap}>
+      {/* 범례 — 색만 보고는 길성·신살 구분이 어려워서 명시 */}
+      <div className={styles.sinsalLegend}>
+        <span className={styles.sinsalLegendItem} style={{ color: SINSAL_TYPE_COLORS.good }}>
+          <span className={styles.sinsalLegendDot} style={{ background: SINSAL_TYPE_COLORS.good }} />
+          길성 (이로움)
+        </span>
+        <span className={styles.sinsalLegendItem} style={{ color: SINSAL_TYPE_COLORS.bad }}>
+          <span className={styles.sinsalLegendDot} style={{ background: SINSAL_TYPE_COLORS.bad }} />
+          신살 (주의)
+        </span>
+        <span className={styles.sinsalLegendItem} style={{ color: SINSAL_TYPE_COLORS.neutral }}>
+          <span className={styles.sinsalLegendDot} style={{ background: SINSAL_TYPE_COLORS.neutral }} />
+          중립
+        </span>
+      </div>
       <div className={styles.pillarsTable}>
         <div className={styles.pillarsHeader}>
           <span aria-hidden="true" />
@@ -860,19 +882,38 @@ function SinSalBoard({
       </div>
       {sinSals.length > 0 && (
         <ul className={styles.sinsalDescList}>
-          {sinSals
-            .filter((s, i, arr) => arr.findIndex(x => x.name === s.name) === i)
-            .map((s) => (
-            <li key={s.name} className={styles.sinsalDescItem}>
-              <span
-                className={styles.sinsalDescName}
-                style={{ color: SINSAL_TYPE_COLORS[s.type] }}
-              >
-                {s.name}
-              </span>
-              <span className={styles.sinsalDescText}>{s.description}</span>
-            </li>
-          ))}
+          {/*
+            중복 제거 후 길성→신살→중립 순서 정렬. 사용자가 좋은 거부터 보고 싶어해서
+            (직원 피드백: '신살 → 길성' 또는 '길성 → 신살' 일정한 순서 유지가 가독성↑)
+          */}
+          {(() => {
+            const TYPE_ORDER: Record<SinSal['type'], number> = { good: 0, bad: 1, neutral: 2 };
+            return sinSals
+              .filter((s, i, arr) => arr.findIndex(x => x.name === s.name) === i)
+              .slice()
+              .sort((a, b) => TYPE_ORDER[a.type] - TYPE_ORDER[b.type])
+              .map((s) => (
+                <li key={s.name} className={styles.sinsalDescItem}>
+                  {/* [길성]/[신살]/[중립] 배지 — 색만으로 구분 안 되는 문제 해결 */}
+                  <span
+                    className={styles.sinsalTypeBadge}
+                    style={{
+                      color: SINSAL_TYPE_COLORS[s.type],
+                      borderColor: SINSAL_TYPE_COLORS[s.type],
+                    }}
+                  >
+                    {SINSAL_TYPE_LABELS[s.type]}
+                  </span>
+                  <span
+                    className={styles.sinsalDescName}
+                    style={{ color: SINSAL_TYPE_COLORS[s.type] }}
+                  >
+                    {s.name}
+                  </span>
+                  <span className={styles.sinsalDescText}>{s.description}</span>
+                </li>
+              ));
+          })()}
         </ul>
       )}
     </div>
@@ -970,7 +1011,19 @@ function DaeWoonSection({
   );
 }
 
-export default function SajuReport({ result }: { result: SajuResult }) {
+/**
+ * @param hideManseryeok - 정통사주에선 만세력 섹션 중복이라 숨김. 만세력 페이지 단독 진입 시는 그대로 표시.
+ * @param defaultExpanded - true 면 모든 CollapsibleSection 이 펼친 상태로 마운트. 만세력 페이지 디폴트 펼침용.
+ */
+export default function SajuReport({
+  result,
+  hideManseryeok = false,
+  defaultExpanded = false,
+}: {
+  result: SajuResult;
+  hideManseryeok?: boolean;
+  defaultExpanded?: boolean;
+}) {
   const { pillars, elementCount, daeWoon, seWoon, sinSals, interactions } = result;
 
   const gyeokguk = useMemo(() => determineGyeokguk(result), [result]);
@@ -982,7 +1035,8 @@ export default function SajuReport({ result }: { result: SajuResult }) {
 
   return (
     <>
-      {/* 1. 사주 원국 */}
+      {/* 1. 사주 원국 — 정통사주 화면에선 중복이라 숨김 (만세력 페이지 단독 진입 시는 표시) */}
+      {!hideManseryeok && (
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <h2>사주 원국 (만세력)</h2>
@@ -1049,10 +1103,11 @@ export default function SajuReport({ result }: { result: SajuResult }) {
           </div>
         </div>
       </div>
+      )}
 
       {/* 2. 사주 관계 */}
       {(interactions.length > 0 || sinSals.length > 0) && (
-        <CollapsibleSection title="사주 관계" helpText={SECTION_HELP_TEXT.relation}>
+        <CollapsibleSection title="사주 관계" helpText={SECTION_HELP_TEXT.relation} defaultOpen={defaultExpanded}>
           <div className={styles.subheading}>천간과 지지</div>
           {interactions.length > 0 ? (
             <PillarsRelationBoard
@@ -1087,7 +1142,7 @@ export default function SajuReport({ result }: { result: SajuResult }) {
       )}
 
       {/* 3. 오행과 십성 */}
-      <CollapsibleSection title="오행과 십성" helpText={SECTION_HELP_TEXT.ohaeng}>
+      <CollapsibleSection title="오행과 십성" helpText={SECTION_HELP_TEXT.ohaeng} defaultOpen={defaultExpanded}>
         <div className={styles.ohaengHeader}>
           <span className={styles.subheading}>오행 분포</span>
           <span className={styles.ohaengMeta}>
@@ -1127,7 +1182,7 @@ export default function SajuReport({ result }: { result: SajuResult }) {
       </CollapsibleSection>
 
       {/* 4. 신강신약 */}
-      <CollapsibleSection title="신강신약 · 용신 · 격국" helpText={SECTION_HELP_TEXT.strength}>
+      <CollapsibleSection title="신강신약 · 용신 · 격국" helpText={SECTION_HELP_TEXT.strength} defaultOpen={defaultExpanded}>
         <div className={styles.strengthBox}>
           <div className={styles.strengthBadge} data-strong={result.isStrong}>
             {result.strengthStatus} ({result.strengthScore}점)
@@ -1234,7 +1289,7 @@ export default function SajuReport({ result }: { result: SajuResult }) {
       </CollapsibleSection>
 
       {/* 5. 대운수 */}
-      <CollapsibleSection title="대운수" helpText={SECTION_HELP_TEXT.daewoon}>
+      <CollapsibleSection title="대운수" helpText={SECTION_HELP_TEXT.daewoon} defaultOpen={defaultExpanded}>
         <p className={styles.subInfo}>대운 시작: {result.daeWoonStartAge}세</p>
         <DaeWoonSection daeWoon={daeWoon} seWoon={seWoon} result={result} />
       </CollapsibleSection>

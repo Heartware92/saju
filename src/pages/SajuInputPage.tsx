@@ -40,11 +40,9 @@ export default function SajuInputPage() {
 
   const [gender, setGender] = useState<Gender>('male')
   const [calendarType, setCalendarType] = useState<CalendarType>('solar')
-  const [year, setYear] = useState(1990)
-  const [month, setMonth] = useState(1)
-  const [day, setDay] = useState(1)
-  const [hour, setHour] = useState(12)
-  const [minute, setMinute] = useState(0)
+  // 생년월일 YYYYMMDD (8자리) / 시간 HHMM (4자리) — 키보드 입력 + 엄격 검증
+  const [birthDateStr, setBirthDateStr] = useState('')
+  const [birthTimeStr, setBirthTimeStr] = useState('')
   const [unknownTime, setUnknownTime] = useState(false)
   const [birthPlace, setBirthPlace] = useState('seoul')
   const [targetDate, setTargetDate] = useState('')
@@ -72,23 +70,63 @@ export default function SajuInputPage() {
     }
   }, [user, isProfileOnly, router])
 
+  // ── 입력 검증 ───────────────────────────────────────────────
+  // YYYYMMDD 형식 + 1900~현재년도 + 월/일 범위 + 실재 날짜
+  const validateBirthDate = (s: string): { ok: boolean; year?: number; month?: number; day?: number; msg?: string } => {
+    if (!s) return { ok: false, msg: '생년월일을 입력해주세요' }
+    if (!/^\d{8}$/.test(s)) return { ok: false, msg: '8자리 숫자로 입력해주세요 (예: 19920914)' }
+    const y = parseInt(s.slice(0, 4), 10)
+    const m = parseInt(s.slice(4, 6), 10)
+    const d = parseInt(s.slice(6, 8), 10)
+    if (y < 1900 || y > currentYear) return { ok: false, msg: `연도는 1900~${currentYear} 사이여야 합니다` }
+    if (m < 1 || m > 12) return { ok: false, msg: '월은 01~12 사이여야 합니다' }
+    if (d < 1 || d > 31) return { ok: false, msg: '일은 01~31 사이여야 합니다' }
+    // 실재일 검증 — 2월 30일 등 거름
+    const dt = new Date(y, m - 1, d)
+    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) {
+      return { ok: false, msg: '존재하지 않는 날짜입니다' }
+    }
+    return { ok: true, year: y, month: m, day: d }
+  }
+
+  // HHMM 형식 + 시(0~23) + 분(0~59)
+  const validateBirthTime = (s: string): { ok: boolean; hour?: number; minute?: number; msg?: string } => {
+    if (!s) return { ok: false, msg: '출생 시간을 입력해주세요 (모르면 옆 "모름" 체크)' }
+    if (!/^\d{4}$/.test(s)) return { ok: false, msg: '4자리 숫자로 입력해주세요 (예: 1322)' }
+    const h = parseInt(s.slice(0, 2), 10)
+    const mi = parseInt(s.slice(2, 4), 10)
+    if (h > 23) return { ok: false, msg: '시는 00~23 사이여야 합니다' }
+    if (mi > 59) return { ok: false, msg: '분은 00~59 사이여야 합니다' }
+    return { ok: true, hour: h, minute: mi }
+  }
+
+  const dateValidation = useMemo(() => validateBirthDate(birthDateStr), [birthDateStr])
+  const timeValidation = useMemo(
+    () => (unknownTime ? { ok: true, hour: 12, minute: 0 } : validateBirthTime(birthTimeStr)),
+    [birthTimeStr, unknownTime],
+  )
+
+  // 입력 박스에 표시할 라이브 에러 메시지 — 사용자가 무언가 입력했을 때만 보여줌(첫 진입 시 빈 빨간 메시지 X)
+  const dateError = birthDateStr.length > 0 && !dateValidation.ok ? dateValidation.msg : ''
+  const timeError = !unknownTime && birthTimeStr.length > 0 && !timeValidation.ok ? timeValidation.msg : ''
+
   // 프로필 선택 시 폼에 반영
   const selectProfile = (profile: BirthProfile) => {
     setSelectedProfileId(profile.id)
     const [y, m, d] = profile.birth_date.split('-').map(Number)
-    setYear(y)
-    setMonth(m)
-    setDay(d)
+    setBirthDateStr(`${y}${String(m).padStart(2, '0')}${String(d).padStart(2, '0')}`)
     setGender(profile.gender)
     setCalendarType(profile.calendar_type)
-    setBirthPlace(profile.birth_place || 'seoul')
+    // 국외 도시 키 저장돼있던 기존 프로필은 서울로 fallback (옵션이 사라졌으므로)
+    const place = profile.birth_place && CITY_COORDINATES[profile.birth_place] ? profile.birth_place : 'seoul'
+    setBirthPlace(place)
 
     if (profile.birth_time) {
       const [h, min] = profile.birth_time.split(':').map(Number)
-      setHour(h)
-      setMinute(min)
+      setBirthTimeStr(`${String(h).padStart(2, '0')}${String(min).padStart(2, '0')}`)
       setUnknownTime(false)
     } else {
+      setBirthTimeStr('')
       setUnknownTime(true)
     }
   }
@@ -96,9 +134,14 @@ export default function SajuInputPage() {
   // 프로필 저장
   const handleSaveProfile = async () => {
     if (!profileForm.name.trim()) return
+    // 형식 위반 시 저장 차단 — UI 의 disabled 와 함께 이중 가드
+    if (!dateValidation.ok || !timeValidation.ok) return
 
+    const { year, month, day } = dateValidation as { year: number; month: number; day: number }
     const birthDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    const birthTime = unknownTime ? undefined : `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+    const birthTime = unknownTime
+      ? undefined
+      : `${String((timeValidation as { hour: number }).hour).padStart(2, '0')}:${String((timeValidation as { minute: number }).minute).padStart(2, '0')}`
 
     const birthLongitude = CITY_COORDINATES[birthPlace]?.lng ?? null;
 
@@ -151,23 +194,11 @@ export default function SajuInputPage() {
     if (selectedProfileId === id) setSelectedProfileId(null)
   }
 
-  const years = Array.from({ length: 100 }, (_, i) => currentYear - i)
-  const months = Array.from({ length: 12 }, (_, i) => i + 1)
-  const days = Array.from({ length: 31 }, (_, i) => i + 1)
-  const hours = Array.from({ length: 24 }, (_, i) => i)
-  const minutes = Array.from({ length: 60 }, (_, i) => i)
-
-  // 카테고리별로 도시 그룹화
-  const citiesByCategory = useMemo(() => {
-    return Object.entries(CITY_COORDINATES).reduce((acc, [key, value]) => {
-      const cat = value.category || '기타'
-      if (!acc[cat]) acc[cat] = []
-      acc[cat].push({ key, name: value.name })
-      return acc
-    }, {} as Record<string, { key: string; name: string }[]>)
-  }, [])
-
-  const categoryOrder = ['대한민국', '북한', '아시아', '북미', '유럽', '오세아니아']
+  // 출생지 옵션 — 대한민국 17개 시도만 (국외는 보정 정확도 문제로 제거)
+  const cityOptions = useMemo(
+    () => Object.entries(CITY_COORDINATES).map(([key, value]) => ({ key, name: value.name })),
+    [],
+  )
 
   const handleSubmit = () => {
     // 지정일 운세의 경우 날짜 검증
@@ -176,14 +207,29 @@ export default function SajuInputPage() {
       return
     }
 
+    // 생년월일·시간 형식 검증 — 위반 시 결과 화면 진입 차단
+    if (!dateValidation.ok) {
+      alert(dateValidation.msg || '생년월일을 확인해주세요')
+      return
+    }
+    if (!timeValidation.ok) {
+      alert(timeValidation.msg || '출생 시간을 확인해주세요')
+      return
+    }
+
+    const { year, month, day } = dateValidation as { year: number; month: number; day: number }
+    const { hour, minute } = unknownTime
+      ? { hour: 12, minute: 0 }
+      : (timeValidation as { hour: number; minute: number })
+
     const coords = CITY_COORDINATES[birthPlace] || CITY_COORDINATES['seoul']
 
     const queryParams = new URLSearchParams({
       year: year.toString(),
       month: month.toString(),
       day: day.toString(),
-      hour: unknownTime ? '12' : hour.toString(),
-      minute: unknownTime ? '0' : minute.toString(),
+      hour: hour.toString(),
+      minute: minute.toString(),
       gender,
       calendarType,
       longitude: coords.lng.toString(),
@@ -305,44 +351,27 @@ export default function SajuInputPage() {
           </div>
         </div>
 
-        {/* 생년월일 */}
+        {/* 생년월일 — YYYYMMDD 8자리 직접 입력 */}
         <div className={styles.section}>
-          <label className={styles.label}>생년월일</label>
-          <div className={styles.dateRow}>
-            <select
-              className={styles.select}
-              value={year}
-              onChange={(e) => setYear(Number(e.target.value))}
-            >
-              {years.map(y => (
-                <option key={y} value={y}>{y}년</option>
-              ))}
-            </select>
-            <select
-              className={styles.select}
-              value={month}
-              onChange={(e) => setMonth(Number(e.target.value))}
-            >
-              {months.map(m => (
-                <option key={m} value={m}>{m}월</option>
-              ))}
-            </select>
-            <select
-              className={styles.select}
-              value={day}
-              onChange={(e) => setDay(Number(e.target.value))}
-            >
-              {days.map(d => (
-                <option key={d} value={d}>{d}일</option>
-              ))}
-            </select>
-          </div>
+          <label className={styles.label}>생년월일 (YYYYMMDD)</label>
+          <input
+            className={`${styles.textInput} ${dateError ? styles.inputError : ''}`}
+            type="text"
+            inputMode="numeric"
+            pattern="\d{8}"
+            maxLength={8}
+            placeholder="예: 19920914"
+            value={birthDateStr}
+            onChange={(e) => setBirthDateStr(e.target.value.replace(/\D/g, '').slice(0, 8))}
+            aria-invalid={!!dateError}
+          />
+          {dateError && <p className={styles.errorMsg}>{dateError}</p>}
         </div>
 
-        {/* 출생 시간 */}
+        {/* 출생 시간 — HHMM 4자리 직접 입력 */}
         <div className={styles.section}>
           <div className={styles.labelRow}>
-            <label className={styles.label}>출생 시간</label>
+            <label className={styles.label}>출생 시간 (HHMM)</label>
             <label className={styles.checkbox}>
               <input
                 type="checkbox"
@@ -352,28 +381,19 @@ export default function SajuInputPage() {
               <span>모름</span>
             </label>
           </div>
-          <div className={styles.timeRow}>
-            <select
-              className={styles.select}
-              value={hour}
-              onChange={(e) => setHour(Number(e.target.value))}
-              disabled={unknownTime}
-            >
-              {hours.map(h => (
-                <option key={h} value={h}>{h}시</option>
-              ))}
-            </select>
-            <select
-              className={styles.select}
-              value={minute}
-              onChange={(e) => setMinute(Number(e.target.value))}
-              disabled={unknownTime}
-            >
-              {minutes.map(m => (
-                <option key={m} value={m}>{m}분</option>
-              ))}
-            </select>
-          </div>
+          <input
+            className={`${styles.textInput} ${timeError ? styles.inputError : ''}`}
+            type="text"
+            inputMode="numeric"
+            pattern="\d{4}"
+            maxLength={4}
+            placeholder="예: 1322 (오후 1시 22분)"
+            value={birthTimeStr}
+            onChange={(e) => setBirthTimeStr(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            disabled={unknownTime}
+            aria-invalid={!!timeError}
+          />
+          {timeError && <p className={styles.errorMsg}>{timeError}</p>}
           {unknownTime && (
             <p className={styles.hint}>
               시간을 모르면 시주(時柱)가 정확하지 않을 수 있습니다
@@ -381,7 +401,7 @@ export default function SajuInputPage() {
           )}
         </div>
 
-        {/* 출생지 */}
+        {/* 출생지 — 대한민국 17개 시도 */}
         <div className={styles.section}>
           <label className={styles.label}>출생지</label>
           <select
@@ -389,14 +409,8 @@ export default function SajuInputPage() {
             value={birthPlace}
             onChange={(e) => setBirthPlace(e.target.value)}
           >
-            {categoryOrder.map(cat => (
-              citiesByCategory[cat] && (
-                <optgroup key={cat} label={cat}>
-                  {citiesByCategory[cat].map(city => (
-                    <option key={city.key} value={city.key}>{city.name}</option>
-                  ))}
-                </optgroup>
-              )
+            {cityOptions.map(city => (
+              <option key={city.key} value={city.key}>{city.name}</option>
             ))}
           </select>
         </div>
@@ -417,7 +431,7 @@ export default function SajuInputPage() {
           </div>
         )}
 
-        {/* 제출 버튼 */}
+        {/* 제출 버튼 — 형식 위반 시 disabled */}
         <motion.button
           className={styles.submitBtn}
           onClick={() => {
@@ -429,6 +443,7 @@ export default function SajuInputPage() {
               handleSubmit()
             }
           }}
+          disabled={!dateValidation.ok || !timeValidation.ok}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
@@ -502,7 +517,7 @@ export default function SajuInputPage() {
               <button
                 className={styles.modalBtnPrimary}
                 onClick={handleSaveProfile}
-                disabled={!profileForm.name.trim()}
+                disabled={!profileForm.name.trim() || !dateValidation.ok || !timeValidation.ok}
               >
                 {editingProfile ? '수정' : '저장'}
               </button>
