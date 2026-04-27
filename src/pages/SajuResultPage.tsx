@@ -21,6 +21,7 @@ import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { determineGyeokguk } from '../engine/gyeokguk';
 import { stemToHanja, zhiToHanja } from '../lib/character';
 import { AdviceCard } from '../components/saju/AdviceCard';
+import SajuReport from '../components/saju/SajuReport';
 import { AILoadingBar } from '../components/AILoadingBar';
 
 // 정통사주 = AI 풀이 가치, 만세력 = 무료 데이터.
@@ -319,6 +320,13 @@ export default function SajuResultPage() {
           );
         })()}
       </motion.div>
+
+      {/*
+        만세력 데이터 보드 — 사주원국만 펼쳐지고 나머지(사주관계·오행십성·신강신약·대운수)는 접힘.
+        만세력 페이지(/saju/manseryeok)는 defaultExpanded={true} 로 모두 펼침.
+        (직원 피드백 재정리 — 만세력 자체는 정통사주에도 노출하되 보조 섹션은 접어 정보량 조절)
+      */}
+      <SajuReport result={result} />
 
       {/* 에러 */}
       {report?.error && (

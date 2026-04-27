@@ -851,6 +851,11 @@ function SinSalBoard({
           중립
         </span>
       </div>
+      {/*
+        직원 피드백: 사주원국과 신살/길성 섹션에 한자 8글자(천간·지지)가 중복 표기됨.
+        사주원국에 이미 있으므로 신살 보드에서는 천간/지지 행을 제거하고
+        시주/일주/월주/년주 컬럼 헤더만 남겨 신살/길성 행 하나만 보여준다.
+      */}
       <div className={styles.pillarsTable}>
         <div className={styles.pillarsHeader}>
           <span aria-hidden="true" />
@@ -858,30 +863,6 @@ function SinSalBoard({
           <span>일주</span>
           <span>월주</span>
           <span>년주</span>
-        </div>
-        <div className={`${styles.pillarsRow} ${styles.stemRow}`}>
-          <span className={styles.label}>천간</span>
-          {columns.map(({ col, pillar, unknown }) => (
-            <span
-              key={`ss-${col}`}
-              className={unknown ? styles.hourUnknownCell : ''}
-              style={!unknown ? { color: ELEMENT_COLORS[pillar.ganElement] } : undefined}
-            >
-              {unknown ? '?' : <StemCell gan={pillar.gan} />}
-            </span>
-          ))}
-        </div>
-        <div className={`${styles.pillarsRow} ${styles.branchRow}`}>
-          <span className={styles.label}>지지</span>
-          {columns.map(({ col, pillar, unknown }) => (
-            <span
-              key={`sb-${col}`}
-              className={unknown ? styles.hourUnknownCell : ''}
-              style={!unknown ? { color: ELEMENT_COLORS[pillar.zhiElement] } : undefined}
-            >
-              {unknown ? '?' : <BranchCell zhi={pillar.zhi} />}
-            </span>
-          ))}
         </div>
         <div className={`${styles.pillarsRow} ${styles.sinsalRow}`}>
           <span className={styles.label}>신살/길성</span>

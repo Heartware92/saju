@@ -96,17 +96,19 @@ export const CHARACTER_BY_ELEMENT: Record<Element, CharacterInfo> = {
 };
 
 // 천간별 개별 캐릭터 이미지 매핑
+// 주의: 한글 파일명(갑.png 등)은 Vercel 프로덕션에서 404. ASCII 로마자로 매핑.
+// (한글 png 파일은 호환을 위해 public/characters/ 에 그대로 두되 사용은 ASCII 파일로)
 export const CHARACTER_IMAGE_BY_STEM: Record<string, string> = {
-  '갑': '/characters/갑.png',
-  '을': '/characters/을.png',
-  '병': '/characters/병.png',
-  '정': '/characters/정.png',
-  '무': '/characters/무.png',
-  '기': '/characters/기.png',
-  '경': '/characters/경.png',
-  '신': '/characters/신.png',
-  '임': '/characters/임.png',
-  '계': '/characters/계.png',
+  '갑': '/characters/gap.png',
+  '을': '/characters/eul.png',
+  '병': '/characters/byeong.png',
+  '정': '/characters/jeong.png',
+  '무': '/characters/mu.png',
+  '기': '/characters/gi.png',
+  '경': '/characters/gyeong.png',
+  '신': '/characters/sin.png',
+  '임': '/characters/im.png',
+  '계': '/characters/gye.png',
 };
 
 /** 만세력 셀(간·지) 배경/전경 색 — 전통 표기: 木=청, 火=적, 土=황, 金=백, 水=흑 */
