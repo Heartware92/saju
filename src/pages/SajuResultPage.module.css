@@ -656,16 +656,30 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+  세부 점수(비겁/인성/식상/재성/관성) — 좁은 카드에서 5개 한 줄이면 줄바꿈 + 가독성↓.
+  3열 그리드로 정렬해 일관된 폭 + 칩 스타일로 시각 분리.
+*/
 .detailBreakdown {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-  margin-top: 8px;
-  padding-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px dashed var(--border-subtle);
-  font-size: 11px;
-  color: var(--text-tertiary);
+  font-size: 12px;
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
+}
+
+.detailBreakdown > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  white-space: nowrap;
 }
 
 /* Yongshin (용신) */
