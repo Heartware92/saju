@@ -597,7 +597,7 @@ ${isStrong ? '신강' : '신약'}, 용신: ${yongSinElement}(${yongSin})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [작성 규칙 — 반드시 준수]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1) 총 분량: 3100~3900자 (12개 섹션 — interaction 추가). 각 섹션 분량 명시대로 맞출 것.
+1) 총 분량: 3300~4150자 (12개 섹션 — interaction 추가, luck 확장). 각 섹션 분량 명시대로 맞출 것.
 2) 섹션 헤더(###)는 아래 11개를 **순서·표기 그대로** 유지할 것. 새 섹션을 만들거나 순서를 바꾸지 말 것.
 3) 전문 용어(격국·용신·십성·상관견관·신살 등)는 첫 등장 시 괄호 속에 일상어로 풀어쓸 것.
    예: "정관격(바른 관직·책임감의 사주)", "식상(말·표현·자녀의 기운)".
@@ -882,12 +882,24 @@ export const generateJungtongsajuPrompt = (result: SajuResult): string => {
     .map(d => fmtDWJT(d))
     .join(' | ');
 
-  const currentDaeWoon = daeWoon.find(d => d.gan && d.zhi && currentYear >= d.startAge && currentYear <= d.endAge);
-  const currentDaeWoonStr = currentDaeWoon
-    ? fmtDWJT(currentDaeWoon)
-    : '대운 시작 전';
+  const validDaeWoons = daeWoon.filter(d => d.gan && d.zhi);
+  const currentDaeWoonIdx = validDaeWoons.findIndex(d => currentYear >= d.startAge && currentYear <= d.endAge);
+  const currentDaeWoon = currentDaeWoonIdx >= 0 ? validDaeWoons[currentDaeWoonIdx] : undefined;
+  const currentDaeWoonStr = currentDaeWoon ? fmtDWJT(currentDaeWoon) : '대운 시작 전';
+  // 직원 피드백: 과거·현재·미래 대운 흐름 입체적 노출 — [luck] 섹션 본문에 활용
+  const prevDaeWoon = currentDaeWoonIdx > 0 ? validDaeWoons[currentDaeWoonIdx - 1] : undefined;
+  const nextDaeWoon = currentDaeWoonIdx >= 0 && currentDaeWoonIdx + 1 < validDaeWoons.length
+    ? validDaeWoons[currentDaeWoonIdx + 1]
+    : undefined;
+  const nextNextDaeWoon = currentDaeWoonIdx >= 0 && currentDaeWoonIdx + 2 < validDaeWoons.length
+    ? validDaeWoons[currentDaeWoonIdx + 2]
+    : undefined;
+  const prevDaeWoonStr = prevDaeWoon ? fmtDWJT(prevDaeWoon) : '없음(현재가 첫 대운)';
+  const nextDaeWoonStr = nextDaeWoon ? fmtDWJT(nextDaeWoon) : '없음(데이터 범위 끝)';
+  const nextNextDaeWoonStr = nextNextDaeWoon ? fmtDWJT(nextNextDaeWoon) : '없음';
+  // 향후 5년 세운 (올해 포함) — 작성 지침에서 한 줄씩 짚도록
   const recentSeWoon = seWoon
-    .filter(s => s.year >= currentYear && s.year <= currentYear + 2)
+    .filter(s => s.year >= currentYear && s.year <= currentYear + 4)
     .map(s => `${s.year}년 ${s.gan}${s.zhi}(${s.ganElement}${s.zhiElement}·${s.tenGod}·${s.twelveStage})`)
     .join(' | ');
 
@@ -911,7 +923,10 @@ ${strengthBlock}
 병존·삼존: ${formatByeongjOn(result)}
 성별: ${gender === 'male' ? '남성' : '여성'}
 현재 나이(계산): ${ageNow}세
+이전 대운(과거): ${prevDaeWoonStr}
 현재 대운: ${currentDaeWoonStr}
+다음 대운(미래): ${nextDaeWoonStr}
+차차기 대운(미래): ${nextNextDaeWoonStr}
 대운 전체(최대 8개): ${daeWoonStr}
 최근·향후 세운(3년): ${recentSeWoon}${hourNote}
 
@@ -1010,11 +1025,23 @@ ${METAPHOR_TITLE_RULE}
 빈 줄
 본문: 제목 은유로 시작해 비겁·식상·관성 배치로 본 인맥 형성 스타일 구체적으로. "처음 만난 자리에서 어떻게 행동하는가"와 "어떤 관계에서 오래 유지되는가"를 분리해 서술. 부모 관계(인성·관성 근거)·자녀 관계(식상 근거) 특징 각 1문장. 의지하면 좋은 사람 유형 1개와 거리를 두어야 하는 유형 1개를 십성 근거로 제시. 마지막 문장에서 제목 은유 회수.
 
-[luck] — 540~640자
+[luck] — 720~880자 (대운 흐름 전체를 입체적으로 다루므로 분량 확장)
 작성 순서:
-첫 줄: 은유 제목 (현재 대운의 기회와 과제를 달의 차고 기움·계절 전환으로 대비. 예: "반달이 보름달로 차오르는 계절, 아직 남은 그림자" / "황혼이 지나면 열리는 별밤, 지금은 색을 바꾸는 하늘")
+첫 줄: 은유 제목 (대운 흐름의 과거·현재·미래를 달의 차고 기움·계절 전환으로 대비. 예: "황혼이 지나면 열리는 별밤, 지금은 색을 바꾸는 하늘" / "반달에서 보름달로, 그리고 다시 그믐으로 향하는 길")
 빈 줄
-본문: 제목 은유로 시작해 현재 대운(${currentDaeWoonStr})을 선언. 그 대운의 간지·오행·십성·12운성이 일·관계·재물 각각에 구체적으로 어떤 영향을 주는지 4~5문장 서술. 어떤 조건에서 유리/불리한지로 쪼갤 것. 이전 대운에서 이월된 미완의 과제 + 다음 대운에서 반드시 준비해야 할 것 각각 2~3문장. 세운(${recentSeWoon})에서 올해·내년·내후년 각각 "어떤 십성이 들어오고, 어떤 국면이 열리며, 무엇을 우선해야 하는가" 형식으로 3~4문장씩. 마지막 문장에서 제목 은유 회수.
+본문은 아래 4단락 구조를 반드시 지킨다:
+
+[1단락 — 과거 대운 회고] 100~150자
+이전 대운 (${prevDaeWoonStr})이 어떤 시기였는지 한 문장으로 요약하고, 그 시기에 형성된 기반·해결되지 못한 과제 한 가지를 단정적으로 짚는다. 첫 대운이라 이전 대운이 없으면 "대운 시작 전 청소년기는 사주 원국이 그대로 발현되던 잠재기"라고 처리한다.
+
+[2단락 — 현재 대운 본론] 320~400자
+제목 은유로 시작해 현재 대운(${currentDaeWoonStr})을 선언. 그 대운의 간지·오행·십성·12운성이 일·관계·재물 각각에 구체적으로 어떤 영향을 주는지 4~5문장으로 서술. 어떤 조건에서 유리/불리한지 쪼갤 것. 향후 5년 세운(${recentSeWoon})에서 5개 연도 각각을 한 줄씩 "YYYY년 OO(간지·십성)은 ~한 흐름이 들어와 ~을 우선해야 한다" 형식으로 짚는다 (5줄 모두 필수).
+
+[3단락 — 미래 대운 예고] 200~250자
+다음 대운(${nextDaeWoonStr})이 시작되면 어떤 국면이 열리는지 2~3문장으로 명시 + 그 대운에서 가장 중요한 준비 한 가지를 지금부터 무엇으로 시작해야 하는지 1문장. 차차기 대운(${nextNextDaeWoonStr})까지 데이터가 있으면 "그 다음 대운에선 ~한 흐름이 이어진다"고 한 줄로 예고. 데이터 끝이면 "그 너머는 본 사주 데이터 범위 밖"이라고 명시.
+
+[4단락 — 마무리] 50자 내외
+제목 은유 회수 + "대운은 10년 단위로 바뀌는 하늘의 계절"임을 한 줄로 정리.
 
 [advice] — 구조화 포맷 필수 (파싱에 사용됩니다)
 반드시 아래 순서와 형식을 정확히 지킵니다.
