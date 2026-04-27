@@ -179,8 +179,8 @@
 }
 
 /* ─────────────────────────────────────────────
-   달 (Moon) — 우상단, 은은한 후광 + 부드러운 크레이터 느낌
-   해·달 크레딧 시스템과 테마 일관성. 정적이라 성능 부담 없음. */
+   달 (Moon) — 우상단, 은은한 후광
+   직원 피드백: 본문 읽기에 방해되어 투명도 더 낮춤 (전체 0.35) */
 .moon {
   position: absolute;
   top: 7%;
@@ -188,6 +188,7 @@
   width: 76px;
   height: 76px;
   pointer-events: none;
+  opacity: 0.35;
   animation: moon-float 14s ease-in-out infinite alternate;
 }
 
@@ -197,8 +198,8 @@
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(255, 240, 200, 0.22) 0%,
-    rgba(255, 220, 180, 0.12) 35%,
+    rgba(255, 240, 200, 0.10) 0%,
+    rgba(255, 220, 180, 0.05) 35%,
     transparent 70%
   );
   filter: blur(4px);

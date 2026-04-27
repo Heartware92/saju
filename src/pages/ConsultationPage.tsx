@@ -18,6 +18,7 @@ import { computeSajuFromProfile } from '../utils/profileSaju';
 import { buildConsultationSystemPrompt, type ConsultationStatus } from '../constants/prompts';
 import { sanitizeAIOutput } from '../services/fortuneService';
 import { supabase } from '../services/supabase';
+import { BackButton } from '../components/ui/BackButton';
 import {
   CONSULTATION_QUESTIONS_PER_PACK,
   CONSULTATION_PACK_SUN_COST,
@@ -578,15 +579,18 @@ export default function ConsultationPage() {
     <div className="flex flex-col h-[calc(100vh-112px)]">
 
       {/* ── 상단 헤더 ── */}
-      <div className="flex-shrink-0 px-5 pt-6 pb-3 border-b border-[var(--border-subtle)]">
+      <div className="flex-shrink-0 px-5 pt-4 pb-3 border-b border-[var(--border-subtle)]">
         <div className="flex items-start justify-between mb-3">
-          <div>
-            <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
-              상담소
-            </h1>
-            <p className="text-[13px] text-text-tertiary mt-0.5">
-              사주 기반 1:1 AI 상담 · 질문팩 ☀️ {CONSULTATION_PACK_SUN_COST} 또는 🌙 {CONSULTATION_PACK_MOON_COST} → {CONSULTATION_QUESTIONS_PER_PACK}질문
-            </p>
+          <div className="flex items-start gap-1">
+            <BackButton to="/" className="-ml-2 mt-0.5" />
+            <div>
+              <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+                상담소
+              </h1>
+              <p className="text-[13px] text-text-tertiary mt-0.5">
+                사주 기반 1:1 AI 상담 · 질문팩 ☀️ {CONSULTATION_PACK_SUN_COST} 또는 🌙 {CONSULTATION_PACK_MOON_COST} → {CONSULTATION_QUESTIONS_PER_PACK}질문
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-1">
             <button

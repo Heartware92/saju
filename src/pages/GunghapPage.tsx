@@ -8,6 +8,7 @@ import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
 import { sajuDB } from '../services/supabase';
+import { BackButton } from '../components/ui/BackButton';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import type { BirthProfile } from '../types/credit';
@@ -539,15 +540,34 @@ export default function GunghapPage() {
   const stepOrder: Step[] = ['category', 'role', 'input', 'result'];
   const stepIdx = stepOrder.indexOf(step);
 
+  /**
+   * 뒤로가기: step 별 이전 단계로 → 첫 단계(category)에선 홈으로.
+   * 단계 흐름이 있는 페이지라 명시적 분기.
+   */
+  const handleGunghapBack = () => {
+    if (step === 'result') {
+      setStep('input');
+    } else if (step === 'input') {
+      setStep(isPetCategory ? 'category' : 'role');
+    } else if (step === 'role') {
+      setStep('category');
+    } else if (typeof window !== 'undefined') {
+      window.history.length > 1 ? window.history.back() : window.location.assign('/');
+    }
+  };
+
   return (
     <div className="min-h-screen pb-24">
-      {/* 헤더 */}
-      <div className="px-5 pt-8 pb-4">
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl font-bold text-text-primary mb-1" style={{ fontFamily: 'var(--font-serif)' }}>
-            궁합 분석
-          </h1>
-          <p className="text-sm text-text-secondary">두 사람의 사주로 보는 인연의 흐름</p>
+      {/* 헤더 — 뒤로가기 + 타이틀 */}
+      <div className="px-5 pt-4 pb-4">
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-1">
+          <BackButton onClick={handleGunghapBack} label="이전 단계" className="-ml-2 mt-1" />
+          <div>
+            <h1 className="text-2xl font-bold text-text-primary mb-1" style={{ fontFamily: 'var(--font-serif)' }}>
+              궁합 분석
+            </h1>
+            <p className="text-sm text-text-secondary">두 사람의 사주로 보는 인연의 흐름</p>
+          </div>
         </motion.div>
       </div>
 

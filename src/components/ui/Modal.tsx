@@ -46,7 +46,9 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center
+      // 모바일·데스크탑 모두 정중앙 정렬 — 직원 피드백 "웹앱에서 모달이 정중앙에 안 떠요"
+      // bottom-nav (h-16) 회피용 padding-bottom + safe-area 보존
+      className="fixed inset-0 z-[60] flex items-center justify-center px-4
                  pt-[env(safe-area-inset-top,0px)]
                  pb-[calc(64px+env(safe-area-inset-bottom,0px))] sm:pb-4 sm:pt-4"
     >
@@ -60,12 +62,11 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         className={`
           relative w-full ${sizes[size]}
-          glass-strong rounded-t-2xl sm:rounded-2xl
-          max-h-[calc(100dvh-72px-env(safe-area-inset-bottom,0px)-env(safe-area-inset-top,0px))]
+          glass-strong rounded-2xl
+          max-h-[calc(100dvh-72px-env(safe-area-inset-bottom,0px)-env(safe-area-inset-top,0px)-64px)]
           sm:max-h-[85dvh]
           overflow-y-auto
           animate-slideUp
-          mx-0 sm:mx-4
         `}
       >
         {(title || showCloseButton) && (

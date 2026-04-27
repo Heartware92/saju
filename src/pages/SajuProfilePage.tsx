@@ -13,6 +13,7 @@ import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import type { BirthProfile } from '../types/credit';
 import { CITY_COORDINATES } from '../utils/timeCorrection';
+import { BackButton } from '../components/ui/BackButton';
 
 export default function SajuProfilePage() {
   const router = useRouter();
@@ -81,10 +82,13 @@ export default function SajuProfilePage() {
 
   return (
     <div className="px-4 pt-4 pb-8">
-      {/* 헤더 */}
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-text-primary mb-1">사주 분석</h1>
-        <p className="text-sm text-text-secondary">프로필을 선택하거나 새로 추가하세요</p>
+      {/* 헤더 — 뒤로가기 + 타이틀 */}
+      <div className="flex items-start gap-1 mb-6">
+        <BackButton to="/" />
+        <div>
+          <h1 className="text-xl font-bold text-text-primary mb-1">사주 분석</h1>
+          <p className="text-sm text-text-secondary">프로필을 선택하거나 새로 추가하세요</p>
+        </div>
       </div>
 
       {/* 프로필 리스트 */}

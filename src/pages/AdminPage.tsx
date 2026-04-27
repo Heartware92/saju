@@ -489,11 +489,23 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0614] text-text-primary">
-      {/* 헤더 */}
+      {/* 헤더 — 뒤로가기 + 타이틀 */}
       <div className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-[18px] font-bold text-text-primary">사주 어드민</h1>
-          <p className="text-[13px] text-text-tertiary mt-0.5">Admin Dashboard</p>
+        <div className="flex items-center gap-2">
+          {/* 어드민 → 홈 빠른 이동. (단순 a 태그 — 이 파일에서 router 미참조라 의존 추가 안 함) */}
+          <a
+            href="/"
+            aria-label="홈으로"
+            className="w-9 h-9 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary -ml-2"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </a>
+          <div>
+            <h1 className="text-[18px] font-bold text-text-primary">사주 어드민</h1>
+            <p className="text-[13px] text-text-tertiary mt-0.5">Admin Dashboard</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {(tab === 'members' || tab === 'orders' || tab === 'records') && (

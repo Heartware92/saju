@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Card } from '../components/ui/Card';
+import { BackButton } from '../components/ui/BackButton';
 import { sajuDB, tarotDB } from '../services/supabase';
 import { useUserStore } from '../store/useUserStore';
 import { SAJU_CATEGORY_LABEL, TAROT_SPREAD_LABEL } from '../constants/adminLabels';
@@ -151,11 +152,14 @@ export default function ArchivePage() {
   }
 
   return (
-    <div className="min-h-screen bg-space-deep px-4 pt-6 pb-4">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-text-primary">보관함</h1>
-        <p className="text-sm text-text-secondary mt-1">이전에 본 풀이를 그대로 다시 볼 수 있어요</p>
+    <div className="min-h-screen bg-space-deep px-4 pt-4 pb-4">
+      {/* Header — 뒤로가기 + 타이틀 */}
+      <div className="flex items-center gap-1 mb-4">
+        <BackButton to="/" />
+        <div>
+          <h1 className="text-xl font-bold text-text-primary">보관함</h1>
+          <p className="text-sm text-text-secondary mt-0.5">이전에 본 풀이를 그대로 다시 볼 수 있어요</p>
+        </div>
       </div>
 
       {/* Tab Switcher */}
@@ -324,7 +328,7 @@ export default function ArchivePage() {
       {/* 삭제 확인 모달 — 비가역 작업이라 confirm 한 번 받음 */}
       {pendingDelete && (
         <div
-          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 pb-[calc(64px+env(safe-area-inset-bottom,0px))] sm:pb-4"
           style={{ paddingBottom: 'calc(64px + env(safe-area-inset-bottom))' }}
           onClick={() => !deleting && setPendingDelete(null)}
         >

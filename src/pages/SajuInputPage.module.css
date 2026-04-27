@@ -376,7 +376,7 @@
   color: var(--cta-primary);
 }
 
-/* 프로필 모달 */
+/* 프로필 모달 — 모바일·데스크탑 모두 정중앙 (bottom-nav h-16 회피용 padding) */
 .modalOverlay {
   position: fixed;
   inset: 0;
@@ -387,6 +387,8 @@
   justify-content: center;
   z-index: 100;
   padding: 16px;
+  padding-bottom: calc(16px + 64px + env(safe-area-inset-bottom, 0px));
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
 }
 
 .modal {
