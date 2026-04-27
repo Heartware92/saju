@@ -129,7 +129,8 @@ const SectionHelp = ({ text }: { text: string }) => {
 
 const SECTION_HELP_TEXT: Record<string, string> = {
   wonguk: '태어난 해·달·날·시의 천간과 지지로 구성된 네 기둥(年·月·日·時)이에요. 팔자(八字) 8글자가 운명의 기본 구조를 만들고, 지장간·12운성·십성으로 그 힘과 역할을 읽어요.',
-  relation: '사주 여덟 글자 사이의 상호작용이에요. 합(결합)·충(충돌)·형(긴장)·파(깨짐)·해(해침) 같은 관계와, 특정 별자리처럼 작용하는 신살(神殺)·길성(吉星)이 인생의 주요 포인트를 드러내요.',
+  sinsal: '특정 기둥에서 발동하는 특수한 성격·사건의 단서예요. 길성(吉星)은 도움이 되는 별, 신살(神殺)은 주의해야 할 별, 중립은 양면성을 가진 별이에요.',
+  relation: '사주 여덟 글자 사이의 상호작용이에요. 합(결합)·충(충돌)·형(긴장)·파(깨짐)·해(해침)는 천간과 지지의 기운이 끌어당기거나 부딪히는 방식을 나타내요.',
   ohaeng: '오행(목·화·토·금·수)은 사주에 깃든 자연 기운의 비율이고, 십성은 일간을 기준으로 다른 간지가 맡는 역할(비겁·식상·재성·관성·인성)을 뜻해요.',
   strength: '일간(日干·자기 자신)이 얼마나 힘 있게 서 있는지 판정한 결과예요. 득령(월지 지원)·득지(일지 지원)·득세(전체 지원)의 3단계로 체크해 매우 신강부터 매우 신약까지 5단계로 판별해요.',
   daewoon: '10년 단위로 바뀌는 큰 흐름의 운이에요. 대운이 시작되는 나이부터 각 구간이 어떤 오행·십성 기운을 가져오는지 보면 인생의 변동 시기를 읽을 수 있어요.',
@@ -1296,43 +1297,40 @@ export default function SajuReport({
             <span>{pillars.year.twelveStage}</span>
           </div>
         </div>
-      </div>
-      )}
 
-      {/* 2. 사주 관계 */}
-      {(interactions.length > 0 || sinSals.length > 0) && (
-        <CollapsibleSection title="사주 관계" helpText={SECTION_HELP_TEXT.relation} defaultOpen={defaultExpanded}>
-          <div className={styles.subheading}>천간과 지지</div>
-          {interactions.length > 0 ? (
-            <PillarsRelationBoard
-              pillars={pillars}
-              interactions={interactions}
-              hourUnknown={result.hourUnknown}
-            />
-          ) : (
-            <p className={styles.sectionHint} style={{ margin: '6px 0 14px' }}>
-              천간·지지 간 합·충·형·파·해 관계가 두드러지지 않아요.
-            </p>
-          )}
+        {/*
+          신살·길성, 합·충·형·파·해는 출생 시 8글자에서 즉시 도출되는 고정 정보라
+          사주원국 한 섹션 안에 소제목으로 묶어 표시.
+          (이전엔 별도 "사주 관계" CollapsibleSection 으로 분리되어 맥락이 끊겼음)
+        */}
 
-          <div className={styles.subheading} style={{ marginTop: 18 }}>신살과 길성</div>
-          {sinSals.length > 0 ? (
+        {/* 신살과 길성 */}
+        {sinSals.length > 0 && (
+          <>
+            <div className={styles.subheading} style={{ marginTop: 22 }}>신살과 길성</div>
             <SinSalBoard
               pillars={pillars}
               sinSals={sinSals}
               hourUnknown={result.hourUnknown}
             />
-          ) : (
-            <p className={styles.sectionHint} style={{ margin: '6px 0 0' }}>
-              눈에 띄는 신살·길성이 없어요.
-            </p>
-          )}
+          </>
+        )}
 
-          <p className={styles.sectionHint} style={{ marginTop: 14 }}>
-            합·충·형·파·해는 천간과 지지 사이의 기운이 끌어당기거나 부딪히는 방식이에요.
-            신살과 길성은 특정 기둥에서 발동하는 특수한 성격·사건의 단서예요.
-          </p>
-        </CollapsibleSection>
+        {/* 천간과 지지 관계 (합·충·형·파·해) */}
+        {interactions.length > 0 && (
+          <>
+            <div className={styles.subheading} style={{ marginTop: 22 }}>천간과 지지 관계</div>
+            <PillarsRelationBoard
+              pillars={pillars}
+              interactions={interactions}
+              hourUnknown={result.hourUnknown}
+            />
+            <p className={styles.sectionHint} style={{ marginTop: 14 }}>
+              합·충·형·파·해는 천간과 지지 사이의 기운이 끌어당기거나 부딪히는 방식이에요.
+            </p>
+          </>
+        )}
+      </div>
       )}
 
       {/* 3. 오행과 십성 */}
