@@ -83,10 +83,10 @@ function getSajuRoute(record: SajuRecord): string {
   return `${base}?recordId=${record.id}`;
 }
 
-/** 타로 레코드 → 결과 페이지 URL. spread_type 에 따라 분기. */
+/** 타로 레코드 → 결과 페이지 URL. 보관함 진입은 readonly 결과 페이지로. */
 function getTarotRoute(record: TarotRecord): string {
-  // 타로 페이지는 /tarot 로 통일. 재생 모드는 recordId 쿼리로 감지.
-  return `/tarot?recordId=${record.id}`;
+  // /tarot 는 라이브 드로잉 전용. /tarot/result 는 보관함 재생 전용.
+  return `/tarot/result?recordId=${record.id}`;
 }
 
 export default function ArchivePage() {

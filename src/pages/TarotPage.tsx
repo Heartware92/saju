@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { tarotDB } from '../services/supabase';
 import { BackButton } from '../components/ui/BackButton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TAROT_DECK, ELEMENT_COLORS, getCardImg } from '../engine/tarot/deck';
@@ -405,67 +404,11 @@ export default function TarotPage() {
     setAiError(null);
   }, [mode, isArchiveMode]);
 
-  // ── 보관함 재생 모드 — recordId 가 있으면 DB 에서 풀이·모드·카드 모두 복원 ──
+  // 보관함 재생은 /tarot/result 로 분리됨. /tarot 은 라이브 드로잉 전용.
+  // 옛 URL(/tarot?recordId=X) 호환 — 새 결과 페이지로 리다이렉트.
   useEffect(() => {
-    if (!recordId) return;
-    let cancelled = false;
-    setAiLoading(true);
-    tarotDB.getRecordById(recordId)
-      .then((record) => {
-        if (cancelled || !record) return;
-
-        // 1) 모드 복원 — spread_type → today/monthly/question 매핑
-        const st = record.spread_type;
-        if (st === 'today' || st === 'monthly' || st === 'question') {
-          setMode(st);
-        } else if (st === 'monthly-3card') {
-          setMode('monthly');
-        } else if (st === 'single' || st === 'hybrid-saju') {
-          setMode('question');
-        }
-
-        // 2) 카드 복원 — cards 페이로드에서 추출 (신규: { mode, cards: TarotCardInfo[], card } / 레거시: { card })
-        try {
-          const c = record.cards as Record<string, unknown> | undefined;
-          const cardsArr = (c?.cards ?? (c?.card ? [c.card] : [])) as TarotCardInfo[];
-          if (cardsArr.length > 0) {
-            // TarotCardInfo → DrawnCard 역매핑 (deck 인덱스 + isReversed)
-            const restored: DrawnCard[] = cardsArr
-              .map((ci) => {
-                const idx = TAROT_DECK.findIndex((d) => d.name === ci.name || d.nameKr === ci.nameKr);
-                if (idx < 0) return null;
-                return { card: TAROT_DECK[idx], isReversed: ci.isReversed } as DrawnCard;
-              })
-              .filter((x): x is DrawnCard => !!x);
-
-            const targetMode: TarotMode = (st === 'today' || st === 'monthly' || st === 'question') ? st
-              : st === 'monthly-3card' ? 'monthly'
-              : 'question';
-
-            if (targetMode === 'question' && restored[0]) {
-              setQDrawn(restored[0]);
-              setQState('select');
-              if (record.question) setQuestion(record.question);
-            } else {
-              setAutoDrawn(restored);
-              setAutoState('revealed');
-            }
-          }
-        } catch (e) {
-          console.warn('[archive replay] tarot cards parse failed', e);
-        }
-
-        // 3) AI 풀이 본문 복원
-        if (record.interpretation) setAiContent(record.interpretation);
-        else setAiError('보관된 풀이 본문이 없어요.');
-      })
-      .catch((e) => {
-        console.error('[archive replay] tarot load failed', e);
-        if (!cancelled) setAiError('보관된 풀이를 불러오지 못했어요.');
-      })
-      .finally(() => { if (!cancelled) setAiLoading(false); });
-    return () => { cancelled = true; };
-  }, [recordId]);
+    if (recordId) router.replace(`/tarot/result?recordId=${recordId}`);
+  }, [recordId, router]);
 
   const callAI = async (drawn: DrawnCard[], currentMode: TarotMode, userQuestion?: string) => {
     if (!sajuResult) { setShowNoPrimaryModal(true); return; }
@@ -685,14 +628,19 @@ export default function TarotPage() {
                       {autoSpread.map((_, i) => {
                         const isSelected = selectedSpreadIdxs.includes(i);
                         const selectedOrder = selectedSpreadIdxs.indexOf(i);
+                        // 처음부터 부채꼴 최종 위치에서 페이드인 — 중앙 스택→팬 트랜지션이
+                        // 두 번째 셔플처럼 보이는 착시 제거 (사용자 피드백)
+                        const fanX = (i - 10.5) * 14;
+                        const fanY = Math.sin((i - 10.5) * 0.3) * 18;
+                        const fanRot = (i - 10.5) * 2;
                         return (
                           <motion.div
                             key={i}
                             onClick={() => pickAutoCard(i, mode)}
-                            whileHover={!isSelected ? { y: 28, scale: 1.13, zIndex: 50 } : {}}
-                            initial={{ x: 0, y: 0, rotate: 0 }}
-                            animate={{ x: (i - 10.5) * 14, y: Math.sin((i - 10.5) * 0.3) * 18, rotate: (i - 10.5) * 2 }}
-                            transition={{ duration: 0.5, delay: i * 0.02 }}
+                            whileHover={!isSelected ? { y: fanY + 28, scale: 1.13, zIndex: 50 } : {}}
+                            initial={{ x: fanX, y: fanY, rotate: fanRot, opacity: 0, scale: 0.85 }}
+                            animate={{ x: fanX, y: fanY, rotate: fanRot, opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.35, delay: i * 0.012 }}
                             className="absolute"
                             style={{
                               width: 58, height: 92, borderRadius: 8, overflow: 'hidden',
