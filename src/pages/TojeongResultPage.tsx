@@ -278,6 +278,9 @@ export default function TojeongResultPage() {
         세는 나이 {tojeong.age}세 · {tojeong.yearGanZhi.ganZhi}년
       </p>
 
+      {/* 토정비결 소개 (직원 피드백: 홈 설명 부족 → 결과 진입 시 안내) */}
+      <TojeongIntroCard />
+
       {/* 괘 번호 */}
       <motion.section
         initial={{ opacity: 0, scale: 0.95 }}
@@ -419,6 +422,9 @@ export default function TojeongResultPage() {
       </div>
 
       {/* 심층 풀이 — 자동 호출 결과 표시 */}
+      {/* 심층 풀이 — 자동 호출 결과 표시 */}
+      {/* (intro card 는 위에서 렌더, 심층 풀이는 아래) */}
+
       {(aiContent || aiError) && (
         <section className="mt-3 rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
           <div className="flex items-center gap-2 mb-3">
@@ -427,7 +433,7 @@ export default function TojeongResultPage() {
               className="text-[17px] font-bold text-text-primary tracking-tight"
               style={{ fontFamily: 'var(--font-serif)' }}
             >
-              심층 풀이
+              심층 풀이 (총운 · 괘 의미 · 12개월 흐름 · 재물 · 애정·가정 · 건강 · 직장·학업 · 개운 조언)
             </div>
           </div>
 
@@ -451,5 +457,52 @@ export default function TojeongResultPage() {
         </section>
       )}
     </motion.div>
+  );
+}
+
+// 토정비결 소개 카드 — 사용자가 토정비결이 무엇인지 모를 수 있어 한 번 안내
+// (직원 피드백: 홈에 토정비결 설명이 부족하다 → 결과 진입 시 접을 수 있는 안내 카드 제공)
+function TojeongIntroCard() {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="rounded-2xl p-3 mb-3 bg-[rgba(124,92,252,0.08)] border border-[rgba(124,92,252,0.25)]">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between text-left"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-[14px]" aria-hidden>📖</span>
+          <span className="text-[14px] font-semibold text-text-primary">
+            토정비결이란?
+          </span>
+        </div>
+        <svg
+          width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+          className={`transition-transform ${open ? 'rotate-180' : ''}`}
+          style={{ color: 'var(--text-tertiary)' }}
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <div className="mt-3 pt-3 border-t border-[rgba(124,92,252,0.2)] space-y-2">
+          <p className="text-[13px] text-text-secondary leading-relaxed">
+            조선 명종 때 토정 이지함(李之菡) 선생이 만든 한 해 신수(身數) 풀이예요.
+            음력 생년월일과 세는 나이로 144괘(상괘 8 × 중괘 6 × 하괘 3) 중 하나를 뽑아
+            그 해의 길흉화복과 12달의 흐름을 봐요.
+          </p>
+          <p className="text-[13px] text-text-secondary leading-relaxed">
+            사주명리가 평생의 큰 그림이라면, 토정비결은 <strong className="text-text-primary">매년 1월 1일~12월 31일 한 해의 결</strong>을
+            짚어주는 연간 신수서예요.
+          </p>
+          <ul className="text-[12px] text-text-tertiary leading-relaxed space-y-0.5 mt-2">
+            <li>· 8개 섹션: 총운 · 괘의 의미 · 월별 흐름(12개월) · 재물 · 애정·가정 · 건강 · 직장·학업 · 개운 조언</li>
+            <li>· 양력 입력 시 자동으로 음력으로 환산해요</li>
+            <li>· 길흉 등급은 144괘 표를 기반으로 결정되어 매번 동일해요</li>
+          </ul>
+        </div>
+      )}
+    </section>
   );
 }

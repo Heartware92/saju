@@ -72,7 +72,7 @@ const SECONDARY_SERVICES = [
   {
     id: 'tojeong',
     title: '토정비결',
-    desc: '한 해 길흉화복',
+    desc: '음력 생년월일로 보는 한 해의 길흉',
     direct: '/saju/tojeong',
     gradient: 'from-emerald-500/20 to-teal-500/10',
   },

@@ -849,15 +849,35 @@ export default function GunghapPage() {
                   </div>
 
                   <div>
-                    <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">
-                      출생시간 <span className="text-text-tertiary/60">(모르면 비워두세요)</span>
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[13px] font-medium text-text-tertiary block">
+                        출생시간
+                      </label>
+                      <label className="text-[13px] flex items-center gap-1 text-text-secondary cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!other.birth_time}
+                          onChange={(e) => {
+                            // 모름 체크 → birth_time 비움 / 해제 시 정오로 임시 채워줌
+                            setOther(o => ({ ...o, birth_time: e.target.checked ? '' : '12:00' }));
+                          }}
+                          className="accent-cta"
+                        />
+                        시간 모름
+                      </label>
+                    </div>
                     <input
                       type="time"
                       value={other.birth_time}
                       onChange={e => setOther(o => ({ ...o, birth_time: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[16px] focus:border-cta/50 focus:outline-none transition"
+                      disabled={!other.birth_time && other.birth_time === ''}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[16px] focus:border-cta/50 focus:outline-none transition disabled:opacity-40"
                     />
+                    {!other.birth_time && (
+                      <p className="text-[12px] text-text-tertiary mt-1">
+                        시간을 모르면 시주(時柱)가 없는 삼주추명으로 분석되어, 자녀·말년 영역 해석은 제한적입니다.
+                      </p>
+                    )}
                   </div>
 
                   <div>

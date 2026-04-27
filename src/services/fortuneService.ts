@@ -359,9 +359,9 @@ export const getTojeongReading = async (
 ): Promise<FortuneResponse> => {
   try {
     const prompt = generateTojeongPrompt(tj);
-    // 프롬프트 명세: 총 2,400~3,000자 (5섹션). 한국어 토큰 비율 고려해 6,500.
-    // (이전 3,800은 명세 변경 전 짧은 분량 기준 → 잘림 발생해서 상향)
-    const content = await callGPT(prompt, 6500);
+    // 프롬프트 명세: 총 2,900~3,500자 (8섹션 — 분야별 4개로 세분화). 한국어 토큰 비율 고려해 7,500.
+    // (직원 피드백: 분야별 운세 세분화 — 5섹션 → 8섹션으로 확장됨)
+    const content = await callGPT(prompt, 7500);
     archiveSaju({ category: 'tojeong', engineResult: tj as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
     return { success: true, content };
   } catch (error: any) {
@@ -405,9 +405,8 @@ export const getZamidusuReading = async (
 ): Promise<ZamidusuAIResult> => {
   try {
     const prompt = generateZamidusuPrompt(z);
-    // 프롬프트 명세: 총 2,500~3,200자 (8섹션). 한국어 토큰 비율 고려해 7,000.
-    // (이전 3,500은 명세 변경 전 짧은 분량 기준 → 잘림 발생해서 상향)
-    const content = await callGPT(prompt, 7000);
+    // 프롬프트 명세: 총 3,300~4,000자 (8섹션 — 직원 피드백 반영 깊이 강화). 한국어 토큰 비율 고려해 9,000.
+    const content = await callGPT(prompt, 9000);
     const sections = parseZamidusuSections(content);
     archiveSaju({ category: 'zamidusu', engineResult: z as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
     return { success: true, content, sections };
@@ -687,8 +686,8 @@ export const getTaekilAdvice = async (
 ): Promise<TaekilAdviceResult> => {
   try {
     const prompt = generateTaekilAdvicePrompt(saju, taekil);
-    // 일반 350~450자 / 출산 500~650자 — 안전치 2,000
-    const raw = await callGPT(prompt, 2000);
+    // 일반 350~450자 / 출산 500~650자 / 후보 비교 450~600자 — 안전치 2,500
+    const raw = await callGPT(prompt, 2500);
     // [taekil_advice] 마커 제거하고 본문만 추출
     const match = raw.match(/\[taekil_advice\]\s*([\s\S]+)/);
     const advice = match ? match[1].trim() : raw.trim();
