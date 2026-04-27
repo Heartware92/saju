@@ -706,18 +706,19 @@ export const generateTodayFortunePrompt = (
     .filter(([, v]) => v === 0).map(([k]) => k);
   const missingEl = zeroEls.length > 0 ? `결핍: ${zeroEls.join('·')}` : '';
 
-  // 현재 대운 — startAge/endAge는 연도(e.g.2020)이므로 currentYear로 비교
-  const _curYear = new Date().getFullYear();
-  const curDW = daeWoon.find(d => d.gan && d.zhi && _curYear >= d.startAge && _curYear <= d.endAge);
+  // 직원 피드백: 대운·세운·월운·일운 4개 층 모두 반영 — 월운(月運) 추가
+  const [_y, _m, _d] = isoDate.split('-').map(Number);
+
+  // 대운/세운은 isoDate 의 연도 기준으로 동적 선택
+  // (이전엔 항상 new Date().getFullYear() 사용 → /saju/date 에서 다른 해 선택 시 어긋남)
+  const pickedYear = _y;
+  const curDW = daeWoon.find(d => d.gan && d.zhi && pickedYear >= d.startAge && pickedYear <= d.endAge);
   const daeWoonStr = curDW
     ? `${curDW.gan}${curDW.zhi}(${curDW.ganElement}${curDW.zhiElement}·${curDW.tenGod}·${curDW.twelveStage})`
     : '없음';
 
-  const seWoon = result.currentSeWoon;
+  const seWoon = result.seWoon.find(s => s.year === pickedYear) ?? result.currentSeWoon;
   const interStr = todayGz.interactions.length > 0 ? todayGz.interactions.join(' / ') : '없음';
-
-  // 직원 피드백: 대운·세운·월운·일운 4개 층 모두 반영 — 월운(月運) 추가
-  const [_y, _m, _d] = isoDate.split('-').map(Number);
   const monthSolar = Solar.fromYmd(_y, _m, _d);
   const monthLunar = monthSolar.getLunar();
   const monthGzStr = monthLunar.getMonthInGanZhi();   // "庚辰" 같은 한자 간지

@@ -33,6 +33,7 @@ import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { ZAMIDUSU_SECTION_KEYS, ZAMIDUSU_SECTION_LABELS } from '../constants/prompts';
 import { MAJOR_STARS_META, MINOR_STARS_META, MUTAGEN_META, PALACE_ROLE_META } from '../engine/zamidusu/knowledge';
 import { AILoadingBar } from '../components/AILoadingBar';
+import { BackButton } from '../components/ui/BackButton';
 import { StarChart } from '../components/zamidusu/StarChart';
 
 const LOADING_MESSAGES = [
@@ -112,6 +113,17 @@ export default function ZamidusuResultPage() {
     if (!birthInput) return null;
     const b = birthInput;
     return `${b.calendarType}_${b.year}-${b.month}-${b.day}_${b.hour}_${b.gender}`;
+  }, [birthInput]);
+
+  // 보관함 매칭용 sourceBirth — birthInput 에서 추출
+  const sourceBirth = useMemo(() => {
+    if (!birthInput) return undefined;
+    const b = birthInput;
+    return {
+      birth_date: `${b.year}-${String(b.month).padStart(2,'0')}-${String(b.day).padStart(2,'0')}`,
+      gender: b.gender,
+      calendar_type: b.calendarType,
+    };
   }, [birthInput]);
 
   // 명반 계산 — 보관함 재생 모드에서도 chart 는 birth_date 기반으로 재계산해 SVG 등 렌더 가능하게
@@ -194,7 +206,7 @@ export default function ZamidusuResultPage() {
       useReportCacheStore.getState().setError('zamidusu', cacheKey, timeoutMsg);
     }, 45_000);
 
-    getZamidusuReading(chart)
+    getZamidusuReading(chart, sourceBirth)
       .then(r => {
         if (cancelled) return;
         clearTimeout(timeoutId);
@@ -226,13 +238,13 @@ export default function ZamidusuResultPage() {
   }, [chart, cacheKey, isArchiveMode]);
 
   // ── 시간 미상 가드 ──
-  if (hourUnknown) {
+  // 보관함 재생 모드에선 이 가드를 우회 — 과거에 시간 알았던 시점에 받은 풀이를
+  // 이후 프로필 시간을 미상으로 바꿨다는 이유로 못 보게 막으면 안 됨.
+  if (hourUnknown && !isArchiveMode) {
     return (
       <div className={styles.container}>
         <div className={styles.header}>
-          <button className={styles.backBtn} onClick={() => router.back()}>
-            ← 뒤로
-          </button>
+          <BackButton />
           <div className={styles.headerCenter}>
             <h1>자미두수</h1>
           </div>
@@ -338,7 +350,7 @@ export default function ZamidusuResultPage() {
     if (!chart) return;
     aiStartedRef.current = true;
     setAiLoading(true);
-    getZamidusuReading(chart)
+    getZamidusuReading(chart, sourceBirth)
       .then(r => {
         setAiResult(r);
         setAiLoading(false);
@@ -353,12 +365,7 @@ export default function ZamidusuResultPage() {
     <div className={styles.container}>
       {/* Header */}
       <div className={styles.header}>
-        <button
-          className={styles.backBtn}
-          onClick={() => router.back()}
-        >
-          ← 뒤로
-        </button>
+        <BackButton />
         <div className={styles.headerCenter}>
           <h1>자미두수</h1>
           <p className={styles.dateInfo}>

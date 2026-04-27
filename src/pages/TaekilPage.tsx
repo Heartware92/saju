@@ -17,6 +17,7 @@ import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
+import { BackButton } from '../components/ui/BackButton';
 import {
   calculateTaekil,
   TAEKIL_CATEGORIES,
@@ -241,7 +242,7 @@ export default function TaekilPage() {
     return (
       <div className={styles.container}>
         <div className={styles.header}>
-          <button className={styles.backBtn} onClick={() => router.back()}>← 뒤로</button>
+          <BackButton />
         </div>
         <div className={styles.section} style={{ textAlign: 'center', padding: '48px 24px' }}>
           <h2>대표 프로필이 없어요</h2>
@@ -264,7 +265,7 @@ export default function TaekilPage() {
     <div className={styles.container}>
       {/* Header */}
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={() => router.back()}>← 뒤로</button>
+        <BackButton />
         <div className={styles.headerCenter}>
           <h1>택일 운세</h1>
           <p className={styles.dateInfo}>

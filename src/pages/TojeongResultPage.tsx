@@ -18,6 +18,7 @@ import { getTojeongReading } from '../services/fortuneService';
 import { sajuDB } from '../services/supabase';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
+import { BackButton } from '../components/ui/BackButton';
 
 const TOJEONG_MESSAGES = [
   '괘의 상징을 풀어 쓰는 중입니다',
@@ -99,6 +100,31 @@ export default function TojeongResultPage() {
     }
   }, [searchParams, primary]);
 
+  // 보관함 매칭용 sourceBirth — 대표 프로필 또는 URL birth 쿼리에서 추출
+  const sourceBirth = useMemo(() => {
+    const urlGender = searchParams?.get('gender');
+    const urlYear = searchParams?.get('year');
+    if (urlYear && urlGender) {
+      const year = parseInt(urlYear, 10);
+      const month = parseInt(searchParams!.get('month')!, 10);
+      const day = parseInt(searchParams!.get('day')!, 10);
+      const cal = (searchParams!.get('calendarType') || 'solar') as 'solar' | 'lunar';
+      return {
+        birth_date: `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`,
+        gender: urlGender as 'male' | 'female',
+        calendar_type: cal,
+      };
+    }
+    if (primary) {
+      return {
+        birth_date: primary.birth_date,
+        gender: primary.gender,
+        calendar_type: primary.calendar_type,
+      };
+    }
+    return undefined;
+  }, [searchParams, primary]);
+
   // 심층 풀이 — 캐시 우선, 미스 시에만 호출 (45초 타임아웃)
   // 보관함 재생 모드에선 AI 호출 금지
   const aiStartedRef = useRef(false);
@@ -128,7 +154,7 @@ export default function TojeongResultPage() {
       useReportCacheStore.getState().setError('tojeong', cacheKey, timeoutMsg);
     }, 45_000);
 
-    getTojeongReading(tojeong)
+    getTojeongReading(tojeong, sourceBirth)
       .then(r => {
         if (cancelled) return;
         clearTimeout(timeoutId);
@@ -169,7 +195,7 @@ export default function TojeongResultPage() {
     setAiContent(null);
     setAiError(null);
     setAiLoading(true);
-    getTojeongReading(tojeong)
+    getTojeongReading(tojeong, sourceBirth)
       .then(r => {
         const cache = useReportCacheStore.getState();
         if (!r.success || !r.content) {
@@ -260,14 +286,7 @@ export default function TojeongResultPage() {
     >
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-4 px-1">
-        <button
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
+        <BackButton />
         <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
           {tojeong.targetYear}년 토정비결
         </h1>

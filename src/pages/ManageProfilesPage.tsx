@@ -14,6 +14,7 @@ import { CITY_COORDINATES } from '../utils/timeCorrection';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { getCharacterFromStem } from '../lib/character';
 import type { BirthProfile } from '../types/credit';
+import { BackButton } from '../components/ui/BackButton';
 
 function preloadCharacterImage(profile: BirthProfile) {
   try {
@@ -110,15 +111,7 @@ export default function ManageProfilesPage() {
     <div className="px-4 pt-4 pb-10">
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-5 px-1">
-        <button
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary"
-          aria-label="뒤로"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
+        <BackButton />
         <h1 className="text-base font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
           프로필 관리
         </h1>

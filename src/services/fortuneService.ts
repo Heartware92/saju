@@ -58,6 +58,7 @@ import type { PeriodFortune } from '../engine/periodFortune';
 import type { TarotCardInfo } from './api';
 import type { TojeongResult } from '../engine/tojeong';
 import type { ZamidusuResult } from '../engine/zamidusu';
+import { MORE_FORTUNE_CONFIGS } from '../constants/moreFortunes';
 
 interface FortuneResponse {
   success: boolean;
@@ -353,16 +354,20 @@ export const getTarotReading = async (
 
 /**
  * 토정비결 (전체 무료)
+ *
+ * @param sourceBirth (선택) 풀이 주체 birth 정보. 호출자가 넘기면 archiveSaju 가
+ *                    같은 birth_date+gender 의 birth_profiles 행을 매칭해
+ *                    profile_id/name 자동 채움. 미전달 시 대표 프로필로 fallback.
  */
 export const getTojeongReading = async (
-  tj: TojeongResult
+  tj: TojeongResult,
+  sourceBirth?: { birth_date: string; gender: 'male' | 'female'; calendar_type?: 'solar' | 'lunar' },
 ): Promise<FortuneResponse> => {
   try {
     const prompt = generateTojeongPrompt(tj);
     // 프롬프트 명세: 총 2,900~3,500자 (8섹션 — 분야별 4개로 세분화). 한국어 토큰 비율 고려해 7,500.
-    // (직원 피드백: 분야별 운세 세분화 — 5섹션 → 8섹션으로 확장됨)
     const content = await callGPT(prompt, 7500);
-    archiveSaju({ category: 'tojeong', engineResult: tj as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
+    archiveSaju({ sourceBirth, category: 'tojeong', engineResult: tj as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
     return { success: true, content };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -401,14 +406,15 @@ export function parseZamidusuSections(raw: string): Partial<Record<ZamidusuSecti
 }
 
 export const getZamidusuReading = async (
-  z: ZamidusuResult
+  z: ZamidusuResult,
+  sourceBirth?: { birth_date: string; gender: 'male' | 'female'; calendar_type?: 'solar' | 'lunar' },
 ): Promise<ZamidusuAIResult> => {
   try {
     const prompt = generateZamidusuPrompt(z);
     // 프롬프트 명세: 총 3,300~4,000자 (8섹션 — 직원 피드백 반영 깊이 강화). 한국어 토큰 비율 고려해 9,000.
     const content = await callGPT(prompt, 9000);
     const sections = parseZamidusuSections(content);
-    archiveSaju({ category: 'zamidusu', engineResult: z as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
+    archiveSaju({ sourceBirth, category: 'zamidusu', engineResult: z as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
     return { success: true, content, sections };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -857,7 +863,7 @@ export const getHybridReading = async (
 
 export const getStudyShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
-    const content = await callGPT(generateStudyShortPrompt(result), 2000);
+    const content = await callGPT(generateStudyShortPrompt(result), MORE_FORTUNE_CONFIGS.study.maxTokens);
     archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'study', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
@@ -874,7 +880,7 @@ export const getStudyShort = async (result: SajuResult): Promise<FortuneResponse
 
 export const getChildrenShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
-    const content = await callGPT(generateChildrenShortPrompt(result), 2000);
+    const content = await callGPT(generateChildrenShortPrompt(result), MORE_FORTUNE_CONFIGS.children.maxTokens);
     archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'children', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
@@ -882,8 +888,7 @@ export const getChildrenShort = async (result: SajuResult): Promise<FortuneRespo
 
 export const getPersonalityShort = async (result: SajuResult): Promise<FortuneResponse> => {
   try {
-    // 명세 500~700자 — 가장 길어서 2,500
-    const content = await callGPT(generatePersonalityShortPrompt(result), 2500);
+    const content = await callGPT(generatePersonalityShortPrompt(result), MORE_FORTUNE_CONFIGS.personality.maxTokens);
     archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'personality', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };
   } catch (e: any) { return { success: false, error: e.message }; }
@@ -894,8 +899,9 @@ export const getNameFortune = async (
   nameInput: NameAnalysisInput,
 ): Promise<FortuneResponse> => {
   try {
-    // 명세: 한글만 380~500자 / 한자 포함 420~580자. 한국어 토큰 비율 보수적으로 적용.
-    const maxTokens = nameInput.hanjaName ? 2500 : 2000;
+    // 명세: 한글만 380~500자 / 한자 포함 420~580자. 한자 포함 시 25% 가산.
+    const baseTokens = MORE_FORTUNE_CONFIGS.name.maxTokens;
+    const maxTokens = nameInput.hanjaName ? Math.round(baseTokens * 1.25) : baseTokens;
     const content = await callGPT(generateNameFortunePrompt(result, nameInput), maxTokens);
     archiveSaju({
       sourceBirth: sourceBirthFromSaju(result),
@@ -921,8 +927,7 @@ export const getDreamInterpretation = async (
     if (!dreamText || dreamText.trim().length < 5) {
       return { success: false, error: '꿈 내용을 조금 더 적어주세요. (등장물·행동·감정 중 하나만이라도 있으면 좋아요)' };
     }
-    // 명세 500~700자 — 안전치 2,500
-    const content = await callGPT(generateDreamInterpretationPrompt(dreamText), 2500);
+    const content = await callGPT(generateDreamInterpretationPrompt(dreamText), MORE_FORTUNE_CONFIGS.dream.maxTokens);
     // 꿈 해몽은 사주 원국 무관하지만 유저가 본인의 풀이 기록으로 조회할 수 있게 대표 프로필에 붙여 저장
     archiveSaju({ category: 'dream', engineResult: { dreamText } as Record<string, unknown>, interpretation: content, creditType: 'moon', creditUsed: 1 });
     return { success: true, content };

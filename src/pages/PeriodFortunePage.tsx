@@ -19,6 +19,7 @@ import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
 import { sajuDB } from '../services/supabase';
 import { parseNewyearReport } from '../services/fortuneService';
+import { BackButton } from '../components/ui/BackButton';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { calculateSaju } from '../utils/sajuCalculator';
@@ -408,15 +409,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     >
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-4 px-1">
-        <button
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary"
-          aria-label="뒤로"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
+        <BackButton />
         <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
           {pageTitle}
         </h1>

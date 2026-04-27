@@ -41,6 +41,7 @@ import { sajuDB } from '../services/supabase';
 import { analyzeKoreanName } from '../utils/nameEumRyeong';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { DreamInputPanel } from '../components/dream/DreamInputPanel';
+import { BackButton } from '../components/ui/BackButton';
 import styles from './SajuResultPage.module.css';
 
 interface Props {
@@ -178,7 +179,7 @@ export default function MoreFortunePage({ category }: Props) {
     return (
       <div className={styles.container}>
         <div className={styles.header}>
-          <button className={styles.backBtn} onClick={() => router.back()}>← 뒤로</button>
+          <BackButton />
           <div className={styles.headerCenter}>
             <h1>{legacyLabel}</h1>
             <p className={styles.dateInfo}>보관된 풀이</p>
@@ -398,9 +399,7 @@ export default function MoreFortunePage({ category }: Props) {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={() => router.back()}>
-          ← 뒤로
-        </button>
+        <BackButton />
         <div className={styles.headerCenter}>
           <h1>{cfg.title}</h1>
           {isArchiveMode && archivedAt ? (

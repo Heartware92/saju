@@ -9,16 +9,15 @@
 
 import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import SajuReport from '../components/saju/SajuReport';
 import styles from './SajuResultPage.module.css';
+import { BackButton } from '../components/ui/BackButton';
 
 export default function ManseryeokPage() {
-  const router = useRouter();
   const { user } = useUserStore();
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
 
@@ -44,9 +43,7 @@ export default function ManseryeokPage() {
     return (
       <div className={styles.container}>
         <div className={styles.header}>
-          <button className={styles.backBtn} onClick={() => router.back()}>
-            ← 뒤로
-          </button>
+          <BackButton />
         </div>
         <div className={styles.section} style={{ textAlign: 'center', padding: '48px 24px' }}>
           <h2>대표 프로필이 없어요</h2>
@@ -69,9 +66,7 @@ export default function ManseryeokPage() {
     <div className={styles.container}>
       {/* Header */}
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={() => router.back()}>
-          ← 뒤로
-        </button>
+        <BackButton />
         <div className={styles.headerCenter}>
           <h1>만세력</h1>
           <p className={styles.dateInfo}>

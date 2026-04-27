@@ -87,7 +87,7 @@ export const MORE_FORTUNE_CONFIGS: Record<MoreFortuneId, MoreFortuneConfig> = {
     shortDesc: '시험 유리한 달',
     longDesc: '인성(문창·학당귀인)과 식상, 올해 세운을 근거로 공부 체질인지, 시험·자격·발표에 유리한 달이 언제인지 짚어드려요.',
     ctaButton: '내 학업운 보기',
-    maxTokens: 1300,
+    maxTokens: 2000,
   },
   // [비활성 — B안] 신년운세 인간관계운, 정통사주 인간관계·가족과 중복.
   // people: {
@@ -106,7 +106,7 @@ export const MORE_FORTUNE_CONFIGS: Record<MoreFortuneId, MoreFortuneConfig> = {
     shortDesc: '출산 유리한 달',
     longDesc: '남성은 관성, 여성은 식상을 자녀성으로 보고 시주의 자녀궁과 세운 흐름으로 자녀복과 출산에 유리한 시기를 풀어드려요.',
     ctaButton: '내 자녀운 보기',
-    maxTokens: 1300,
+    maxTokens: 2000,
   },
   personality: {
     id: 'personality',
@@ -115,7 +115,7 @@ export const MORE_FORTUNE_CONFIGS: Record<MoreFortuneId, MoreFortuneConfig> = {
     shortDesc: '성격 심층 진단',
     longDesc: '일주 60갑자와 격국·신강신약·간여지동·주요 신살을 종합해 타고난 본질, 강점 2가지와 숨은 그림자 2가지를 명확히 짚어드려요.',
     ctaButton: '내 성격 분석 보기',
-    maxTokens: 1800,
+    maxTokens: 2500,
   },
   name: {
     id: 'name',
@@ -124,7 +124,8 @@ export const MORE_FORTUNE_CONFIGS: Record<MoreFortuneId, MoreFortuneConfig> = {
     shortDesc: '이름·사주 조화',
     longDesc: '한글 초성의 음령오행을 분석해 내 이름이 사주 용신을 돕는지 거스르는지 진단하고, 한자를 입력하면 부수 기반 자원오행까지 교차 분석해 필명·닉네임 방향을 제안해드려요.',
     ctaButton: '내 이름 풀이 보기',
-    maxTokens: 1300,
+    // 한글만 2,000 / 한자 포함 2,500 — fortuneService 에서 hanjaName 유무로 분기
+    maxTokens: 2000,
     needsNameInput: true,
   },
   dream: {
@@ -134,7 +135,7 @@ export const MORE_FORTUNE_CONFIGS: Record<MoreFortuneId, MoreFortuneConfig> = {
     shortDesc: '꿈의 현실 힌트',
     longDesc: '간밤에 꾼 꿈을 적어주세요. 전통 꿈해몽 지식베이스와 당신의 사주 원국·올해 세운을 함께 해석해 꿈이 가리키는 현실의 힌트를 구체적으로 알려드려요.',
     ctaButton: '내 꿈 풀이 보기',
-    maxTokens: 1500,
+    maxTokens: 2500,
     needsDreamInput: true,
   },
 };

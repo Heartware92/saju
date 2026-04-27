@@ -23,6 +23,7 @@ import { stemToHanja, zhiToHanja } from '../lib/character';
 import { AdviceCard } from '../components/saju/AdviceCard';
 import SajuReport from '../components/saju/SajuReport';
 import { AILoadingBar } from '../components/AILoadingBar';
+import { BackButton } from '../components/ui/BackButton';
 
 // 정통사주 = AI 풀이 가치, 만세력 = 무료 데이터.
 // 사용자가 풀이 맥락을 알 수 있도록 핵심 요약만 카드로 노출하고
@@ -244,15 +245,7 @@ export default function SajuResultPage() {
     >
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-4 px-1">
-        <button
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary"
-          aria-label="뒤로"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
+        <BackButton />
         <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
           정통사주
         </h1>
