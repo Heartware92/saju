@@ -1326,7 +1326,9 @@
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 8px;
+  /* selected 카드가 translateY(-1px)+글로우로 위로 살짝 떠도 잘리지 않도록 상하 여백 확보 */
+  padding-top: 6px;
+  padding-bottom: 12px;
   -webkit-overflow-scrolling: touch;
   /* 마우스 드래그 스크롤 활성화 — useDragScroll 훅과 짝 */
   cursor: grab;
