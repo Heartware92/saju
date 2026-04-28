@@ -977,6 +977,121 @@ const analyzeInteractions = (
     }
   }
 
+  // ── 방합(方合) — 인묘진(동방·목국), 사오미(남방·화국), 신유술(서방·금국), 해자축(북방·수국) ──
+  // 같은 방향 3 지지가 모이면 강한 계절성 기운 형성. 2개만 있으면 반방합으로 표시.
+  const banghap: [string, string, string, string][] = [
+    ['인', '묘', '진', '목'], ['사', '오', '미', '화'],
+    ['신', '유', '술', '금'], ['해', '자', '축', '수'],
+  ];
+  banghap.forEach(([b1, b2, b3, element]) => {
+    const trioSet = new Set([b1, b2, b3]);
+    const matched = branches.filter(br => trioSet.has(br.val));
+    const uniqueVals = new Set(matched.map(m => m.val));
+    if (uniqueVals.size >= 2) {
+      const matchVals = Array.from(uniqueVals);
+      interactions.push({
+        type: '합',
+        elements: matched.map(m => m.pos),
+        description: `${matchVals.join('')} ${uniqueVals.size === 3 ? '방합' : '반방합'} ${element}국 - 같은 방향 ${element} 기운 결집`
+      });
+    }
+  });
+
+  // ── 형(刑) — 무례지형/지세지형/무은지형/자형 ──
+  // 삼형(3개 모두 모임), 상형(2개), 자형(같은 글자 2개)
+  const samhyung: [string, string, string, string][] = [
+    ['인', '사', '신', '지세지형(인사신)'],
+    ['축', '술', '미', '무은지형(축술미)'],
+  ];
+  samhyung.forEach(([b1, b2, b3, label]) => {
+    const trio = [b1, b2, b3];
+    const trioSet = new Set(trio);
+    const matched = branches.filter(br => trioSet.has(br.val));
+    const uniqueVals = new Set(matched.map(m => m.val));
+    if (uniqueVals.size === 3) {
+      interactions.push({
+        type: '형',
+        elements: matched.map(m => m.pos),
+        description: `${label} 완성 - 시비·소송·수술·다툼 강한 자극`
+      });
+    } else if (uniqueVals.size === 2) {
+      // 2글자만 있으면 반쯤 형 (예: 인사 형, 사신 형)
+      const vals = Array.from(uniqueVals);
+      interactions.push({
+        type: '형',
+        elements: matched.map(m => m.pos),
+        description: `${vals.join('')} 형(${label.split('(')[0]} 일부) - 부분 형, 마찰 가능`
+      });
+    }
+  });
+
+  // 자묘 상형(무례지형) — 별도 페어
+  for (let i = 0; i < branches.length; i++) {
+    for (let j = i + 1; j < branches.length; j++) {
+      if ((branches[i].val === '자' && branches[j].val === '묘') ||
+          (branches[i].val === '묘' && branches[j].val === '자')) {
+        interactions.push({
+          type: '형',
+          elements: [branches[i].pos, branches[j].pos],
+          description: '자묘 상형(무례지형) - 예의·관계 갈등',
+        });
+      }
+    }
+  }
+
+  // 자형(自刑) — 같은 글자 2개 (진진·오오·유유·해해)
+  const jahyung = ['진', '오', '유', '해'];
+  jahyung.forEach((zhi) => {
+    const matched = branches.filter(br => br.val === zhi);
+    if (matched.length >= 2) {
+      interactions.push({
+        type: '형',
+        elements: matched.map(m => m.pos),
+        description: `${zhi}${zhi} 자형(自刑) - 자기 안의 갈등·자해적 행동 주의`,
+      });
+    }
+  });
+
+  // ── 파(破) — 자유, 묘오, 사신, 인해, 진축, 술미 ──
+  const pa: [string, string][] = [
+    ['자', '유'], ['묘', '오'], ['사', '신'],
+    ['인', '해'], ['진', '축'], ['술', '미'],
+  ];
+  for (let i = 0; i < branches.length; i++) {
+    for (let j = i + 1; j < branches.length; j++) {
+      pa.forEach(([p1, p2]) => {
+        if ((branches[i].val === p1 && branches[j].val === p2) ||
+            (branches[i].val === p2 && branches[j].val === p1)) {
+          interactions.push({
+            type: '파',
+            elements: [branches[i].pos, branches[j].pos],
+            description: `${branches[i].val}${branches[j].val} 파 - 균열·중단·약속 어긋남`,
+          });
+        }
+      });
+    }
+  }
+
+  // ── 해(害) — 자미, 축오, 인사, 묘진, 신해, 유술 ──
+  const hae: [string, string][] = [
+    ['자', '미'], ['축', '오'], ['인', '사'],
+    ['묘', '진'], ['신', '해'], ['유', '술'],
+  ];
+  for (let i = 0; i < branches.length; i++) {
+    for (let j = i + 1; j < branches.length; j++) {
+      hae.forEach(([h1, h2]) => {
+        if ((branches[i].val === h1 && branches[j].val === h2) ||
+            (branches[i].val === h2 && branches[j].val === h1)) {
+          interactions.push({
+            type: '해',
+            elements: [branches[i].pos, branches[j].pos],
+            description: `${branches[i].val}${branches[j].val} 해 - 시기·질투·은밀한 방해`,
+          });
+        }
+      });
+    }
+  }
+
   return interactions;
 };
 
