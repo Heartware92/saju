@@ -834,6 +834,12 @@ function SinSalBoard({
       }
     });
   });
+  // 각 컬럼 안에서도 길성→신살→중립 순서로 정렬 (아래 설명 리스트와 통일)
+  // 직원 피드백 + 사용자 보고: 년주에서 길성→중립→길성→신살 식 뒤섞여 보이는 문제
+  const TYPE_ORDER_COL: Record<SinSal['type'], number> = { good: 0, bad: 1, neutral: 2 };
+  (Object.keys(byCol) as unknown as PillarCol[]).forEach((c) => {
+    byCol[c].sort((a, b) => TYPE_ORDER_COL[a.type] - TYPE_ORDER_COL[b.type]);
+  });
 
   return (
     <div className={styles.sinsalBoardWrap}>

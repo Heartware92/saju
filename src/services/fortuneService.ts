@@ -558,11 +558,63 @@ export const parseJungtongsaju = (raw: string): Partial<Record<JungtongsajuSecti
 };
 
 /**
- * 정통사주 풀이 — 2-pass 분할 호출.
- * 1차(Core 4섹션): general·daymaster·element·interaction → 사주 핵심 분석
- * 2차(Application 8섹션): 1차 결과를 컨텍스트로 받아 character·career·...·advice
+ * 1차 응답 본문에서 시적 별칭/은유 표현을 자동 추출.
+ * 2차 호출에 "이 별칭들 절대 0회" 동적 차단 리스트로 주입하기 위함 (B 옵션).
  *
- * 점진 노출 UX 지원: onCoreReady 콜백이 있으면 1차 완료 즉시 호출되어
+ * 추출 패턴:
+ * 1) 괄호 안 별칭: "편인격(가장 멀리, 홀로 빛나는 별)" → "가장 멀리, 홀로 빛나는 별"
+ * 2) 일간 오행 별칭: "겨울 밤하늘 은하수", "한낮 정오의 태양", "정오 태양"
+ * 3) 신강신약 별칭: "보름달", "초승달", "반달"
+ * 4) 용신 별칭: "북극성"
+ * 5) 십성 별칭: "아침 햇살이 정원을", "프리즘을 통과한 빛", "혜성", "달이 꾸준히 차오르는"
+ * 6) 신살 별칭: "흐린 밤에도 유독 밝게 빛나는", "꽃이 만개한 봄밤의 달빛", "별똥별"
+ *
+ * 중복 제거 + 짧은(2자 이하) 항목 제거.
+ */
+const extractMetaphorAliases = (coreContent: string): string[] => {
+  const found = new Set<string>();
+
+  // 1) 괄호 안 시적 별칭 (한글 + 공백 + 쉼표만 허용, 길이 6자 이상 — 짧은 한자병기 "甲木" 같은 거 제외)
+  const parenRegex = /\(([가-힣 ,·]{6,40})\)/g;
+  let m;
+  while ((m = parenRegex.exec(coreContent)) !== null) {
+    const inner = m[1].trim();
+    // 별칭으로 보이는 것만 (공백 또는 쉼표 포함하는 시적 표현)
+    if (/[ ,]/.test(inner) && !inner.includes('점') && !inner.includes('년')) {
+      found.add(inner);
+    }
+  }
+
+  // 2) KB 의 핵심 시적 별칭 (직접 매칭 — 괄호 밖에 등장하는 경우)
+  const kbAliases = [
+    '가장 멀리, 홀로 빛나는 별', '가장 멀리 홀로 빛나는 별',
+    '겨울 밤하늘 은하수', '겨울 밤 은하수',
+    '한낮 정오의 태양', '정오의 태양', '정오 태양',
+    '봄 새벽 첫 햇살', '봄 새벽 햇살',
+    '서리 내린 새벽',
+    '환절기 구름',
+    '보름달', '초승달', '반달',
+    '북극성',
+    '아침 햇살이 정원을', '프리즘을 통과한 빛',
+    '혜성', '달이 꾸준히 차오르는',
+    '나란히 빛나는 쌍둥이 별', '내 빛을 빼앗으려는 그림자 별', '그림자 별',
+    '흐린 밤에도 유독 밝게 빛나는', '꽃이 만개한 봄밤의 달빛',
+    '별똥별', '하늘 정중앙에 뜬 별',
+  ];
+  kbAliases.forEach((alias) => {
+    if (coreContent.includes(alias)) found.add(alias);
+  });
+
+  // 너무 짧거나 너무 긴 것 제거 + 중복 정리
+  return Array.from(found).filter((s) => s.length >= 4 && s.length <= 40);
+};
+
+/**
+ * 정통사주 풀이 — 2-pass 분할 호출 + A/B/J 통합 중복 방지.
+ * 1차(Core 4섹션): general·daymaster·element·interaction → 사주 핵심 분석
+ * 2차(Application 8섹션): 1차 결과 + 1차에서 쓴 별칭 자동 추출 → "이 별칭들 0회" 차단
+ *
+ * 점진 노출 UX: onCoreReady 콜백이 있으면 1차 완료 즉시 호출되어
  * 페이지가 핵심 4섹션을 먼저 렌더하고 2차는 백그라운드 진행.
  *
  * 분량: 1차 ~3,000자 + 2차 ~5,200자 = 총 ~8,200자 (이전 ~5,000자의 1.6배)
@@ -585,8 +637,14 @@ export const getJungtongsajuReport = async (
     // 점진 노출 — 페이지가 1차 결과 즉시 렌더하도록 콜백
     onCoreReady?.({ success: true, sections: coreSections });
 
-    // ── 2차 호출: Application 8섹션 (1차 컨텍스트로 받음) ──
-    const appPrompt = generateJungtongsajuApplicationPrompt(result, coreContent);
+    // ── B 옵션: 1차 본문에서 시적 별칭 자동 추출 ──
+    const forbiddenAliases = extractMetaphorAliases(coreContent);
+    if (forbiddenAliases.length > 0) {
+      console.log('[jungtongsaju] 2차 차단 별칭:', forbiddenAliases.length, '개');
+    }
+
+    // ── 2차 호출: Application 8섹션 (1차 컨텍스트 + 별칭 차단 리스트) ──
+    const appPrompt = generateJungtongsajuApplicationPrompt(result, coreContent, forbiddenAliases);
     // 명세 ~5,200자 → 한국어 토큰 비율 고려 12,000 (안전 여유 2.3x)
     const appContent = await callGPT(appPrompt, 12000);
     const appSections = parseJungtongsaju(appContent);
