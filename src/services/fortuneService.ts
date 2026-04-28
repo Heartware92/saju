@@ -543,6 +543,9 @@ export interface JungtongsajuAIResult {
   rawText?: string;
   error?: string;
   adviceMeta?: AdviceMeta;
+  /** 2-pass 의 2차가 실패하고 1차 4섹션만 받았을 때 true. 사용자에게 안내 표시. */
+  partial?: boolean;
+  partialMessage?: string;
 }
 
 export const parseJungtongsaju = (raw: string): Partial<Record<JungtongsajuSectionKey, string>> => {
@@ -679,14 +682,24 @@ export const getJungtongsajuReport = async (
     }
 
     // ── 2차 호출: Application 8섹션 (1차 컨텍스트 + 별칭 차단 리스트) ──
+    // ★★ 2차 실패해도 1차 결과는 절대 잃지 않음 — 결제 후 빈손 방지 안전장치
     const appPrompt = generateJungtongsajuApplicationPrompt(result, coreContent, forbiddenAliases);
-    // 명세 ~5,200자 → 한국어 토큰 비율 고려 12,000 (안전 여유 2.3x)
-    const appContent = await callGPT(appPrompt, 12000);
-    const appSections = parseJungtongsaju(appContent);
+    let appContent = '';
+    let appSections: Partial<Record<JungtongsajuSectionKey, string>> = {};
+    let appError: string | null = null;
+    try {
+      // 명세 ~5,200자 → 한국어 토큰 비율 고려 12,000 (안전 여유 2.3x)
+      appContent = await callGPT(appPrompt, 12000);
+      appSections = parseJungtongsaju(appContent);
+    } catch (e: any) {
+      // 2차 실패 — 1차 4섹션 결과는 살려서 반환. 사용자에게 결제 후 빈손 X.
+      console.error('[jungtongsaju] 2차 호출 실패, 1차 4섹션만 반환:', e?.message);
+      appError = e?.message || '2차 분석 중 오류가 발생했어요.';
+    }
 
-    // ── 머지 + archive (전체 본문 1번만 저장) ──
+    // ── 머지 + archive ──
     const merged: Partial<Record<JungtongsajuSectionKey, string>> = { ...coreSections, ...appSections };
-    const fullContent = `${coreContent}\n\n${appContent}`;
+    const fullContent = appContent ? `${coreContent}\n\n${appContent}` : coreContent;
     archiveSaju({
       sourceBirth: sourceBirthFromSaju(result),
       category: 'traditional',
@@ -696,7 +709,16 @@ export const getJungtongsajuReport = async (
     });
 
     const adviceMeta = merged.advice ? parseAdviceMeta(merged.advice) : undefined;
-    return { success: true, sections: merged, adviceMeta };
+    // 2차 실패해도 success: true (1차 결과는 정상). 단 partial 표시 + 안내 메시지
+    return {
+      success: true,
+      sections: merged,
+      adviceMeta,
+      ...(appError ? {
+        partial: true,
+        partialMessage: '핵심 4섹션은 분석 완료. 나머지 8섹션(직업·재물·애정·건강 등)은 일시 오류로 분석 못 했어요. 새로고침 시 재차감 없이 8섹션만 다시 시도합니다.',
+      } : {}),
+    };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

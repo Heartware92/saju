@@ -338,6 +338,25 @@ export default function SajuResultPage() {
         </div>
       )}
 
+      {/* 부분 성공 안내 — 2차 실패해도 1차 결과는 살림 */}
+      {report?.partial && report.partialMessage && (
+        <div className="rounded-2xl p-4 mb-3 bg-[rgba(251,191,36,0.08)] border border-[rgba(251,191,36,0.35)]">
+          <div className="flex items-start gap-2">
+            <span className="text-[16px]" aria-hidden>⚠️</span>
+            <div className="flex-1">
+              <p className="text-[14px] text-amber-200 font-semibold mb-1">일부 섹션 분석 미완료</p>
+              <p className="text-[13px] text-text-secondary leading-relaxed">{report.partialMessage}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-3 px-3 py-1.5 rounded-lg bg-cta/20 border border-cta/40 text-cta text-[13px] font-semibold hover:bg-cta/30 active:scale-95 transition-all"
+              >
+                나머지 8섹션 다시 분석받기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* rawText fallback */}
       {report?.rawText && (
         <div className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
