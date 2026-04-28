@@ -34,6 +34,9 @@ import {
   generateJungtongsajuCorePrompt,
   generateJungtongsajuApplicationPrompt,
   generateTaekilAdvicePrompt,
+  generatePickedDateFortunePrompt,
+  PICKED_DATE_SECTION_KEYS,
+  type PickedDateSectionKey,
   NEWYEAR_SECTION_KEYS,
   JUNGTONGSAJU_SECTION_KEYS,
   TODAY_SECTION_KEYS,
@@ -800,6 +803,57 @@ export const getNewyearReport = async (
 
     if (Object.keys(sections).length === 0) {
       // 파싱 실패 시 원문 반환 — UI에서 단일 텍스트로 표시
+      return { success: true, rawText: content };
+    }
+    return { success: true, sections };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
+
+// ─────────────────────────────────────────────
+// 지정일 운세 — 사용자가 직접 고른 날짜의 7섹션 종합 풀이
+// ─────────────────────────────────────────────
+
+export interface PickedDateReportAIResult {
+  success: boolean;
+  sections?: Partial<Record<PickedDateSectionKey, string>>;
+  rawText?: string;
+  error?: string;
+}
+
+export const parsePickedDateReport = (raw: string): Partial<Record<PickedDateSectionKey, string>> => {
+  const out: Partial<Record<PickedDateSectionKey, string>> = {};
+  const keysPattern = PICKED_DATE_SECTION_KEYS.join('|');
+  const parts = raw.split(new RegExp(`^\\s*\\[(${keysPattern})\\]\\s*$`, 'm'));
+  for (let i = 1; i < parts.length; i += 2) {
+    const key = parts[i] as PickedDateSectionKey;
+    const body = (parts[i + 1] || '').trim();
+    if (body) out[key] = body;
+  }
+  return out;
+};
+
+export const getPickedDateReport = async (
+  result: SajuResult,
+  isoDate: string,
+): Promise<PickedDateReportAIResult> => {
+  try {
+    const todayGz = calcTodayGanZhi(result, isoDate);
+    const prompt = generatePickedDateFortunePrompt(result, todayGz, isoDate);
+    // 7섹션 × 평균 220자 ≈ 1500자, 여유있게 4500 토큰
+    const content = await callGPT(prompt, 4500);
+    const sections = parsePickedDateReport(content);
+    archiveSaju({
+      sourceBirth: sourceBirthFromSaju(result),
+      category: 'period',
+      resultData: result as unknown as Record<string, unknown>,
+      engineResult: { isoDate, todayGz } as unknown as Record<string, unknown>,
+      interpretation: content,
+      creditType: 'sun',
+      isDetailed: true,
+    });
+    if (Object.keys(sections).length === 0) {
       return { success: true, rawText: content };
     }
     return { success: true, sections };

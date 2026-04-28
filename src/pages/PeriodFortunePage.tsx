@@ -24,8 +24,8 @@ import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { calculateSaju } from '../utils/sajuCalculator';
 import { calculatePeriodFortune, type FortuneScope, type FortuneGrade, type PeriodFortune } from '../engine/periodFortune';
-import { getPeriodDomainsDescription, getNewyearReport, type NewyearReportAIResult } from '../services/fortuneService';
-import { NEWYEAR_SECTION_KEYS, NEWYEAR_SECTION_LABELS } from '../constants/prompts';
+import { getPeriodDomainsDescription, getNewyearReport, getPickedDateReport, parsePickedDateReport, type NewyearReportAIResult, type PickedDateReportAIResult } from '../services/fortuneService';
+import { NEWYEAR_SECTION_KEYS, NEWYEAR_SECTION_LABELS, PICKED_DATE_SECTION_KEYS, PICKED_DATE_SECTION_LABELS } from '../constants/prompts';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { LuckyVisualCard, ELEMENT_LUCKY } from '../components/saju/LuckyVisualCard';
 import { TermChip } from '../components/ui/TermChip';
@@ -162,6 +162,13 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
   const today = new Date().toISOString().slice(0, 10);
   const initialDate = searchParams?.get('date') || today;
   const [pickedDate, setPickedDate] = useState(initialDate);
+  // scope='date' 전용: 사용자가 명시적으로 날짜를 선택해 결과를 본 상태인지.
+  // 진입 시 달력만 보이고, 날짜 클릭 후에야 결과 단계로 진입한다.
+  // - URL에 ?date=가 있거나 ?recordId= 보관함 복원이면 즉시 confirmed
+  // - 그 외엔 달력 진입부터.
+  const [dateConfirmed, setDateConfirmed] = useState<boolean>(
+    scope !== 'date' || !!searchParams?.get('date') || !!searchParams?.get('recordId'),
+  );
 
   const targetYear = (() => {
     const y = searchParams?.get('year');
@@ -218,30 +225,54 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
   // 신년운세 종합 리포트 (scope='year'에서만 사용)
   const [newyearReport, setNewyearReport] = useState<NewyearReportAIResult | null>(null);
   const [newyearReportLoading, setNewyearReportLoading] = useState(false);
+
+  // 지정일 운세 7섹션 리포트 (scope='date'에서만 사용)
+  const [pickedDateReport, setPickedDateReport] = useState<PickedDateReportAIResult | null>(null);
+  const [pickedDateReportLoading, setPickedDateReportLoading] = useState(false);
+
   const chargeForContent = useCreditStore(s => s.chargeForContent);
 
   // ── 보관함 재생 모드 — recordId 가 있으면 DB에서 풀이 복원, AI 호출 skip ──
-  // (scope='year'·newyear 만 archive 저장됨. day/date 는 도메인 chunk 라 archive 미대상)
+  // (scope='year'·newyear / scope='date'·period 가 archive 저장됨)
   useEffect(() => {
-    if (!recordId || scope !== 'year') return;
+    if (!recordId) return;
+    if (scope !== 'year' && scope !== 'date') return;
     let cancelled = false;
-    setNewyearReportLoading(true);
+    if (scope === 'year') setNewyearReportLoading(true);
+    else setPickedDateReportLoading(true);
     sajuDB.getRecordById(recordId)
       .then((record) => {
         if (cancelled || !record) return;
         const content = record.interpretation_detailed ?? record.interpretation_basic ?? '';
-        const sections = parseNewyearReport(content);
-        setNewyearReport(
-          Object.keys(sections).length > 0
-            ? { success: true, sections }
-            : { success: true, rawText: content },
-        );
+        if (scope === 'year') {
+          const sections = parseNewyearReport(content);
+          setNewyearReport(
+            Object.keys(sections).length > 0
+              ? { success: true, sections }
+              : { success: true, rawText: content },
+          );
+        } else {
+          const sections = parsePickedDateReport(content);
+          setPickedDateReport(
+            Object.keys(sections).length > 0
+              ? { success: true, sections }
+              : { success: true, rawText: content },
+          );
+        }
       })
       .catch((e) => {
-        console.error('[archive replay] newyear load failed', e);
-        if (!cancelled) setNewyearReport({ success: false, error: '보관된 풀이를 불러오지 못했어요.' });
+        console.error('[archive replay] period load failed', e);
+        if (!cancelled) {
+          if (scope === 'year') setNewyearReport({ success: false, error: '보관된 풀이를 불러오지 못했어요.' });
+          else setPickedDateReport({ success: false, error: '보관된 풀이를 불러오지 못했어요.' });
+        }
       })
-      .finally(() => { if (!cancelled) setNewyearReportLoading(false); });
+      .finally(() => {
+        if (!cancelled) {
+          if (scope === 'year') setNewyearReportLoading(false);
+          else setPickedDateReportLoading(false);
+        }
+      });
     return () => { cancelled = true; };
   }, [recordId, scope]);
 
@@ -288,9 +319,49 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
       return () => { cancelled = true; };
     }
 
-    // scope=day/date: 영역별 5문장 상세 — 정상 캐시 X, 실패만 1분 차단
-    const kind = scope === 'day' ? 'period_day' : 'period_date';
-    const targetDate = scope === 'day' ? today : pickedDate;
+    // scope=date: 지정일 7섹션 리포트 — 사용자가 날짜를 선택해 confirmed된 경우에만 호출
+    if (scope === 'date') {
+      if (!dateConfirmed) return;
+      const cacheKey = `${sk}:${pickedDate}`;
+      const cached = useReportCacheStore.getState().getReport<PickedDateReportAIResult>('period_date', cacheKey);
+      if (cached?.error) {
+        setPickedDateReport({ success: false, error: cached.error });
+        setPickedDateReportLoading(false);
+        return;
+      }
+      if (cached?.data) {
+        setPickedDateReport(cached.data);
+        setPickedDateReportLoading(false);
+        return;
+      }
+      setPickedDateReport(null);
+      setPickedDateReportLoading(true);
+      getPickedDateReport(saju, pickedDate)
+        .then(r => {
+          if (cancelled) return;
+          setPickedDateReport(r);
+          const cache = useReportCacheStore.getState();
+          if (r.success) {
+            cache.setReport('period_date', cacheKey, r);
+            if (!cache.isCharged('period_date', cacheKey)) {
+              cache.markCharged('period_date', cacheKey);
+              chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.date).catch(() => {});
+            }
+          } else if (r.error) {
+            cache.setError('period_date', cacheKey, r.error);
+          }
+        })
+        .catch((err: any) => {
+          if (cancelled) return;
+          useReportCacheStore.getState().setError('period_date', cacheKey, err?.message || '오류가 발생했어요.');
+        })
+        .finally(() => { if (!cancelled) setPickedDateReportLoading(false); });
+      return () => { cancelled = true; };
+    }
+
+    // scope=day: 영역별 5문장 상세 — 정상 캐시 X, 실패만 1분 차단
+    const kind = 'period_day';
+    const targetDate = today;
     const cacheKey = `${sk}:${targetDate}`;
     const cached = useReportCacheStore.getState().getReport<Partial<Record<'wealth' | 'career' | 'love' | 'health' | 'study', string>>>(kind, cacheKey);
     if (cached?.error) {
@@ -304,9 +375,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     setDomainAI({});
     setDomainAILoading(true);
 
-    const scopeLabel =
-      scope === 'day' ? `오늘(${today})`
-      : `${pickedDate} 지정일`;
+    const scopeLabel = `오늘(${today})`;
 
     const domainsBrief = fortune.domains
       .filter(d => d.key !== 'overall')
@@ -328,10 +397,9 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
         const cache = useReportCacheStore.getState();
         if (r.success && r.descriptions) {
           setDomainAI(r.descriptions);
-          const reason = scope === 'day' ? CHARGE_REASONS.today : CHARGE_REASONS.date;
           if (!cache.isCharged(kind, cacheKey)) {
             cache.markCharged(kind, cacheKey);
-            chargeForContent('sun', SUN_COST_BIG, reason).catch(() => {});
+            chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.today).catch(() => {});
           }
         } else if (r.error) {
           cache.setError(kind, cacheKey, r.error);
@@ -346,7 +414,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
       });
 
     return () => { cancelled = true; };
-  }, [saju, fortune, scope, pickedDate, targetYear, today, chargeForContent, isArchiveMode]);
+  }, [saju, fortune, scope, pickedDate, targetYear, today, chargeForContent, isArchiveMode, dateConfirmed]);
 
   if (!primary && !searchParams?.get('year')) {
     const profileStoreReady = hydrated && lastFetchedAt !== null && !profilesLoading;
@@ -401,6 +469,37 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     );
   }
 
+  // 지정일 운세: 사용자가 날짜를 선택한 직후 풀이 응답 대기 중 — 전체 로딩 화면
+  if (scope === 'date' && dateConfirmed && pickedDateReportLoading) {
+    return (
+      <AILoadingBar
+        label="지정일 운세 풀이중"
+        minLabel="20초"
+        maxLabel="1분"
+        estimatedSeconds={40}
+        messages={[
+          '지정일 일진과 원국의 관계를 분석하는 중입니다',
+          '시간대별 흐름을 그리는 중입니다',
+          '시도하면 좋은 일과 피할 일을 정리하는 중입니다',
+          '인연·환경·처방을 종합하는 중입니다',
+        ]}
+        topContent={
+          <motion.div
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <div className="text-[24px] mb-1" style={{ fontFamily: 'var(--font-serif)' }}>
+              {pickedDate}
+            </div>
+            <div className="text-[14px] text-text-tertiary">
+              {fortune.targetGanZhi.ganZhi} 일진
+            </div>
+          </motion.div>
+        }
+      />
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -416,10 +515,44 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
         <div className="w-9" />
       </div>
 
-      {/* 지정일 — 달력 */}
-      {scope === 'date' && (
-        <div className="mb-4">
-          <CalendarPicker value={pickedDate} onChange={setPickedDate} />
+      {/* 지정일 — 진입 단계 (달력 + 안내) — 날짜 클릭 후 결과 단계로 전환 */}
+      {scope === 'date' && !dateConfirmed && (
+        <div className="mb-4 space-y-3">
+          <div className="rounded-xl p-4 bg-gradient-to-br from-[rgba(124,92,252,0.18)] to-[rgba(201,166,255,0.06)] border border-cta/25">
+            <p className="text-[15px] font-bold text-text-primary mb-1">풀이를 보고 싶은 날짜를 선택해주세요</p>
+            <p className="text-[13px] text-text-secondary leading-relaxed break-keep">
+              과거·미래 어떤 날짜든 가능합니다. 일진·세운·월운·대운 4개 층을 함께 풀어 그 날의 핵심·시간대 흐름·시도하면 좋은 일·피할 일·인연·처방까지 7가지 관점으로 알려드려요.
+            </p>
+          </div>
+          <CalendarPicker
+            value={pickedDate}
+            onChange={(iso) => {
+              setPickedDate(iso);
+              setDateConfirmed(true);
+            }}
+          />
+        </div>
+      )}
+
+      {/* 결과 영역 — 지정일 진입 단계(미확정)에서는 통째로 숨김 */}
+      {!(scope === 'date' && !dateConfirmed) && (<>
+
+      {/* 지정일 결과 헤더 — "선택한 날짜" + 다른 날짜 보기 버튼 */}
+      {scope === 'date' && dateConfirmed && (
+        <div className="mb-3 flex items-center justify-between gap-2 px-1">
+          <div className="text-[15px] font-semibold text-text-secondary">
+            <span className="text-text-tertiary text-[13px]">선택한 날짜</span>{' '}
+            <span className="text-text-primary">{pickedDate}</span>
+          </div>
+          <button
+            onClick={() => {
+              setDateConfirmed(false);
+              setPickedDateReport(null);
+            }}
+            className="text-[13px] px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-text-secondary hover:text-text-primary hover:border-white/20 active:scale-[0.97] transition-all"
+          >
+            다른 날짜 보기
+          </button>
         </div>
       )}
 
@@ -690,6 +823,73 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
           )}
         </motion.section>
       )}
+
+      {/* ── 지정일 운세 7섹션 종합 풀이 (scope='date' 전용) ── */}
+      {scope === 'date' && dateConfirmed && pickedDateReport && (
+        <motion.section
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
+        >
+          <div className="text-[15px] font-semibold text-text-secondary mb-3 px-1 uppercase tracking-wider">
+            이 날의 종합 풀이
+          </div>
+          {pickedDateReport.error && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30">
+              <p className="text-[14px] text-red-400">{pickedDateReport.error}</p>
+            </div>
+          )}
+          {pickedDateReport.rawText && !pickedDateReport.sections && (
+            <div className="p-4 rounded-xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
+              <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line break-keep">
+                {pickedDateReport.rawText}
+              </p>
+            </div>
+          )}
+          {pickedDateReport.sections && (
+            <div className="space-y-3">
+              {PICKED_DATE_SECTION_KEYS.map((key, idx) => {
+                const text = pickedDateReport.sections?.[key];
+                if (!text) return null;
+                const lines = text.trim().split('\n');
+                const metaphorTitle = lines[0]?.trim() ?? '';
+                const bodyText = lines.slice(1).join('\n').trim();
+                return (
+                  <motion.div
+                    key={key}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 * idx }}
+                    className="rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="inline-block w-1 h-5 rounded-full bg-cta" />
+                      <div
+                        className="text-[17px] font-bold text-text-primary tracking-tight break-keep"
+                        style={{ fontFamily: 'var(--font-serif)' }}
+                      >
+                        {PICKED_DATE_SECTION_LABELS[key]}
+                      </div>
+                    </div>
+                    <div
+                      className="text-[17px] font-medium leading-snug text-cta/90 mb-4 pl-3 break-keep"
+                      style={{ fontFamily: 'var(--font-serif)' }}
+                    >
+                      {metaphorTitle}
+                    </div>
+                    <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line break-keep">
+                      {bodyText}
+                    </p>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </motion.section>
+      )}
+
+      </>)}
     </motion.div>
   );
 }

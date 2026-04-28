@@ -811,6 +811,154 @@ ${METAPHOR_SHORT_GUIDE}
 출력은 [today_energy] 마커부터 시작. 마커 이전 텍스트 없어야 함.`;
 };
 
+// ─────────────────────────────────────────────
+// 지정일 운세 — 사용자가 직접 고른 날짜에 대한 종합 풀이
+// 차별 포인트: 오늘운세는 "오늘 흐름 점검", 지정일은 "이 날을 어떻게 보낼지/돌아볼지"의 의도 중심.
+// 7섹션 구조 — 핵심 / 시간대 흐름 / 시도하면 좋은 일 / 피하면 좋은 일 / 인연·환경 / 처방 / 마무리
+// ─────────────────────────────────────────────
+
+export const PICKED_DATE_SECTION_KEYS = [
+  'date_essence',   // 이 날의 핵심 — 일진과 일간의 관계, 기운 한 줄 정수
+  'date_timeflow',  // 시간대별 흐름 — 아침·낮·저녁·밤 4구간 길흉 결
+  'date_yes',       // 시도하면 좋은 일 — 카테고리 3~4개 구체 권고
+  'date_no',        // 피하면 좋은 일 — 함정·실수 패턴
+  'date_people',    // 인연·환경 — 도움 되는 사람 유형, 선호 환경 톤
+  'date_remedy',    // 부드럽게 하는 처방 — 음식·향·행동 (색·방위는 시각 카드와 중복 금지)
+  'date_closing',   // 마무리 한 줄 — 이 날을 어떻게 기억할지
+] as const;
+export type PickedDateSectionKey = typeof PICKED_DATE_SECTION_KEYS[number];
+
+export const PICKED_DATE_SECTION_LABELS: Record<PickedDateSectionKey, string> = {
+  date_essence:  '이 날의 핵심',
+  date_timeflow: '시간대별 흐름',
+  date_yes:      '시도하면 좋은 일',
+  date_no:       '피하면 좋은 일',
+  date_people:   '인연과 환경',
+  date_remedy:   '부드럽게 하는 처방',
+  date_closing:  '이 날을 마무리하는 한 줄',
+};
+
+/**
+ * 지정일 운세 프롬프트 — generatePickedDateFortunePrompt
+ * 입력: 사주 + 지정일 일진(TodayGanZhi 재사용) + 대운/세운/월운 컨텍스트
+ * 출력: 7섹션 [key]\n은유 제목\n본문 형식. 총 1500~2000자.
+ */
+export const generatePickedDateFortunePrompt = (
+  result: SajuResult,
+  todayGz: TodayGanZhi,
+  isoDate: string,
+): string => {
+  const { pillars, elementPercent, yongSinElement, isStrong, daeWoon } = result;
+
+  const zeroEls = (Object.entries(elementPercent) as [string, number][])
+    .filter(([, v]) => v === 0).map(([k]) => k);
+  const missingEl = zeroEls.length > 0 ? `결핍: ${zeroEls.join('·')}` : '';
+
+  const [_y, _m, _d] = isoDate.split('-').map(Number);
+  const pickedYear = _y;
+  const curDW = daeWoon.find(d => d.gan && d.zhi && pickedYear >= d.startAge && pickedYear <= d.endAge);
+  const daeWoonStr = curDW
+    ? `${curDW.gan}${curDW.zhi}(${curDW.ganElement}${curDW.zhiElement}·${curDW.tenGod}·${curDW.twelveStage})`
+    : '없음';
+
+  const seWoon = result.seWoon.find(s => s.year === pickedYear) ?? result.currentSeWoon;
+  const interStr = todayGz.interactions.length > 0 ? todayGz.interactions.join(' / ') : '없음';
+
+  const monthSolar = Solar.fromYmd(_y, _m, _d);
+  const monthLunar = monthSolar.getLunar();
+  const monthGzStr = monthLunar.getMonthInGanZhi();
+  const _mGan = normalizeGan(monthGzStr[0]);
+  const _mZhi = normalizeZhi(monthGzStr[1]);
+  const _mTenGod = TEN_GODS_MAP[result.dayMaster]?.[_mGan] ?? '';
+  const _mGanEl = STEM_ELEMENT[_mGan] ?? '';
+  const _mZhiEl = BRANCH_ELEMENT[_mZhi] ?? '';
+  const monthRunStr = `${_mGan}${_mZhi}(${_mGanEl}${_mZhiEl}${_mTenGod ? `·${_mTenGod}` : ''})`;
+
+  const dateLabel = (() => {
+    const d = new Date(isoDate);
+    return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+  })();
+
+  const today = new Date();
+  const isPast = new Date(isoDate).getTime() < new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const tense = isPast ? '과거 회고' : '미래 점검';
+
+  return `[내 원국]
+일간: ${pillars.day.gan}(${pillars.day.ganElement}) / 일주: ${pillars.day.gan}${pillars.day.zhi}
+오행: 목${elementPercent.목}% 화${elementPercent.화}% 토${elementPercent.토}% 금${elementPercent.금}% 수${elementPercent.수}% ${missingEl}
+용신: ${yongSinElement} / ${isStrong ? '신강' : '신약'}
+간여지동: ${formatGanYeojidong(result)} / 병존·삼존: ${formatByeongjOn(result)}
+
+[운기 4개 층 — 모두 본문에서 활용]
+대운(10년): ${daeWoonStr}
+세운(해당 연도): ${seWoon.gan}${seWoon.zhi}(${seWoon.ganElement}${seWoon.zhiElement}·${seWoon.tenGod})
+월운(해당 월): ${monthRunStr}
+일운(지정일 일진): ${todayGz.gan}${todayGz.zhi}(${todayGz.hanja}) — ${todayGz.ganElement}·${todayGz.zhiElement} / 천간 십성 ${todayGz.tenGodGan} / 지지 십성 ${todayGz.tenGodZhi}
+일진×원국 합충: ${interStr}
+
+[지정 날짜] ${dateLabel}
+[관점] ${tense} — ${isPast ? '이 날 어떤 흐름이었는지 명리적으로 돌아보는 톤. 이미 지난 일을 결정론적으로 단정하지 말고, "이런 기운이 있었기 쉬운 날" 정도로.' : '이 날을 어떻게 보내면 좋을지 미리 점검하는 톤. 단정적 행동 권고 OK.'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[작성 규칙 — 절대 준수]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1) Markdown·이모지 전부 금지.
+2) 총 분량 1500~2000자. 각 섹션 분량 지침을 지키되 한 섹션당 최소 4문장 이상.
+3) ★ 핵심 — 본문 전체에서 「대운·세운·월운·일진」 4개 층의 영향을 모두 활용. 일진 한 가지에만 의존하지 말 것.
+4) 오늘 운세와 차별 — "오늘 흐름 점검"이 아니라 "이 날을 어떻게 보낼지 / 돌아볼지" 의 의도 중심으로 작성.
+5) 일상 장면 구체화 (회의·약속·식사·이동·휴식 등). 추상적 격언·일반론 금지.
+6) "운이 좋은 날" "모든 일이 잘 풀립니다" 같은 흔한 칭찬 금지. 어떤 조건에서 어떻게 풀리는지로 쪼개 서술.
+7) 출력은 [date_essence] 마커부터 시작. 마커 이전 텍스트 없어야 함.
+8) 아래 7개 마커를 정확히 사용. 마커는 줄 처음에 단독으로 위치, 마커 다음 줄에 은유 제목 1줄, 그 다음 본문 시작.
+
+${METAPHOR_SHORT_GUIDE}
+
+[은유 제목 규칙 — 7개 섹션 공통]
+- 각 섹션은 [key] 마커 바로 다음 줄에 **은유 제목 1줄**(7~14자, 자연 이미지 대비 형식)을 먼저 씀.
+- 제목 다음 빈 줄 없이 본문 시작.
+- 본문 첫 문장 또는 마지막 문장에 제목 은유를 자연스럽게 회수.
+
+[date_essence] — 200~280자
+첫 줄: 은유 제목 (이 날 기운의 정수)
+본문: 일진(${todayGz.gan}${todayGz.zhi})과 일간(${pillars.day.gan})의 십성·오행 관계로 이 날이 본인에게 가지는 의미를 단정적으로 짚는다.
+대운(${daeWoonStr.split('(')[0]}) → 세운(${seWoon.gan}${seWoon.zhi}) → 월운(${_mGan}${_mZhi}) → 일진 4개 층이 어떻게 겹쳐 이 날의 기운이 만들어지는지 1~2문장으로 요약.
+이 날 한 줄 정수(이 날의 본질을 한 마디로) 마무리.
+
+[date_timeflow] — 240~320자
+첫 줄: 은유 제목 (시간의 결을 자연 이미지 대비로)
+본문: 이 날을 4구간(아침 06~12 / 낮 12~18 / 저녁 18~22 / 밤 22~02)으로 나눠 각 구간에서 기운이 어떻게 흐르는지 짚는다.
+일진(${todayGz.gan}${todayGz.zhi})의 12지지 위치와 용신(${yongSinElement}) 기준으로 가장 좋은 시간대 1개와 가장 약한 시간대 1개를 명시 + 그 시간대에 어울리는 활동·행동 1개씩 구체적으로.
+
+[date_yes] — 220~290자
+첫 줄: 은유 제목 (이 날 어울리는 행동의 결)
+본문: 이 날 일진·세운 십성을 근거로 시도하면 좋은 일 3가지를 카테고리별로 (예: 결정·발표·약속·이동·시작·정리·휴식·연락·구매 등). 각 항목마다 어떤 십성·오행 근거로 권하는지 한 줄 + 가장 권장하는 1순위 표시.
+
+[date_no] — 180~240자
+첫 줄: 은유 제목 (이 날의 함정·빈틈)
+본문: 일진×원국 합충(${interStr})을 근거로 피하면 좋은 행동 2가지를 구체 장면으로. 각 항목마다 왜 그런지 명리 근거 1줄 + 만약 어쩔 수 없이 해야 한다면 어떻게 위험을 줄일지 한 마디.
+
+[date_people] — 180~240자
+첫 줄: 은유 제목 (이 날의 사람·자리)
+본문: 이 날 일진 십성(${todayGz.tenGodGan}) 기준으로 잘 통하는 사람 유형 1~2개와 부담스러운 사람 유형 1개를 구체적으로 (성격·직업·관계 등). 어울리는 환경 톤(혼자 vs 다수, 공식 vs 사적, 실내 vs 야외) 1줄 + 사람 만남 시 좋은 시간대 1구간.
+
+[date_remedy] — 200~260자
+첫 줄: 은유 제목 (이 날을 부드럽게 하는 처방)
+본문: 용신(${yongSinElement}) 기운으로 이 날을 보강하는 실천적 처방 — 색상·방위·숫자·시간대는 시각 카드와 중복되므로 절대 본문에 적지 말 것.
+대신 다음 4가지를 구체적으로:
+- 오늘 특히 좋은 음식·음료 1가지 (구체 식재료 + 효능 한 마디)
+- 향기·아로마 1가지 (언제 사용하면 좋은지)
+- 이 날 5~10분 안에 할 수 있는 미니 행동 1가지 (호흡·산책·정리·기록 중)
+- 마음가짐·태도 한 마디
+
+[date_closing] — 130~180자
+첫 줄: 은유 제목 (이 날을 마무리하는 톤)
+본문: 이 날 전체 흐름을 단정적으로 요약 — 어떤 한 가지를 중심에 두고 보내면 가장 의미가 깊을지.
+${isPast ? '과거 날짜이므로 "이 날 이런 흐름이 흘렀을 가능성이 높다"는 회고적 톤으로 마무리.' : '미래/오늘이므로 "이렇게 보내면 가장 충실한 하루가 된다"는 점검적 톤으로 마무리.'}
+마지막 문장에 첫 번째 섹션 [date_essence]의 은유 제목 키워드 1개를 자연스럽게 다시 호출해 글 전체를 닫는다.
+
+출력은 [date_essence] 마커부터 시작. 마커 이전 텍스트 없어야 함.`;
+};
+
 /**
  * 정통사주 종합 리포트 프롬프트
  * - 원국 전체 분석: 격국·용신·성격·직업·재물·애정·건강·인간관계·대운·처방
