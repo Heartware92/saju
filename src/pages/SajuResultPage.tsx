@@ -156,9 +156,16 @@ export default function SajuResultPage() {
 
     let cancelled = false;
     setReportLoading(true);
-    getJungtongsajuReport(result)
+    // 2-pass 점진 노출 — 1차(Core 4섹션) 도착 즉시 화면에 띄우고 2차는 백그라운드 진행.
+    // 사용자 체감: ~20초만에 첫 결과 → 추가 ~30~40초 후 8섹션 보강 카드 등장.
+    getJungtongsajuReport(result, (partial) => {
+      if (cancelled) return;
+      // 1차 결과(4섹션) 즉시 렌더 — reportLoading 은 true 유지 (2차 진행 중 표시)
+      setReport(partial);
+    })
       .then(r => {
         if (cancelled) return;
+        // 2차 완료 — 12섹션 머지된 최종 결과
         setReport(r);
         const cache = useReportCacheStore.getState();
         if (r.success) {
@@ -210,8 +217,11 @@ export default function SajuResultPage() {
     );
   }
 
-  // ── 리포트 로딩 중 전체 화면 ──────────────────────────
-  if (reportLoading) {
+  // ── 리포트 로딩 중 전체 화면 — 1차(Core 4섹션) 결과가 아직 없을 때만 ──
+  // 2-pass: 1차 결과 도착하면 partial sections 가 setReport 로 채워짐 → 그 시점부터 페이지 렌더
+  // 2차는 백그라운드 진행. reportLoading 은 true 유지하되 페이지 안에서 "심층 분석 중" 배지로 표시
+  const hasAnySections = !!report?.sections && Object.keys(report.sections).length > 0;
+  if (reportLoading && !hasAnySections) {
     return (
       <AILoadingBar
         label="정통사주 분석중"
@@ -391,6 +401,27 @@ export default function SajuResultPage() {
             );
           })}
         </div>
+      )}
+
+      {/* 2차(Application 8섹션) 진행 중 인디케이터 — 1차 결과만 도착해 있을 때 */}
+      {reportLoading && hasAnySections && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-4 rounded-2xl px-5 py-4 bg-[rgba(124,92,252,0.08)] border border-[rgba(124,92,252,0.25)]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-cta animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-cta animate-pulse" style={{ animationDelay: '0.2s' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-cta animate-pulse" style={{ animationDelay: '0.4s' }} />
+            </div>
+            <div className="flex-1">
+              <div className="text-[14px] font-semibold text-text-primary">심층 분석 중 (성격 · 직업 · 재물 · 애정 · 건강 · 인간관계 · 대운 · 처방)</div>
+              <div className="text-[12px] text-text-tertiary mt-0.5">1차 핵심 분석은 위에 도착했어요. 영역별 깊이 분석이 30~40초 후 추가됩니다.</div>
+            </div>
+          </div>
+        </motion.div>
       )}
     </motion.div>
   );

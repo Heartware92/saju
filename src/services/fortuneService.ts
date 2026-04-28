@@ -31,7 +31,8 @@ import {
   type ZamidusuSectionKey,
   generatePeriodDomainsPrompt,
   generateNewyearReportPrompt,
-  generateJungtongsajuPrompt,
+  generateJungtongsajuCorePrompt,
+  generateJungtongsajuApplicationPrompt,
   generateTaekilAdvicePrompt,
   NEWYEAR_SECTION_KEYS,
   JUNGTONGSAJU_SECTION_KEYS,
@@ -553,19 +554,53 @@ export const parseJungtongsaju = (raw: string): Partial<Record<JungtongsajuSecti
   return out;
 };
 
-export const getJungtongsajuReport = async (result: SajuResult): Promise<JungtongsajuAIResult> => {
+/**
+ * 정통사주 풀이 — 2-pass 분할 호출.
+ * 1차(Core 4섹션): general·daymaster·element·interaction → 사주 핵심 분석
+ * 2차(Application 8섹션): 1차 결과를 컨텍스트로 받아 character·career·...·advice
+ *
+ * 점진 노출 UX 지원: onCoreReady 콜백이 있으면 1차 완료 즉시 호출되어
+ * 페이지가 핵심 4섹션을 먼저 렌더하고 2차는 백그라운드 진행.
+ *
+ * 분량: 1차 ~3,000자 + 2차 ~5,200자 = 총 ~8,200자 (이전 ~5,000자의 1.6배)
+ * 비용·시간: 호출 2배. 중복 회피 효과 압도적.
+ */
+export const getJungtongsajuReport = async (
+  result: SajuResult,
+  onCoreReady?: (partial: JungtongsajuAIResult) => void,
+): Promise<JungtongsajuAIResult> => {
   try {
-    const prompt = generateJungtongsajuPrompt(result);
-    // 프롬프트 명세: 총 2,800~3,500자 (11섹션). 한국어 토큰 비율 고려해 8,000.
-    const content = await callGPT(prompt, 8000);
-    const sections = parseJungtongsaju(content);
-    archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'traditional', resultData: result as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
-
-    if (Object.keys(sections).length === 0) {
-      return { success: true, rawText: content };
+    // ── 1차 호출: Core 4섹션 ──
+    const corePrompt = generateJungtongsajuCorePrompt(result);
+    // 명세 ~3,000자 → 한국어 토큰 비율 고려 7,000 (안전 여유 2.3x)
+    const coreContent = await callGPT(corePrompt, 7000);
+    const coreSections = parseJungtongsaju(coreContent);
+    if (Object.keys(coreSections).length === 0) {
+      // 마커 파싱 실패 — 1차부터 무너지면 rawText fallback
+      return { success: true, rawText: coreContent };
     }
-    const adviceMeta = sections.advice ? parseAdviceMeta(sections.advice) : undefined;
-    return { success: true, sections, adviceMeta };
+    // 점진 노출 — 페이지가 1차 결과 즉시 렌더하도록 콜백
+    onCoreReady?.({ success: true, sections: coreSections });
+
+    // ── 2차 호출: Application 8섹션 (1차 컨텍스트로 받음) ──
+    const appPrompt = generateJungtongsajuApplicationPrompt(result, coreContent);
+    // 명세 ~5,200자 → 한국어 토큰 비율 고려 12,000 (안전 여유 2.3x)
+    const appContent = await callGPT(appPrompt, 12000);
+    const appSections = parseJungtongsaju(appContent);
+
+    // ── 머지 + archive (전체 본문 1번만 저장) ──
+    const merged: Partial<Record<JungtongsajuSectionKey, string>> = { ...coreSections, ...appSections };
+    const fullContent = `${coreContent}\n\n${appContent}`;
+    archiveSaju({
+      sourceBirth: sourceBirthFromSaju(result),
+      category: 'traditional',
+      resultData: result as unknown as Record<string, unknown>,
+      interpretation: fullContent,
+      isDetailed: true,
+    });
+
+    const adviceMeta = merged.advice ? parseAdviceMeta(merged.advice) : undefined;
+    return { success: true, sections: merged, adviceMeta };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
