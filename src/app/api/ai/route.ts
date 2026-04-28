@@ -3,53 +3,16 @@ import { NextRequest, NextResponse } from 'next/server';
 // Vercel Serverless 기본 10초 → 60초로 확장 (자미두수 등 장문 응답 대응)
 export const maxDuration = 60;
 
-// ── Claude (Anthropic) API ──────────────────────────────────────────────────
-const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
-const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
-
 interface AIResult {
   content: string;
   /** true면 max_tokens 한도에 걸려 응답이 잘림. 호출자에서 안내·재시도 처리 필요. */
   truncated: boolean;
 }
 
-async function callClaude(
-  prompt: string,
-  maxTokens: number,
-  systemPrompt: string,
-): Promise<AIResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('NO_ANTHROPIC_KEY');
-
-  const res = await fetch(CLAUDE_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: CLAUDE_MODEL,
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(`Claude ${res.status}: ${err?.error?.message || ''}`);
-  }
-
-  const data = await res.json();
-  return {
-    content: data.content?.[0]?.text ?? '',
-    truncated: data.stop_reason === 'max_tokens',
-  };
-}
-
-// ── Gemini API ──────────────────────────────────────────────────────────────
-// gemini-2.0-flash 는 무료 티어에서 15 RPM / 1,500 RPD 제공 (2.5-flash 무료 20 RPD 대비 훨씬 높음)
+// ── Gemini API (단일 제공자) ────────────────────────────────────────────────
+// gemini-2.5-flash 사용. Anthropic Claude 폴백 코드는 사용자 결정으로 제거됨
+// (Claude 키 미보유 + 향후 도입 계획 없음). OpenAI 폴백은 FEEDBACK_CHECKLIST.md
+// "🗓 추후 구현 리스트" 에 보존.
 const GEMINI_API_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
@@ -65,9 +28,7 @@ async function callGemini(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      systemInstruction: {
-        parts: [{ text: systemPrompt }],
-      },
+      systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.7,
@@ -83,17 +44,18 @@ async function callGemini(
     const err = await res.json().catch(() => ({}));
     const msg = err?.error?.message ?? '';
     if (res.status === 429) {
-      throw new Error(
-        `Gemini 분당 요청 한도(RPM) 초과: .env.local 에 ANTHROPIC_API_KEY 를 추가하면 Claude 로 자동 전환됩니다. (${msg})`,
-      );
+      throw new Error('AI 요청이 너무 많아요. 1분 후 다시 시도해주세요.');
     }
-    throw new Error(`Gemini ${res.status}: ${msg}`);
+    if (res.status >= 500) {
+      throw new Error('AI 서비스가 일시적으로 응답하지 않아요. 잠시 후 다시 시도해주세요.');
+    }
+    throw new Error(`AI 요청 오류 (${res.status}): ${msg || '잠시 후 다시 시도해주세요.'}`);
   }
 
   const data = await res.json();
   const candidate = data.candidates?.[0];
   const parts: any[] = candidate?.content?.parts ?? [];
-  // 2.5-flash는 thinking 파트(thought:true)가 parts[0]에 올 수 있으므로 실제 텍스트 파트를 찾아야 함
+  // 2.5-flash 는 thinking 파트(thought:true) 가 parts[0] 에 올 수 있으므로 실제 텍스트 파트를 찾음
   const textPart = parts.find((p: any) => p.text && !p.thought) ?? parts[0];
   return {
     content: textPart?.text ?? '',
@@ -109,33 +71,18 @@ export async function POST(request: NextRequest) {
       systemPrompt ||
       '당신은 정통 사주명리 전문가입니다. 핵심만 간결하게, 실용적으로 답변하세요. 한국어로 작성하며 이모지는 최소화하세요.';
 
-    // 1순위: Claude (ANTHROPIC_API_KEY 있을 때)
-    if (process.env.ANTHROPIC_API_KEY) {
-      try {
-        const r = await callClaude(prompt, maxTokens, sys);
-        return NextResponse.json({ content: r.content, truncated: r.truncated });
-      } catch (claudeErr: any) {
-        console.error('[AI Route] Claude 실패, Gemini로 폴백:', claudeErr.message);
-        // Claude 실패 시 Gemini 폴백
-      }
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json(
+        { error: 'AI 서비스가 설정되어 있지 않아요. 관리자에게 문의해주세요.' },
+        { status: 500 },
+      );
     }
 
-    // 2순위: Gemini
-    if (process.env.GEMINI_API_KEY) {
-      const r = await callGemini(prompt, maxTokens, sys);
-      return NextResponse.json({ content: r.content, truncated: r.truncated });
-    }
-
-    return NextResponse.json(
-      {
-        error:
-          '.env.local 에 ANTHROPIC_API_KEY 또는 GEMINI_API_KEY 를 설정해주세요. Claude 추천 (쿼터 제한 없음).',
-      },
-      { status: 500 },
-    );
+    const r = await callGemini(prompt, maxTokens, sys);
+    return NextResponse.json({ content: r.content, truncated: r.truncated });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || '서버 오류가 발생했습니다.' },
+      { error: error.message || '서버 오류가 발생했어요. 잠시 후 다시 시도해주세요.' },
       { status: 500 },
     );
   }
