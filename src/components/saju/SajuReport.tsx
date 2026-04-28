@@ -1246,7 +1246,7 @@ export default function SajuReport({
             <span>년주</span>
           </div>
           <div className={styles.pillarsRow}>
-            <span className={styles.label}>십성</span>
+            <span className={styles.label}>천간 십성</span>
             <span className={result.hourUnknown ? styles.hourUnknownCell : ''}>
               {result.hourUnknown ? '—' : pillars.hour.tenGodGan}
             </span>
@@ -1277,6 +1277,16 @@ export default function SajuReport({
             <span style={{ color: ELEMENT_COLORS[pillars.day.zhiElement] }}><BranchCell zhi={pillars.day.zhi} /></span>
             <span style={{ color: ELEMENT_COLORS[pillars.month.zhiElement] }}><BranchCell zhi={pillars.month.zhi} /></span>
             <span style={{ color: ELEMENT_COLORS[pillars.year.zhiElement] }}><BranchCell zhi={pillars.year.zhi} /></span>
+          </div>
+          {/* 지지 십성 — 지장간 본기 기준. 직원 피드백: 지지 십성 누락 보완 */}
+          <div className={styles.pillarsRow}>
+            <span className={styles.label}>지지 십성</span>
+            <span className={result.hourUnknown ? styles.hourUnknownCell : ''}>
+              {result.hourUnknown ? '—' : pillars.hour.tenGodZhi}
+            </span>
+            <span>{pillars.day.tenGodZhi}</span>
+            <span>{pillars.month.tenGodZhi}</span>
+            <span>{pillars.year.tenGodZhi}</span>
           </div>
           <div className={styles.pillarsRow}>
             <span className={styles.label}>지장간</span>
