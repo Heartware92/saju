@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { CITY_COORDINATES } from '../utils/timeCorrection'
 import { useProfileStore } from '../store/useProfileStore'
 import { useUserStore } from '../store/useUserStore'
+import { BackButton } from '../components/ui/BackButton'
 import type { BirthProfile } from '../types/credit'
 import styles from './SajuInputPage.module.css'
 
@@ -262,16 +263,27 @@ export default function SajuInputPage() {
 
   return (
     <div className={styles.container}>
-      {/* 카테고리 헤더 */}
-      <motion.div
-        className={styles.categoryHeader}
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <span className={styles.categoryIcon}>{category.icon}</span>
-        <h1 className={styles.categoryTitle}>{category.title}</h1>
-        <p className={styles.categoryDesc}>{category.desc}</p>
-      </motion.div>
+      {isProfileOnly ? (
+        // 프로필 추가 모드 — 카테고리 헤더 대신 뒤로가기 + 단순 제목
+        <div className="flex items-center justify-between mb-4 px-1 pt-2">
+          <BackButton to="/saju/profile" />
+          <h1 className="text-base font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+            새 프로필
+          </h1>
+          <div className="w-9" />
+        </div>
+      ) : (
+        // 일반 진입 모드 — 카테고리 헤더 (정통 사주 등)
+        <motion.div
+          className={styles.categoryHeader}
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <span className={styles.categoryIcon}>{category.icon}</span>
+          <h1 className={styles.categoryTitle}>{category.title}</h1>
+          <p className={styles.categoryDesc}>{category.desc}</p>
+        </motion.div>
+      )}
 
       <motion.div
         className={styles.form}
@@ -483,13 +495,16 @@ export default function SajuInputPage() {
           {isProfileOnly ? '프로필 저장' : `${category.title} 결과 보기`}
         </motion.button>
 
-        {/* 뒤로가기 */}
-        <button
-          className={styles.backBtn}
-          onClick={() => router.push(isProfileOnly ? '/saju/profile' : '/saju')}
-        >
-          ← {isProfileOnly ? '프로필 관리로' : '프로필 목록으로'}
-        </button>
+        {/* 하단 뒤로가기 — 일반 진입 모드에서만 노출.
+            프로필 추가 모드는 상단 BackButton 사용으로 일관성 유지. */}
+        {!isProfileOnly && (
+          <button
+            className={styles.backBtn}
+            onClick={() => router.push('/saju')}
+          >
+            ← 프로필 목록으로
+          </button>
+        )}
       </motion.div>
 
       {/* 프로필 저장 모달 */}
