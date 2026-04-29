@@ -3,12 +3,15 @@
 /**
  * 공통 뒤로가기 버튼.
  *
- * 동작 우선순위:
- *  1. 명시적 fallback (props.to) 가 있으면 그쪽으로 이동
- *  2. 브라우저 history 가 있으면 router.back()
- *  3. 그 외(외부 직접 URL 진입 등)는 홈으로
+ * 동작 우선순위(2025-04 수정 — 무한 push 루프 방지):
+ *  1. onClick 핸들러가 있으면 그것만 실행 (단계형 페이지)
+ *  2. 브라우저 history 가 있으면 router.back() — 정상 흐름의 사용자 의도
+ *  3. history 가 비어있으면 (외부 직접 URL 진입 등) props.to fallback URL로
+ *  4. to 도 없으면 홈으로
  *
- * 페이지 헤더 좌측에 단독 배치하거나, 다른 헤더 요소들 사이에 끼워서 사용.
+ * 이전엔 props.to 가 있을 때 항상 router.push(to) 였는데,
+ * "프로필 설정 → 새 프로필 → 뒤로가기 → 프로필 설정 → 뒤로가기 → 새 프로필 …"
+ * 형태의 무한 루프가 발생했음. history.back 을 우선 시도해 누적 push 차단.
  */
 
 import { useRouter } from 'next/navigation';
@@ -34,15 +37,17 @@ export function BackButton({ to, onClick, label = '뒤로', className = '' }: Ba
       onClick();
       return;
     }
+    // 정상 흐름: 브라우저 history 가 있으면 back 우선 → 누적 push 로 인한 무한 루프 방지
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    // 외부 직접 URL 진입 등 history 가 비어있을 때 fallback
     if (to) {
       router.push(to);
       return;
     }
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push('/');
-    }
+    router.push('/');
   };
   return (
     <button
