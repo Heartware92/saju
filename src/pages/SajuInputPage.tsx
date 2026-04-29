@@ -263,27 +263,14 @@ export default function SajuInputPage() {
 
   return (
     <div className={styles.container}>
-      {isProfileOnly ? (
-        // 프로필 추가 모드 — 카테고리 헤더 대신 뒤로가기 + 단순 제목
-        <div className="flex items-center justify-between mb-4 px-1 pt-2">
-          <BackButton to="/saju/profile" />
-          <h1 className="text-base font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
-            새 프로필
-          </h1>
-          <div className="w-9" />
-        </div>
-      ) : (
-        // 일반 진입 모드 — 카테고리 헤더 (정통 사주 등)
-        <motion.div
-          className={styles.categoryHeader}
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <span className={styles.categoryIcon}>{category.icon}</span>
-          <h1 className={styles.categoryTitle}>{category.title}</h1>
-          <p className={styles.categoryDesc}>{category.desc}</p>
-        </motion.div>
-      )}
+      {/* 통일 헤더 — 모든 진입 경로에서 카테고리 헤더 대신 단순 제목 + BackButton */}
+      <div className="flex items-center justify-between mb-4 px-1 pt-2">
+        <BackButton to={isProfileOnly ? '/saju/profile' : '/saju'} />
+        <h1 className="text-base font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+          {isProfileOnly ? '새 프로필' : '사주 정보 입력'}
+        </h1>
+        <div className="w-9" />
+      </div>
 
       <motion.div
         className={styles.form}
@@ -292,7 +279,9 @@ export default function SajuInputPage() {
         transition={{ delay: 0.1 }}
       >
         {/* 저장된 프로필 선택 */}
-        {user && (
+        {/* 저장된 프로필 리스트 — 일반 진입 모드에서만 노출(사주 분석 시 기존 프로필 빠르게 선택용).
+            프로필 추가 모드(isProfileOnly)에선 새 프로필 만드는 게 목적이라 기존 리스트 숨김. */}
+        {user && !isProfileOnly && (
           <div className={styles.profileSection}>
             <div className={styles.profileLabel}>
               <span>저장된 프로필</span>
@@ -327,32 +316,19 @@ export default function SajuInputPage() {
           </div>
         )}
 
-        {/* 프로필 저장 전용 모드: 이름·메모를 본 화면에서 직접 입력 */}
+        {/* 프로필 저장 전용 모드: 이름을 본 화면에서 직접 입력 */}
         {isProfileOnly && (
-          <>
-            <div className={styles.section}>
-              <label className={styles.label}>프로필 이름 <span style={{ color: '#F87171', fontSize: 13 }}>*</span></label>
-              <input
-                className={styles.textInput}
-                type="text"
-                placeholder="예: 나, 엄마, 친구 민수"
-                value={profileForm.name}
-                onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
-                maxLength={20}
-              />
-            </div>
-            <div className={styles.section}>
-              <label className={styles.label}>메모 (선택)</label>
-              <input
-                className={styles.textInput}
-                type="text"
-                placeholder="예: 직장 동료, 사촌언니"
-                value={profileForm.memo}
-                onChange={(e) => setProfileForm(prev => ({ ...prev, memo: e.target.value }))}
-                maxLength={50}
-              />
-            </div>
-          </>
+          <div className={styles.section}>
+            <label className={styles.label}>프로필 이름 <span style={{ color: '#F87171', fontSize: 13 }}>*</span></label>
+            <input
+              className={styles.textInput}
+              type="text"
+              placeholder="예: 나, 엄마, 친구 민수"
+              value={profileForm.name}
+              onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
+              maxLength={20}
+            />
+          </div>
         )}
 
         {/* 성별 선택 */}
@@ -523,16 +499,6 @@ export default function SajuInputPage() {
                 value={profileForm.name}
                 onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
                 autoFocus
-              />
-            </div>
-
-            <div className={styles.section}>
-              <label className={styles.label}>메모 (선택)</label>
-              <input
-                className={styles.profileInput}
-                placeholder="메모"
-                value={profileForm.memo}
-                onChange={(e) => setProfileForm(prev => ({ ...prev, memo: e.target.value }))}
               />
             </div>
 
