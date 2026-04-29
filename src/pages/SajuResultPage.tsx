@@ -15,7 +15,8 @@ import { sajuDB } from '../services/supabase';
 import { JUNGTONGSAJU_SECTION_KEYS, JUNGTONGSAJU_SECTION_LABELS } from '../constants/prompts';
 import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
-import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
+import { useReportCacheStore, sajuKey, type ReportKind } from '../store/useReportCacheStore';
+import { RestoreReportModal } from '../components/RestoreReportModal';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { determineGyeokguk } from '../engine/gyeokguk';
@@ -56,6 +57,15 @@ export default function SajuResultPage() {
   const [result, setResult] = useState<SajuResult | null>(null);
   const [report, setReport] = useState<JungtongsajuAIResult | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
+
+  const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
+  const [refetchNonce, setRefetchNonce] = useState(0);
+  const handleUseCached = () => { cacheGate?.restore(); setCacheGate(null); };
+  const handleRefetch = () => {
+    if (cacheGate) useReportCacheStore.getState().invalidate(cacheGate.kind, cacheGate.key);
+    setCacheGate(null);
+    setRefetchNonce(n => n + 1);
+  };
   const chargeForContent = useCreditStore(s => s.chargeForContent);
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
@@ -153,7 +163,7 @@ export default function SajuResultPage() {
       setReport({ success: false, error: cached.error });
       return;
     }
-    // 재진입 silent restore
+    // 캐시 silent restore (같은 디바이스 빠른 재진입). 보관함 DB 모달은 별도 useEffect 에서 처리 예정.
     if (cached?.data) {
       setReport(cached.data);
       return;
@@ -189,7 +199,7 @@ export default function SajuResultPage() {
       })
       .finally(() => { if (!cancelled) setReportLoading(false); });
     return () => { cancelled = true; };
-  }, [result, isArchiveMode]);
+  }, [result, isArchiveMode, refetchNonce]);
 
   // ── 로딩 / 빈 상태 ──────────────────────────────────
   if (!result) {
@@ -448,6 +458,13 @@ export default function SajuResultPage() {
           </div>
         </motion.div>
       )}
+
+      <RestoreReportModal
+        open={!!cacheGate}
+        title="정통사주"
+        onUseCached={handleUseCached}
+        onRefresh={handleRefetch}
+      />
     </motion.div>
   );
 }

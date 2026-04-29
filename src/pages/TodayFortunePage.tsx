@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
-import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
+import { useReportCacheStore, sajuKey, type ReportKind } from '../store/useReportCacheStore';
+import { RestoreReportModal } from '../components/RestoreReportModal';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { calculateSaju, type SajuResult } from '../utils/sajuCalculator';
@@ -98,6 +99,15 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
   const [report, setReport] = useState<TodayFortuneAIResult | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [archivedAt, setArchivedAt] = useState<string | null>(null);
+
+  const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
+  const [refetchNonce, setRefetchNonce] = useState(0);
+  const handleUseCached = () => { cacheGate?.restore(); setCacheGate(null); };
+  const handleRefetch = () => {
+    if (cacheGate) useReportCacheStore.getState().invalidate(cacheGate.kind, cacheGate.key);
+    setCacheGate(null);
+    setRefetchNonce(n => n + 1);
+  };
   const chargeForContent = useCreditStore(s => s.chargeForContent);
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
@@ -173,7 +183,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
       setReportLoading(false);
       return;
     }
-    // 재진입 silent restore
+    // 캐시 silent restore (같은 디바이스 빠른 재진입). 보관함 DB 모달은 별도 useEffect 에서 처리 예정.
     if (cached?.data) {
       setReport(cached.data);
       setReportLoading(false);
@@ -204,7 +214,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
       })
       .finally(() => { if (!cancelled) setReportLoading(false); });
     return () => { cancelled = true; };
-  }, [result, confirmedDate, chargeForContent, isArchiveMode]);
+  }, [result, confirmedDate, chargeForContent, isArchiveMode, refetchNonce]);
 
   // ── 로딩·빈 상태 ───────────────────────────────────────────
   if (!result) {
@@ -454,6 +464,13 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
           })}
         </div>
       )}
+
+      <RestoreReportModal
+        open={!!cacheGate}
+        title="오늘의 운세"
+        onUseCached={handleUseCached}
+        onRefresh={handleRefetch}
+      />
     </motion.div>
   );
 }

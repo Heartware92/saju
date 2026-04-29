@@ -13,7 +13,8 @@ import { buildTojeongReading, type TojeongReading } from '../engine/tojeong/read
 import type { GwaeGrade } from '../engine/tojeong/gwae-table';
 import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
-import { useReportCacheStore } from '../store/useReportCacheStore';
+import { useReportCacheStore, type ReportKind } from '../store/useReportCacheStore';
+import { RestoreReportModal } from '../components/RestoreReportModal';
 import { getTojeongReading } from '../services/fortuneService';
 import { sajuDB } from '../services/supabase';
 import { AILoadingBar } from '../components/AILoadingBar';
@@ -49,6 +50,16 @@ export default function TojeongResultPage() {
   const [aiContent, setAiContent] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
+  const [refetchNonce, setRefetchNonce] = useState(0);
+  const handleUseCached = () => { cacheGate?.restore(); setCacheGate(null); };
+  const handleRefetch = () => {
+    if (cacheGate) useReportCacheStore.getState().invalidate(cacheGate.kind, cacheGate.key);
+    setCacheGate(null);
+    aiStartedRef.current = false;
+    setRefetchNonce(n => n + 1);
+  };
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
@@ -138,7 +149,7 @@ export default function TojeongResultPage() {
       setAiLoading(false);
       return;
     }
-    // 재진입 silent restore
+    // 캐시 silent restore (같은 디바이스 빠른 재진입). 보관함 DB 모달은 별도 useEffect 에서 처리 예정.
     if (cached?.data) {
       setAiContent(cached.data);
       setAiLoading(false);
@@ -192,7 +203,7 @@ export default function TojeongResultPage() {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [tojeong, cacheKey, isArchiveMode]);
+  }, [tojeong, cacheKey, isArchiveMode, refetchNonce]);
 
   const retryAI = () => {
     if (!tojeong || !cacheKey) return;

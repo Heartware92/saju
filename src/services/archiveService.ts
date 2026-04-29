@@ -165,6 +165,48 @@ export async function archiveSaju(params: ArchiveSajuParams): Promise<void> {
   }
 }
 
+/**
+ * 보관함에서 같은 카테고리의 같은 사주(+ 컨텍스트) record 가장 최근 1건 조회.
+ *
+ * 페이지 진입 시 호출 → record 있으면 "이전에 본 풀이가 있어요" 모달 표시 후
+ * 사용자가 [기존 결과 보기] 선택 시 ?recordId=... 로 보관함 재생 모드 진입.
+ *
+ * @param params.context 카테고리별 추가 매칭 키 — engine_result jsonb 안의 필드.
+ *   예: 신년운세 { key: 'year', value: '2026' }, 지정일 { key: 'isoDate', value: '2026-04-30' }
+ *   생략하면 카테고리+사주만으로 매칭 (정통사주·자미두수·토정비결 등 컨텍스트 없는 풀이용)
+ *
+ * @returns 매칭 record 정보 또는 null. 비로그인·DB 오류·매칭 실패 모두 null 로 통일.
+ */
+export async function findRecentArchive(params: {
+  category: ArchiveCategory;
+  birth_date: string;          // YYYY-MM-DD
+  gender: 'male' | 'female';
+  context?: { key: string; value: string };
+}): Promise<{ id: string; created_at: string } | null> {
+  try {
+    const user = await auth.getCurrentUser();
+    if (!user) return null;
+    let q = supabase
+      .from('saju_records')
+      .select('id, created_at')
+      .eq('user_id', user.id)
+      .eq('category', params.category)
+      .eq('birth_date', params.birth_date)
+      .eq('gender', params.gender)
+      .order('created_at', { ascending: false });
+    if (params.context) {
+      // engine_result jsonb 의 특정 키 텍스트 매칭
+      q = q.eq(`engine_result->>${params.context.key}`, params.context.value);
+    }
+    const { data, error } = await q.limit(1).maybeSingle();
+    if (error || !data) return null;
+    return { id: (data as { id: string }).id, created_at: (data as { created_at: string }).created_at };
+  } catch (err) {
+    console.error('[archive] findRecentArchive failed', err);
+    return null;
+  }
+}
+
 interface ArchiveTarotParams {
   spreadType: string;
   cards: Record<string, unknown>;

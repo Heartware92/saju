@@ -16,9 +16,11 @@ import { motion } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
-import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
+import { useReportCacheStore, sajuKey, type ReportKind } from '../store/useReportCacheStore';
+import { RestoreReportModal } from '../components/RestoreReportModal';
 import { sajuDB } from '../services/supabase';
 import { parseNewyearReport } from '../services/fortuneService';
+import { findRecentArchive } from '../services/archiveService';
 import { BackButton } from '../components/ui/BackButton';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
@@ -230,6 +232,19 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
   const [pickedDateReport, setPickedDateReport] = useState<PickedDateReportAIResult | null>(null);
   const [pickedDateReportLoading, setPickedDateReportLoading] = useState(false);
 
+  // ── 캐시 게이트 ─ 캐시 hit 시 silent restore 대신 모달 띄움. 사용자가 [기존 보기] / [새로 풀이] 선택. ──
+  const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
+  const [refetchNonce, setRefetchNonce] = useState(0);
+  const handleUseCached = () => {
+    cacheGate?.restore();
+    setCacheGate(null);
+  };
+  const handleRefetch = () => {
+    if (cacheGate) useReportCacheStore.getState().invalidate(cacheGate.kind, cacheGate.key);
+    setCacheGate(null);
+    setRefetchNonce(n => n + 1);
+  };
+
   const chargeForContent = useCreditStore(s => s.chargeForContent);
 
   // ── 보관함 재생 모드 — recordId 가 있으면 DB에서 풀이 복원, AI 호출 skip ──
@@ -276,11 +291,55 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     return () => { cancelled = true; };
   }, [recordId, scope]);
 
+  // ── 보관함 모달 — 같은 사주+컨텍스트(연도/날짜) 의 archive record 가 DB 에 있으면
+  //    "이전 풀이가 있어요" 모달 표시 후 사용자가 [기존 결과 보기] / [새로 풀이 받기] 선택. ──
+  useEffect(() => {
+    if (isArchiveMode || !primary) return;
+    if (refetchNonce > 0) return; // "새로 풀이" 후엔 재조회 X (사용자 의도 우선)
+    let cancelled = false;
+
+    let category: 'newyear' | 'period' | 'today';
+    let context: { key: string; value: string } | undefined;
+    if (scope === 'year') {
+      category = 'newyear';
+      context = { key: 'year', value: String(targetYear) };
+    } else if (scope === 'date') {
+      if (!dateConfirmed) return; // 날짜 미선택 단계엔 조회 X
+      category = 'period';
+      context = { key: 'isoDate', value: pickedDate };
+    } else {
+      category = 'today';
+      context = { key: 'isoDate', value: today };
+    }
+
+    findRecentArchive({
+      category,
+      birth_date: primary.birth_date,
+      gender: primary.gender,
+      context,
+    }).then(found => {
+      if (cancelled || !found) return;
+      setCacheGate({
+        // kind/key 는 DB 모달엔 불필요 — handleRefetch 시 캐시 invalidate 안 함 (DB 모달은 캐시와 무관)
+        kind: 'newyear',
+        key: '',
+        restore: () => {
+          const params = new URLSearchParams(window.location.search);
+          params.set('recordId', found.id);
+          router.replace(`${window.location.pathname}?${params.toString()}`);
+        },
+      });
+    }).catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [scope, targetYear, pickedDate, today, dateConfirmed, primary, isArchiveMode, refetchNonce, router]);
+
   // 기간/대상 바뀔 때마다 초기화 + AI 호출 — 캐시 우선
   // 보관함 재생 모드에선 절대 AI 호출 금지
   useEffect(() => {
     if (isArchiveMode) return;
     if (!saju || !fortune) return;
+    if (cacheGate) return; // 보관함 모달 떠있으면 fetch 안 함 — 사용자 선택 대기
     let cancelled = false;
     const sk = sajuKey(saju);
 
@@ -294,7 +353,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
         setNewyearReportLoading(false);
         return;
       }
-      // 재진입 시 정상 캐시 silent restore — 탭 이동·새로고침 후 다시 들어와도 재호출 X
+      // 캐시 silent restore (같은 디바이스 빠른 재진입). 보관함 모달은 별도 useEffect 에서 처리.
       if (cached?.data) {
         setNewyearReport(cached.data);
         setNewyearReportLoading(false);
@@ -378,7 +437,6 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
       setDomainAILoading(false);
       return;
     }
-    // 재진입 시 정상 캐시 silent restore
     if (cached?.data) {
       setDomainAI(cached.data);
       setDomainAILoading(false);
@@ -428,7 +486,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
       });
 
     return () => { cancelled = true; };
-  }, [saju, fortune, scope, pickedDate, targetYear, today, chargeForContent, isArchiveMode, dateConfirmed]);
+  }, [saju, fortune, scope, pickedDate, targetYear, today, chargeForContent, isArchiveMode, dateConfirmed, refetchNonce, cacheGate]);
 
   if (!primary && !searchParams?.get('year')) {
     const profileStoreReady = hydrated && lastFetchedAt !== null && !profilesLoading;
@@ -904,6 +962,13 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
       )}
 
       </>)}
+
+      <RestoreReportModal
+        open={!!cacheGate}
+        title={scope === 'year' ? '신년운세' : scope === 'date' ? '지정일 운세' : '오늘의 운세'}
+        onUseCached={handleUseCached}
+        onRefresh={handleRefetch}
+      />
     </motion.div>
   );
 }
