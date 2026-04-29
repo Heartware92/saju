@@ -315,6 +315,34 @@ export default function SajuInputPage() {
           </div>
         )}
 
+        {/* 프로필 저장 전용 모드: 이름·메모를 본 화면에서 직접 입력 */}
+        {isProfileOnly && (
+          <>
+            <div className={styles.section}>
+              <label className={styles.label}>프로필 이름 <span style={{ color: '#F87171', fontSize: 13 }}>*</span></label>
+              <input
+                className={styles.textInput}
+                type="text"
+                placeholder="예: 나, 엄마, 친구 민수"
+                value={profileForm.name}
+                onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
+                maxLength={20}
+              />
+            </div>
+            <div className={styles.section}>
+              <label className={styles.label}>메모 (선택)</label>
+              <input
+                className={styles.textInput}
+                type="text"
+                placeholder="예: 직장 동료, 사촌언니"
+                value={profileForm.memo}
+                onChange={(e) => setProfileForm(prev => ({ ...prev, memo: e.target.value }))}
+                maxLength={50}
+              />
+            </div>
+          </>
+        )}
+
         {/* 성별 선택 */}
         <div className={styles.section}>
           <label className={styles.label}>성별</label>
@@ -362,7 +390,7 @@ export default function SajuInputPage() {
             inputMode="numeric"
             pattern="\d{8}"
             maxLength={8}
-            placeholder="예: 19920914"
+            placeholder="YYYYMMDD (숫자 8자리)"
             value={birthDateStr}
             onChange={(e) => setBirthDateStr(e.target.value.replace(/\D/g, '').slice(0, 8))}
             aria-invalid={!!dateError}
@@ -389,7 +417,7 @@ export default function SajuInputPage() {
             inputMode="numeric"
             pattern="\d{4}"
             maxLength={4}
-            placeholder="예: 1322 (오후 1시 22분)"
+            placeholder="HHMM (숫자 4자리, 24시 표기)"
             value={birthTimeStr}
             onChange={(e) => setBirthTimeStr(e.target.value.replace(/\D/g, '').slice(0, 4))}
             disabled={unknownTime}
@@ -438,14 +466,17 @@ export default function SajuInputPage() {
           className={styles.submitBtn}
           onClick={() => {
             if (isProfileOnly) {
-              setEditingProfile(null)
-              setProfileForm({ name: '', memo: '' })
-              setShowProfileModal(true)
+              // 본 화면 인라인 입력으로 변경됨 — 모달 없이 직접 저장
+              handleSaveProfile()
             } else {
               handleSubmit()
             }
           }}
-          disabled={!dateValidation.ok || !timeValidation.ok}
+          disabled={
+            !dateValidation.ok ||
+            !timeValidation.ok ||
+            (isProfileOnly && !profileForm.name.trim())
+          }
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
