@@ -19,9 +19,35 @@ export const SignupPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  // 비밀번호 표시·숨김 토글 — 입력 실수 줄임
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  // 한국 법규 + KISA 가이드 — 동의 항목 3개로 분리
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
+  const [agreedAge14, setAgreedAge14] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  // 모두 동의 — 3개 한 번에 토글
+  const allAgreed = agreedTerms && agreedPrivacy && agreedAge14;
+  const toggleAllAgree = (v: boolean) => {
+    setAgreedTerms(v);
+    setAgreedPrivacy(v);
+    setAgreedAge14(v);
+  };
+
+  // 비밀번호 강도 평가 — 0(없음)~4(강함). UI 바 시각화 + 색상.
+  const passwordStrength = (() => {
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+    return score; // 0~4
+  })();
+  const strengthLabel = ['', '매우 약함', '약함', '보통', '강함'][passwordStrength];
+  const strengthColor = ['', '#F87171', '#FB923C', '#FBBF24', '#34D399'][passwordStrength];
 
   const handleSocial = async (provider: 'google' | 'kakao') => {
     setError('');
@@ -52,8 +78,16 @@ export const SignupPage: React.FC = () => {
       return;
     }
 
-    if (!agreedToTerms) {
+    if (!agreedTerms) {
       setError('이용약관에 동의해주세요.');
+      return;
+    }
+    if (!agreedPrivacy) {
+      setError('개인정보처리방침에 동의해주세요.');
+      return;
+    }
+    if (!agreedAge14) {
+      setError('만 14세 이상임을 확인해주세요.');
       return;
     }
 
@@ -188,57 +222,149 @@ export const SignupPage: React.FC = () => {
                 />
               </div>
 
-              {/* Password */}
+              {/* Password — 표시·숨김 토글 + 강도 시각화 */}
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1.5">
                   비밀번호 <span className="text-status-error">*</span>
                 </label>
-                <input
-                  type="password"
-                  placeholder="최소 6자 이상"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={inputClass}
-                  required
-                />
-                <p className="mt-1 text-xs text-text-tertiary">영문, 숫자 포함 6자 이상</p>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="최소 6자 이상"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`${inputClass} pr-12`}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary p-1"
+                    aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? '🙈' : '👁'}
+                  </button>
+                </div>
+                {/* 강도 시각화 — 4단계 */}
+                {password.length > 0 && (
+                  <div className="mt-2">
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div
+                          key={i}
+                          className="h-1.5 flex-1 rounded-full transition-colors"
+                          style={{
+                            backgroundColor: passwordStrength >= i ? strengthColor : 'rgba(255,255,255,0.08)',
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <p className="mt-1 text-xs" style={{ color: strengthColor || 'var(--text-tertiary)' }}>
+                      {strengthLabel || '비밀번호 강도'}
+                    </p>
+                  </div>
+                )}
+                <p className="mt-1 text-xs text-text-tertiary">영문 대소문자·숫자·기호 조합 권장 · 8자 이상</p>
               </div>
 
-              {/* Confirm Password */}
+              {/* Confirm Password — 토글 */}
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1.5">
                   비밀번호 확인 <span className="text-status-error">*</span>
                 </label>
-                <input
-                  type="password"
-                  placeholder="비밀번호를 다시 입력하세요"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={inputClass}
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="비밀번호를 다시 입력하세요"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className={`${inputClass} pr-12`}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary p-1"
+                    aria-label={showConfirmPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+                    tabIndex={-1}
+                  >
+                    {showConfirmPassword ? '🙈' : '👁'}
+                  </button>
+                </div>
+                {confirmPassword.length > 0 && password !== confirmPassword && (
+                  <p className="mt-1 text-xs text-status-error">비밀번호가 일치하지 않아요</p>
+                )}
               </div>
 
-              {/* Terms */}
-              <div className="pt-2">
+              {/* 동의 항목 — 한국 KISA 가이드: 이용약관·개인정보·만14세 별도 분리 */}
+              <div className="pt-2 space-y-2.5 border-t border-[var(--border-subtle)] pt-4">
+                {/* 모두 동의 */}
+                <label className="flex items-center gap-3 cursor-pointer pb-2 border-b border-[var(--border-subtle)]">
+                  <input
+                    type="checkbox"
+                    checked={allAgreed}
+                    onChange={(e) => toggleAllAgree(e.target.checked)}
+                    className="w-5 h-5 rounded accent-[var(--cta-primary)] cursor-pointer"
+                  />
+                  <span className="text-sm font-semibold text-text-primary">모두 동의 (필수 + 선택 포함)</span>
+                </label>
+
+                {/* 이용약관 */}
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={agreedToTerms}
-                    onChange={(e) => setAgreedToTerms(e.target.checked)}
-                    className="w-5 h-5 rounded border-[var(--border-default)] bg-space-elevated text-cta focus:ring-cta/30 cursor-pointer accent-[var(--cta-primary)]"
+                    checked={agreedTerms}
+                    onChange={(e) => setAgreedTerms(e.target.checked)}
+                    className="w-5 h-5 rounded accent-[var(--cta-primary)] cursor-pointer"
                   />
-                  <span className="text-sm text-text-secondary">
-                    <span className="text-status-error font-bold">*</span>{' '}
-                    이용약관 및 개인정보처리방침에 동의합니다.{' '}
+                  <span className="text-sm text-text-secondary flex-1">
+                    <span className="text-status-error font-bold">[필수]</span>{' '}
+                    이용약관에 동의합니다{' '}
                     <a
                       href="/terms"
                       className="text-cta hover:underline font-medium"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      (보기)
+                      보기
                     </a>
+                  </span>
+                </label>
+
+                {/* 개인정보처리방침 */}
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agreedPrivacy}
+                    onChange={(e) => setAgreedPrivacy(e.target.checked)}
+                    className="w-5 h-5 rounded accent-[var(--cta-primary)] cursor-pointer"
+                  />
+                  <span className="text-sm text-text-secondary flex-1">
+                    <span className="text-status-error font-bold">[필수]</span>{' '}
+                    개인정보처리방침에 동의합니다{' '}
+                    <a
+                      href="/privacy"
+                      className="text-cta hover:underline font-medium"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      보기
+                    </a>
+                  </span>
+                </label>
+
+                {/* 만 14세 이상 — 한국 개인정보보호법 22조 의무 */}
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agreedAge14}
+                    onChange={(e) => setAgreedAge14(e.target.checked)}
+                    className="w-5 h-5 rounded accent-[var(--cta-primary)] cursor-pointer"
+                  />
+                  <span className="text-sm text-text-secondary flex-1">
+                    <span className="text-status-error font-bold">[필수]</span>{' '}
+                    만 14세 이상입니다
                   </span>
                 </label>
               </div>

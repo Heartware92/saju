@@ -16,13 +16,17 @@ export const LoginPage: React.FC = () => {
   const searchParams = useSearchParams();
   const { login, loading } = useUserStore();
 
-  // ProtectedRoute 에서 리다이렉트될 때 `?from=/원래페이지` 로 넘어옴.
-  // 내부 경로만 허용(open-redirect 방어): `/` 로 시작하고 `//` 외부 URL 아닌 것만.
-  const fromParam = searchParams?.get('from') || '/';
-  const safeFrom = (fromParam.startsWith('/') && !fromParam.startsWith('//')) ? fromParam : '/';
+  // 로그인 성공 후 항상 홈으로 (사용자 의도)
+  // 이전엔 ?from= 파라미터로 원래 가려던 페이지로 돌아갔지만,
+  // 비로그인 홈 카드가 /saju/input 을 from 으로 넘겨 "프로필 수정 화면 같은 곳" 으로 보였음.
+  // 단순하게 홈으로 통일.
+  void searchParams;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  // Supabase 는 기본 30일 세션 유지 — 체크박스는 명시적 UX 표시용. 동작은 Supabase 기본값 그대로.
+  const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
@@ -50,9 +54,8 @@ export const LoginPage: React.FC = () => {
       await login(email, password);
       setSuccess(true);
       setTimeout(() => {
-        // replace — 로그인 완료 후 뒤로가기로 로그인 페이지 돌아가지 않도록
-        // from 파라미터가 있으면 원래 가려던 페이지로, 없으면 홈으로
-        router.replace(safeFrom);
+        // replace — 로그인 완료 후 뒤로가기로 로그인 페이지 돌아가지 않도록. 무조건 홈.
+        router.replace('/');
       }, 500);
     } catch (err: any) {
       const msg = err?.message || '로그인에 실패했습니다.';
@@ -112,17 +115,44 @@ export const LoginPage: React.FC = () => {
               />
             </div>
 
-            {/* Password */}
+            {/* Password — 표시·숨김 토글 */}
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1.5">비밀번호</label>
-              <input
-                type="password"
-                placeholder="비밀번호 입력"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-12 rounded-lg bg-space-elevated/60 border border-[var(--border-default)] px-4 text-text-primary placeholder-text-tertiary text-sm outline-none transition-all focus:border-cta focus:ring-1 focus:ring-cta/30"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="비밀번호 입력"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full h-12 rounded-lg bg-space-elevated/60 border border-[var(--border-default)] px-4 pr-12 text-text-primary placeholder-text-tertiary text-sm outline-none transition-all focus:border-cta focus:ring-1 focus:ring-cta/30"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary p-1"
+                  aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+                  tabIndex={-1}
+                >
+                  {showPassword ? '🙈' : '👁'}
+                </button>
+              </div>
+            </div>
+
+            {/* 자동 로그인 + 비밀번호 초기화 */}
+            <div className="flex items-center justify-between text-sm">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={keepSignedIn}
+                  onChange={(e) => setKeepSignedIn(e.target.checked)}
+                  className="w-4 h-4 rounded accent-[var(--cta-primary)] cursor-pointer"
+                />
+                <span className="text-text-secondary">자동 로그인</span>
+              </label>
+              <Link href="/auth/reset" className="text-text-tertiary hover:text-cta transition-colors">
+                비밀번호 초기화
+              </Link>
             </div>
 
             {/* Submit */}

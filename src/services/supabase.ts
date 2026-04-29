@@ -39,14 +39,34 @@ export const auth = {
     return data;
   },
 
-  // 이메일/비밀번호 회원가입
+  // 이메일/비밀번호 회원가입 — 인증 메일 자동 발송 (Supabase 대시보드 Auth → Email confirm 활성 시)
   signUpWithEmail: async (email: string, password: string) => {
+    const redirectBase = typeof window !== 'undefined' ? window.location.origin : '';
     const { data, error } = await supabase.auth.signUp({
       email,
-      password
+      password,
+      options: {
+        // 가입 인증 메일의 [확인하기] 링크가 이쪽으로 redirect 됨
+        emailRedirectTo: `${redirectBase}/auth/callback`,
+      },
     });
     if (error) throw error;
     return data;
+  },
+
+  // 비밀번호 재설정 이메일 발송 — /auth/update-password 로 redirect
+  resetPasswordForEmail: async (email: string) => {
+    const redirectBase = typeof window !== 'undefined' ? window.location.origin : '';
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${redirectBase}/auth/update-password`,
+    });
+    if (error) throw error;
+  },
+
+  // 비밀번호 업데이트 — 재설정 메일 링크 클릭 후 또는 마이페이지에서 사용
+  updatePassword: async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
   },
 
   // 로그아웃

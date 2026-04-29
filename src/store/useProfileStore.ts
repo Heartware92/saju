@@ -107,11 +107,30 @@ export const useProfileStore = create<ProfileState>()(
   deleteProfile: async (id) => {
     try {
       set({ loading: true, error: null });
+      const target = get().profiles.find(p => p.id === id);
+      const wasPrimary = target?.is_primary === true;
+
       await profileDB.deleteProfile(id);
-      set({
-        profiles: get().profiles.filter(p => p.id !== id),
-        loading: false,
-      });
+
+      let remaining = get().profiles.filter(p => p.id !== id);
+
+      // 삭제된 프로필이 대표였고 남은 프로필이 있다면, 첫 번째를 자동 대표로 승계.
+      // 홈 화면이 항상 어떤 대표를 가지도록 보장 — 사용자가 매번 수동 지정할 필요 없게.
+      if (wasPrimary && remaining.length > 0 && !remaining.some(p => p.is_primary)) {
+        const heir = remaining[0];
+        try {
+          const user = await auth.getCurrentUser();
+          if (user) {
+            await profileDB.setPrimaryProfile(user.id, heir.id);
+            remaining = remaining.map(p => ({ ...p, is_primary: p.id === heir.id }));
+          }
+        } catch (e) {
+          // 승계 실패해도 삭제는 성공으로 — 사용자가 프로필 관리 페이지에서 수동 지정 가능
+          console.error('Auto promote primary after delete failed:', e);
+        }
+      }
+
+      set({ profiles: remaining, loading: false });
       return true;
     } catch (error: any) {
       console.error('Error deleting profile:', error);
