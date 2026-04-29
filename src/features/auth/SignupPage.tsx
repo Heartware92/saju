@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUserStore } from '../../store/useUserStore';
 import { auth } from '../../services/supabase';
-import { ArrowLeft } from 'lucide-react';
+import { BackButton } from '../../components/ui/BackButton';
 
 export const SignupPage: React.FC = () => {
   const router = useRouter();
@@ -83,20 +83,17 @@ export const SignupPage: React.FC = () => {
   return (
     <div className="app-auth-shell">
       <div className="app-auth-container flex items-center justify-center px-4 py-12 relative overflow-hidden">
+      {/* 뒤로가기 — 최상단 좌측 absolute 고정 (텍스트 없는 아이콘만, 공통 BackButton)
+         이메일 폼 단계면 단계 뒤로, 아니면 홈으로 — 둘 다 onClick 으로 처리 */}
+      <div className="absolute top-3 left-3 z-20">
+        <BackButton onClick={() => showEmailForm ? setShowEmailForm(false) : router.push('/')} />
+      </div>
+
       {/* Background glow effects */}
       <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-cta/5 rounded-full blur-3xl" />
       <div className="absolute bottom-1/3 left-1/4 w-80 h-80 bg-sun-core/5 rounded-full blur-3xl" />
 
       <div className="w-full relative z-10">
-        {/* Back button */}
-        <button
-          onClick={() => showEmailForm ? setShowEmailForm(false) : router.push('/')}
-          className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors mb-8 text-sm font-medium"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>{showEmailForm ? '뒤로' : '홈으로'}</span>
-        </button>
-
         {/* Card */}
         <div className="rounded-2xl border border-[var(--border-subtle)] bg-space-surface/80 backdrop-blur-xl p-8 shadow-2xl shadow-black/20">
           {/* Header */}
