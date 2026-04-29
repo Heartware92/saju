@@ -173,6 +173,12 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
       setReportLoading(false);
       return;
     }
+    // 재진입 silent restore
+    if (cached?.data) {
+      setReport(cached.data);
+      setReportLoading(false);
+      return;
+    }
 
     let cancelled = false;
     setReport(null);
@@ -183,6 +189,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
         setReport(r);
         const cache = useReportCacheStore.getState();
         if (r.success) {
+          cache.setReport('today', cacheKey, r);
           if (!cache.isCharged('today', cacheKey)) {
             cache.markCharged('today', cacheKey);
             chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.today).catch(() => {});

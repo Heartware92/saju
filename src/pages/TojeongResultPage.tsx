@@ -132,11 +132,17 @@ export default function TojeongResultPage() {
     if (isArchiveMode) return;
     if (!tojeong || !cacheKey) return;
 
-    // 정상 응답은 캐시 안 씀 (홈 진입 = 새 풀이). 실패만 1분 negative cache 로 재호출 차단.
     const cached = useReportCacheStore.getState().getReport<string>('tojeong', cacheKey);
     if (cached?.error) {
       setAiError(cached.error);
       setAiLoading(false);
+      return;
+    }
+    // 재진입 silent restore
+    if (cached?.data) {
+      setAiContent(cached.data);
+      setAiLoading(false);
+      aiStartedRef.current = true;
       return;
     }
 
@@ -165,6 +171,7 @@ export default function TojeongResultPage() {
           cache.setError('tojeong', cacheKey, msg);
         } else {
           setAiContent(r.content);
+          cache.setReport('tojeong', cacheKey, r.content);
           if (!cache.isCharged('tojeong', cacheKey)) {
             cache.markCharged('tojeong', cacheKey);
             chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.tojeong).catch(() => {});
@@ -204,6 +211,7 @@ export default function TojeongResultPage() {
           cache.setError('tojeong', cacheKey, msg);
         } else {
           setAiContent(r.content);
+          cache.setReport('tojeong', cacheKey, r.content);
           if (!cache.isCharged('tojeong', cacheKey)) {
             cache.markCharged('tojeong', cacheKey);
             chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.tojeong).catch(() => {});

@@ -243,9 +243,18 @@ export default function MoreFortunePage({ category }: Props) {
     return sk;
   };
 
-  // 카테고리/입력 바뀔 때 이전 결과 비움 (정상 캐시 X — 사용자가 풀이 보기 누를 때만 호출)
+  // 카테고리/입력 바뀔 때 캐시 silent restore — 탭 이동·새로고침 후 다시 와도 재호출 X
   useEffect(() => {
     if (isArchiveMode) return;
+    const cacheKey = buildCacheKey();
+    const kindKey = category ? (`more:${category}` as const) : null;
+    if (cacheKey && kindKey) {
+      const cached = useReportCacheStore.getState().getReport<string>(kindKey, cacheKey);
+      if (cached?.data) {
+        setResult(cached.data);
+        return;
+      }
+    }
     setResult(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category, saju, koreanName, hanjaName, dreamText, isArchiveMode]);
@@ -264,13 +273,17 @@ export default function MoreFortunePage({ category }: Props) {
       }
     }
 
-    // 정상 캐시 X (풀이 보기 = 새 풀이 의도). 실패만 1분 차단.
+    // 캐시 우선 — 같은 입력 재진입 시 silent restore
     const cacheKey = buildCacheKey();
     const kindKey = `more:${category}` as const;
     if (cacheKey) {
       const cached = useReportCacheStore.getState().getReport<string>(kindKey, cacheKey);
       if (cached?.error) {
         setError(cached.error);
+        return;
+      }
+      if (cached?.data) {
+        setResult(cached.data);
         return;
       }
     }
@@ -321,9 +334,10 @@ export default function MoreFortunePage({ category }: Props) {
 
       setResult(resp!.content);
 
-      // 미차감 시에만 차감 (정상 캐시 저장은 안 함 — 사용자 의도)
       if (cacheKey) {
         const cache = useReportCacheStore.getState();
+        // 정상 응답 캐시 저장 — 재진입 시 silent restore
+        cache.setReport(kindKey, cacheKey, resp!.content);
         if (!cache.isCharged(kindKey, cacheKey)) {
           cache.markCharged(kindKey, cacheKey);
           const consumed = await chargeForContent('moon', MOON_COST_PER_FORTUNE, `더많은운세:${cfg.title}`);

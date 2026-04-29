@@ -124,10 +124,20 @@ export default function TaekilPage() {
     setCandidateDates([]);
     setAiError(null);
 
-    // 정상 응답 캐시 X (수동 트리거 페이지 — 사용자가 버튼 누를 때만 호출).
-    // 다음 카테고리/연월 전환 시 이전 advice 비움.
+    // 카테고리/연월 전환 시 캐시된 advice 자동 복원 (없으면 비움)
+    if (saju) {
+      const candKey = pickMode === 'compare' && candidateDates.length > 0
+        ? `:cmp=${[...candidateDates].sort().join(',')}`
+        : '';
+      const k = `${sajuKey(saju)}:${viewYear}-${viewMonth}:${category}${candKey}`;
+      const cached = useReportCacheStore.getState().getReport<string>('taekil', k);
+      if (cached?.data) {
+        setAiAdvice(cached.data);
+        return;
+      }
+    }
     setAiAdvice(null);
-  }, [saju, viewYear, viewMonth, category]);
+  }, [saju, viewYear, viewMonth, category, pickMode, candidateDates]);
 
   useEffect(() => {
     compute();
@@ -184,6 +194,11 @@ export default function TaekilPage() {
       setAiError(cached.error);
       return;
     }
+    // 재진입 silent restore
+    if (cached?.data) {
+      setAiAdvice(cached.data);
+      return;
+    }
 
     // compare 모드는 사용자가 고른 후보만 result.days 로 보내 — Top 3 비교 풀이
     const payload: TaekilResult = pickMode === 'compare' && candidateDays.length >= 2
@@ -203,6 +218,7 @@ export default function TaekilPage() {
       }
       setAiAdvice(r.advice);
       const cache = useReportCacheStore.getState();
+      cache.setReport('taekil', taekilCacheKey, r.advice);
       if (!cache.isCharged('taekil', taekilCacheKey)) {
         cache.markCharged('taekil', taekilCacheKey);
         useCreditStore.getState()

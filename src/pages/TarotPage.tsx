@@ -434,11 +434,17 @@ export default function TarotPage() {
       currentMode === 'question' ? (userQuestion || '').trim() : '',
     ].join('|');
 
-    // 정상 캐시 X (사용자가 카드 뽑았다 = 새 풀이). 실패만 1분 차단.
     const cached = useReportCacheStore.getState().getReport<string>('tarot', cacheKey);
     if (cached?.error) {
       setAiError(cached.error);
       setAiContent(null);
+      setAiLoading(false);
+      return;
+    }
+    // 재진입 silent restore
+    if (cached?.data) {
+      setAiContent(cached.data);
+      setAiError(null);
       setAiLoading(false);
       return;
     }
@@ -459,6 +465,7 @@ export default function TarotPage() {
       const cache = useReportCacheStore.getState();
       if (res.success && res.content) {
         setAiContent(res.content);
+        cache.setReport('tarot', cacheKey, res.content);
         if (!cache.isCharged('tarot', cacheKey)) {
           cache.markCharged('tarot', cacheKey);
           useCreditStore.getState()

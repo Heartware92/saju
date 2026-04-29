@@ -294,6 +294,12 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
         setNewyearReportLoading(false);
         return;
       }
+      // 재진입 시 정상 캐시 silent restore — 탭 이동·새로고침 후 다시 들어와도 재호출 X
+      if (cached?.data) {
+        setNewyearReport(cached.data);
+        setNewyearReportLoading(false);
+        return;
+      }
 
       setNewyearReport(null);
       setNewyearReportLoading(true);
@@ -303,6 +309,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
           setNewyearReport(r);
           const cache = useReportCacheStore.getState();
           if (r.success) {
+            cache.setReport('newyear', cacheKey, r);
             if (!cache.isCharged('newyear', cacheKey)) {
               cache.markCharged('newyear', cacheKey);
               chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.newyear).catch(() => {});
@@ -371,6 +378,12 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
       setDomainAILoading(false);
       return;
     }
+    // 재진입 시 정상 캐시 silent restore
+    if (cached?.data) {
+      setDomainAI(cached.data);
+      setDomainAILoading(false);
+      return;
+    }
 
     setDomainAI({});
     setDomainAILoading(true);
@@ -397,6 +410,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
         const cache = useReportCacheStore.getState();
         if (r.success && r.descriptions) {
           setDomainAI(r.descriptions);
+          cache.setReport(kind, cacheKey, r.descriptions);
           if (!cache.isCharged(kind, cacheKey)) {
             cache.markCharged(kind, cacheKey);
             chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.today).catch(() => {});

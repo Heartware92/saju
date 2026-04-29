@@ -153,6 +153,11 @@ export default function SajuResultPage() {
       setReport({ success: false, error: cached.error });
       return;
     }
+    // 재진입 silent restore
+    if (cached?.data) {
+      setReport(cached.data);
+      return;
+    }
 
     let cancelled = false;
     setReportLoading(true);
@@ -169,6 +174,7 @@ export default function SajuResultPage() {
         setReport(r);
         const cache = useReportCacheStore.getState();
         if (r.success) {
+          cache.setReport('jungtong', cacheKey, r);
           if (!cache.isCharged('jungtong', cacheKey)) {
             cache.markCharged('jungtong', cacheKey);
             chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.traditional).catch(() => {});
