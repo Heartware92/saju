@@ -55,6 +55,15 @@ export default function ManageProfilesPage() {
     if (user) fetchProfiles();
   }, [user, fetchProfiles]);
 
+  // 페이지 진입 시 스크롤 항상 최상단으로 복귀.
+  // 새 프로필 추가/수정/삭제 후 history.back 또는 router.push 로 돌아올 때
+  // 브라우저가 이전 스크롤 위치를 복원해 사용자가 헤더를 못 보는 문제 방지.
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0);
+    }
+  }, []);
+
   if (!user) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center px-6 text-center">
