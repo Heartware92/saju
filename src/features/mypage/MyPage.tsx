@@ -12,7 +12,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/useUserStore';
 import { useCreditStore } from '@/store/useCreditStore';
-import { orderDB, sajuDB } from '@/services/supabase';
+import { orderDB, sajuDB, auth, supabase } from '@/services/supabase';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { CreditBalance } from '@/features/credit/components/CreditBalance';
@@ -115,35 +115,291 @@ export const MyPage: React.FC = () => {
  * 프로필 탭
  */
 const ProfileTab: React.FC<{ user: any; onLogout: () => void }> = ({ user, onLogout }) => {
+  const router = useRouter();
+  // 비밀번호 변경 모달
+  const [showPwModal, setShowPwModal] = useState(false);
+  // 회원 탈퇴 모달
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   return (
-    <Card>
-      <h2 className="text-lg font-bold text-text-primary mb-5">내 정보</h2>
+    <>
+      <Card>
+        <h2 className="text-lg font-bold text-text-primary mb-5">내 정보</h2>
 
-      <div className="space-y-0">
-        <div className="flex items-center justify-between py-3 border-b border-[var(--border-subtle)]">
-          <span className="text-text-secondary text-sm">이메일</span>
-          <span className="font-medium text-text-primary text-sm">{user?.email || '-'}</span>
+        <div className="space-y-0">
+          <div className="flex items-center justify-between py-3 border-b border-[var(--border-subtle)]">
+            <span className="text-text-secondary text-sm">이메일</span>
+            <span className="font-medium text-text-primary text-sm">{user?.email || '-'}</span>
+          </div>
+
+          <div className="flex items-center justify-between py-3 border-b border-[var(--border-subtle)]">
+            <span className="text-text-secondary text-sm">가입일</span>
+            <span className="font-medium text-text-primary text-sm">
+              {user?.created_at ? new Date(user.created_at).toLocaleDateString('ko-KR') : '-'}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between py-3">
+            <span className="text-text-secondary text-sm">보유 크레딧</span>
+            <CreditBalance showAddButton={false} size="sm" />
+          </div>
         </div>
 
-        <div className="flex items-center justify-between py-3 border-b border-[var(--border-subtle)]">
-          <span className="text-text-secondary text-sm">가입일</span>
-          <span className="font-medium text-text-primary text-sm">
-            {user?.created_at ? new Date(user.created_at).toLocaleDateString('ko-KR') : '-'}
-          </span>
+        <div className="mt-6 pt-5 border-t border-[var(--border-subtle)] space-y-2">
+          <Button variant="outline" fullWidth onClick={() => setShowPwModal(true)}>
+            비밀번호 변경
+          </Button>
+          <Button variant="outline" fullWidth onClick={onLogout}>
+            로그아웃
+          </Button>
+          {/* 회원 탈퇴 — 위험 액션. 별도 영역 + 빨간 톤 */}
+          <button
+            type="button"
+            onClick={() => setShowDeleteModal(true)}
+            className="w-full mt-4 py-2.5 text-sm text-text-tertiary hover:text-status-error transition-colors"
+          >
+            회원 탈퇴
+          </button>
+        </div>
+      </Card>
+
+      {showPwModal && <ChangePasswordModal onClose={() => setShowPwModal(false)} />}
+      {showDeleteModal && (
+        <DeleteAccountModal
+          email={user?.email || ''}
+          onClose={() => setShowDeleteModal(false)}
+          onDeleted={() => {
+            setShowDeleteModal(false);
+            // 탈퇴 직후 홈으로 + 세션 정리
+            router.replace('/');
+            // 페이지 새로고침으로 모든 클라이언트 상태 초기화
+            setTimeout(() => window.location.reload(), 200);
+          }}
+        />
+      )}
+    </>
+  );
+};
+
+/**
+ * 비밀번호 변경 모달 — Supabase auth.updateUser({ password }).
+ * 현재 비밀번호 검증은 Supabase 가 자동 수행 (이미 로그인된 상태이므로).
+ */
+const ChangePasswordModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!password || !confirmPassword) {
+      setError('새 비밀번호를 입력해주세요.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('비밀번호는 최소 6자 이상이어야 합니다.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await auth.updatePassword(password);
+      setDone(true);
+      setTimeout(onClose, 1500);
+    } catch (err: any) {
+      setError(err?.message || '비밀번호 변경 중 오류가 발생했어요.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[400px] rounded-2xl p-6 bg-[rgba(28,18,50,0.98)] border border-[var(--border-subtle)]">
+        <h3 className="text-base font-bold text-text-primary mb-4">비밀번호 변경</h3>
+
+        {done ? (
+          <div className="rounded-lg bg-status-success/10 border border-status-success/20 p-3 text-sm text-status-success text-center">
+            비밀번호가 변경됐어요!
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {error && (
+              <div className="rounded-lg bg-status-error/10 border border-status-error/20 p-2.5 text-xs text-status-error">
+                {error}
+              </div>
+            )}
+            <div>
+              <label className="block text-xs text-text-secondary mb-1.5">새 비밀번호</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="6자 이상"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full h-11 rounded-lg bg-space-elevated/60 border border-[var(--border-default)] px-3 pr-10 text-text-primary text-sm outline-none focus:border-cta focus:ring-1 focus:ring-cta/30"
+                  required
+                  autoFocus
+                />
+                <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary p-1" tabIndex={-1}>
+                  {showPassword ? '🙈' : '👁'}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-text-secondary mb-1.5">새 비밀번호 확인</label>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="다시 한 번"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full h-11 rounded-lg bg-space-elevated/60 border border-[var(--border-default)] px-3 text-text-primary text-sm outline-none focus:border-cta focus:ring-1 focus:ring-cta/30"
+                required
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" fullWidth onClick={onClose} type="button" disabled={loading}>취소</Button>
+              <Button variant="sun" fullWidth type="submit" disabled={loading}>
+                {loading ? '변경 중...' : '변경'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * 회원 탈퇴 모달 — 사유 선택 + 확인 텍스트 입력 + 로그 + auth user 삭제
+ */
+const REASON_OPTIONS = [
+  { code: 'not_useful', label: '서비스가 만족스럽지 않아요' },
+  { code: 'too_expensive', label: '가격이 부담돼요' },
+  { code: 'privacy', label: '개인정보가 걱정돼요' },
+  { code: 'hard_to_use', label: '사용하기 어려워요' },
+  { code: 'other', label: '기타' },
+] as const;
+
+const DeleteAccountModal: React.FC<{ email: string; onClose: () => void; onDeleted: () => void }> = ({ email, onClose, onDeleted }) => {
+  const [reasonCode, setReasonCode] = useState<typeof REASON_OPTIONS[number]['code'] | ''>('');
+  const [reason, setReason] = useState('');
+  const [confirmText, setConfirmText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const canDelete = reasonCode !== '' && confirmText === '탈퇴합니다';
+
+  const handleDelete = async () => {
+    if (!canDelete) return;
+    setError('');
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        setError('로그인 세션이 만료됐어요. 다시 로그인 후 시도해주세요.');
+        setLoading(false);
+        return;
+      }
+      const res = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ reasonCode, reason: reason.trim() || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || '탈퇴 처리 실패');
+      }
+      // 성공 — supabase 세션 클리어
+      await supabase.auth.signOut().catch(() => {});
+      onDeleted();
+    } catch (err: any) {
+      setError(err?.message || '탈퇴 처리 중 오류가 발생했어요.');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[440px] rounded-2xl p-6 bg-[rgba(28,18,50,0.98)] border border-status-error/40 max-h-[90vh] overflow-y-auto">
+        <h3 className="text-base font-bold text-status-error mb-3">정말 탈퇴하시겠어요?</h3>
+        <p className="text-[13px] text-text-secondary leading-relaxed mb-4">
+          <strong className="text-text-primary">{email}</strong> 계정의 모든 정보가 영구 삭제됩니다.<br />
+          프로필·풀이 기록·크레딧·결제 내역 모두 복구할 수 없어요.
+        </p>
+
+        {error && (
+          <div className="rounded-lg bg-status-error/10 border border-status-error/30 p-2.5 text-xs text-status-error mb-3">
+            {error}
+          </div>
+        )}
+
+        {/* 사유 */}
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-text-secondary mb-2">탈퇴 사유 (필수)</label>
+          <div className="space-y-1.5">
+            {REASON_OPTIONS.map((opt) => (
+              <label key={opt.code} className="flex items-center gap-2 cursor-pointer text-[13px] text-text-secondary">
+                <input
+                  type="radio"
+                  name="reason"
+                  checked={reasonCode === opt.code}
+                  onChange={() => setReasonCode(opt.code)}
+                  className="accent-status-error"
+                />
+                <span>{opt.label}</span>
+              </label>
+            ))}
+          </div>
+          {reasonCode === 'other' && (
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value.slice(0, 500))}
+              placeholder="자세한 이유를 알려주세요 (선택)"
+              className="w-full mt-2 p-2.5 rounded-lg bg-space-elevated/60 border border-[var(--border-default)] text-[13px] text-text-primary outline-none focus:border-cta resize-none"
+              rows={3}
+            />
+          )}
         </div>
 
-        <div className="flex items-center justify-between py-3">
-          <span className="text-text-secondary text-sm">보유 크레딧</span>
-          <CreditBalance showAddButton={false} size="sm" />
+        {/* 확인 텍스트 */}
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-text-secondary mb-2">
+            확인을 위해 <span className="text-status-error font-bold">탈퇴합니다</span> 를 입력해주세요
+          </label>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="탈퇴합니다"
+            className="w-full h-11 rounded-lg bg-space-elevated/60 border border-[var(--border-default)] px-3 text-text-primary text-sm outline-none focus:border-status-error focus:ring-1 focus:ring-status-error/30"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <Button variant="outline" fullWidth onClick={onClose} disabled={loading}>취소</Button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={!canDelete || loading}
+            className="flex-1 h-11 rounded-lg bg-status-error text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {loading ? '처리 중...' : '영구 탈퇴'}
+          </button>
         </div>
       </div>
-
-      <div className="mt-6 pt-5 border-t border-[var(--border-subtle)]">
-        <Button variant="outline" fullWidth onClick={onLogout}>
-          로그아웃
-        </Button>
-      </div>
-    </Card>
+    </div>
   );
 };
 
