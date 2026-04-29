@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import Layout from '@/components/Layout';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import ZamidusuResultPage from '@/pages/ZamidusuResultPage';
 
 function LoadingSpinner() {
@@ -13,9 +14,11 @@ function LoadingSpinner() {
 export default function ZamidusuRoute() {
   return (
     <Layout>
-      <Suspense fallback={<LoadingSpinner />}>
-        <ZamidusuResultPage />
-      </Suspense>
+      <ProtectedRoute>
+        <Suspense fallback={<LoadingSpinner />}>
+          <ZamidusuResultPage />
+        </Suspense>
+      </ProtectedRoute>
     </Layout>
   );
 }

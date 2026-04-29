@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import Layout from '@/components/Layout';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import PeriodFortunePage from '@/pages/PeriodFortunePage';
 
 function LoadingSpinner() {
@@ -13,9 +14,11 @@ function LoadingSpinner() {
 export default function NewYearFortune() {
   return (
     <Layout>
-      <Suspense fallback={<LoadingSpinner />}>
-        <PeriodFortunePage scope="year" />
-      </Suspense>
+      <ProtectedRoute>
+        <Suspense fallback={<LoadingSpinner />}>
+          <PeriodFortunePage scope="year" />
+        </Suspense>
+      </ProtectedRoute>
     </Layout>
   );
 }

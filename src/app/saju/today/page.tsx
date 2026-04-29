@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import Layout from '@/components/Layout';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import TodayFortunePage from '@/pages/TodayFortunePage';
 
 function LoadingSpinner() {
@@ -13,9 +14,11 @@ function LoadingSpinner() {
 export default function TodayFortune() {
   return (
     <Layout>
-      <Suspense fallback={<LoadingSpinner />}>
-        <TodayFortunePage />
-      </Suspense>
+      <ProtectedRoute>
+        <Suspense fallback={<LoadingSpinner />}>
+          <TodayFortunePage />
+        </Suspense>
+      </ProtectedRoute>
     </Layout>
   );
 }

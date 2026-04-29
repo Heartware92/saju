@@ -1,10 +1,13 @@
 import Layout from '@/components/Layout';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import ManageProfilesPage from '@/pages/ManageProfilesPage';
 
 export default function Profile() {
   return (
     <Layout>
-      <ManageProfilesPage />
+      <ProtectedRoute>
+        <ManageProfilesPage />
+      </ProtectedRoute>
     </Layout>
   );
 }

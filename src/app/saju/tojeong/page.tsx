@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import Layout from '@/components/Layout';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import TojeongResultPage from '@/pages/TojeongResultPage';
 
 function LoadingSpinner() {
@@ -13,9 +14,11 @@ function LoadingSpinner() {
 export default function TojeongRoute() {
   return (
     <Layout>
-      <Suspense fallback={<LoadingSpinner />}>
-        <TojeongResultPage />
-      </Suspense>
+      <ProtectedRoute>
+        <Suspense fallback={<LoadingSpinner />}>
+          <TojeongResultPage />
+        </Suspense>
+      </ProtectedRoute>
     </Layout>
   );
 }

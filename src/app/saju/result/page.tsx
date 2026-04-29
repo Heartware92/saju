@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import Layout from '@/components/Layout';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import SajuResultPage from '@/pages/SajuResultPage';
 
 function LoadingSpinner() {
@@ -13,9 +14,11 @@ function LoadingSpinner() {
 export default function SajuResult() {
   return (
     <Layout>
-      <Suspense fallback={<LoadingSpinner />}>
-        <SajuResultPage />
-      </Suspense>
+      <ProtectedRoute>
+        <Suspense fallback={<LoadingSpinner />}>
+          <SajuResultPage />
+        </Suspense>
+      </ProtectedRoute>
     </Layout>
   );
 }
