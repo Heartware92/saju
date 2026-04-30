@@ -105,6 +105,15 @@ export default function MoreFortunePage({ category }: Props) {
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
+  const [loadingTimedOut] = useLoadingGuard(loading, 70_000);
+  useEffect(() => {
+    if (loadingTimedOut) {
+      setLoading(false);
+      if (!result) setError('AI 응답이 너무 오래 걸려요. 새로고침 후 다시 시도해주세요.');
+    }
+  }, [loadingTimedOut, result]);
+
   const [cacheGate, setCacheGate] = useState<{ kind: 'today' | 'jungtong' | 'zamidusu' | 'tojeong' | 'newyear' | 'period_date' | 'period_day' | 'taekil' | 'gunghap' | 'tarot' | `more:${string}`; key: string; restore: () => void } | null>(null);
   const handleUseCached = () => { cacheGate?.restore(); setCacheGate(null); };
   const handleRefetch = () => { setCacheGate(null); };
