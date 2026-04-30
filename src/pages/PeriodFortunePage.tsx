@@ -320,8 +320,10 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
 
     let cancelled = false;
 
+    const isFresh = searchParams?.get('fresh') === '1';
+
     const runWithArchiveCheck = async () => {
-      if (refetchNonce === 0 && primary) {
+      if (refetchNonce === 0 && primary && !isFresh) {
         let category: 'newyear' | 'period' | 'today' | undefined;
         let context: { key: string; value: string } | undefined;
         if (scope === 'year') {

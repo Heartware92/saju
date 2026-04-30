@@ -192,6 +192,7 @@ export default function MoreFortunePage({ category }: Props) {
   useEffect(() => {
     if (isArchiveMode || !primary || !category) return;
     if (isLegacy) return;
+    if (searchParams?.get('fresh') === '1') return;
     let cancelled = false;
     findRecentArchive({
       category: category as ArchiveCategory,

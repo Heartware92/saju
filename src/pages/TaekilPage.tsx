@@ -181,6 +181,7 @@ export default function TaekilPage() {
   useEffect(() => {
     if (isArchiveMode || !primary) return;
     if (refetchNonce > 0) return;
+    if (searchParams?.get('fresh') === '1') return;
     let cancelled = false;
     findRecentArchive({
       category: 'taekil',

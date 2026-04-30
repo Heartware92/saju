@@ -208,8 +208,10 @@ export default function ZamidusuResultPage() {
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
+    const isFresh = searchParams?.get('fresh') === '1';
+
     const run = async () => {
-      if (refetchNonce === 0 && sourceBirth) {
+      if (refetchNonce === 0 && sourceBirth && !isFresh) {
         try {
           const found = await findRecentArchive({
             category: 'zamidusu',

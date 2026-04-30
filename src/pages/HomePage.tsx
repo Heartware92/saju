@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Card } from '../components/ui/Card';
@@ -14,6 +15,8 @@ import {
   STEM_TO_ELEMENT,
 } from '../lib/character';
 import { MORE_FORTUNE_CONFIGS, MORE_FORTUNE_ORDER } from '../constants/moreFortunes';
+import { findRecentArchive, type ArchiveCategory } from '../services/archiveService';
+import { RestoreReportModal } from '../components/RestoreReportModal';
 
 /**
  * 운세 서비스 목록
@@ -111,10 +114,37 @@ const fadeUp = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' as const } },
 };
 
+const SERVICE_ARCHIVE_MAP: Record<string, { category: ArchiveCategory; context?: () => { key: string; value: string }; title: string }> = {
+  newyear:     { category: 'newyear',     context: () => ({ key: 'year', value: String(CURRENT_YEAR) }), title: '신년운세' },
+  traditional: { category: 'traditional', title: '정통사주' },
+  today:       { category: 'today',       context: () => ({ key: 'isoDate', value: new Date().toISOString().split('T')[0] }), title: '오늘의 운세' },
+  gunghap:     { category: 'gunghap',     title: '궁합' },
+  taekil:      { category: 'taekil',      title: '택일 운세' },
+  tojeong:     { category: 'tojeong',     title: '토정비결' },
+  zamidusu:    { category: 'zamidusu',    title: '자미두수' },
+  love:        { category: 'love',        title: '애정운' },
+  wealth:      { category: 'wealth',      title: '재물운' },
+  career:      { category: 'career',      title: '직업·진로운' },
+  health:      { category: 'health',      title: '건강운' },
+  study:       { category: 'study',       title: '학업·시험운' },
+  people:      { category: 'people',      title: '귀인운' },
+  children:    { category: 'children',    title: '자녀·출산운' },
+  personality: { category: 'personality', title: '성격 심층' },
+  name:        { category: 'name',        title: '이름 풀이' },
+  dream:       { category: 'dream',       title: '꿈 해몽' },
+};
+
 export default function HomePage() {
   const { user } = useUserStore();
   const { profiles, fetchProfiles, loading: profilesLoading } = useProfileStore();
   const [imgError, setImgError] = useState(false);
+  const router = useRouter();
+
+  const [archiveModal, setArchiveModal] = useState<{
+    title: string;
+    archiveId: string;
+    targetPath: string;
+  } | null>(null);
 
   useEffect(() => {
     if (user) fetchProfiles();
@@ -139,6 +169,35 @@ export default function HomePage() {
     const character = getCharacterFromStem(dayStem);
     return { pillars: result.pillars, element, character, unknownTime: result.hourUnknown };
   }, [primary]);
+
+  const handleServiceClick = useCallback(async (serviceId: string, targetPath: string) => {
+    if (!user) {
+      router.push(`/login?from=${targetPath}`);
+      return;
+    }
+    if (!primary) {
+      router.push(targetPath);
+      return;
+    }
+    const mapping = SERVICE_ARCHIVE_MAP[serviceId];
+    if (!mapping) {
+      router.push(targetPath);
+      return;
+    }
+    try {
+      const found = await findRecentArchive({
+        category: mapping.category,
+        birth_date: primary.birth_date,
+        gender: primary.gender,
+        context: mapping.context?.(),
+      });
+      if (found) {
+        setArchiveModal({ title: mapping.title, archiveId: found.id, targetPath });
+        return;
+      }
+    } catch { /* ignore */ }
+    router.push(targetPath);
+  }, [user, primary, router]);
 
   return (
     <div className="min-h-screen">
@@ -363,7 +422,7 @@ export default function HomePage() {
         >
           {MAIN_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>
-              <Link href={svc.direct}>
+              <button type="button" onClick={() => handleServiceClick(svc.id, svc.direct)} className="w-full text-left">
                 <div className={`
                   relative rounded-xl p-3 h-[88px]
                   bg-gradient-to-br ${svc.gradient}
@@ -375,7 +434,7 @@ export default function HomePage() {
                   <h3 className="text-[19px] font-bold text-text-primary tracking-tight">{svc.title}</h3>
                   <p className="text-[15px] font-medium text-text-secondary">{svc.desc}</p>
                 </div>
-              </Link>
+              </button>
             </motion.div>
           ))}
         </motion.div>
@@ -392,7 +451,7 @@ export default function HomePage() {
         >
           {SECONDARY_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>
-              <Link href={svc.direct}>
+              <button type="button" onClick={() => handleServiceClick(svc.id, svc.direct)} className="w-full text-left">
                 <div className={`
                   relative rounded-xl p-3 h-[88px]
                   bg-gradient-to-br ${svc.gradient}
@@ -404,7 +463,7 @@ export default function HomePage() {
                   <h3 className="text-[19px] font-bold text-text-primary tracking-tight">{svc.title}</h3>
                   <p className="text-[15px] font-medium text-text-secondary">{svc.desc}</p>
                 </div>
-              </Link>
+              </button>
             </motion.div>
           ))}
         </motion.div>
@@ -425,12 +484,12 @@ export default function HomePage() {
         >
           {SUB_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>
-              <Link href={svc.href}>
+              <button type="button" onClick={() => handleServiceClick(svc.id, svc.href)} className="w-full">
                 <div className="flex flex-col items-center justify-center h-[80px] p-2.5 rounded-xl bg-space-surface/60 border border-[var(--border-subtle)] hover:border-cta/40 hover:bg-space-surface transition-all active:scale-[0.95]">
                   <span className="text-[17px] font-bold text-text-primary text-center leading-tight mb-1 whitespace-nowrap">{svc.title}</span>
                   <span className="text-[14px] text-text-tertiary text-center leading-tight line-clamp-1 whitespace-nowrap">{svc.desc}</span>
                 </div>
-              </Link>
+              </button>
             </motion.div>
           ))}
         </motion.div>
@@ -462,6 +521,20 @@ export default function HomePage() {
         </motion.div>
       </section>
 
+      <RestoreReportModal
+        open={!!archiveModal}
+        title={archiveModal?.title}
+        onUseCached={() => {
+          if (!archiveModal) return;
+          router.push(`${archiveModal.targetPath}?recordId=${archiveModal.archiveId}`);
+          setArchiveModal(null);
+        }}
+        onRefresh={() => {
+          if (!archiveModal) return;
+          router.push(`${archiveModal.targetPath}?fresh=1`);
+          setArchiveModal(null);
+        }}
+      />
     </div>
   );
 }

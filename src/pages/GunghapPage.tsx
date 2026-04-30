@@ -292,6 +292,7 @@ export default function GunghapPage() {
   // ── 보관함 DB 확인 — 이전에 본 풀이가 있으면 모달 표시 ──
   useEffect(() => {
     if (isArchiveMode || !primaryProfile) return;
+    if (searchParams?.get('fresh') === '1') return;
     let cancelled = false;
     findRecentArchive({
       category: 'gunghap',

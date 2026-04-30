@@ -190,8 +190,10 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
 
     let cancelled = false;
 
+    const isFresh = searchParams?.get('fresh') === '1';
+
     const run = async () => {
-      if (refetchNonce === 0 && primary) {
+      if (refetchNonce === 0 && primary && !isFresh) {
         try {
           const found = await findRecentArchive({
             category: mode === 'date' ? 'period' : 'today',
