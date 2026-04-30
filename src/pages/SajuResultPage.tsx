@@ -161,81 +161,81 @@ export default function SajuResultPage() {
     }
   }, [reportTimedOut, report]);
 
-  // ── 보관함 DB 확인 — 이전에 본 풀이가 있으면 모달 표시 ──
-  useEffect(() => {
-    if (isArchiveMode || !primary) return;
-    if (refetchNonce > 0) return;
-    let cancelled = false;
-    findRecentArchive({
-      category: 'traditional',
-      birth_date: primary.birth_date,
-      gender: primary.gender,
-    }).then(found => {
-      if (cancelled || !found) return;
-      setCacheGate({
-        kind: 'jungtong',
-        key: '',
-        restore: () => {
-          const params = new URLSearchParams(window.location.search);
-          params.set('recordId', found.id);
-          router.replace(`${window.location.pathname}?${params.toString()}`);
-        },
-      });
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [primary, isArchiveMode, refetchNonce, router]);
-
-  // 결과 생기면 리포트 자동 호출. 보관함 재생 모드에선 AI 호출 금지.
-  // 정상 응답은 캐시하지 않음 — 홈에서 누를 때마다 새 호출(=새 결제) 의도 보장.
-  // 단, 실패 응답은 1분 negative cache 로 같은 키 즉시 재시도 차단(토큰비 보호).
-  // charged 플래그는 동시 호출 이중 차감 방어용으로 유지.
+  // ── 보관함 DB 확인 → AI 호출 (순차 실행) ──
+  // 보관함 체크를 먼저 완료한 뒤, 기존 풀이가 없을 때만 AI 호출
   useEffect(() => {
     if (isArchiveMode) return;
-    if (cacheGate) return;
-    if (!result || report || reportLoading) return;
-    const cacheKey = sajuKey(result);
-    const cached = useReportCacheStore.getState().getReport<JungtongsajuAIResult>('jungtong', cacheKey);
-    if (cached?.error) {
-      setReport({ success: false, error: cached.error });
-      return;
-    }
-    // 캐시 silent restore (같은 디바이스 빠른 재진입). 보관함 DB 모달은 별도 useEffect 에서 처리 예정.
-    if (cached?.data) {
-      setReport(cached.data);
-      return;
-    }
+    if (!result) return;
 
     let cancelled = false;
-    setReportLoading(true);
-    // 2-pass 점진 노출 — 1차(Core 4섹션) 도착 즉시 화면에 띄우고 2차는 백그라운드 진행.
-    // 사용자 체감: ~20초만에 첫 결과 → 추가 ~30~40초 후 8섹션 보강 카드 등장.
-    getJungtongsajuReport(result, (partial) => {
-      if (cancelled) return;
-      // 1차 결과(4섹션) 즉시 렌더 — reportLoading 은 true 유지 (2차 진행 중 표시)
-      setReport(partial);
-    })
-      .then(r => {
-        if (cancelled) return;
-        // 2차 완료 — 12섹션 머지된 최종 결과
-        setReport(r);
-        const cache = useReportCacheStore.getState();
-        if (r.success) {
-          cache.setReport('jungtong', cacheKey, r);
-          if (!cache.isCharged('jungtong', cacheKey)) {
-            cache.markCharged('jungtong', cacheKey);
-            chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.traditional).catch(() => {});
+
+    const run = async () => {
+      if (refetchNonce === 0 && primary) {
+        try {
+          const found = await findRecentArchive({
+            category: 'traditional',
+            birth_date: primary.birth_date,
+            gender: primary.gender,
+          });
+          if (cancelled) return;
+          if (found) {
+            setCacheGate({
+              kind: 'jungtong',
+              key: '',
+              restore: () => {
+                const params = new URLSearchParams(window.location.search);
+                params.set('recordId', found.id);
+                router.replace(`${window.location.pathname}?${params.toString()}`);
+              },
+            });
+            return;
           }
-        } else if (r.error) {
-          cache.setError('jungtong', cacheKey, r.error);
-        }
-      })
-      .catch((err: any) => {
+        } catch { /* ignore */ }
         if (cancelled) return;
-        useReportCacheStore.getState().setError('jungtong', cacheKey, err?.message || '오류가 발생했어요.');
+      }
+
+      if (report || reportLoading) return;
+      const cacheKey = sajuKey(result);
+      const cached = useReportCacheStore.getState().getReport<JungtongsajuAIResult>('jungtong', cacheKey);
+      if (cached?.error) {
+        setReport({ success: false, error: cached.error });
+        return;
+      }
+      if (cached?.data) {
+        setReport(cached.data);
+        return;
+      }
+
+      setReportLoading(true);
+      getJungtongsajuReport(result, (partial) => {
+        if (cancelled) return;
+        setReport(partial);
       })
-      .finally(() => { if (!cancelled) setReportLoading(false); });
+        .then(r => {
+          if (cancelled) return;
+          setReport(r);
+          const cache = useReportCacheStore.getState();
+          if (r.success) {
+            cache.setReport('jungtong', cacheKey, r);
+            if (!cache.isCharged('jungtong', cacheKey)) {
+              cache.markCharged('jungtong', cacheKey);
+              chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.traditional).catch(() => {});
+            }
+          } else if (r.error) {
+            cache.setError('jungtong', cacheKey, r.error);
+          }
+        })
+        .catch((err: any) => {
+          if (cancelled) return;
+          useReportCacheStore.getState().setError('jungtong', cacheKey, err?.message || '오류가 발생했어요.');
+        })
+        .finally(() => { if (!cancelled) setReportLoading(false); });
+    };
+
+    run();
     return () => { cancelled = true; };
-  }, [result, isArchiveMode, refetchNonce, cacheGate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, isArchiveMode, refetchNonce]);
 
   // ── 로딩 / 빈 상태 ──────────────────────────────────
   if (!result) {

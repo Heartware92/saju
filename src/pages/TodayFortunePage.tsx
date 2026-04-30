@@ -182,77 +182,81 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
     }
   }, [searchParams, primary, isArchiveMode]);
 
-  // ── 보관함 DB 확인 — 이전에 본 풀이가 있으면 모달 표시 ──
-  useEffect(() => {
-    if (isArchiveMode || !primary) return;
-    if (refetchNonce > 0) return;
-    if (!confirmedDate) return;
-    let cancelled = false;
-    findRecentArchive({
-      category: mode === 'date' ? 'period' : 'today',
-      birth_date: primary.birth_date,
-      gender: primary.gender,
-      context: { key: 'isoDate', value: confirmedDate },
-    }).then(found => {
-      if (cancelled || !found) return;
-      setCacheGate({
-        kind: 'today',
-        key: '',
-        restore: () => {
-          const params = new URLSearchParams(window.location.search);
-          params.set('recordId', found.id);
-          router.replace(`${window.location.pathname}?${params.toString()}`);
-        },
-      });
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [mode, confirmedDate, primary, isArchiveMode, refetchNonce, router]);
-
-  // 날짜 확정되면 AI 호출 — 보관함 재생 모드에서는 skip
-  // 정상 응답은 캐시 안 씀 (홈 진입 = 새 풀이). 실패만 1분 negative cache 로 재호출 차단.
+  // ── 보관함 DB 확인 → AI 호출 (순차 실행) ──
+  // 보관함 체크를 먼저 완료한 뒤, 기존 풀이가 없을 때만 AI 호출
   useEffect(() => {
     if (isArchiveMode) return;
-    if (cacheGate) return;
     if (!result || !confirmedDate) return;
-    const cacheKey = `${sajuKey(result)}:${confirmedDate}`;
-    const cached = useReportCacheStore.getState().getReport<TodayFortuneAIResult>('today', cacheKey);
-    if (cached?.error) {
-      setReport({ success: false, error: cached.error });
-      setReportLoading(false);
-      return;
-    }
-    // 캐시 silent restore (같은 디바이스 빠른 재진입). 보관함 DB 모달은 별도 useEffect 에서 처리 예정.
-    if (cached?.data) {
-      setReport(cached.data);
-      setReportLoading(false);
-      return;
-    }
 
     let cancelled = false;
-    setReport(null);
-    setReportLoading(true);
-    getTodayFortuneReport(result, confirmedDate)
-      .then(r => {
-        if (cancelled) return;
-        setReport(r);
-        const cache = useReportCacheStore.getState();
-        if (r.success) {
-          cache.setReport('today', cacheKey, r);
-          if (!cache.isCharged('today', cacheKey)) {
-            cache.markCharged('today', cacheKey);
-            chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.today).catch(() => {});
+
+    const run = async () => {
+      if (refetchNonce === 0 && primary) {
+        try {
+          const found = await findRecentArchive({
+            category: mode === 'date' ? 'period' : 'today',
+            birth_date: primary.birth_date,
+            gender: primary.gender,
+            context: { key: 'isoDate', value: confirmedDate },
+          });
+          if (cancelled) return;
+          if (found) {
+            setCacheGate({
+              kind: 'today',
+              key: '',
+              restore: () => {
+                const params = new URLSearchParams(window.location.search);
+                params.set('recordId', found.id);
+                router.replace(`${window.location.pathname}?${params.toString()}`);
+              },
+            });
+            return;
           }
-        } else if (r.error) {
-          cache.setError('today', cacheKey, r.error);
-        }
-      })
-      .catch((err: any) => {
+        } catch { /* ignore */ }
         if (cancelled) return;
-        useReportCacheStore.getState().setError('today', cacheKey, err?.message || '오류가 발생했어요.');
-      })
-      .finally(() => { if (!cancelled) setReportLoading(false); });
+      }
+
+      const cacheKey = `${sajuKey(result)}:${confirmedDate}`;
+      const cached = useReportCacheStore.getState().getReport<TodayFortuneAIResult>('today', cacheKey);
+      if (cached?.error) {
+        setReport({ success: false, error: cached.error });
+        setReportLoading(false);
+        return;
+      }
+      if (cached?.data) {
+        setReport(cached.data);
+        setReportLoading(false);
+        return;
+      }
+
+      setReport(null);
+      setReportLoading(true);
+      getTodayFortuneReport(result, confirmedDate)
+        .then(r => {
+          if (cancelled) return;
+          setReport(r);
+          const cache = useReportCacheStore.getState();
+          if (r.success) {
+            cache.setReport('today', cacheKey, r);
+            if (!cache.isCharged('today', cacheKey)) {
+              cache.markCharged('today', cacheKey);
+              chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.today).catch(() => {});
+            }
+          } else if (r.error) {
+            cache.setError('today', cacheKey, r.error);
+          }
+        })
+        .catch((err: any) => {
+          if (cancelled) return;
+          useReportCacheStore.getState().setError('today', cacheKey, err?.message || '오류가 발생했어요.');
+        })
+        .finally(() => { if (!cancelled) setReportLoading(false); });
+    };
+
+    run();
     return () => { cancelled = true; };
-  }, [result, confirmedDate, chargeForContent, isArchiveMode, refetchNonce, cacheGate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, confirmedDate, chargeForContent, isArchiveMode, refetchNonce]);
 
   // ── 로딩·빈 상태 ───────────────────────────────────────────
   if (!result) {

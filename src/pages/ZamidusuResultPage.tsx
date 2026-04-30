@@ -194,102 +194,104 @@ export default function ZamidusuResultPage() {
     return () => { cancelled = true; };
   }, [recordId]);
 
-  // ── 보관함 DB 확인 — 이전에 본 풀이가 있으면 모달 표시 ──
-  useEffect(() => {
-    if (isArchiveMode || !sourceBirth) return;
-    if (refetchNonce > 0) return;
-    let cancelled = false;
-    findRecentArchive({
-      category: 'zamidusu',
-      birth_date: sourceBirth.birth_date,
-      gender: sourceBirth.gender,
-    }).then(found => {
-      if (cancelled || !found) return;
-      setCacheGate({
-        kind: 'zamidusu',
-        key: '',
-        restore: () => {
-          const params = new URLSearchParams(window.location.search);
-          params.set('recordId', found.id);
-          router.replace(`${window.location.pathname}?${params.toString()}`);
-        },
-      });
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [sourceBirth, isArchiveMode, refetchNonce, router]);
-
   const reading: ZamidusuReading | null = useMemo(() => {
     return chart ? buildZamidusuReading(chart) : null;
   }, [chart]);
 
-  // 명반 계산 완료되면 AI 풀이 호출 — 캐시 우선, 미스 시에만 호출 (45초 하드 타임아웃)
-  // 보관함 재생 모드에선 절대 AI 호출 금지
+  // ── 보관함 DB 확인 → AI 호출 (순차 실행) ──
+  // 보관함 체크를 먼저 완료한 뒤, 기존 풀이가 없을 때만 AI 호출
   const aiStartedRef = useRef(false);
   useEffect(() => {
     if (isArchiveMode) return;
-    if (cacheGate) return;
     if (!chart || !cacheKey) return;
 
-    const cached = useReportCacheStore.getState().getReport<ZamidusuAIResult>('zamidusu', cacheKey);
-    if (cached?.error) {
-      setAiResult({ success: false, error: cached.error });
-      setAiLoading(false);
-      return;
-    }
-    // 재진입 silent restore
-    if (cached?.data) {
-      setAiResult(cached.data);
-      setAiLoading(false);
-      aiStartedRef.current = true;
-      return;
-    }
-
-    if (aiStartedRef.current) return;
-    aiStartedRef.current = true;
-
     let cancelled = false;
-    setAiLoading(true);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-    const timeoutId = setTimeout(() => {
-      if (cancelled) return;
-      const timeoutMsg = '응답이 너무 오래 걸려요. 아래 명반은 정상이니 확인하시고, 풀이는 다시 시도해주세요.';
-      setAiResult({ success: false, error: timeoutMsg });
-      setAiLoading(false);
-      // 타임아웃도 1분 negative cache — 즉시 재진입해도 또 호출되지 않게
-      useReportCacheStore.getState().setError('zamidusu', cacheKey, timeoutMsg);
-    }, 45_000);
-
-    getZamidusuReading(chart, sourceBirth)
-      .then(r => {
-        if (cancelled) return;
-        clearTimeout(timeoutId);
-        setAiResult(r);
-        setAiLoading(false);
-        const cache = useReportCacheStore.getState();
-        if (r.success) {
-          cache.setReport('zamidusu', cacheKey, r);
-          if (!cache.isCharged('zamidusu', cacheKey)) {
-            cache.markCharged('zamidusu', cacheKey);
-            chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.zamidusu).catch(() => {});
+    const run = async () => {
+      if (refetchNonce === 0 && sourceBirth) {
+        try {
+          const found = await findRecentArchive({
+            category: 'zamidusu',
+            birth_date: sourceBirth.birth_date,
+            gender: sourceBirth.gender,
+          });
+          if (cancelled) return;
+          if (found) {
+            setCacheGate({
+              kind: 'zamidusu',
+              key: '',
+              restore: () => {
+                const params = new URLSearchParams(window.location.search);
+                params.set('recordId', found.id);
+                router.replace(`${window.location.pathname}?${params.toString()}`);
+              },
+            });
+            return;
           }
-        } else if (r.error) {
-          cache.setError('zamidusu', cacheKey, r.error);
-        }
-      })
-      .catch(err => {
+        } catch { /* ignore */ }
         if (cancelled) return;
-        clearTimeout(timeoutId);
-        const msg = err?.message || 'AI 풀이 실패';
-        setAiResult({ success: false, error: msg });
-        setAiLoading(false);
-        useReportCacheStore.getState().setError('zamidusu', cacheKey, msg);
-      });
+      }
 
+      const cached = useReportCacheStore.getState().getReport<ZamidusuAIResult>('zamidusu', cacheKey);
+      if (cached?.error) {
+        setAiResult({ success: false, error: cached.error });
+        setAiLoading(false);
+        return;
+      }
+      if (cached?.data) {
+        setAiResult(cached.data);
+        setAiLoading(false);
+        aiStartedRef.current = true;
+        return;
+      }
+
+      if (aiStartedRef.current) return;
+      aiStartedRef.current = true;
+
+      setAiLoading(true);
+      timeoutId = setTimeout(() => {
+        if (cancelled) return;
+        const timeoutMsg = '응답이 너무 오래 걸려요. 아래 명반은 정상이니 확인하시고, 풀이는 다시 시도해주세요.';
+        setAiResult({ success: false, error: timeoutMsg });
+        setAiLoading(false);
+        useReportCacheStore.getState().setError('zamidusu', cacheKey, timeoutMsg);
+      }, 45_000);
+
+      getZamidusuReading(chart, sourceBirth)
+        .then(r => {
+          if (cancelled) return;
+          clearTimeout(timeoutId);
+          setAiResult(r);
+          setAiLoading(false);
+          const cache = useReportCacheStore.getState();
+          if (r.success) {
+            cache.setReport('zamidusu', cacheKey, r);
+            if (!cache.isCharged('zamidusu', cacheKey)) {
+              cache.markCharged('zamidusu', cacheKey);
+              chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.zamidusu).catch(() => {});
+            }
+          } else if (r.error) {
+            cache.setError('zamidusu', cacheKey, r.error);
+          }
+        })
+        .catch(err => {
+          if (cancelled) return;
+          clearTimeout(timeoutId);
+          const msg = err?.message || 'AI 풀이 실패';
+          setAiResult({ success: false, error: msg });
+          setAiLoading(false);
+          useReportCacheStore.getState().setError('zamidusu', cacheKey, msg);
+        });
+    };
+
+    run();
     return () => {
       cancelled = true;
-      clearTimeout(timeoutId);
+      if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [chart, cacheKey, isArchiveMode, cacheGate, refetchNonce]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chart, cacheKey, isArchiveMode, refetchNonce]);
 
   // ── 시간 미상 가드 ──
   // 보관함 재생 모드에선 이 가드를 우회 — 과거에 시간 알았던 시점에 받은 풀이를

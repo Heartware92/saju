@@ -292,49 +292,6 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     return () => { cancelled = true; };
   }, [recordId, scope]);
 
-  // ── 보관함 모달 — 같은 사주+컨텍스트(연도/날짜) 의 archive record 가 DB 에 있으면
-  //    "이전 풀이가 있어요" 모달 표시 후 사용자가 [기존 결과 보기] / [새로 풀이 받기] 선택. ──
-  useEffect(() => {
-    if (isArchiveMode || !primary) return;
-    if (refetchNonce > 0) return; // "새로 풀이" 후엔 재조회 X (사용자 의도 우선)
-    let cancelled = false;
-
-    let category: 'newyear' | 'period' | 'today';
-    let context: { key: string; value: string } | undefined;
-    if (scope === 'year') {
-      category = 'newyear';
-      context = { key: 'year', value: String(targetYear) };
-    } else if (scope === 'date') {
-      if (!dateConfirmed) return; // 날짜 미선택 단계엔 조회 X
-      category = 'period';
-      context = { key: 'isoDate', value: pickedDate };
-    } else {
-      category = 'today';
-      context = { key: 'isoDate', value: today };
-    }
-
-    findRecentArchive({
-      category,
-      birth_date: primary.birth_date,
-      gender: primary.gender,
-      context,
-    }).then(found => {
-      if (cancelled || !found) return;
-      setCacheGate({
-        // kind/key 는 DB 모달엔 불필요 — handleRefetch 시 캐시 invalidate 안 함 (DB 모달은 캐시와 무관)
-        kind: 'newyear',
-        key: '',
-        restore: () => {
-          const params = new URLSearchParams(window.location.search);
-          params.set('recordId', found.id);
-          router.replace(`${window.location.pathname}?${params.toString()}`);
-        },
-      });
-    }).catch(() => {});
-
-    return () => { cancelled = true; };
-  }, [scope, targetYear, pickedDate, today, dateConfirmed, primary, isArchiveMode, refetchNonce, router]);
-
   // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
   const [yearTimedOut] = useLoadingGuard(newyearReportLoading, 70_000);
   const [dateTimedOut] = useLoadingGuard(pickedDateReportLoading, 70_000);
@@ -355,22 +312,56 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     if (domainTimedOut) setDomainAILoading(false);
   }, [domainTimedOut]);
 
-  // 기간/대상 바뀔 때마다 초기화 + AI 호출 — 캐시 우선
-  // 보관함 재생 모드에선 절대 AI 호출 금지
-  // cacheGate 는 의존성에서 제외 — 보관함 모달이 뜨는 동안 이미 시작된 fetch 가 정상 완료되도록.
-  // (이전 구현에서 cacheGate 의존성이 mid-flight cancel → loading 영구 true 무한로딩 유발)
+  // ── 보관함 DB 확인 → AI 호출 (순차 실행) ──
+  // 보관함 체크를 먼저 완료한 뒤, 기존 풀이가 없을 때만 AI 호출
   useEffect(() => {
     if (isArchiveMode) return;
     if (!saju || !fortune) return;
-    if (cacheGate) {
-      // 보관함 모달이 떠있으면 새 fetch 시작 안 함 — 단, 로딩 상태는 반드시 해제
-      setNewyearReportLoading(false);
-      setPickedDateReportLoading(false);
-      setDomainAILoading(false);
-      return;
-    }
+
     let cancelled = false;
-    const sk = sajuKey(saju);
+
+    const runWithArchiveCheck = async () => {
+      if (refetchNonce === 0 && primary) {
+        let category: 'newyear' | 'period' | 'today' | undefined;
+        let context: { key: string; value: string } | undefined;
+        if (scope === 'year') {
+          category = 'newyear';
+          context = { key: 'year', value: String(targetYear) };
+        } else if (scope === 'date' && dateConfirmed) {
+          category = 'period';
+          context = { key: 'isoDate', value: pickedDate };
+        } else if (scope === 'day') {
+          category = 'today';
+          context = { key: 'isoDate', value: today };
+        }
+
+        if (category) {
+          try {
+            const found = await findRecentArchive({
+              category,
+              birth_date: primary.birth_date,
+              gender: primary.gender,
+              context,
+            });
+            if (cancelled) return;
+            if (found) {
+              setCacheGate({
+                kind: 'newyear',
+                key: '',
+                restore: () => {
+                  const params = new URLSearchParams(window.location.search);
+                  params.set('recordId', found.id);
+                  router.replace(`${window.location.pathname}?${params.toString()}`);
+                },
+              });
+              return;
+            }
+          } catch { /* ignore */ }
+          if (cancelled) return;
+        }
+      }
+
+      const sk = sajuKey(saju);
 
     // scope=year: 신년운세 종합 리포트 호출 (도메인 상세는 패스)
     // 정상 응답 캐시 X (홈 진입 = 새 풀이). 실패만 1분 negative cache.
@@ -411,7 +402,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
           useReportCacheStore.getState().setError('newyear', cacheKey, err?.message || '오류가 발생했어요.');
         })
         .finally(() => { if (!cancelled) setNewyearReportLoading(false); });
-      return () => { cancelled = true; };
+      return;
     }
 
     // scope=date: 지정일 7섹션 리포트 — 사용자가 날짜를 선택해 confirmed된 경우에만 호출
@@ -451,7 +442,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
           useReportCacheStore.getState().setError('period_date', cacheKey, err?.message || '오류가 발생했어요.');
         })
         .finally(() => { if (!cancelled) setPickedDateReportLoading(false); });
-      return () => { cancelled = true; };
+      return;
     }
 
     // scope=day: 영역별 5문장 상세 — 정상 캐시 X, 실패만 1분 차단
@@ -513,7 +504,9 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
       .finally(() => {
         if (!cancelled) setDomainAILoading(false);
       });
+    };
 
+    runWithArchiveCheck();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saju, fortune, scope, pickedDate, targetYear, today, chargeForContent, isArchiveMode, dateConfirmed, refetchNonce]);

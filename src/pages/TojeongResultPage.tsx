@@ -147,99 +147,102 @@ export default function TojeongResultPage() {
     return undefined;
   }, [searchParams, primary]);
 
-  // ── 보관함 DB 확인 — 이전에 본 풀이가 있으면 모달 표시 ──
-  useEffect(() => {
-    if (isArchiveMode || !sourceBirth) return;
-    if (refetchNonce > 0) return;
-    let cancelled = false;
-    findRecentArchive({
-      category: 'tojeong',
-      birth_date: sourceBirth.birth_date,
-      gender: sourceBirth.gender,
-    }).then(found => {
-      if (cancelled || !found) return;
-      setCacheGate({
-        kind: 'tojeong',
-        key: '',
-        restore: () => {
-          const params = new URLSearchParams(window.location.search);
-          params.set('recordId', found.id);
-          router.replace(`${window.location.pathname}?${params.toString()}`);
-        },
-      });
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [sourceBirth, isArchiveMode, refetchNonce, router]);
-
-  // 심층 풀이 — 캐시 우선, 미스 시에만 호출 (45초 타임아웃)
-  // 보관함 재생 모드에선 AI 호출 금지
+  // ── 보관함 DB 확인 → AI 호출 (순차 실행) ──
+  // 보관함 체크를 먼저 완료한 뒤, 기존 풀이가 없을 때만 AI 호출
   const aiStartedRef = useRef(false);
   useEffect(() => {
     if (isArchiveMode) return;
-    if (cacheGate) return;
     if (!tojeong || !cacheKey) return;
 
-    const cached = useReportCacheStore.getState().getReport<string>('tojeong', cacheKey);
-    if (cached?.error) {
-      setAiError(cached.error);
-      setAiLoading(false);
-      return;
-    }
-    // 캐시 silent restore (같은 디바이스 빠른 재진입). 보관함 DB 모달은 별도 useEffect 에서 처리 예정.
-    if (cached?.data) {
-      setAiContent(cached.data);
-      setAiLoading(false);
-      aiStartedRef.current = true;
-      return;
-    }
-
-    if (aiStartedRef.current) return;
-    aiStartedRef.current = true;
-
     let cancelled = false;
-    setAiLoading(true);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-    const timeoutId = setTimeout(() => {
-      if (cancelled) return;
-      const timeoutMsg = '응답이 너무 오래 걸려요. 아래 괘 풀이는 정상이니 확인해주세요.';
-      setAiError(timeoutMsg);
-      setAiLoading(false);
-      useReportCacheStore.getState().setError('tojeong', cacheKey, timeoutMsg);
-    }, 45_000);
-
-    getTojeongReading(tojeong, sourceBirth)
-      .then(r => {
-        if (cancelled) return;
-        clearTimeout(timeoutId);
-        const cache = useReportCacheStore.getState();
-        if (!r.success || !r.content) {
-          const msg = r.error || '심층 풀이를 가져오지 못했어요.';
-          setAiError(msg);
-          cache.setError('tojeong', cacheKey, msg);
-        } else {
-          setAiContent(r.content);
-          cache.setReport('tojeong', cacheKey, r.content);
-          if (!cache.isCharged('tojeong', cacheKey)) {
-            cache.markCharged('tojeong', cacheKey);
-            chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.tojeong).catch(() => {});
+    const run = async () => {
+      if (refetchNonce === 0 && sourceBirth) {
+        try {
+          const found = await findRecentArchive({
+            category: 'tojeong',
+            birth_date: sourceBirth.birth_date,
+            gender: sourceBirth.gender,
+          });
+          if (cancelled) return;
+          if (found) {
+            setCacheGate({
+              kind: 'tojeong',
+              key: '',
+              restore: () => {
+                const params = new URLSearchParams(window.location.search);
+                params.set('recordId', found.id);
+                router.replace(`${window.location.pathname}?${params.toString()}`);
+              },
+            });
+            return;
           }
-        }
-        setAiLoading(false);
-      })
-      .catch(err => {
+        } catch { /* ignore */ }
         if (cancelled) return;
-        clearTimeout(timeoutId);
-        const msg = err?.message || '오류가 발생했어요.';
-        setAiError(msg);
-        setAiLoading(false);
-        useReportCacheStore.getState().setError('tojeong', cacheKey, msg);
-      });
+      }
 
+      const cached = useReportCacheStore.getState().getReport<string>('tojeong', cacheKey);
+      if (cached?.error) {
+        setAiError(cached.error);
+        setAiLoading(false);
+        return;
+      }
+      if (cached?.data) {
+        setAiContent(cached.data);
+        setAiLoading(false);
+        aiStartedRef.current = true;
+        return;
+      }
+
+      if (aiStartedRef.current) return;
+      aiStartedRef.current = true;
+
+      setAiLoading(true);
+      timeoutId = setTimeout(() => {
+        if (cancelled) return;
+        const timeoutMsg = '응답이 너무 오래 걸려요. 아래 괘 풀이는 정상이니 확인해주세요.';
+        setAiError(timeoutMsg);
+        setAiLoading(false);
+        useReportCacheStore.getState().setError('tojeong', cacheKey, timeoutMsg);
+      }, 45_000);
+
+      getTojeongReading(tojeong, sourceBirth)
+        .then(r => {
+          if (cancelled) return;
+          clearTimeout(timeoutId);
+          const cache = useReportCacheStore.getState();
+          if (!r.success || !r.content) {
+            const msg = r.error || '심층 풀이를 가져오지 못했어요.';
+            setAiError(msg);
+            cache.setError('tojeong', cacheKey, msg);
+          } else {
+            setAiContent(r.content);
+            cache.setReport('tojeong', cacheKey, r.content);
+            if (!cache.isCharged('tojeong', cacheKey)) {
+              cache.markCharged('tojeong', cacheKey);
+              chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.tojeong).catch(() => {});
+            }
+          }
+          setAiLoading(false);
+        })
+        .catch(err => {
+          if (cancelled) return;
+          clearTimeout(timeoutId);
+          const msg = err?.message || '오류가 발생했어요.';
+          setAiError(msg);
+          setAiLoading(false);
+          useReportCacheStore.getState().setError('tojeong', cacheKey, msg);
+        });
+    };
+
+    run();
     return () => {
       cancelled = true;
-      clearTimeout(timeoutId);
+      if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [tojeong, cacheKey, isArchiveMode, refetchNonce, cacheGate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tojeong, cacheKey, isArchiveMode, refetchNonce]);
 
   const retryAI = () => {
     if (!tojeong || !cacheKey) return;
