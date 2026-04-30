@@ -14,7 +14,9 @@ import { motion } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
-import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
+import { useReportCacheStore, sajuKey, type ReportKind } from '../store/useReportCacheStore';
+import { RestoreReportModal } from '../components/RestoreReportModal';
+import { findRecentArchive } from '../services/archiveService';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { BackButton } from '../components/ui/BackButton';
@@ -27,6 +29,7 @@ import {
   type TaekilResult,
 } from '../engine/taekil';
 import { getTaekilAdvice } from '../services/fortuneService';
+import { useLoadingGuard } from '../hooks/useLoadingGuard';
 import styles from './SajuResultPage.module.css';
 
 const GRADE_COLOR: Record<TaekilGrade, string> = {
@@ -103,6 +106,23 @@ export default function TaekilPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
+  const [aiTimedOut] = useLoadingGuard(aiLoading, 70_000);
+  useEffect(() => {
+    if (aiTimedOut) {
+      setAiLoading(false);
+      if (!aiAdvice) setAiError('AI 응답이 너무 오래 걸려요. 새로고침 후 다시 시도해주세요.');
+    }
+  }, [aiTimedOut, aiAdvice]);
+
+  const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
+  const [refetchNonce, setRefetchNonce] = useState(0);
+  const handleUseCached = () => { cacheGate?.restore(); setCacheGate(null); };
+  const handleRefetch = () => {
+    setCacheGate(null);
+    setRefetchNonce(n => n + 1);
+  };
+
   // 캐시 키 — saju + 연·월 + 카테고리 + (compare 모드면 후보 셋). 같은 조합은 같은 advice를 가짐.
   const taekilCacheKey = useMemo(() => {
     if (!saju) return null;
@@ -156,6 +176,30 @@ export default function TaekilPage() {
       .catch((e) => console.error('[archive replay] taekil load failed', e));
     return () => { cancelled = true; };
   }, [recordId]);
+
+  // ── 보관함 DB 확인 — 이전에 본 풀이가 있으면 모달 표시 ──
+  useEffect(() => {
+    if (isArchiveMode || !primary) return;
+    if (refetchNonce > 0) return;
+    let cancelled = false;
+    findRecentArchive({
+      category: 'taekil',
+      birth_date: primary.birth_date,
+      gender: primary.gender,
+    }).then(found => {
+      if (cancelled || !found) return;
+      setCacheGate({
+        kind: 'taekil',
+        key: '',
+        restore: () => {
+          const params = new URLSearchParams(window.location.search);
+          params.set('recordId', found.id);
+          router.replace(`${window.location.pathname}?${params.toString()}`);
+        },
+      });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [primary, isArchiveMode, refetchNonce, router]);
 
   // 연도 네비 (월 단위 X, 연 단위)
   const prevYear = () => {
@@ -947,6 +991,13 @@ export default function TaekilPage() {
 
         </motion.div>
       </div>
+
+      <RestoreReportModal
+        open={!!cacheGate}
+        title="택일 운세"
+        onUseCached={handleUseCached}
+        onRefresh={handleRefetch}
+      />
     </div>
   );
 }

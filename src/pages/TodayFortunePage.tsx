@@ -12,9 +12,11 @@ import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { calculateSaju, type SajuResult } from '../utils/sajuCalculator';
 import { getTodayFortuneReport, parseTodayFortune, type TodayFortuneAIResult } from '../services/fortuneService';
 import { sajuDB } from '../services/supabase';
+import { findRecentArchive } from '../services/archiveService';
 import { TODAY_SECTION_KEYS, TODAY_SECTION_LABELS } from '../constants/prompts';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { LuckyVisualCard, ELEMENT_LUCKY } from '../components/saju/LuckyVisualCard';
+import { useLoadingGuard } from '../hooks/useLoadingGuard';
 
 const TODAY_MESSAGES = [
   '일진과 원국의 오행을 대조하는 중입니다',
@@ -110,6 +112,15 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
   };
   const chargeForContent = useCreditStore(s => s.chargeForContent);
 
+  // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
+  const [reportTimedOut] = useLoadingGuard(reportLoading, 70_000);
+  useEffect(() => {
+    if (reportTimedOut) {
+      setReportLoading(false);
+      if (!report) setReport({ success: false, error: 'AI 응답이 너무 오래 걸려요. 새로고침 후 다시 시도해주세요.' });
+    }
+  }, [reportTimedOut, report]);
+
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
 
   // ── 보관함 재생 모드 — recordId 가 있으면 DB에서 복원하고 AI 호출은 skip ──
@@ -171,10 +182,37 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
     }
   }, [searchParams, primary, isArchiveMode]);
 
+  // ── 보관함 DB 확인 — 이전에 본 풀이가 있으면 모달 표시 ──
+  useEffect(() => {
+    if (isArchiveMode || !primary) return;
+    if (refetchNonce > 0) return;
+    if (!confirmedDate) return;
+    let cancelled = false;
+    findRecentArchive({
+      category: mode === 'date' ? 'period' : 'today',
+      birth_date: primary.birth_date,
+      gender: primary.gender,
+      context: { key: 'isoDate', value: confirmedDate },
+    }).then(found => {
+      if (cancelled || !found) return;
+      setCacheGate({
+        kind: 'today',
+        key: '',
+        restore: () => {
+          const params = new URLSearchParams(window.location.search);
+          params.set('recordId', found.id);
+          router.replace(`${window.location.pathname}?${params.toString()}`);
+        },
+      });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [mode, confirmedDate, primary, isArchiveMode, refetchNonce, router]);
+
   // 날짜 확정되면 AI 호출 — 보관함 재생 모드에서는 skip
   // 정상 응답은 캐시 안 씀 (홈 진입 = 새 풀이). 실패만 1분 negative cache 로 재호출 차단.
   useEffect(() => {
     if (isArchiveMode) return;
+    if (cacheGate) return;
     if (!result || !confirmedDate) return;
     const cacheKey = `${sajuKey(result)}:${confirmedDate}`;
     const cached = useReportCacheStore.getState().getReport<TodayFortuneAIResult>('today', cacheKey);
@@ -214,7 +252,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
       })
       .finally(() => { if (!cancelled) setReportLoading(false); });
     return () => { cancelled = true; };
-  }, [result, confirmedDate, chargeForContent, isArchiveMode, refetchNonce]);
+  }, [result, confirmedDate, chargeForContent, isArchiveMode, refetchNonce, cacheGate]);
 
   // ── 로딩·빈 상태 ───────────────────────────────────────────
   if (!result) {

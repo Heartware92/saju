@@ -17,9 +17,11 @@ import { useReportCacheStore, type ReportKind } from '../store/useReportCacheSto
 import { RestoreReportModal } from '../components/RestoreReportModal';
 import { getTojeongReading } from '../services/fortuneService';
 import { sajuDB } from '../services/supabase';
+import { findRecentArchive } from '../services/archiveService';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { BackButton } from '../components/ui/BackButton';
+import { useLoadingGuard } from '../hooks/useLoadingGuard';
 
 const TOJEONG_MESSAGES = [
   '괘의 상징을 풀어 쓰는 중입니다',
@@ -50,6 +52,15 @@ export default function TojeongResultPage() {
   const [aiContent, setAiContent] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
+  const [aiTimedOut] = useLoadingGuard(aiLoading, 70_000);
+  useEffect(() => {
+    if (aiTimedOut) {
+      setAiLoading(false);
+      if (!aiContent) setAiError('AI 응답이 너무 오래 걸려요. 새로고침 후 다시 시도해주세요.');
+    }
+  }, [aiTimedOut, aiContent]);
 
   const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
   const [refetchNonce, setRefetchNonce] = useState(0);
@@ -136,11 +147,36 @@ export default function TojeongResultPage() {
     return undefined;
   }, [searchParams, primary]);
 
+  // ── 보관함 DB 확인 — 이전에 본 풀이가 있으면 모달 표시 ──
+  useEffect(() => {
+    if (isArchiveMode || !sourceBirth) return;
+    if (refetchNonce > 0) return;
+    let cancelled = false;
+    findRecentArchive({
+      category: 'tojeong',
+      birth_date: sourceBirth.birth_date,
+      gender: sourceBirth.gender,
+    }).then(found => {
+      if (cancelled || !found) return;
+      setCacheGate({
+        kind: 'tojeong',
+        key: '',
+        restore: () => {
+          const params = new URLSearchParams(window.location.search);
+          params.set('recordId', found.id);
+          router.replace(`${window.location.pathname}?${params.toString()}`);
+        },
+      });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [sourceBirth, isArchiveMode, refetchNonce, router]);
+
   // 심층 풀이 — 캐시 우선, 미스 시에만 호출 (45초 타임아웃)
   // 보관함 재생 모드에선 AI 호출 금지
   const aiStartedRef = useRef(false);
   useEffect(() => {
     if (isArchiveMode) return;
+    if (cacheGate) return;
     if (!tojeong || !cacheKey) return;
 
     const cached = useReportCacheStore.getState().getReport<string>('tojeong', cacheKey);
@@ -203,7 +239,7 @@ export default function TojeongResultPage() {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [tojeong, cacheKey, isArchiveMode, refetchNonce]);
+  }, [tojeong, cacheKey, isArchiveMode, refetchNonce, cacheGate]);
 
   const retryAI = () => {
     if (!tojeong || !cacheKey) return;
@@ -494,6 +530,13 @@ export default function TojeongResultPage() {
           )}
         </section>
       )}
+
+      <RestoreReportModal
+        open={!!cacheGate}
+        title="토정비결"
+        onUseCached={handleUseCached}
+        onRefresh={handleRefetch}
+      />
     </motion.div>
   );
 }

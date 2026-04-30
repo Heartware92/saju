@@ -31,6 +31,7 @@ import { NEWYEAR_SECTION_KEYS, NEWYEAR_SECTION_LABELS, PICKED_DATE_SECTION_KEYS,
 import { AILoadingBar } from '../components/AILoadingBar';
 import { LuckyVisualCard, ELEMENT_LUCKY } from '../components/saju/LuckyVisualCard';
 import { TermChip } from '../components/ui/TermChip';
+import { useLoadingGuard } from '../hooks/useLoadingGuard';
 
 const NEWYEAR_MESSAGES = [
   '세운과 원국의 합충을 분석하는 중입니다',
@@ -334,12 +335,40 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     return () => { cancelled = true; };
   }, [scope, targetYear, pickedDate, today, dateConfirmed, primary, isArchiveMode, refetchNonce, router]);
 
+  // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
+  const [yearTimedOut] = useLoadingGuard(newyearReportLoading, 70_000);
+  const [dateTimedOut] = useLoadingGuard(pickedDateReportLoading, 70_000);
+  const [domainTimedOut] = useLoadingGuard(domainAILoading, 70_000);
+  useEffect(() => {
+    if (yearTimedOut) {
+      setNewyearReportLoading(false);
+      setNewyearReport({ success: false, error: 'AI 응답이 너무 오래 걸려요. 새로고침 후 다시 시도해주세요.' });
+    }
+  }, [yearTimedOut]);
+  useEffect(() => {
+    if (dateTimedOut) {
+      setPickedDateReportLoading(false);
+      setPickedDateReport({ success: false, error: 'AI 응답이 너무 오래 걸려요. 새로고침 후 다시 시도해주세요.' });
+    }
+  }, [dateTimedOut]);
+  useEffect(() => {
+    if (domainTimedOut) setDomainAILoading(false);
+  }, [domainTimedOut]);
+
   // 기간/대상 바뀔 때마다 초기화 + AI 호출 — 캐시 우선
   // 보관함 재생 모드에선 절대 AI 호출 금지
+  // cacheGate 는 의존성에서 제외 — 보관함 모달이 뜨는 동안 이미 시작된 fetch 가 정상 완료되도록.
+  // (이전 구현에서 cacheGate 의존성이 mid-flight cancel → loading 영구 true 무한로딩 유발)
   useEffect(() => {
     if (isArchiveMode) return;
     if (!saju || !fortune) return;
-    if (cacheGate) return; // 보관함 모달 떠있으면 fetch 안 함 — 사용자 선택 대기
+    if (cacheGate) {
+      // 보관함 모달이 떠있으면 새 fetch 시작 안 함 — 단, 로딩 상태는 반드시 해제
+      setNewyearReportLoading(false);
+      setPickedDateReportLoading(false);
+      setDomainAILoading(false);
+      return;
+    }
     let cancelled = false;
     const sk = sajuKey(saju);
 
@@ -486,7 +515,8 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
       });
 
     return () => { cancelled = true; };
-  }, [saju, fortune, scope, pickedDate, targetYear, today, chargeForContent, isArchiveMode, dateConfirmed, refetchNonce, cacheGate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saju, fortune, scope, pickedDate, targetYear, today, chargeForContent, isArchiveMode, dateConfirmed, refetchNonce]);
 
   if (!primary && !searchParams?.get('year')) {
     const profileStoreReady = hydrated && lastFetchedAt !== null && !profilesLoading;

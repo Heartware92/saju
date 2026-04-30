@@ -38,10 +38,13 @@ import {
   getDreamInterpretation,
 } from '../services/fortuneService';
 import { sajuDB } from '../services/supabase';
+import { findRecentArchive, type ArchiveCategory } from '../services/archiveService';
+import { RestoreReportModal } from '../components/RestoreReportModal';
 import { analyzeKoreanName } from '../utils/nameEumRyeong';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { DreamInputPanel } from '../components/dream/DreamInputPanel';
 import { BackButton } from '../components/ui/BackButton';
+import { useLoadingGuard } from '../hooks/useLoadingGuard';
 import styles from './SajuResultPage.module.css';
 
 interface Props {
@@ -101,6 +104,10 @@ export default function MoreFortunePage({ category }: Props) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [cacheGate, setCacheGate] = useState<{ kind: 'today' | 'jungtong' | 'zamidusu' | 'tojeong' | 'newyear' | 'period_date' | 'period_day' | 'taekil' | 'gunghap' | 'tarot' | `more:${string}`; key: string; restore: () => void } | null>(null);
+  const handleUseCached = () => { cacheGate?.restore(); setCacheGate(null); };
+  const handleRefetch = () => { setCacheGate(null); };
 
   // 보관함 재생 메타 (원본 기록 시각 표시용)
   const [archivedAt, setArchivedAt] = useState<string | null>(null);
@@ -171,6 +178,30 @@ export default function MoreFortunePage({ category }: Props) {
       });
     return () => { cancelled = true; };
   }, [recordId]);
+
+  // ── 보관함 DB 확인 — 이전에 본 풀이가 있으면 모달 표시 ──
+  useEffect(() => {
+    if (isArchiveMode || !primary || !category) return;
+    if (isLegacy) return;
+    let cancelled = false;
+    findRecentArchive({
+      category: category as ArchiveCategory,
+      birth_date: primary.birth_date,
+      gender: primary.gender,
+    }).then(found => {
+      if (cancelled || !found) return;
+      setCacheGate({
+        kind: `more:${category}` as const,
+        key: '',
+        restore: () => {
+          const params = new URLSearchParams(window.location.search);
+          params.set('recordId', found.id);
+          router.replace(`${window.location.pathname}?${params.toString()}`);
+        },
+      });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [category, primary, isArchiveMode, isLegacy, router]);
 
   // [B안] cfg 가 없는데 legacy + archive 모드면 보관함 재생 전용 fallback 화면 렌더.
   // 그 외 (legacy + 정상 진입 / 잘못된 카테고리) 는 위 useEffect 가 홈으로 redirect.
@@ -246,6 +277,7 @@ export default function MoreFortunePage({ category }: Props) {
   // 카테고리/입력 바뀔 때 캐시 silent restore — 탭 이동·새로고침 후 다시 와도 재호출 X
   useEffect(() => {
     if (isArchiveMode) return;
+    if (cacheGate) return;
     const cacheKey = buildCacheKey();
     const kindKey = category ? (`more:${category}` as const) : null;
     if (cacheKey && kindKey) {
@@ -659,6 +691,13 @@ export default function MoreFortunePage({ category }: Props) {
           )}
         </AnimatePresence>
       </motion.div>
+
+      <RestoreReportModal
+        open={!!cacheGate}
+        title={cfg.title}
+        onUseCached={handleUseCached}
+        onRefresh={handleRefetch}
+      />
     </div>
   );
 }

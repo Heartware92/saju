@@ -17,6 +17,7 @@ import { getHybridReading } from '../services/fortuneService';
 import type { TarotCardInfo } from '../services/api';
 import type { SajuResult } from '../utils/sajuCalculator';
 import { AILoadingBar } from '../components/AILoadingBar';
+import { useLoadingGuard } from '../hooks/useLoadingGuard';
 
 type TarotMode = 'today' | 'monthly' | 'question';
 type AutoState = 'idle' | 'shuffling' | 'spread' | 'revealed';
@@ -384,6 +385,15 @@ export default function TarotPage() {
   const [aiContent, setAiContent] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
+  const [aiTimedOut] = useLoadingGuard(aiLoading, 70_000);
+  useEffect(() => {
+    if (aiTimedOut) {
+      setAiLoading(false);
+      if (!aiContent) setAiError('AI 응답이 너무 오래 걸려요. 새로고침 후 다시 시도해주세요.');
+    }
+  }, [aiTimedOut, aiContent]);
 
   useEffect(() => { if (user) fetchProfiles(); }, [user, fetchProfiles]);
 

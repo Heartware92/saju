@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
-import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
+import { useReportCacheStore, sajuKey, type ReportKind } from '../store/useReportCacheStore';
 import { sajuDB } from '../services/supabase';
 import { BackButton } from '../components/ui/BackButton';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
@@ -36,9 +36,11 @@ import {
   type GunghapCategory,
 } from '../constants/prompts';
 import { sanitizeAIOutput } from '../services/fortuneService';
-import { archiveSaju } from '../services/archiveService';
+import { archiveSaju, findRecentArchive } from '../services/archiveService';
+import { RestoreReportModal } from '../components/RestoreReportModal';
 import Link from 'next/link';
 import { AILoadingBar } from '../components/AILoadingBar';
+import { useLoadingGuard } from '../hooks/useLoadingGuard';
 
 // ──────────────────────────────────────────────
 // 카테고리 그룹 정의
@@ -186,6 +188,7 @@ async function callGunghapGPT(prompt: string): Promise<string> {
 // 컴포넌트
 // ──────────────────────────────────────────────
 export default function GunghapPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const recordId = searchParams?.get('recordId') ?? null;
   const isArchiveMode = !!recordId;
@@ -206,6 +209,19 @@ export default function GunghapPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string>('');
   const [error, setError] = useState<string>('');
+
+  // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
+  const [loadingTimedOut] = useLoadingGuard(loading, 70_000);
+  useEffect(() => {
+    if (loadingTimedOut) {
+      setLoading(false);
+      if (!result) setError('AI 응답이 너무 오래 걸려요. 새로고침 후 다시 시도해주세요.');
+    }
+  }, [loadingTimedOut, result]);
+
+  const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
+  const handleUseCached = () => { cacheGate?.restore(); setCacheGate(null); };
+  const handleRefetch = () => { setCacheGate(null); };
 
   const primaryProfile = useMemo(() => profiles.find(p => p.is_primary) ?? profiles[0] ?? null, [profiles]);
   const selectedProfile = useMemo(
@@ -272,6 +288,29 @@ export default function GunghapPage() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [recordId]);
+
+  // ── 보관함 DB 확인 — 이전에 본 풀이가 있으면 모달 표시 ──
+  useEffect(() => {
+    if (isArchiveMode || !primaryProfile) return;
+    let cancelled = false;
+    findRecentArchive({
+      category: 'gunghap',
+      birth_date: primaryProfile.birth_date,
+      gender: primaryProfile.gender,
+    }).then(found => {
+      if (cancelled || !found) return;
+      setCacheGate({
+        kind: 'gunghap',
+        key: '',
+        restore: () => {
+          const params = new URLSearchParams(window.location.search);
+          params.set('recordId', found.id);
+          router.replace(`${window.location.pathname}?${params.toString()}`);
+        },
+      });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [primaryProfile, isArchiveMode]);
 
   const otherDisplayName = isPetCategory
     ? pet.name.trim()
@@ -1075,6 +1114,13 @@ export default function GunghapPage() {
         )}
 
       </AnimatePresence>
+
+      <RestoreReportModal
+        open={!!cacheGate}
+        title="궁합 분석"
+        onUseCached={handleUseCached}
+        onRefresh={handleRefetch}
+      />
     </div>
   );
 }

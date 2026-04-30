@@ -22,7 +22,9 @@ import { buildZamidusuReading, type ZamidusuReading } from '../engine/zamidusu/r
 import styles from './ZamidusuResultPage.module.css';
 import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
-import { useReportCacheStore } from '../store/useReportCacheStore';
+import { useReportCacheStore, type ReportKind } from '../store/useReportCacheStore';
+import { RestoreReportModal } from '../components/RestoreReportModal';
+import { findRecentArchive } from '../services/archiveService';
 import {
   getZamidusuReading,
   parseZamidusuSections,
@@ -35,6 +37,7 @@ import { MAJOR_STARS_META, MINOR_STARS_META, MUTAGEN_META, PALACE_ROLE_META } fr
 import { AILoadingBar } from '../components/AILoadingBar';
 import { BackButton } from '../components/ui/BackButton';
 import { StarChart } from '../components/zamidusu/StarChart';
+import { useLoadingGuard } from '../hooks/useLoadingGuard';
 
 const LOADING_MESSAGES = [
   '명반 12궁의 별자리를 배치하는 중입니다',
@@ -59,7 +62,26 @@ export default function ZamidusuResultPage() {
   const [aiResult, setAiResult] = useState<ZamidusuAIResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
+
+  // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
+  const [aiTimedOut] = useLoadingGuard(aiLoading, 70_000);
+  useEffect(() => {
+    if (aiTimedOut) {
+      setAiLoading(false);
+      if (!aiResult) setAiResult({ success: false, error: 'AI 응답이 너무 오래 걸려요. 새로고침 후 다시 시도해주세요.' });
+    }
+  }, [aiTimedOut, aiResult]);
   const chargeForContent = useCreditStore(s => s.chargeForContent);
+
+  const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
+  const [refetchNonce, setRefetchNonce] = useState(0);
+  const handleUseCached = () => { cacheGate?.restore(); setCacheGate(null); };
+  const handleRefetch = () => {
+    if (cacheGate) useReportCacheStore.getState().invalidate(cacheGate.kind, cacheGate.key);
+    setCacheGate(null);
+    aiStartedRef.current = false;
+    setRefetchNonce(n => n + 1);
+  };
 
   const hasUrlBirth = !!(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
   const primaryHourUnknown = !!primary && !primary.birth_time;
@@ -172,6 +194,30 @@ export default function ZamidusuResultPage() {
     return () => { cancelled = true; };
   }, [recordId]);
 
+  // ── 보관함 DB 확인 — 이전에 본 풀이가 있으면 모달 표시 ──
+  useEffect(() => {
+    if (isArchiveMode || !sourceBirth) return;
+    if (refetchNonce > 0) return;
+    let cancelled = false;
+    findRecentArchive({
+      category: 'zamidusu',
+      birth_date: sourceBirth.birth_date,
+      gender: sourceBirth.gender,
+    }).then(found => {
+      if (cancelled || !found) return;
+      setCacheGate({
+        kind: 'zamidusu',
+        key: '',
+        restore: () => {
+          const params = new URLSearchParams(window.location.search);
+          params.set('recordId', found.id);
+          router.replace(`${window.location.pathname}?${params.toString()}`);
+        },
+      });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [sourceBirth, isArchiveMode, refetchNonce, router]);
+
   const reading: ZamidusuReading | null = useMemo(() => {
     return chart ? buildZamidusuReading(chart) : null;
   }, [chart]);
@@ -181,6 +227,7 @@ export default function ZamidusuResultPage() {
   const aiStartedRef = useRef(false);
   useEffect(() => {
     if (isArchiveMode) return;
+    if (cacheGate) return;
     if (!chart || !cacheKey) return;
 
     const cached = useReportCacheStore.getState().getReport<ZamidusuAIResult>('zamidusu', cacheKey);
@@ -242,7 +289,7 @@ export default function ZamidusuResultPage() {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [chart, cacheKey, isArchiveMode]);
+  }, [chart, cacheKey, isArchiveMode, cacheGate, refetchNonce]);
 
   // ── 시간 미상 가드 ──
   // 보관함 재생 모드에선 이 가드를 우회 — 과거에 시간 알았던 시점에 받은 풀이를
@@ -863,6 +910,13 @@ export default function ZamidusuResultPage() {
         )}
 
       </motion.div>
+
+      <RestoreReportModal
+        open={!!cacheGate}
+        title="자미두수"
+        onUseCached={handleUseCached}
+        onRefresh={handleRefetch}
+      />
     </div>
   );
 }
