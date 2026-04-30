@@ -120,13 +120,30 @@ export const ELEMENT_CELL_COLORS: Record<Element, { bg: string; fg: string }> = 
   '수': { bg: '#111827', fg: '#F3F4F6' },
 };
 
+const STEM_PERSONALITY: Record<string, { tagline: string; traits: string[] }> = {
+  '갑': { tagline: '곧게 뻗어 하늘을 향하는 큰 나무', traits: ['리더십', '강직함', '추진력', '우직함'] },
+  '을': { tagline: '바람에 흔들려도 꺾이지 않는 덩굴', traits: ['유연함', '적응력', '처세술', '섬세함'] },
+  '병': { tagline: '세상을 환히 비추는 태양의 기운', traits: ['열정적', '공명정대', '화려함', '낙천적'] },
+  '정': { tagline: '어둠 속 길을 밝히는 촛불', traits: ['섬세함', '집중력', '따뜻함', '내면의 빛'] },
+  '무': { tagline: '만물을 품는 넓은 대지', traits: ['신뢰감', '묵직함', '포용력', '중후함'] },
+  '기': { tagline: '생명을 키우는 기름진 논밭', traits: ['실용적', '꼼꼼함', '양육', '수용력'] },
+  '경': { tagline: '거친 바위를 깎아 만든 강철의 기운', traits: ['결단력', '정의감', '의리', '강인함'] },
+  '신': { tagline: '빛을 모아 반짝이는 보석', traits: ['심미안', '예리함', '감수성', '완벽주의'] },
+  '임': { tagline: '끝없이 흘러 바다에 이르는 큰 강', traits: ['지혜로움', '포용력', '대범함', '자유로움'] },
+  '계': { tagline: '만물을 적시는 고요한 이슬', traits: ['직관력', '감성적', '섬세함', '영감'] },
+};
+
 export function getCharacterFromStem(gan: string): CharacterInfo | null {
   const element = STEM_TO_ELEMENT[gan];
   if (!element) return null;
   const base = CHARACTER_BY_ELEMENT[element];
   const stemImage = CHARACTER_IMAGE_BY_STEM[gan];
-  if (!stemImage) return base;
-  return { ...base, image: stemImage };
+  const personality = STEM_PERSONALITY[gan];
+  return {
+    ...base,
+    ...(stemImage && { image: stemImage }),
+    ...(personality && { tagline: personality.tagline, traits: personality.traits }),
+  };
 }
 
 export function stemToHanja(gan: string): string {
