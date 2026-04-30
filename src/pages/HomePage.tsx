@@ -534,6 +534,7 @@ export default function HomePage() {
           router.push(`${archiveModal.targetPath}?fresh=1`);
           setArchiveModal(null);
         }}
+        onClose={() => setArchiveModal(null)}
       />
     </div>
   );

@@ -18,6 +18,7 @@ interface RestoreReportModalProps {
   refreshCostHint?: string;
   onUseCached: () => void;
   onRefresh: () => void;
+  onClose?: () => void;
 }
 
 export const RestoreReportModal: React.FC<RestoreReportModalProps> = ({
@@ -26,11 +27,24 @@ export const RestoreReportModal: React.FC<RestoreReportModalProps> = ({
   refreshCostHint,
   onUseCached,
   onRefresh,
+  onClose,
 }) => {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm px-4">
-      <div className="w-full max-w-[400px] rounded-2xl bg-[rgba(20,12,38,0.96)] border border-[var(--border-subtle)] p-6 text-center shadow-2xl">
+      <div className="relative w-full max-w-[400px] rounded-2xl bg-[rgba(20,12,38,0.96)] border border-[var(--border-subtle)] p-6 text-center shadow-2xl">
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full text-text-tertiary hover:text-text-primary hover:bg-white/10 transition-colors"
+            aria-label="닫기"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        )}
         <div
           className="w-14 h-14 mx-auto mb-4 rounded-full bg-[rgba(124,92,252,0.18)] border border-cta/40 flex items-center justify-center text-2xl"
           aria-hidden
