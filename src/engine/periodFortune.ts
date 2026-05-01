@@ -29,7 +29,7 @@ export type FortuneScope = 'year' | 'month' | 'day';
 export type FortuneGrade = '대길' | '길' | '중길' | '평' | '중흉' | '흉';
 
 export interface FortuneDomain {
-  key: 'overall' | 'wealth' | 'career' | 'love' | 'health' | 'study';
+  key: 'overall' | 'wealth' | 'career' | 'love' | 'health' | 'study' | 'relation';
   label: string;
   score: number; // 0~100
   grade: FortuneGrade;
@@ -292,6 +292,8 @@ function scoreForTarget(saju: SajuResult, target: TargetGanZhi): {
     : target.tenGodGan === '겁재' ? -6 : 0;
   const healthBoost = interactionBonus < 0 ? -10 : ['정인', '식신'].includes(target.tenGodGan) ? 8 : 0;
   const studyBoost = ['정인', '편인', '식신'].includes(target.tenGodGan) ? 14 : 0;
+  const relationBoost = ['정인', '편인', '정관'].includes(target.tenGodGan) ? 12
+    : ['겁재', '상관'].includes(target.tenGodGan) ? -8 : 0;
 
   const clamp = (v: number) => Math.max(5, Math.min(95, Math.round(overall * 0.5 + 25 + v)));
 
@@ -304,6 +306,7 @@ function scoreForTarget(saju: SajuResult, target: TargetGanZhi): {
       love: clamp(loveBoost),
       health: clamp(healthBoost),
       study: clamp(studyBoost),
+      relation: clamp(relationBoost),
     },
     rationale,
   };
@@ -353,6 +356,12 @@ function buildDomainSummary(key: FortuneDomain['key'], grade: FortuneGrade, targ
       down: `집중이 흩어지는 시기 — 단기 목표에 집중.`,
       tipsUp: ['핵심 과목부터 집중 공략', '스터디 그룹 결성'],
       tipsDown: ['과목 분산 자제', '짧은 시간 반복 학습'],
+    },
+    relation: {
+      up: `귀인 운기가 열려 — 인맥·협력·지지 관계가 순조롭습니다.`,
+      down: `인간관계에 잡음이 끼는 시기 — 신뢰 관계부터 챙기세요.`,
+      tipsUp: ['새 네트워크 확장 시도', '가까운 사람에게 먼저 연락'],
+      tipsDown: ['험담·분쟁 거리두기', '중요 부탁은 타이밍 보고'],
     },
   };
   const block = byKey[key];
@@ -620,13 +629,13 @@ export function calculatePeriodFortune(
     }
   });
 
-  const domainList: FortuneDomain[] = (['overall', 'wealth', 'career', 'love', 'health', 'study'] as const).map(key => {
+  const domainList: FortuneDomain[] = (['overall', 'wealth', 'career', 'love', 'health', 'relation', 'study'] as const).map(key => {
     const score = domains[key];
     const grade = gradeFromScore(score);
     const { summary, tips } = buildDomainSummary(key, grade, target);
     return {
       key,
-      label: { overall: '총운', wealth: '재물운', career: '직장·학업운', love: '애정운', health: '건강운', study: '학업·자격운' }[key],
+      label: { overall: '총운', wealth: '재물운', career: '직장·사업운', love: '연애·결혼운', health: '건강운', relation: '인간관계운', study: '학업·자격운' }[key],
       score,
       grade,
       summary,

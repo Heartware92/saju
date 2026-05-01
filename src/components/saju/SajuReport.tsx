@@ -1029,10 +1029,16 @@ function DaeWoonSection({
   const currentYear = new Date().getFullYear();
   const currentAge = currentYear - birthYear;
 
-  // 사용자가 선택한 대운(시작 나이) — null 이면 현재 대운 강조
-  const [selectedDwAge, setSelectedDwAge] = useState<number | null>(null);
-  // 사용자가 선택한 세운(연도) — 클릭 시 그 해 12개월 월운 표시
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  // 사용자가 선택한 대운(시작 나이) — 진입 즉시 현재 대운 자동 펼침
+  const [selectedDwAge, setSelectedDwAge] = useState<number | null>(() => {
+    for (let i = 0; i < 10; i++) {
+      const age = result.daeWoonStartAge + i * 10;
+      if (currentAge >= age && currentAge < age + 10) return age;
+    }
+    return null;
+  });
+  // 사용자가 선택한 세운(연도) — 진입 즉시 현재 연도 자동 펼침
+  const [selectedYear, setSelectedYear] = useState<number | null>(currentYear);
 
   // 선택된 대운의 [시작 연도, 끝 연도] — 세운 영역에서 그 범위만 강조
   const selectedDwRange = useMemo(() => {
@@ -1112,7 +1118,9 @@ function DaeWoonSection({
               </div>
               <div className={styles.dwInfo}>
                 <span>{dw.tenGod}</span>
-                <span>{dw.twelveStage}</span>
+                <span className={styles.dwInfoSub}>{dw.tenGodZhi}</span>
+                <span className={styles.dwInfoSub}>{dw.twelveStage}</span>
+                {dw.sinSal12 && <span className={styles.dwInfoSinsal}>{dw.sinSal12}</span>}
               </div>
             </button>
           );
@@ -1153,7 +1161,9 @@ function DaeWoonSection({
               </div>
               <div className={styles.swInfo}>
                 <span>{sw.tenGod}</span>
-                <span>{sw.twelveStage}</span>
+                <span className={styles.dwInfoSub}>{sw.tenGodZhi}</span>
+                <span className={styles.dwInfoSub}>{sw.twelveStage}</span>
+                {sw.sinSal12 && <span className={styles.dwInfoSinsal}>{sw.sinSal12}</span>}
               </div>
             </button>
           );

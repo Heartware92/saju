@@ -178,7 +178,9 @@ export interface DaeWoon {
   ganElement: string;
   zhiElement: string;
   tenGod: string;
+  tenGodZhi: string;
   twelveStage: string;
+  sinSal12: string;
 }
 
 export interface SeWoon {
@@ -188,7 +190,9 @@ export interface SeWoon {
   ganElement: string;
   zhiElement: string;
   tenGod: string;
+  tenGodZhi: string;
   twelveStage: string;
+  sinSal12: string;
   animal: string;
 }
 
@@ -992,7 +996,7 @@ const analyzeInteractions = (
       interactions.push({
         type: '합',
         elements: matched.map(m => m.pos),
-        description: `${matchVals.join('')} ${uniqueVals.size === 3 ? '방합' : '반방합'} ${element}국 - 같은 방향 ${element} 기운 결집`
+        description: `${matchVals.join('')} ${uniqueVals.size === 3 ? '방합' : '반합'} ${element}국 - 같은 방향 ${element} 기운 결집`
       });
     }
   });
@@ -1147,7 +1151,7 @@ const getKongmangZhis = (dayGan: string, dayZhi: string): [string, string] | nul
   return [EARTHLY_BRANCHES[k1], EARTHLY_BRANCHES[k2]];
 };
 
-const calculateSeWoon = (dayGan: string, currentYear: number): SeWoon[] => {
+const calculateSeWoon = (dayGan: string, currentYear: number, yearZhiBirth: string = ''): SeWoon[] => {
   const seWoons: SeWoon[] = [];
 
   // 다른 어플처럼 과거~미래를 함께 보여준다 — 현재년 -7 ~ +4 (총 12년)
@@ -1169,7 +1173,9 @@ const calculateSeWoon = (dayGan: string, currentYear: number): SeWoon[] => {
       ganElement: STEM_ELEMENT[gan] || '',
       zhiElement: BRANCH_ELEMENT[zhi] || '',
       tenGod: getTenGod(dayGan, gan),
+      tenGodZhi: getTenGodForBranch(dayGan, zhi),
       twelveStage: getTwelveStage(dayGan, zhi),
+      sinSal12: yearZhiBirth ? getSinSal12(yearZhiBirth, zhi) : '',
       animal: getAnimal(zhi)
     });
   }
@@ -1345,12 +1351,14 @@ export const calculateSaju = (
       ganElement: STEM_ELEMENT[gan] || '',
       zhiElement: BRANCH_ELEMENT[zhi] || '',
       tenGod: getTenGod(dayGan, gan),
-      twelveStage: getTwelveStage(dayGan, zhi)
+      tenGodZhi: getTenGodForBranch(dayGan, zhi),
+      twelveStage: getTwelveStage(dayGan, zhi),
+      sinSal12: getSinSal12(yearZhiForSinsal, zhi),
     };
   });
 
   const currentYear = new Date().getFullYear();
-  const seWoon = calculateSeWoon(dayGan, currentYear);
+  const seWoon = calculateSeWoon(dayGan, currentYear, yearZhiForSinsal);
   const currentSeWoon = seWoon.find(s => s.year === currentYear) ?? seWoon[0];
 
   const lunarMonth = lunar.getMonth();
