@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   title: "이천점 — 우주의 기운을 당신께 드려요",
   description: "별빛이 읽어주는 사주·타로·자미두수. 오늘 하늘이 건네는 한 문장을 받아보세요.",
   icons: {
-    icon: '/coin.png',
+    icon: '/favicon.png',
   },
 };
 
