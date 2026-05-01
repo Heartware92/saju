@@ -123,6 +123,7 @@ export default function ConsultationPage() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const streamingRef = useRef<{ accumulated: string; botMsgId: string; profileId: string; convId: string } | null>(null);
 
   const activeConv = useMemo(
     () => conversations.find(c => c.id === activeConversationId) ?? null,
@@ -278,9 +279,32 @@ export default function ConsultationPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [loading]);
 
-  // 언마운트 시 진행 중 스트림 중단
+  // 언마운트 시 진행 중 스트림 중단 — 부분 응답을 localStorage에 직접 저장
   useEffect(() => {
     return () => {
+      if (streamingRef.current) {
+        const { accumulated, botMsgId, profileId, convId } = streamingRef.current;
+        if (accumulated) {
+          const partial = sanitizeAIOutput(accumulated);
+          try {
+            const rawConvs = localStorage.getItem(CONVERSATIONS_KEY(profileId));
+            if (rawConvs) {
+              const convs: StoredConversation[] = JSON.parse(rawConvs);
+              const updated = convs.map(c => {
+                if (c.id !== convId) return c;
+                return {
+                  ...c,
+                  messages: c.messages.map(m =>
+                    m.id === botMsgId ? { ...m, content: partial } : m
+                  ),
+                  updatedAt: Date.now(),
+                };
+              });
+              localStorage.setItem(CONVERSATIONS_KEY(profileId), JSON.stringify(updated));
+            }
+          } catch { /* ignore */ }
+        }
+      }
       abortRef.current?.abort();
     };
   }, []);
@@ -360,6 +384,7 @@ export default function ConsultationPage() {
 
     // assistant 메시지 자리 미리 확보 (타이핑 효과 위해)
     const botMsgId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `a-${Date.now()}-${Math.random()}`;
+    streamingRef.current = { accumulated: '', botMsgId, profileId: selectedProfileId, convId: activeConversationId };
 
     try {
       // 세션 토큰
@@ -443,11 +468,11 @@ export default function ConsultationPage() {
             }
             if (parsed.delta) {
               accumulated += parsed.delta;
-              // 전송 시점 프로필과 여전히 같을 때만 UI 반영
+              streamingRef.current!.accumulated = accumulated;
               if (selectedProfileId === profileAtSend) {
-                const snapshot = accumulated;
+                const display = sanitizeAIOutput(accumulated).replace(/\*+/g, '');
                 setMessages(prev => prev.map(m =>
-                  m.id === botMsgId ? { ...m, content: snapshot } : m
+                  m.id === botMsgId ? { ...m, content: display } : m
                 ));
               }
             }
@@ -458,7 +483,7 @@ export default function ConsultationPage() {
       }
 
       if (streamError) throw new Error(streamError);
-      if (!gotDone && accumulated.length === 0) throw new Error('AI 응답이 비어 있습니다.');
+      if (!gotDone && accumulated.length === 0) throw new Error('응답이 비어 있습니다.');
 
       // 완료 후 sanitize 한 번 더 (마크다운/이모지 최종 정리)
       const cleaned = sanitizeAIOutput(accumulated);
@@ -501,6 +526,7 @@ export default function ConsultationPage() {
       setMessages(prev => prev.filter(m => m.id !== botMsgId));
       setError(e instanceof Error ? e.message : '응답 생성 중 오류가 발생했습니다.');
     } finally {
+      streamingRef.current = null;
       abortRef.current = null;
       setLoading(false);
     }
@@ -588,7 +614,7 @@ export default function ConsultationPage() {
                 상담소
               </h1>
               <p className="text-[13px] text-text-tertiary mt-0.5">
-                사주 기반 1:1 AI 상담 · 질문팩 ☀️ {CONSULTATION_PACK_SUN_COST} 또는 🌙 {CONSULTATION_PACK_MOON_COST} → {CONSULTATION_QUESTIONS_PER_PACK}질문
+                사주 기반 1:1 상담 · 질문팩 ☀️ {CONSULTATION_PACK_SUN_COST} 또는 🌙 {CONSULTATION_PACK_MOON_COST} → {CONSULTATION_QUESTIONS_PER_PACK}질문
               </p>
             </div>
           </div>
