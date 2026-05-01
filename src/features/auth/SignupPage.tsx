@@ -640,7 +640,7 @@ export const SignupPage: React.FC = () => {
             <div className="w-12" />
           </div>
           <iframe
-            src={`/${showPolicy}`}
+            src={`/${showPolicy}?embed=1`}
             className="flex-1 w-full border-none"
             title={showPolicy === 'terms' ? '이용약관' : '개인정보처리방침'}
           />

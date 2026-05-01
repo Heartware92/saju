@@ -4,16 +4,21 @@ export const metadata = {
   title: '이용약관 — 이천점',
 };
 
-export default function TermsPage() {
+export default async function TermsPage({ searchParams }: { searchParams: Promise<{ embed?: string }> }) {
+  const { embed } = await searchParams;
+  const isEmbed = embed === '1';
+
   return (
-    <div className="min-h-screen px-4 pt-4 pb-12 max-w-[720px] mx-auto">
-      <div className="flex items-center justify-between mb-6 px-1">
-        <BackButton />
-        <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
-          이용약관
-        </h1>
-        <div className="w-9" />
-      </div>
+    <div className={`min-h-screen px-4 pb-12 max-w-[720px] mx-auto ${isEmbed ? 'pt-2' : 'pt-4'}`}>
+      {!isEmbed && (
+        <div className="flex items-center justify-between mb-6 px-1">
+          <BackButton />
+          <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+            이용약관
+          </h1>
+          <div className="w-9" />
+        </div>
+      )}
 
       <div className="rounded-2xl p-6 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
         <p className="text-[13px] text-text-tertiary mb-4">
