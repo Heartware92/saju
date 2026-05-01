@@ -13,9 +13,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = process.env.SOLAPI_API_KEY;
-    const apiSecret = process.env.SOLAPI_API_SECRET;
-    const senderPhone = process.env.SOLAPI_SENDER_PHONE;
+    const apiKey = process.env.SOLAPI_API_KEY?.trim();
+    const apiSecret = process.env.SOLAPI_API_SECRET?.trim();
+    const senderPhone = process.env.SOLAPI_SENDER_PHONE?.trim();
 
     if (!apiKey || !apiSecret || !senderPhone) {
       return NextResponse.json(
