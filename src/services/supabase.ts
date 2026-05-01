@@ -39,15 +39,14 @@ export const auth = {
     return data;
   },
 
-  // 이메일/비밀번호 회원가입 — 인증 메일 자동 발송 (Supabase 대시보드 Auth → Email confirm 활성 시)
-  signUpWithEmail: async (email: string, password: string) => {
+  signUpWithEmail: async (email: string, password: string, phone?: string) => {
     const redirectBase = typeof window !== 'undefined' ? window.location.origin : '';
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        // 가입 인증 메일의 [확인하기] 링크가 이쪽으로 redirect 됨
         emailRedirectTo: `${redirectBase}/auth/callback`,
+        data: phone ? { phone } : undefined,
       },
     });
     if (error) throw error;

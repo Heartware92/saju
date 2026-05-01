@@ -4,7 +4,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUserStore } from '../../store/useUserStore';
@@ -22,6 +22,13 @@ export const SignupPage: React.FC = () => {
   // 비밀번호 표시·숨김 토글 — 입력 실수 줄임
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  // SMS OTP 인증
+  const [phone, setPhone] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpTimer, setOtpTimer] = useState(0);
   // 한국 법규 + KISA 가이드 — 동의 항목 3개로 분리
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
@@ -49,6 +56,69 @@ export const SignupPage: React.FC = () => {
   const strengthLabel = ['', '매우 약함', '약함', '보통', '강함'][passwordStrength];
   const strengthColor = ['', '#F87171', '#FB923C', '#FBBF24', '#34D399'][passwordStrength];
 
+  // OTP 타이머
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (otpTimer > 0) {
+      timerRef.current = setInterval(() => setOtpTimer((t) => t - 1), 1000);
+      return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    }
+  }, [otpTimer > 0]);
+
+  const formatTimer = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+  const handleSendOtp = async () => {
+    const cleaned = phone.replace(/[^0-9]/g, '');
+    if (!/^01[016789]\d{7,8}$/.test(cleaned)) {
+      setError('올바른 휴대폰 번호를 입력해주세요.');
+      return;
+    }
+    setError('');
+    setOtpLoading(true);
+    try {
+      const res = await fetch('/api/sms/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleaned }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setOtpSent(true);
+      setOtpTimer(300);
+      setOtpVerified(false);
+      setOtpCode('');
+    } catch (err: any) {
+      setError(err?.message || '인증번호 발송에 실패했습니다.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otpCode || otpCode.length !== 6) {
+      setError('6자리 인증번호를 입력해주세요.');
+      return;
+    }
+    setError('');
+    setOtpLoading(true);
+    try {
+      const cleaned = phone.replace(/[^0-9]/g, '');
+      const res = await fetch('/api/sms/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleaned, code: otpCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setOtpVerified(true);
+      setOtpTimer(0);
+    } catch (err: any) {
+      setError(err?.message || '인증번호가 올바르지 않습니다.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
   const handleSocial = async (provider: 'google' | 'kakao') => {
     setError('');
     try {
@@ -63,8 +133,13 @@ export const SignupPage: React.FC = () => {
     setError('');
     setSuccess(false);
 
-    if (!email || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword || !phone) {
       setError('모든 필드를 입력해주세요.');
+      return;
+    }
+
+    if (!otpVerified) {
+      setError('휴대폰 인증을 완료해주세요.');
       return;
     }
 
@@ -92,7 +167,7 @@ export const SignupPage: React.FC = () => {
     }
 
     try {
-      await signup(email, password);
+      await signup(email, password, phone.replace(/[^0-9]/g, ''));
       setSuccess(true);
       setTimeout(() => {
         // replace — 가입 완료 후 뒤로가기로 가입 폼 돌아가지 않도록
@@ -220,6 +295,67 @@ export const SignupPage: React.FC = () => {
                   className={inputClass}
                   required
                 />
+              </div>
+
+              {/* Phone — SMS OTP 인증 */}
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                  휴대폰 번호 <span className="text-status-error">*</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="tel"
+                    placeholder="01012345678"
+                    value={phone}
+                    onChange={(e) => {
+                      setPhone(e.target.value.replace(/[^0-9]/g, ''));
+                      if (otpVerified) { setOtpVerified(false); setOtpSent(false); }
+                    }}
+                    className={`${inputClass} flex-1`}
+                    maxLength={11}
+                    disabled={otpVerified}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={otpLoading || otpVerified || phone.length < 10}
+                    className="shrink-0 h-12 px-4 rounded-lg text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-space-elevated border border-[var(--border-default)] text-cta hover:bg-space-surface"
+                  >
+                    {otpLoading ? '발송 중...' : otpVerified ? '인증완료' : otpSent ? '재발송' : '인증요청'}
+                  </button>
+                </div>
+                {otpSent && !otpVerified && (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="인증번호 6자리"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                      className={`${inputClass} flex-1`}
+                      maxLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleVerifyOtp}
+                      disabled={otpLoading || otpCode.length !== 6 || otpTimer <= 0}
+                      className="shrink-0 h-12 px-4 rounded-lg text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-cta to-cta-active text-white"
+                    >
+                      확인
+                    </button>
+                  </div>
+                )}
+                {otpSent && !otpVerified && otpTimer > 0 && (
+                  <p className="mt-1 text-xs text-text-tertiary">
+                    인증번호가 발송되었습니다. <span className="text-cta font-medium">{formatTimer(otpTimer)}</span> 이내에 입력해주세요.
+                  </p>
+                )}
+                {otpSent && !otpVerified && otpTimer <= 0 && (
+                  <p className="mt-1 text-xs text-status-error">인증 시간이 만료되었습니다. 다시 요청해주세요.</p>
+                )}
+                {otpVerified && (
+                  <p className="mt-1 text-xs text-status-success">휴대폰 인증이 완료되었습니다.</p>
+                )}
               </div>
 
               {/* Password — 표시·숨김 토글 + 강도 시각화 */}
