@@ -41,19 +41,17 @@ export const useUserStore = create<UserState>()(
 
           if (session?.user) {
             set({ user: session.user, loading: false });
-            // 크레딧 + 프로필 병렬 프리페치 — 홈 진입 시점에 이미 완료되어 있게
             useCreditStore.getState().fetchBalance(session.user.id);
-            useProfileStore.getState().fetchProfiles();
+            useProfileStore.getState().fetchProfiles({ userId: session.user.id });
           } else {
             set({ user: null, loading: false });
           }
 
-          // 인증 상태 변경 리스너 등록
           supabase.auth.onAuthStateChange((_event, session) => {
             if (session?.user) {
               set({ user: session.user });
               useCreditStore.getState().fetchBalance(session.user.id);
-              useProfileStore.getState().fetchProfiles();
+              useProfileStore.getState().fetchProfiles({ userId: session.user.id });
             } else {
               set({ user: null });
               useCreditStore.getState().reset();
@@ -75,12 +73,14 @@ export const useUserStore = create<UserState>()(
 
           const response = await auth.signInWithEmail(email, password);
 
-          set({ user: response.user, loading: false });
+          set({ user: response.user });
           if (response.user) {
-            // 홈 진입 전에 크레딧 + 프로필 프리페치 시작 — HomePage의 useEffect를 기다리지 않음
-            useCreditStore.getState().fetchBalance(response.user.id);
-            useProfileStore.getState().fetchProfiles();
+            await Promise.all([
+              useCreditStore.getState().fetchBalance(response.user.id, { force: true }),
+              useProfileStore.getState().fetchProfiles({ force: true, userId: response.user.id }),
+            ]);
           }
+          set({ loading: false });
         } catch (error: any) {
           console.error('Login error:', error);
           set({

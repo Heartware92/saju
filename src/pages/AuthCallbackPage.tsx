@@ -10,6 +10,9 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '../services/supabase';
+import { useCreditStore } from '../store/useCreditStore';
+import { useProfileStore } from '../store/useProfileStore';
+import { useUserStore } from '../store/useUserStore';
 
 type Status = 'processing' | 'success' | 'failed';
 
@@ -51,9 +54,18 @@ export default function AuthCallbackPage() {
 
         setStatus('success');
         setMessage('로그인되었습니다.');
-        // 목적지: ?next= 파라미터 있으면 사용, 없으면 홈
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          useUserStore.setState({ user: session.user });
+          await Promise.all([
+            useCreditStore.getState().fetchBalance(session.user.id, { force: true }),
+            useProfileStore.getState().fetchProfiles({ force: true, userId: session.user.id }),
+          ]);
+        }
+
         const next = searchParams.get('next') || '/';
-        setTimeout(() => router.replace(next), 400);
+        router.replace(next);
       } catch (e: any) {
         setStatus('failed');
         setMessage(e?.message || '로그인 처리 중 오류가 발생했습니다.');

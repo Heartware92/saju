@@ -230,7 +230,6 @@ export const useCreditStore = create<CreditState>()(
       partialize: (state) => ({
         sunBalance: state.sunBalance,
         moonBalance: state.moonBalance,
-        lastFetched: state.lastFetched,
         consultationRemaining: state.consultationRemaining,
       }),
     }

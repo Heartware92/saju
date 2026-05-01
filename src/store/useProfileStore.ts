@@ -16,7 +16,7 @@ interface ProfileState {
   lastFetchedAt: number | null;
   cachedForUserId: string | null;  // 캐시가 어떤 유저 기준인지 저장 — 유저가 바뀌면 캐시 무효화
 
-  fetchProfiles: (opts?: { force?: boolean }) => Promise<void>;
+  fetchProfiles: (opts?: { force?: boolean; userId?: string }) => Promise<void>;
   addProfile: (profile: Omit<BirthProfile, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<BirthProfile | null>;
   updateProfile: (id: string, updates: Partial<Omit<BirthProfile, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => Promise<boolean>;
   deleteProfile: (id: string) => Promise<boolean>;
@@ -42,26 +42,21 @@ export const useProfileStore = create<ProfileState>()(
     const hasCache = profiles.length > 0;
 
     try {
-      const user = await auth.getCurrentUser();
-      if (!user) {
-        // 토큰 갱신 hiccup 등으로 일시적으로 user 가 null 일 수 있음.
-        // 기존 캐시 유지하고 다음 호출에 다시 시도. 단 로딩 표시는 끔.
+      const uid = opts?.userId ?? (await auth.getCurrentUser())?.id;
+      if (!uid) {
         set({ loading: false });
         return;
       }
 
-      // 캐시가 다른 유저 소속이면 즉시 무효화 (로그인 계정이 바뀐 경우).
-      // 다른 유저의 프로필 데이터를 신규 유저에게 보여주는 것을 방지한다.
-      if (cachedForUserId && cachedForUserId !== user.id) {
+      if (cachedForUserId && cachedForUserId !== uid) {
         set({ profiles: [], lastFetchedAt: null, cachedForUserId: null });
-      } else if (!opts?.force && fresh && cachedForUserId === user.id) {
+      } else if (!opts?.force && fresh && cachedForUserId === uid) {
         return;
       }
 
-      // 캐시가 있으면 백그라운드 갱신 — 로딩 표시 안 함 (깜빡임 방지)
       set({ loading: !hasCache, error: null });
-      const next = await profileDB.getProfiles(user.id);
-      set({ profiles: next, loading: false, lastFetchedAt: Date.now(), cachedForUserId: user.id });
+      const next = await profileDB.getProfiles(uid);
+      set({ profiles: next, loading: false, lastFetchedAt: Date.now(), cachedForUserId: uid });
     } catch (error: any) {
       console.error('Error fetching profiles:', error);
       set({ error: error.message, loading: false });
@@ -167,7 +162,6 @@ export const useProfileStore = create<ProfileState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         profiles: state.profiles,
-        lastFetchedAt: state.lastFetchedAt,
         cachedForUserId: state.cachedForUserId,
       }),
       onRehydrateStorage: () => (state) => {

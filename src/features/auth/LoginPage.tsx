@@ -26,7 +26,6 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
 
   // 소셜 로그인 약관 동의
   const [pendingSocialProvider, setPendingSocialProvider] = useState<'google' | 'kakao' | null>(null);
@@ -68,7 +67,6 @@ export const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccess(false);
 
     if (!email || !password) {
       setError('이메일과 비밀번호를 입력해주세요.');
@@ -77,11 +75,7 @@ export const LoginPage: React.FC = () => {
 
     try {
       await login(email, password);
-      setSuccess(true);
-      setTimeout(() => {
-        // replace — 로그인 완료 후 뒤로가기로 로그인 페이지 돌아가지 않도록. 무조건 홈.
-        router.replace('/');
-      }, 500);
+      router.replace('/');
     } catch (err: any) {
       const msg = err?.message || '로그인에 실패했습니다.';
       if (msg.includes('Invalid login')) {
@@ -115,12 +109,6 @@ export const LoginPage: React.FC = () => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {success && (
-              <div className="rounded-lg bg-status-success/10 border border-status-success/20 p-3 text-sm text-status-success font-medium text-center">
-                로그인 성공! 홈으로 이동합니다...
-              </div>
-            )}
-
             {error && (
               <div className="rounded-lg bg-status-error/10 border border-status-error/20 p-3 text-sm text-status-error">
                 {error}
