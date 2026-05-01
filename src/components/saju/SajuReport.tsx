@@ -1266,7 +1266,7 @@ export default function SajuReport({
             <span className={result.hourUnknown ? styles.hourUnknownCell : ''}>
               {result.hourUnknown ? '—' : pillars.hour.tenGodGan}
             </span>
-            <span className={styles.highlight}>일주</span>
+            <span className={styles.highlight}>(본인)</span>
             <span>{pillars.month.tenGodGan}</span>
             <span>{pillars.year.tenGodGan}</span>
           </div>

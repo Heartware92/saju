@@ -1028,7 +1028,11 @@ const ELEMENT_TO_STEMS_TEXT: Record<string, string> = {
 function buildJungtongsajuInput(result: SajuResult) {
   const { pillars, elementPercent, isStrong, yongSinElement, yongSin, sinSals, interactions, daeWoon, seWoon, gender, hourUnknown } = result;
   const gyeokguk = determineGyeokguk(result);
-  const sipseong = formatSipseongCounts(computeSipseongCounts(result));
+  const sipseongCounts = computeSipseongCounts(result);
+  const sipseong = formatSipseongCounts(sipseongCounts);
+  const ALL_SIPSEONG_JT = ['비견', '겁재', '식신', '상관', '편재', '정재', '편관', '정관', '편인', '정인'] as const;
+  const missingSipseongList = ALL_SIPSEONG_JT.filter(s => (sipseongCounts[s] ?? 0) === 0);
+  const missingSipseongStr = missingSipseongList.length > 0 ? missingSipseongList.join(', ') : '없음(모든 십성이 1개 이상 분포)';
 
   // ── 60갑자 일주 특성 (DB 조회)
   const dayTraits = getDayPillarTraits(pillars.day.gan, pillars.day.zhi);
@@ -1046,8 +1050,9 @@ function buildJungtongsajuInput(result: SajuResult) {
     const kong = p.isKongmang ? '·공망' : '';
     const hidden = p.hiddenStems.length > 0 ? `지장간(${p.hiddenStems.join(',')})` : '';
     const sinsal12 = p.sinSal12 ? `12신살(${p.sinSal12})` : '';
+    const ganTenGod = p.tenGodGan === '일주' ? '일간(본인)' : p.tenGodGan;
     const parts = [
-      `${p.gan}(${p.ganElement}·${p.tenGodGan})`,
+      `${p.gan}(${p.ganElement}·${ganTenGod})`,
       `${p.zhi}(${p.zhiElement}·${p.tenGodZhi})`,
       `12운성(${p.twelveStage})${kong}`,
       hidden,
@@ -1129,6 +1134,9 @@ ${strengthBlock}
 용신: ${yongSinElement}(${yongSin})  희신: ${result.heeSin}  기신: ${result.giSin}${result.strengthScore >= 85 || result.strengthScore <= 15 ? `  ★전왕법 적용(점수 ${result.strengthScore}) — 억부 역전 주의` : ''}
 격국: ${gyeokguk.name} (판정 근거: ${gyeokguk.reason})
 십성 분포: ${sipseong}
+★ 원국에 0개인 십성: ${missingSipseongStr}
+   → 본문에서 이 십성을 "사주에 ~십성이 강하다/있다/약하다"고 서술하면 절대 안 됨.
+   → 0개인 십성을 언급해야 할 때는 반드시 "원국에 없는 ~" 또는 "~이(가) 부재한 사주"로만 표현.
 신살·길성: ${sinSalStr}
 합충형파해: ${interactionStr}
 간여지동: ${formatGanYeojidong(result)}
@@ -1154,7 +1162,18 @@ ${dayTraitsBlock}`;
 4) 위에 주어진 모든 수치(격국·용신·신강약·오행%·십성·신살·합충·대운·세운·12운성·지장간)를 뒤집거나 임의 변경 금지.
 5) 전문 용어 첫 등장 시 괄호로 쉬운 말 병기.
 6) "~일 수 있습니다" 흐린 표현은 전체 답변에서 2회 이하. 단정적 어투 유지.
-7) 각 섹션 첫 문장에서 결론 먼저, 근거를 이어붙이는 방식.`;
+7) 각 섹션 첫 문장에서 결론 먼저, 근거를 이어붙이는 방식.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[★★★ 십성 데이터 무결성 — 최우선 규칙 ★★★]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+원국에 0개인 십성: ${missingSipseongStr}
+위 목록의 십성을 본문에서 "사주에 있다/강하다/약하다/작용한다" 형태로 절대 서술 금지.
+- 금지 예시: "편관의 기운으로 책임감이…" (편관 0개인데 있는 것처럼 서술) → 즉시 잘못된 풀이.
+- 금지 예시: "겁재가 있어 경쟁심이…" (겁재 0개인데 있다고 서술) → 즉시 잘못된 풀이.
+- 금지 예시: "정재의 안정적 재물운…" (정재 0개인데 있다고 서술) → 즉시 잘못된 풀이.
+- 허용: "원국에 편관이 없어 ~한 경향" / "겁재가 부재하여 ~" (없다는 사실 자체를 서술하는 것은 허용)
+검증 절차: 본문에 어떤 십성명을 인용하기 전, "십성 분포: ${sipseong}"에 해당 십성이 1개 이상 있는지 반드시 확인. 없으면 절대 "있다/강하다/작용한다"로 쓰지 말고, "없다/부재하다"로만 표현하거나 다른 어휘로 대체.`;
 
   return {
     inputBlock,
@@ -1174,6 +1193,8 @@ ${dayTraitsBlock}`;
     nextNextDaeWoonStr,
     recentSeWoon,
     strengthStatus: result.strengthStatus,
+    missingSipseongStr,
+    sipseong,
   };
 }
 
@@ -1186,7 +1207,7 @@ ${dayTraitsBlock}`;
  */
 export const generateJungtongsajuCorePrompt = (result: SajuResult): string => {
   const v = buildJungtongsajuInput(result);
-  const { inputBlock, commonRules, yongSinElement, pillars, gyeokguk, elementPercent, zeroElements, maxEl, interactionStr, dayTraits, strengthStatus } = v;
+  const { inputBlock, commonRules, yongSinElement, pillars, gyeokguk, elementPercent, zeroElements, maxEl, interactionStr, dayTraits, strengthStatus, missingSipseongStr } = v;
 
   return `${inputBlock}
 
@@ -1195,6 +1216,7 @@ ${commonRules}
 9) 아래 4개 마커를 정확히 사용. 마커는 줄 처음에 단독으로 위치.
 10) ★ 사주 원국의 가장 핵심을 다루는 1차 분석. 이후 영역별 응용(직업·재물·애정 등)에 재사용될 기반이므로,
     각 섹션이 자기 주제에 충실하게 깊이 풀 것. 다른 섹션 영역(직업·재물·관계·건강·대운)은 1차에서 깊이 다루지 X.
+11) 매 섹션 작성 완료 후, 해당 섹션에서 언급한 모든 십성명이 "십성 분포"에 1개 이상 존재하는지 자기 검증할 것. 위반 시 해당 문장 삭제 또는 수정.
 
 ${METAPHOR_KB}
 
@@ -1202,18 +1224,19 @@ ${METAPHOR_TITLE_RULE}
 
 [섹션 지침 — 1차 핵심 4섹션]
 
-[general] — 800~970자
+[general] — 1000~1200자
 작성 순서:
 첫 줄: 은유 제목 (위 제목 기술 참고, 「」 없이 평문으로)
 빈 줄
 본문:
-1단락: 제목 은유를 풀어 격국(${gyeokguk.name})이 이 사람의 삶을 어떤 방향으로 이끄는지 단정적으로 선언. 은유로 시작해 명리 근거로 착지.
-2단락: 격국이 빛나는 구체 일상 장면 1개 (직업 선택 순간 / 아이디어가 터지는 순간 / 위기에서 빛나는 순간 중 선택).
-3단락: ${strengthStatus}(신강신약)이 에너지를 증폭·제어하는 방식. 반달·보름달·초승달 은유 활용.
-4단락: 용신(${yongSinElement})이 인생 전체에 부여하는 큰 방향성. (구체 영역별 응용은 다른 섹션에서 다룸)
-5단락: 오행 특징(결핍: ${zeroElements.join('·') || '없음'} / 과다: ${maxEl[0]} ${maxEl[1]}%) → 평생을 가로지르는 사고·실행 패턴 1~2문장.
+1단락: 제목 은유를 풀어 격국(${gyeokguk.name})이 이 사람의 삶을 어떤 방향으로 이끄는지 단정적으로 선언. 은유로 시작해 명리 근거로 착지. 격국이 만드는 인생의 큰 흐름을 3~4문장으로 깊이 서술.
+2단락: 격국이 빛나는 구체 일상 장면 2개 (직업 선택 순간 / 아이디어가 터지는 순간 / 위기에서 빛나는 순간 / 사람을 끌어모으는 순간 중 2개 선택). 장면마다 2~3문장으로 생생하게 묘사.
+3단락: ${strengthStatus}(신강신약)이 에너지를 증폭·제어하는 방식. 반달·보름달·초승달 은유 활용. 이 에너지 수준이 일상에서 드러나는 패턴 2가지 — 잘 쓸 때 vs 과하거나 부족할 때.
+4단락: 용신(${yongSinElement})이 인생 전체에 부여하는 큰 방향성 + 용신이 힘을 발휘하는 시기와 그렇지 않은 시기의 체감 차이. (구체 영역별 응용은 다른 섹션에서 다룸)
+5단락: 오행 특징(결핍: ${zeroElements.join('·') || '없음'} / 과다: ${maxEl[0]} ${maxEl[1]}%) → 평생을 가로지르는 사고·실행 패턴 + 이 오행 구성이 대인관계에서 드러나는 특징 1~2문장.
+6단락: 이 사주의 가장 큰 강점과 평생 숙제를 각 1문장으로 명쾌하게 정리.
 마지막 문장: 제목 은유 회수하여 압축.
-800자 미만이면 장면·은유 묘사를 더 구체적으로 늘려서 반드시 채울 것.
+1000자 미만이면 장면·은유 묘사를 더 구체적으로 늘려서 반드시 채울 것.
 
 [daymaster] — 580~700자
 작성 순서:
@@ -1237,18 +1260,20 @@ ${METAPHOR_TITLE_RULE}
 - 5개 오행의 균형이 만드는 이 사람만의 톤 1~2문장
 마지막 문장에서 제목 은유 회수.
 
-[interaction] — 540~660자
+[interaction] — 800~960자
 작성 순서:
 첫 줄: 은유 제목 (지지 사이의 합/충/형/파/해 관계를 자연 현상이나 인간관계 구도로 비유)
 빈 줄
 본문 작성 지침:
 - 입력 데이터의 "합충형파해: ${interactionStr}" 필드의 모든 관계를 빠짐없이 본문에서 명시
-- 합(三合·六合·방합): 어떤 에너지가 결합해 어떤 강점을 만드는지 + 그 결합이 인생에서 발현되는 장면 1개
-- 충(沖): 두 기둥이 부딪힘 + 일상 갈등 패턴 + 완화 행동 1가지
-- 형(刑): 자형·삼형·상형 유형 명시 + 내적 긴장이나 외부 사건의 결
-- 파(破)·해(害): 미묘한 마찰 패턴이 어떤 관계에서 반복되는지
+- 합(三合·六合·방합): 어떤 에너지가 결합해 어떤 강점을 만드는지 + 그 결합이 인생에서 발현되는 구체 장면 2개 + "이 합의 기운을 살리려면 ~하라" 실천 조언 1가지
+- 충(沖): 두 기둥이 부딪히는 구조 + 일상에서 반복되는 갈등 패턴 2가지(직업/관계 각 1개) + "이런 상황에서는 ~하고 ~은 피하라" 구체 행동 지침
+- 형(刑): 자형·삼형·상형 유형 명시 + 내적 긴장이 폭발하는 전형적 상황 1개 + 완화하는 습관·태도 1가지
+- 파(破)·해(害): 미묘한 마찰 패턴이 어떤 관계에서 반복되는지 + "이 마찰을 줄이려면 ~하라" 조언
+- 각 관계마다 "그래서 어떻게 해야 하는가" 실천 행동을 반드시 포함 — 추상적 격언(조화를 이루세요, 균형을 잡으세요) 금지, 구체 상황·행동으로 내려앉힐 것
 - "합/충/형/파/해" 한자어 그대로 쓰되 첫 등장 시 괄호로 쉬운 말 병기
 - 관계가 없는 항목은 "없음" 명시 후 다음으로
+마무리: 모든 관계를 종합해 "이 사주의 내부 역학이 만드는 삶의 리듬" 2~3문장 정리 + 가장 주의할 점 1가지 재강조.
 마지막 문장에서 제목 은유 회수.
 
 출력은 [general] 마커부터 시작. 마커 이전 텍스트 없어야 함.
@@ -1273,7 +1298,7 @@ export const generateJungtongsajuApplicationPrompt = (
   forbiddenAliases: string[] = [],
 ): string => {
   const v = buildJungtongsajuInput(result);
-  const { inputBlock, commonRules, yongSinElement, yongSin, pillars, gyeokguk, prevDaeWoonStr, currentDaeWoonStr, nextDaeWoonStr, nextNextDaeWoonStr, recentSeWoon } = v;
+  const { inputBlock, commonRules, yongSinElement, yongSin, pillars, gyeokguk, prevDaeWoonStr, currentDaeWoonStr, nextDaeWoonStr, nextNextDaeWoonStr, recentSeWoon, missingSipseongStr, sipseong } = v;
 
   // B 옵션 — 1차에서 쓴 별칭들을 동적 차단 블록으로 만듦
   const forbiddenBlock = forbiddenAliases.length > 0
@@ -1309,6 +1334,8 @@ ${commonRules}
 8) 출력은 [character] 마커부터 시작. 마커 이전 텍스트 없어야 함.
 9) 아래 8개 마커를 정확히 사용. 마커는 줄 처음에 단독으로 위치.
 10) ★★★ 1차와의 중복 절대 금지 + 2차 8섹션 간 중복 절대 금지.
+11) 매 섹션 작성 완료 후, 해당 섹션에서 언급한 모든 십성명이 "십성 분포"에 1개 이상 존재하는지 자기 검증할 것. 위반 시 해당 문장 삭제 또는 수정.
+    특히 [career] [wealth] [love] [relation] 섹션에서 십성 기반 해석 시 원국에 없는 십성을 있는 것처럼 서술하면 신뢰도 치명 타격 — 반드시 확인.
 
 [A 옵션 — 핵심 키워드 등장 횟수 명시 제한]
 다음 키워드들은 한 풀이(1차+2차 합쳐) 통틀어 등장 횟수를 엄격히 제한합니다.
