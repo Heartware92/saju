@@ -1,110 +1,89 @@
 'use client';
 
 /**
- * 현재 한국(KST) 기준 달의 위상에 맞춰 달 모양을 렌더.
+ * 실제 천문학적 달 위상을 SVG로 렌더.
  *
- * 원리
- *  - Asia/Seoul 기준 날짜 → lunar-javascript 로 음력일(1~30) 획득
- *  - 음력일 → phase(0~1): 1=삭(new)·15=보름(full)·30=그믐(new)
- *  - SVG path로 밝은 부분(lit)을 그림. 어두운 부분은 뒤 원으로 처리.
+ * 계산 원리 (Meeus 간략 공식)
+ *  - 기준: 2000-01-06 18:14 UTC (알려진 삭/new moon)
+ *  - 삭망월: 29.53058770576일
+ *  - phase = ((now - 기준) / 삭망월) % 1  →  0=삭, 0.5=보름
  *
- * 기하 공식 (표준 moon-phase 알고리즘)
- *  - 기본 반원(semicircle): waxing → 오른쪽, waning → 왼쪽
+ * 렌더링 (표준 moon-phase SVG)
+ *  - 반원(semicircle): waxing → 오른쪽, waning → 왼쪽
  *  - 터미네이터 타원: rx = |cos(2π·phase)| · R
- *    · 음력 1(phase 0):       rx = R  → 반원 ∩ 타원 = 0  (완전 그믐)
- *    · 음력 7~8(phase 0.25):  rx = 0  → 반원만         (반달)
- *    · 음력 15(phase 0.5):    rx = R  → 완전 보름달
- *  - cos 부호로 타원 bulge 방향(sweep flag) 결정 → 크레센트 vs 기버스 구분
+ *  - cos 부호로 crescent vs gibbous 구분 (sweep flag 방향)
+ *
+ * 북반구(서울) 기준: waxing = 오른쪽부터 밝아짐
  */
 
 import { useEffect, useState } from 'react';
 
 export interface MoonPhaseProps {
   size?: number;
-  /** SSR 기본값 (실제값은 클라이언트에서 덮어씀). 기본 15(보름) */
-  fallbackLunarDay?: number;
 }
 
-/** 음력일(1~30) → 한국어 위상 이름 */
-export function lunarPhaseName(day: number): string {
-  if (day <= 1 || day >= 30) return '삭(그믐)';
-  if (day <= 3) return '초승달';
-  if (day <= 6) return '초승달 지난 뒤';
-  if (day <= 8) return '상현달(반달)';
-  if (day <= 13) return '상현망';
-  if (day <= 16) return '보름달';
-  if (day <= 21) return '하현망';
-  if (day <= 23) return '하현달(반달)';
+// 기준 삭(new moon): 2000-01-06 18:14 UTC (NASA 기준)
+const KNOWN_NEW_MOON_MS = Date.UTC(2000, 0, 6, 18, 14, 0);
+const SYNODIC_MONTH_MS = 29.53058770576 * 86400000;
+
+/** 천문학적 달 위상 (0=삭, 0.5=보름, 1=삭) */
+function getAstronomicalPhase(): number {
+  const elapsed = Date.now() - KNOWN_NEW_MOON_MS;
+  const raw = (elapsed / SYNODIC_MONTH_MS) % 1;
+  return (raw + 1) % 1;
+}
+
+/** phase(0~1) → 한국어 위상 이름 */
+function phaseName(phase: number): string {
+  if (phase < 0.033 || phase >= 0.967) return '삭(그믐)';
+  if (phase < 0.10) return '초승달';
+  if (phase < 0.20) return '초승달 지난 뒤';
+  if (phase < 0.28) return '상현달(반달)';
+  if (phase < 0.47) return '상현망';
+  if (phase < 0.53) return '보름달';
+  if (phase < 0.72) return '하현망';
+  if (phase < 0.78) return '하현달(반달)';
   return '그믐달';
 }
 
-/** KST 기준 Date 객체 반환 (getFullYear/Month/Date 가 서울 시각으로 나옴) */
-function getKSTDate(): Date {
-  const now = new Date();
-  // UTC ms + KST 오프셋 9시간 = KST ms
-  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
-  return new Date(utcMs + 9 * 3600000);
-}
-
-/** 현재 KST 음력일(1~30) 반환. lunar-javascript 동적 import — 번들 크기 영향 최소화 */
-async function getCurrentLunarDay(): Promise<number> {
-  const { Solar } = await import('lunar-javascript');
-  const kst = getKSTDate();
-  const solar = Solar.fromYmd(kst.getFullYear(), kst.getMonth() + 1, kst.getDate());
-  const lunar = solar.getLunar();
-  const day = lunar.getDay();
-  // 방어적 clamp
-  if (typeof day !== 'number' || isNaN(day)) return 15;
-  return Math.max(1, Math.min(30, day));
-}
-
-export default function MoonPhase({ size = 76, fallbackLunarDay = 15 }: MoonPhaseProps) {
-  const [lunarDay, setLunarDay] = useState<number>(fallbackLunarDay);
+export default function MoonPhase({ size = 76 }: MoonPhaseProps) {
+  const [phase, setPhase] = useState(0.5);
 
   useEffect(() => {
-    let cancelled = false;
-    getCurrentLunarDay()
-      .then(d => { if (!cancelled) setLunarDay(d); })
-      .catch(() => { /* 실패 시 fallback 유지 */ });
-    return () => { cancelled = true; };
+    setPhase(getAstronomicalPhase());
   }, []);
 
-  // ── 엣지 케이스 가드 ─────────────────────────────
-  // 삭(음력 1/30) = 달이 안 보이는 상태 → 배경에서 사라지면 안 되므로 보름달로 대체.
-  // 개기일식은 항상 삭에 발생하므로 이 규칙으로 함께 커버됨.
-  // 월식은 보름달에 발생하지만 보름달은 그대로 렌더하면 되므로 별도 처리 불필요.
-  // NaN·경계값도 방어적으로 보름달 처리.
-  const safeLunarDay = typeof lunarDay === 'number' && !isNaN(lunarDay)
-    ? lunarDay
-    : 15;
-  const isInvisibleNight = safeLunarDay <= 1 || safeLunarDay >= 30;
-  /** 화면에 그릴 모양을 결정하는 음력일 — 삭이면 보름달로 fallback */
-  const renderDay = isInvisibleNight ? 15 : safeLunarDay;
+  const name = phaseName(phase);
+  const isInvisible = phase < 0.02 || phase > 0.98;
+  const renderPhase = isInvisible ? 0.5 : phase;
 
-  const phaseName = lunarPhaseName(safeLunarDay);
-  const ariaLabel = isInvisibleNight
-    ? `오늘 달: 음력 ${safeLunarDay}일 ${phaseName} — 달이 보이지 않는 날이라 보름달로 표시합니다`
-    : `오늘 달: 음력 ${safeLunarDay}일 ${phaseName}`;
+  const ariaLabel = isInvisible
+    ? `오늘 달: ${name} — 달이 보이지 않는 날이라 보름달로 표시합니다`
+    : `오늘 달: ${name}`;
 
-  // ── 기하 계산 ────────────────────────────────────
-  const R = (size - 8) / 2;          // 실제 달 반지름 (여백 4px)
+  const R = (size - 8) / 2;
   const viewR = R + 4;
-  const phase = (renderDay - 1) / 29.53;  // 0 ~ 1
-  const waxing = phase < 0.5;
-  const cos = Math.cos(2 * Math.PI * phase);
+
+  const waxing = renderPhase < 0.5;
+  const cos = Math.cos(2 * Math.PI * renderPhase);
   const rx = Math.abs(cos) * R;
 
-  // 기본 반원 sweep: waxing → 오른쪽(1), waning → 왼쪽(0)
+  // 반원: waxing → 오른쪽(sweep=1), waning → 왼쪽(sweep=0)
   const semiSweep = waxing ? 1 : 0;
-  // 터미네이터 타원 sweep: cos 부호에 따라 bulge 방향이 바뀜
+
+  // 터미네이터 타원 sweep:
+  //   crescent(cos>0) → 반원과 같은 쪽으로 → 사이 얇은 조각
+  //   gibbous(cos<0)  → 반원 반대쪽으로 → 반원 + 반대쪽 벌지 = 넓은 면적
   let ellipseSweep: 0 | 1;
   if (waxing) {
-    ellipseSweep = cos >= 0 ? 1 : 0;  // 크레센트: 같은 방향 → lens 소멸 / 기버스: 반대 방향 → 추가
+    ellipseSweep = cos >= 0 ? 0 : 1;
   } else {
-    ellipseSweep = cos > 0 ? 0 : 1;
+    ellipseSweep = cos > 0 ? 1 : 0;
   }
 
   const litPath = `M 0 ${-R} A ${R} ${R} 0 0 ${semiSweep} 0 ${R} A ${rx} ${R} 0 0 ${ellipseSweep} 0 ${-R} Z`;
+
+  const showCraters = renderPhase > 0.35 && renderPhase < 0.65;
 
   return (
     <svg
@@ -127,10 +106,8 @@ export default function MoonPhase({ size = 76, fallbackLunarDay = 15 }: MoonPhas
         </radialGradient>
       </defs>
 
-      {/* 어두운 면 — 배경과 섞이도록 반투명 보라 */}
       <circle r={R} fill="url(#moon-dark)" />
 
-      {/* 밝은 면 */}
       <path
         d={litPath}
         fill="url(#moon-lit)"
@@ -139,8 +116,7 @@ export default function MoonPhase({ size = 76, fallbackLunarDay = 15 }: MoonPhas
         }}
       />
 
-      {/* 옅은 크레이터 음영 (보름달 가까울 때만 살짝 보이도록 밝은 면 위에) */}
-      {renderDay >= 11 && renderDay <= 19 && (
+      {showCraters && (
         <g opacity="0.15">
           <circle cx={R * 0.2} cy={-R * 0.15} r={R * 0.12} fill="#8a6a4a" />
           <circle cx={-R * 0.1} cy={R * 0.22} r={R * 0.08} fill="#8a6a4a" />
