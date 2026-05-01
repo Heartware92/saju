@@ -25,8 +25,6 @@ export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  // Supabase 는 기본 30일 세션 유지 — 체크박스는 명시적 UX 표시용. 동작은 Supabase 기본값 그대로.
-  const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
@@ -150,17 +148,8 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            {/* 자동 로그인 + 비밀번호 초기화 */}
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={keepSignedIn}
-                  onChange={(e) => setKeepSignedIn(e.target.checked)}
-                  className="w-4 h-4 rounded accent-[var(--cta-primary)] cursor-pointer"
-                />
-                <span className="text-text-secondary">자동 로그인</span>
-              </label>
+            {/* 비밀번호 초기화 */}
+            <div className="flex justify-end text-sm">
               <Link href="/auth/reset" className="text-text-tertiary hover:text-cta transition-colors">
                 비밀번호 초기화
               </Link>
@@ -220,6 +209,14 @@ export const LoginPage: React.FC = () => {
                 <path fill="#000000" d="M12 3c5.799 0 10.5 3.664 10.5 8.185 0 4.52-4.701 8.184-10.5 8.184a13.5 13.5 0 0 1-1.727-.11l-4.408 2.883c-.501.265-.678.236-.472-.413l.892-3.678c-2.88-1.46-4.785-3.99-4.785-6.866C1.5 6.665 6.201 3 12 3zm5.907 8.06l1.47-1.424a.472.472 0 0 0-.656-.678l-1.928 1.866V9.282a.472.472 0 0 0-.944 0v2.557a.471.471 0 0 0 0 .222V13.5a.472.472 0 0 0 .944 0v-1.363l.427-.413 1.428 2.033a.472.472 0 1 0 .773-.543l-1.514-2.155zm-2.958 1.924h-1.46V9.297a.472.472 0 0 0-.943 0v4.159c0 .26.21.472.471.472h1.932a.472.472 0 1 0 0-.944zm-5.857-1.092l.696-1.707.638 1.707H9.092zm2.523.488l.002-.016a.469.469 0 0 0-.127-.32l-1.046-2.8a.69.69 0 0 0-.627-.474.696.696 0 0 0-.653.447l-1.661 4.075a.472.472 0 0 0 .874.357l.33-.813h2.07l.299.8a.472.472 0 1 0 .884-.33l-.345-.926zM8.293 9.302a.472.472 0 0 0-.471-.472H4.577a.472.472 0 1 0 0 .944h1.16v3.736a.472.472 0 0 0 .944 0V9.774h1.14c.26 0 .472-.212.472-.472z"/>
               </svg>
             </button>
+
+            {/* 소셜 로그인 약관 동의 안내 */}
+            <p className="mt-3 text-center text-[11px] text-text-tertiary leading-relaxed">
+              소셜 로그인 시{' '}
+              <Link href="/terms" className="text-cta hover:underline">이용약관</Link> 및{' '}
+              <Link href="/privacy" className="text-cta hover:underline">개인정보처리방침</Link>에
+              동의하는 것으로 간주합니다.
+            </p>
           </div>
         </div>
       </div>

@@ -33,15 +33,20 @@ export const SignupPage: React.FC = () => {
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [agreedAge14, setAgreedAge14] = useState(false);
+  const [agreedMarketing, setAgreedMarketing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [showPolicy, setShowPolicy] = useState<'terms' | 'privacy' | null>(null);
+  const [pendingSocialProvider, setPendingSocialProvider] = useState<'google' | 'kakao' | null>(null);
 
-  // 모두 동의 — 3개 한 번에 토글
-  const allAgreed = agreedTerms && agreedPrivacy && agreedAge14;
+  // 모두 동의 — 필수 3개 + 선택 1개
+  const allAgreed = agreedTerms && agreedPrivacy && agreedAge14 && agreedMarketing;
+  const allRequiredAgreed = agreedTerms && agreedPrivacy && agreedAge14;
   const toggleAllAgree = (v: boolean) => {
     setAgreedTerms(v);
     setAgreedPrivacy(v);
     setAgreedAge14(v);
+    setAgreedMarketing(v);
   };
 
   // 비밀번호 강도 평가 — 0(없음)~4(강함). UI 바 시각화 + 색상.
@@ -119,13 +124,24 @@ export const SignupPage: React.FC = () => {
     }
   };
 
-  const handleSocial = async (provider: 'google' | 'kakao') => {
+  const handleSocialClick = (provider: 'google' | 'kakao') => {
+    setError('');
+    setPendingSocialProvider(provider);
+  };
+
+  const handleSocialProceed = async () => {
+    if (!pendingSocialProvider) return;
+    if (!allRequiredAgreed) {
+      setError('필수 항목에 모두 동의해주세요.');
+      return;
+    }
     setError('');
     try {
-      await auth.signInWithProvider(provider);
+      await auth.signInWithProvider(pendingSocialProvider);
     } catch (err: any) {
       setError(err?.message || '소셜 로그인 중 오류가 발생했습니다.');
     }
+    setPendingSocialProvider(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -170,9 +186,8 @@ export const SignupPage: React.FC = () => {
       await signup(email, password, phone.replace(/[^0-9]/g, ''));
       setSuccess(true);
       setTimeout(() => {
-        // replace — 가입 완료 후 뒤로가기로 가입 폼 돌아가지 않도록
-        router.replace('/login');
-      }, 2000);
+        router.replace('/');
+      }, 1500);
     } catch (err: any) {
       const msg = err?.message || '회원가입에 실패했습니다.';
       if (msg.includes('already registered') || msg.includes('already been registered')) {
@@ -241,7 +256,7 @@ export const SignupPage: React.FC = () => {
                 {/* Google */}
                 <button
                   type="button"
-                  onClick={() => handleSocial('google')}
+                  onClick={() => handleSocialClick('google')}
                   className="w-14 h-14 rounded-full border border-[var(--border-default)] bg-space-elevated/40 flex items-center justify-center transition-all hover:scale-105 hover:border-[var(--border-strong)] hover:bg-space-elevated"
                   title="구글로 시작하기"
                 >
@@ -256,7 +271,7 @@ export const SignupPage: React.FC = () => {
                 {/* Kakao */}
                 <button
                   type="button"
-                  onClick={() => handleSocial('kakao')}
+                  onClick={() => handleSocialClick('kakao')}
                   className="w-14 h-14 rounded-full bg-[#FEE500] flex items-center justify-center transition-all hover:scale-105 hover:shadow-lg hover:shadow-[#FEE500]/20"
                   title="카카오로 시작하기"
                 >
@@ -271,8 +286,7 @@ export const SignupPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               {success && (
                 <div className="rounded-lg bg-status-success/10 border border-status-success/20 p-3 text-sm text-status-success font-medium text-center">
-                  회원가입 완료! 🌙 달 크레딧 1개가 지급되었습니다.<br/>
-                  <span className="text-xs font-normal">로그인 페이지로 이동합니다...</span>
+                  회원가입 완료! 홈으로 이동합니다...
                 </div>
               )}
 
@@ -465,14 +479,13 @@ export const SignupPage: React.FC = () => {
                   <span className="text-sm text-text-secondary flex-1">
                     <span className="text-status-error font-bold">[필수]</span>{' '}
                     이용약관에 동의합니다{' '}
-                    <a
-                      href="/terms"
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); setShowPolicy('terms'); }}
                       className="text-cta hover:underline font-medium"
-                      target="_blank"
-                      rel="noopener noreferrer"
                     >
                       보기
-                    </a>
+                    </button>
                   </span>
                 </label>
 
@@ -487,14 +500,13 @@ export const SignupPage: React.FC = () => {
                   <span className="text-sm text-text-secondary flex-1">
                     <span className="text-status-error font-bold">[필수]</span>{' '}
                     개인정보처리방침에 동의합니다{' '}
-                    <a
-                      href="/privacy"
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); setShowPolicy('privacy'); }}
                       className="text-cta hover:underline font-medium"
-                      target="_blank"
-                      rel="noopener noreferrer"
                     >
                       보기
-                    </a>
+                    </button>
                   </span>
                 </label>
 
@@ -511,12 +523,26 @@ export const SignupPage: React.FC = () => {
                     만 14세 이상입니다
                   </span>
                 </label>
+
+                {/* 마케팅 수신 동의 */}
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agreedMarketing}
+                    onChange={(e) => setAgreedMarketing(e.target.checked)}
+                    className="w-5 h-5 rounded accent-[var(--cta-primary)] cursor-pointer"
+                  />
+                  <span className="text-sm text-text-secondary flex-1">
+                    <span className="text-text-tertiary font-bold">[선택]</span>{' '}
+                    이벤트·혜택 등 마케팅 정보 수신에 동의합니다
+                  </span>
+                </label>
               </div>
 
               {/* Submit */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || success}
                 className="w-full h-12 rounded-lg bg-gradient-to-r from-cta to-cta-active text-white font-bold text-sm cursor-pointer transition-all hover:opacity-90 hover:shadow-lg hover:shadow-cta/20 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
               >
                 {loading ? '가입 중...' : '회원가입 완료'}
@@ -534,6 +560,92 @@ export const SignupPage: React.FC = () => {
         </div>
       </div>
       </div>
+
+      {/* 소셜 로그인 약관 동의 모달 */}
+      {pendingSocialProvider && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setPendingSocialProvider(null)} />
+          <div className="flex min-h-full items-end sm:items-center justify-center">
+            <div onClick={(e) => e.stopPropagation()} className="relative w-full sm:max-w-[420px] rounded-t-2xl sm:rounded-2xl p-6 bg-space-surface border border-[var(--border-subtle)] animate-slideUp">
+              <h3 className="text-base font-bold text-text-primary mb-1">약관 동의</h3>
+              <p className="text-xs text-text-secondary mb-4">서비스 이용을 위해 약관에 동의해주세요.</p>
+
+              <div className="space-y-2.5">
+                <label className="flex items-center gap-3 cursor-pointer pb-2 border-b border-[var(--border-subtle)]">
+                  <input type="checkbox" checked={allAgreed} onChange={(e) => toggleAllAgree(e.target.checked)} className="w-5 h-5 rounded accent-[var(--cta-primary)] cursor-pointer" />
+                  <span className="text-sm font-semibold text-text-primary">모두 동의 (필수 + 선택 포함)</span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} className="w-5 h-5 rounded accent-[var(--cta-primary)] cursor-pointer" />
+                  <span className="text-sm text-text-secondary flex-1">
+                    <span className="text-status-error font-bold">[필수]</span>{' '}이용약관 동의{' '}
+                    <button type="button" onClick={() => setShowPolicy('terms')} className="text-cta hover:underline font-medium">보기</button>
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={agreedPrivacy} onChange={(e) => setAgreedPrivacy(e.target.checked)} className="w-5 h-5 rounded accent-[var(--cta-primary)] cursor-pointer" />
+                  <span className="text-sm text-text-secondary flex-1">
+                    <span className="text-status-error font-bold">[필수]</span>{' '}개인정보처리방침 동의{' '}
+                    <button type="button" onClick={() => setShowPolicy('privacy')} className="text-cta hover:underline font-medium">보기</button>
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={agreedAge14} onChange={(e) => setAgreedAge14(e.target.checked)} className="w-5 h-5 rounded accent-[var(--cta-primary)] cursor-pointer" />
+                  <span className="text-sm text-text-secondary flex-1">
+                    <span className="text-status-error font-bold">[필수]</span>{' '}만 14세 이상입니다
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={agreedMarketing} onChange={(e) => setAgreedMarketing(e.target.checked)} className="w-5 h-5 rounded accent-[var(--cta-primary)] cursor-pointer" />
+                  <span className="text-sm text-text-secondary flex-1">
+                    <span className="text-text-tertiary font-bold">[선택]</span>{' '}이벤트·혜택 등 마케팅 정보 수신 동의
+                  </span>
+                </label>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSocialProceed}
+                disabled={!allRequiredAgreed}
+                className="w-full h-12 rounded-lg bg-gradient-to-r from-cta to-cta-active text-white font-bold text-sm mt-4 cursor-pointer transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                동의하고 시작하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 이용약관 / 개인정보처리방침 뷰어 모달 */}
+      {showPolicy && (
+        <div className="fixed inset-0 z-[70] bg-space-deep flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)] bg-space-surface/90 backdrop-blur-sm shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowPolicy(null)}
+              className="text-text-secondary hover:text-text-primary text-sm flex items-center gap-1"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              닫기
+            </button>
+            <h2 className="text-sm font-bold text-text-primary">
+              {showPolicy === 'terms' ? '이용약관' : '개인정보처리방침'}
+            </h2>
+            <div className="w-12" />
+          </div>
+          <iframe
+            src={`/${showPolicy}`}
+            className="flex-1 w-full border-none"
+            title={showPolicy === 'terms' ? '이용약관' : '개인정보처리방침'}
+          />
+        </div>
+      )}
     </div>
   );
 };

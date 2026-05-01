@@ -74,12 +74,6 @@ export const auth = {
     if (error) throw error;
   },
 
-  // 비밀번호 재설정 이메일 전송
-  resetPassword: async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    if (error) throw error;
-  },
-
   /**
    * OAuth 소셜 로그인 (Google / Kakao) — Supabase 네이티브 지원 제공자.
    * 브라우저가 제공자의 인증 페이지로 이동한 뒤, 완료되면
