@@ -252,13 +252,13 @@ const getTenGod = (dayGan: string, targetGan: string): string => {
   return TEN_GODS_MAP[dayGan]?.[targetGan] || '';
 };
 
-const getTenGodForBranch = (dayGan: string, branch: string): string => {
+export const getTenGodForBranch = (dayGan: string, branch: string): string => {
   const mainStem = BRANCH_HIDDEN_STEMS[branch]?.[0];
   if (!mainStem) return '';
   return getTenGod(dayGan, mainStem);
 };
 
-const getTwelveStage = (dayGan: string, branch: string): string => {
+export const getTwelveStage = (dayGan: string, branch: string): string => {
   const branchIndex = EARTHLY_BRANCHES.indexOf(branch);
   if (branchIndex === -1) return '';
 
@@ -1124,7 +1124,7 @@ const SINSAL12_GROUP_START: Record<string, number> = {
   '인': 2, '오': 2, '술': 2, // 화국 — 지살=인
   '해': 11, '묘': 11, '미': 11, // 목국 — 지살=해
 };
-const getSinSal12 = (yearZhi: string, targetZhi: string): string => {
+export const getSinSal12 = (yearZhi: string, targetZhi: string): string => {
   const start = SINSAL12_GROUP_START[yearZhi];
   const targetIdx = EARTHLY_BRANCHES.indexOf(targetZhi);
   if (start === undefined || targetIdx < 0) return '';

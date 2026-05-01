@@ -1098,14 +1098,17 @@ function DaeWoonSection({
         대운 카드를 누르면 해당 시기의 세운으로 이동, 세운을 누르면 그 해 12개월 월운이 펼쳐져요.
       </p>
       <div className={styles.daewoonScroll} ref={dwScrollRef}>
-        {daeWoon.slice(0, 10).map((dw, idx) => {
-          const age = result.daeWoonStartAge + idx * 10;
+        {daeWoon.slice(0, 10).map((dw, i) => ({
+          ...dw,
+          _age: result.daeWoonStartAge + i * 10,
+        })).reverse().map((dw) => {
+          const age = dw._age;
           const isCurrent = currentAge >= age && currentAge < age + 10;
           const isSelected = selectedDwAge === age;
           return (
             <button
               type="button"
-              key={idx}
+              key={age}
               ref={isCurrent ? currentDwRef : undefined}
               onClick={() => setSelectedDwAge(isSelected ? null : age)}
               className={`${styles.daewoonCard} ${isCurrent ? styles.current : ''} ${isSelected ? styles.selected : ''}`}
@@ -1136,7 +1139,7 @@ function DaeWoonSection({
         )}
       </div>
       <div className={styles.daewoonScroll} ref={swScrollRef}>
-        {seWoon.map((sw, idx) => {
+        {[...seWoon].reverse().map((sw, idx) => {
           const isCurrent = sw.year === currentYear;
           const inDwRange = selectedDwRange && sw.year >= selectedDwRange.startYear && sw.year <= selectedDwRange.endYear;
           const isSelected = selectedYear === sw.year;
@@ -1206,14 +1209,24 @@ function DaeWoonSection({
                     }}
                   >
                     <div style={{ fontSize: 13, fontWeight: 700, color: c }}>{m.month}월</div>
+                    <div style={{ fontSize: 13, marginTop: 2 }}>
+                      <span style={{ color: ELEMENT_COLORS[m.ganElement] }}>{stemToHanja(m.gan)}</span>
+                      <span style={{ color: ELEMENT_COLORS[m.zhiElement] }}>{zhiToHanja(m.zhi)}</span>
+                    </div>
                     <div style={{ fontSize: 11, color: c, marginTop: 2, opacity: 0.85 }}>{m.grade}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>{m.keyword}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.4 }}>
+                      <div>{m.tenGod}</div>
+                      <div>{m.tenGodZhi}</div>
+                      <div>{m.twelveStage}</div>
+                      {m.sinSal12 && <div style={{ color: 'var(--text-tertiary)' }}>{m.sinSal12}</div>}
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2 }}>{m.keyword}</div>
                   </div>
                 );
               })}
             </div>
             <p className={styles.sectionHint} style={{ margin: '8px 0 0' }}>
-              월별 등급은 일간(${result.dayMaster})에 대한 그 달 천간 십성과 용신 오행 부합 여부로 자동 계산됩니다.
+              월별 등급은 일간({result.dayMaster})에 대한 그 달 천간 십성과 용신 오행 부합 여부로 자동 계산됩니다.
             </p>
           </motion.div>
         )}

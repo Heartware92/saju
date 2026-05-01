@@ -17,6 +17,9 @@ import {
   BRANCH_HIDDEN_STEMS,
   normalizeGan,
   normalizeZhi,
+  getTenGodForBranch,
+  getTwelveStage,
+  getSinSal12,
   type SajuResult,
 } from '../utils/sajuCalculator';
 
@@ -556,8 +559,23 @@ function buildCautions(saju: SajuResult, target: TargetGanZhi, interactions: Gan
 // 월별 흐름 (신년운세 전용)
 // ============================================
 
-export function buildMonthlyFlow(saju: SajuResult, year: number): { month: number; grade: FortuneGrade; keyword: string }[] {
-  const result: { month: number; grade: FortuneGrade; keyword: string }[] = [];
+export interface MonthlyFlowItem {
+  month: number;
+  grade: FortuneGrade;
+  keyword: string;
+  gan: string;
+  zhi: string;
+  ganElement: string;
+  zhiElement: string;
+  tenGod: string;
+  tenGodZhi: string;
+  twelveStage: string;
+  sinSal12: string;
+}
+
+export function buildMonthlyFlow(saju: SajuResult, year: number): MonthlyFlowItem[] {
+  const result: MonthlyFlowItem[] = [];
+  const yearZhi = saju.pillars.year.zhi;
   for (let m = 1; m <= 12; m++) {
     const mid = Solar.fromYmd(year, m, 15);
     const lunar = mid.getLunar();
@@ -566,11 +584,11 @@ export function buildMonthlyFlow(saju: SajuResult, year: number): { month: numbe
     const mZhi = normalizeZhi(monthGz[1]);
     const targetGan = TEN_GODS_MAP[saju.dayMaster]?.[mGan] ?? '';
     const ganElement = STEM_ELEMENT[mGan];
+    const zhiElement = BRANCH_ELEMENT[mZhi] ?? '';
 
     let score = 62;
     score += TEN_GOD_SCORE[targetGan] ?? 0;
     if (ganElement === saju.yongSinElement) score += 10;
-    // 충 검사
     const inter = checkBranchPair(saju.pillars.day.zhi, mZhi);
     if (inter?.nature === 'bad') score -= 6;
     else if (inter?.nature === 'good') score += 6;
@@ -582,7 +600,19 @@ export function buildMonthlyFlow(saju: SajuResult, year: number): { month: numbe
       : grade === '평' ? '유지·관찰'
       : grade === '중흉' ? '신중·보수'
       : '휴식·정비';
-    result.push({ month: m, grade, keyword });
+    result.push({
+      month: m,
+      grade,
+      keyword,
+      gan: mGan,
+      zhi: mZhi,
+      ganElement,
+      zhiElement,
+      tenGod: targetGan,
+      tenGodZhi: getTenGodForBranch(saju.dayMaster, mZhi),
+      twelveStage: getTwelveStage(saju.dayMaster, mZhi),
+      sinSal12: getSinSal12(yearZhi, mZhi),
+    });
   }
   return result;
 }
