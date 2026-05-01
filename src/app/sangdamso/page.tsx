@@ -1,12 +1,12 @@
 import Layout from '@/components/Layout';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import ConsultationPage from '@/pages/ConsultationPage';
+import ConsultationListPage from '@/pages/ConsultationListPage';
 
 export default function Sangdamso() {
   return (
     <Layout>
       <ProtectedRoute>
-        <ConsultationPage />
+        <ConsultationListPage />
       </ProtectedRoute>
     </Layout>
   );
