@@ -197,11 +197,11 @@ function checkBranchPair(a: string, b: string): GanZhiInteraction | null {
 }
 
 function gradeFromScore(s: number): FortuneGrade {
-  if (s >= 85) return '대길';
-  if (s >= 70) return '길';
-  if (s >= 55) return '중길';
-  if (s >= 45) return '평';
-  if (s >= 30) return '중흉';
+  if (s >= 88) return '대길';
+  if (s >= 76) return '길';
+  if (s >= 64) return '중길';
+  if (s >= 50) return '평';
+  if (s >= 35) return '중흉';
   return '흉';
 }
 
@@ -242,7 +242,7 @@ function scoreForTarget(saju: SajuResult, target: TargetGanZhi): {
 } {
   const dayGan = saju.dayMaster;
   const rationale: string[] = [];
-  let base = 50;
+  let base = 62;
 
   // 1) 천간 십신 점수
   const ganScore = TEN_GOD_SCORE[target.tenGodGan] ?? 0;
@@ -253,15 +253,15 @@ function scoreForTarget(saju: SajuResult, target: TargetGanZhi): {
 
   // 2) 지지 십신 점수
   const zhiScore = TEN_GOD_SCORE[target.tenGodZhi] ?? 0;
-  base += zhiScore * 0.8;
+  base += zhiScore * 0.7;
 
   // 3) 용신 일치 보너스
   if (target.ganElement === saju.yongSinElement) {
-    base += 10;
-    rationale.push(`대상 천간이 용신(${saju.yongSinElement}) — 기운 상승 +10`);
+    base += 12;
+    rationale.push(`대상 천간이 용신(${saju.yongSinElement}) — 기운 상승 +12`);
   }
   if (target.zhiElement === saju.yongSinElement) {
-    base += 6;
+    base += 7;
   }
 
   // 4) 합·충 보너스/페널티 (4기둥 지지와 대상 지지 비교)
@@ -270,8 +270,8 @@ function scoreForTarget(saju: SajuResult, target: TargetGanZhi): {
   pillars.forEach(p => {
     const inter = checkBranchPair(p.zhi, target.zhi);
     if (inter) {
-      if (inter.nature === 'good') interactionBonus += 4;
-      else if (inter.nature === 'bad') interactionBonus -= 5;
+      if (inter.nature === 'good') interactionBonus += 5;
+      else if (inter.nature === 'bad') interactionBonus -= 4;
     }
   });
   base += interactionBonus;
@@ -280,22 +280,37 @@ function scoreForTarget(saju: SajuResult, target: TargetGanZhi): {
   }
 
   // 5) clamp
-  const overall = Math.max(5, Math.min(95, Math.round(base)));
+  const overall = Math.max(20, Math.min(97, Math.round(base)));
 
   // 6) 영역별 점수 — 십신 매핑 기반
   const wealthBoost = ['정재', '편재', '식신'].includes(target.tenGodGan) ? 15
-    : ['겁재', '비견'].includes(target.tenGodGan) ? -8 : 0;
+    : ['겁재', '비견'].includes(target.tenGodGan) ? -6 : 0;
   const careerBoost = ['정관', '편관', '정인'].includes(target.tenGodGan) ? 15
-    : target.tenGodGan === '상관' ? -8 : 0;
-  const loveBoost = ['정재', '정관'].includes(target.tenGodGan) ? 12
-    : ['편재', '편관'].includes(target.tenGodGan) ? 6
-    : target.tenGodGan === '겁재' ? -6 : 0;
-  const healthBoost = interactionBonus < 0 ? -10 : ['정인', '식신'].includes(target.tenGodGan) ? 8 : 0;
+    : target.tenGodGan === '상관' ? -6 : 0;
+  const healthBoost = interactionBonus < 0 ? -8 : ['정인', '식신'].includes(target.tenGodGan) ? 8 : 0;
   const studyBoost = ['정인', '편인', '식신'].includes(target.tenGodGan) ? 14 : 0;
   const relationBoost = ['정인', '편인', '정관'].includes(target.tenGodGan) ? 12
-    : ['겁재', '상관'].includes(target.tenGodGan) ? -8 : 0;
+    : ['겁재', '상관'].includes(target.tenGodGan) ? -6 : 0;
 
-  const clamp = (v: number) => Math.max(5, Math.min(95, Math.round(overall * 0.5 + 25 + v)));
+  // 애정운 — 성별 구분 (명리: 남성 재성=애정, 여성 관성=애정)
+  const isMale = saju.gender === 'male';
+  const loveBoost = (() => {
+    if (isMale) {
+      // 남자: 정재/편재가 애정 → 재물과 애정 연동
+      if (['정재', '편재'].includes(target.tenGodGan)) return 14;
+      if (target.tenGodGan === '식신') return 8;
+      if (target.tenGodGan === '겁재') return -6;
+      return 0;
+    } else {
+      // 여자: 정관/편관이 애정
+      if (['정관', '편관'].includes(target.tenGodGan)) return 14;
+      if (target.tenGodGan === '정인') return 8;
+      if (target.tenGodGan === '상관') return -6;
+      return 0;
+    }
+  })();
+
+  const clamp = (v: number) => Math.max(20, Math.min(97, Math.round(overall * 0.45 + 32 + v)));
 
   return {
     overall,
@@ -552,14 +567,14 @@ export function buildMonthlyFlow(saju: SajuResult, year: number): { month: numbe
     const targetGan = TEN_GODS_MAP[saju.dayMaster]?.[mGan] ?? '';
     const ganElement = STEM_ELEMENT[mGan];
 
-    let score = 50;
+    let score = 62;
     score += TEN_GOD_SCORE[targetGan] ?? 0;
-    if (ganElement === saju.yongSinElement) score += 8;
+    if (ganElement === saju.yongSinElement) score += 10;
     // 충 검사
     const inter = checkBranchPair(saju.pillars.day.zhi, mZhi);
-    if (inter?.nature === 'bad') score -= 8;
-    else if (inter?.nature === 'good') score += 5;
-    const grade = gradeFromScore(Math.max(15, Math.min(90, score)));
+    if (inter?.nature === 'bad') score -= 6;
+    else if (inter?.nature === 'good') score += 6;
+    const grade = gradeFromScore(Math.max(25, Math.min(95, score)));
     const keyword =
       grade === '대길' ? '전진·도약'
       : grade === '길' ? '확장·기회'

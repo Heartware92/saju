@@ -46,25 +46,25 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div
-      // 모바일·데스크탑 모두 정중앙 정렬 — 직원 피드백 "웹앱에서 모달이 정중앙에 안 떠요"
-      // bottom-nav (h-16) 회피용 padding-bottom + safe-area 보존
-      className="fixed inset-0 z-[60] flex items-center justify-center px-4
-                 pt-[env(safe-area-inset-top,0px)]
-                 pb-[calc(64px+env(safe-area-inset-bottom,0px))] sm:pb-4 sm:pt-4"
+      className="fixed inset-0 z-[60] overflow-y-auto"
     >
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-[var(--space-overlay)] backdrop-blur-sm"
+        className="fixed inset-0 bg-[var(--space-overlay)] backdrop-blur-sm"
         onClick={closeOnOverlay ? onClose : undefined}
       />
 
+      {/* Centering wrapper — min-height trick works on all browsers including Safari */}
+      <div className="flex min-h-full items-center justify-center px-4
+                       pt-[env(safe-area-inset-top,0px)]
+                       pb-[calc(64px+env(safe-area-inset-bottom,0px))] sm:pb-4 sm:pt-4">
       {/* Modal */}
       <div
         className={`
           relative w-full ${sizes[size]}
           glass-strong rounded-2xl
-          max-h-[calc(100dvh-72px-env(safe-area-inset-bottom,0px)-env(safe-area-inset-top,0px)-64px)]
-          sm:max-h-[85dvh]
+          max-h-[calc(100vh-72px-64px)] max-h-[calc(100dvh-72px-64px)]
+          sm:max-h-[85vh] sm:max-h-[85dvh]
           overflow-y-auto
           animate-slideUp
         `}
@@ -91,6 +91,7 @@ export const Modal: React.FC<ModalProps> = ({
         <div className="px-6 py-4">
           {children}
         </div>
+      </div>
       </div>
     </div>
   );

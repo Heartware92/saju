@@ -911,13 +911,23 @@ export const getNewyearReport = async (
       overallGrade: fortune.overallGrade as string,
     });
 
-    // 프롬프트 명세: 총 2,500~3,200자 (8섹션). 한국어 토큰 비율 고려해 7,000.
-    const content = await callGPT(prompt, 7000);
-    const sections = parseNewyearReport(content);
+    // 2-pass 분할: 1차(general·wealth·career·love) + 2차(health·relation·monthly·lucky)
+    const pass1Prompt = prompt + '\n\n★ 이번 응답에서는 [general] [wealth] [career] [love] 4개 섹션만 출력. 나머지 4개는 다음 호출에서 작성.';
+    const pass1Content = await callGPT(pass1Prompt, 5000);
+    const pass1Sections = parseNewyearReport(pass1Content);
+
+    const pass2Prompt = prompt
+      + '\n\n★ 이번 응답에서는 [health] [relation] [monthly] [lucky] 4개 섹션만 출력. [general] [wealth] [career] [love]는 이미 완료.'
+      + `\n\n[이미 작성된 1차 내용 — 참고만, 출력하지 말 것]\n${pass1Content}`;
+    const pass2Content = await callGPT(pass2Prompt, 6000);
+    const pass2Sections = parseNewyearReport(pass2Content);
+
+    const sections: Partial<Record<NewyearSectionKey, string>> = { ...pass1Sections, ...pass2Sections };
+    const content = `${pass1Content}\n\n${pass2Content}`;
+
     archiveSaju({ sourceBirth: sourceBirthFromSaju(result), category: 'newyear', resultData: result as unknown as Record<string, unknown>, engineResult: { year, seWoon, currentDaeWoon } as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
 
     if (Object.keys(sections).length === 0) {
-      // 파싱 실패 시 원문 반환 — UI에서 단일 텍스트로 표시
       return { success: true, rawText: content };
     }
     return { success: true, sections };
