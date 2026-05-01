@@ -17,6 +17,7 @@ import {
 import { MORE_FORTUNE_CONFIGS, MORE_FORTUNE_ORDER } from '../constants/moreFortunes';
 import { findRecentArchive, type ArchiveCategory } from '../services/archiveService';
 import { RestoreReportModal } from '../components/RestoreReportModal';
+import MoonPhase from '../components/MoonPhase';
 
 /**
  * 운세 서비스 목록
@@ -201,6 +202,18 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen">
+      {/* 달 — 우상단 고정, 스크롤 시 자연스럽게 올라감 */}
+      <div className="absolute top-14 right-4 w-[76px] h-[76px] pointer-events-none opacity-35 z-[1]">
+        <div
+          className="absolute inset-[-30px] rounded-full"
+          style={{
+            background: 'radial-gradient(circle, rgba(255,240,200,0.10) 0%, rgba(255,220,180,0.05) 35%, transparent 70%)',
+            filter: 'blur(4px)',
+          }}
+        />
+        <MoonPhase size={76} />
+      </div>
+
       {/* Hero — 대표 프로필 상태에 따라 분기 */}
       <section className="relative overflow-hidden">
         <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 pt-10 pb-8">

@@ -1,20 +1,12 @@
-/**
- * 이용약관 페이지 — 껍데기.
- * 회원가입 시 (보기) 링크가 깨지지 않도록 우선 placeholder.
- * 실제 약관 내용은 추후 채울 예정.
- */
-
-import Link from 'next/link';
 import { BackButton } from '@/components/ui/BackButton';
 
 export const metadata = {
-  title: '이용약관 — 사주이천점',
+  title: '이용약관 — 이천점',
 };
 
 export default function TermsPage() {
   return (
     <div className="min-h-screen px-4 pt-4 pb-12 max-w-[720px] mx-auto">
-      {/* 헤더 — 좌측 뒤로가기 + 중앙 타이틀 */}
       <div className="flex items-center justify-between mb-6 px-1">
         <BackButton />
         <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
@@ -23,79 +15,312 @@ export default function TermsPage() {
         <div className="w-9" />
       </div>
 
-      {/* 본문 */}
       <div className="rounded-2xl p-6 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
         <p className="text-[13px] text-text-tertiary mb-4">
-          시행일: 2026-04-29 / 최종 개정일: 2026-04-29
+          시행일: 2026-05-01 / 최종 개정일: 2026-05-01
         </p>
 
-        <section className="space-y-5 text-[14px] text-text-secondary leading-relaxed">
-          <article>
-            <h2 className="text-[16px] font-bold text-text-primary mb-2">제1조 (목적)</h2>
-            <p>
-              본 약관은 사주이천점(이하 "회사")이 운영하는 사주명리 서비스(이하 "서비스")의 이용과
-              관련하여 회사와 회원 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을
-              목적으로 합니다.
-            </p>
-          </article>
+        <section className="space-y-6 text-[14px] text-text-secondary leading-relaxed">
 
-          <article>
-            <h2 className="text-[16px] font-bold text-text-primary mb-2">제2조 (정의)</h2>
-            <p>
-              본 약관에서 사용하는 용어의 정의는 다음과 같습니다.
-            </p>
-            <ul className="list-disc pl-5 mt-2 space-y-1">
-              <li>"서비스"란 회사가 제공하는 정통사주, 신년운세, 궁합, 토정비결, 자미두수, 타로 등 모든 명리 풀이 콘텐츠를 의미합니다.</li>
-              <li>"회원"이란 본 약관에 동의하고 회사와 서비스 이용 계약을 체결한 자를 말합니다.</li>
-              <li>"크레딧"이란 서비스 이용을 위한 가상 화폐로, 해(태양) 크레딧과 달(月) 크레딧을 포함합니다.</li>
-            </ul>
-          </article>
+          {/* ── 제1장 총칙 ── */}
+          <h2 className="text-[15px] font-bold text-cta/80 mt-2">제1장 총칙</h2>
 
-          <article>
-            <h2 className="text-[16px] font-bold text-text-primary mb-2">제3조 (약관의 효력 및 변경)</h2>
+          <Article title="제1조 (목적)">
             <p>
-              [추후 작성 예정] 약관 게시·변경 통지·동의 등 절차에 관한 조항이 들어갈 영역입니다.
+              본 약관은 (주)하트웨어(이하 &quot;회사&quot;)가 운영하는 이천점 서비스(이하 &quot;서비스&quot;)의
+              이용과 관련하여 회사와 회원 간의 권리, 의무 및 책임사항, 기타 필요한 사항을
+              규정함을 목적으로 합니다.
             </p>
-          </article>
+          </Article>
 
-          <article>
-            <h2 className="text-[16px] font-bold text-text-primary mb-2">제4조 (서비스의 제공)</h2>
-            <p>
-              [추후 작성 예정] 제공 범위, 운영 시간, 일시 중단 등에 관한 조항.
-            </p>
-          </article>
+          <Article title="제2조 (정의)">
+            <p>본 약관에서 사용하는 용어의 정의는 다음과 같습니다.</p>
+            <ol className="list-decimal pl-5 mt-2 space-y-1">
+              <li>&quot;서비스&quot;란 회사가 웹사이트 및 모바일 앱을 통해 제공하는 정통사주, 신년운세, 오늘의 운세, 지정일 운세, 궁합, 택일, 토정비결, 자미두수, 타로 등 모든 사주명리·운세 풀이 콘텐츠 및 부가 기능을 의미합니다.</li>
+              <li>&quot;콘텐츠&quot;란 회사가 유·무상으로 제공하는 텍스트, 이미지, 데이터 등 모든 정보 및 서비스를 말하며, 생성형 AI를 통해 생성됩니다.</li>
+              <li>&quot;회원&quot;이란 본 약관에 동의하고 회사와 서비스 이용 계약을 체결한 자를 말합니다.</li>
+              <li>&quot;크레딧&quot;이란 서비스 내에서 콘텐츠 이용을 위해 사용되는 가상 재화로, 해(☀️) 크레딧과 달(🌙) 크레딧을 포함합니다.</li>
+              <li>&quot;해 크레딧&quot;이란 프리미엄 콘텐츠(정통사주, 궁합, 신년운세, 택일 등) 이용에 사용되는 크레딧을 말합니다.</li>
+              <li>&quot;달 크레딧&quot;이란 스탠다드 콘텐츠(오늘의 운세, 타로, 더 많은 운세 등) 이용에 사용되는 크레딧을 말합니다.</li>
+              <li>&quot;충전 패키지&quot;란 해 크레딧과 달 크레딧을 조합하여 유료로 구매할 수 있는 상품 단위를 말합니다.</li>
+            </ol>
+          </Article>
 
-          <article>
-            <h2 className="text-[16px] font-bold text-text-primary mb-2">제5조 (회원의 의무)</h2>
-            <p>
-              [추후 작성 예정] 회원이 지켜야 할 의무, 금지 행위 등.
-            </p>
-          </article>
+          <Article title="제3조 (약관의 게시 및 효력)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>본 약관은 서비스 화면에 게시하거나 기타의 방법으로 공지함으로써 효력이 발생합니다.</li>
+              <li>회사는 관련 법령을 위배하지 않는 범위 내에서 약관을 변경할 수 있으며, 변경 시 적용일 7일 전부터 서비스 내 공지합니다.</li>
+              <li>회원은 변경된 약관에 동의하지 않을 경우 회원 탈퇴를 요청할 수 있으며, 변경된 약관의 효력 발생일로부터 7일 이후에도 거부 의사를 표시하지 않고 서비스를 계속 이용할 경우 변경 사항에 동의한 것으로 간주합니다.</li>
+            </ol>
+          </Article>
 
-          <article>
-            <h2 className="text-[16px] font-bold text-text-primary mb-2">제6조 (회사의 의무)</h2>
+          <Article title="제4조 (약관 외 준칙)">
             <p>
-              [추후 작성 예정] 개인정보 보호, 안정적 서비스 제공 등.
+              본 약관에 명시되지 않은 사항은 전기통신기본법, 전기통신사업법,
+              정보통신망 이용촉진 및 정보보호 등에 관한 법률, 전자상거래 등에서의
+              소비자보호에 관한 법률, 개인정보보호법 및 기타 관련 법령의 규정에 따릅니다.
             </p>
-          </article>
+          </Article>
 
-          <article>
-            <h2 className="text-[16px] font-bold text-text-primary mb-2">제7조 (해석 및 관할 법원)</h2>
+          {/* ── 제2장 서비스 이용계약 ── */}
+          <h2 className="text-[15px] font-bold text-cta/80 mt-4">제2장 서비스 이용계약</h2>
+
+          <Article title="제5조 (이용계약의 성립)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>이용계약은 회원이 되고자 하는 자가 약관의 내용에 동의한 후 회원가입 신청을 하고, 회사가 이를 승낙함으로써 성립됩니다.</li>
+              <li>회사는 다음 각 호에 해당하는 경우 승낙을 거부하거나 사후에 이용계약을 해지할 수 있습니다.
+                <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                  <li>타인의 정보를 이용하여 신청한 경우</li>
+                  <li>허위 정보를 기재하거나 필수 사항을 기재하지 않은 경우</li>
+                  <li>만 14세 미만인 경우</li>
+                  <li>이전에 약관 위반으로 자격을 상실한 적이 있는 경우</li>
+                  <li>기타 회사가 정한 이용 요건에 미달하는 경우</li>
+                </ul>
+              </li>
+            </ol>
+          </Article>
+
+          <Article title="제6조 (회원가입)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>회원가입은 이메일 회원가입 또는 소셜 로그인(Google, 카카오, 네이버)을 통해 이루어집니다.</li>
+              <li>회원은 가입 시 정확한 정보를 기재하여야 하며, 변경 사항이 있을 경우 즉시 수정하여야 합니다.</li>
+              <li>회원이 제공한 정보가 부정확하여 발생하는 불이익에 대하여 회사는 책임을 지지 않습니다.</li>
+            </ol>
+          </Article>
+
+          <Article title="제7조 (회원 정보의 변경)">
             <p>
-              본 약관에 명시되지 않은 사항은 관계 법령 및 상관례에 따릅니다.
-              본 약관과 관련된 분쟁은 회사 본점 소재지 관할 법원을 1심 법원으로 합니다.
+              회원은 마이페이지를 통하여 본인의 개인정보를 열람하고 수정할 수 있습니다.
+              다만, 서비스 관리를 위해 필요한 이메일 등은 수정이 제한될 수 있습니다.
             </p>
-          </article>
+          </Article>
+
+          {/* ── 제3장 서비스 제공 및 이용 ── */}
+          <h2 className="text-[15px] font-bold text-cta/80 mt-4">제3장 서비스 제공 및 이용</h2>
+
+          <Article title="제8조 (서비스의 내용)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>회사는 다음의 서비스를 제공합니다.
+                <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                  <li>사주명리 기반 운세·풀이 콘텐츠 (정통사주, 신년운세, 오늘의 운세, 지정일 운세, 궁합, 택일, 토정비결, 자미두수, 타로, 더 많은 운세 등)</li>
+                  <li>만세력 계산 및 사주 원국 분석</li>
+                  <li>생년월일 프로필 관리</li>
+                  <li>풀이 결과 보관함</li>
+                  <li>기타 회사가 추가 개발하여 제공하는 서비스</li>
+                </ul>
+              </li>
+              <li>서비스의 구체적인 내용, 이용 조건, 가격 등은 서비스 화면에 게시합니다.</li>
+            </ol>
+          </Article>
+
+          <Article title="제9조 (서비스 이용 시간)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>서비스의 이용은 연중무휴, 1일 24시간을 원칙으로 합니다.</li>
+              <li>다만, 시스템 점검, 설비 보수, 기타 부득이한 사유가 있는 경우 일시적으로 서비스 제공을 중단할 수 있으며, 이 경우 사전에 공지합니다. 긴급한 경우에는 사후에 공지할 수 있습니다.</li>
+            </ol>
+          </Article>
+
+          <Article title="제10조 (AI 생성 콘텐츠의 특성 및 면책)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>서비스에서 제공하는 풀이 결과는 생성형 AI(인공지능)를 활용하여 자동으로 생성됩니다.</li>
+              <li>AI가 생성한 모든 결과에 대해 회사는 그 정확성, 완전성, 신뢰성을 보장하지 않습니다.</li>
+              <li>사주명리·운세·타로 등의 풀이는 과학적으로 효과가 입증된 것이 아니며, 오로지 참고 및 오락 목적으로만 제공됩니다.</li>
+              <li>이용자는 AI가 생성한 결과를 바탕으로 내리는 모든 판단과 결정에 대해 본인이 전적으로 책임을 집니다.</li>
+              <li>동일한 입력 정보라 하더라도 AI의 특성상 매번 다른 결과가 생성될 수 있으며, 이는 서비스의 결함이 아닙니다.</li>
+              <li>회사는 AI 생성 결과의 이용으로 인한 직접적, 간접적, 부수적, 결과적 손해에 대하여 책임을 지지 않습니다.</li>
+            </ol>
+          </Article>
+
+          <Article title="제11조 (이용자 정보의 활용)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>회원이 입력한 생년월일, 출생 시간, 성별 등의 정보는 사주명리 계산 및 AI 풀이 결과 생성에 활용됩니다.</li>
+              <li>회사는 이용자의 개인정보를 AI 모델 학습 목적으로 활용하지 않습니다.</li>
+              <li>서비스 이용 기록은 서비스 품질 개선 및 통계 분석 목적으로 비식별화하여 활용될 수 있습니다.</li>
+            </ol>
+          </Article>
+
+          <Article title="제12조 (저작권 및 지적재산권)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>서비스 내 만세력 계산 엔진, AI 프롬프트, 시스템 설계, 디자인, 콘텐츠 구조 등 일체의 지적재산권은 회사에 귀속됩니다.</li>
+              <li>회원은 서비스를 통해 얻은 풀이 결과를 개인적 용도로만 이용할 수 있으며, 회사의 사전 동의 없이 상업적 목적으로 복제, 배포, 전송, 출판하거나 제3자에게 제공할 수 없습니다.</li>
+              <li>다음 각 호의 행위는 엄격히 금지됩니다.
+                <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                  <li>AI 시스템 프롬프트, 학습 데이터, 모델 정보를 추출하려는 시도</li>
+                  <li>자동화된 수단(스크래핑, 크롤링, 봇 등)을 이용한 서비스 접근 또는 데이터 수집</li>
+                  <li>서비스의 리버스 엔지니어링, 디컴파일, 소스코드 추출 시도</li>
+                  <li>벤치마킹 목적의 반복적 결제 및 결과 조회</li>
+                </ul>
+              </li>
+            </ol>
+          </Article>
+
+          {/* ── 제4장 유료 서비스 및 결제 ── */}
+          <h2 className="text-[15px] font-bold text-cta/80 mt-4">제4장 유료 서비스 및 결제</h2>
+
+          <Article title="제13조 (유료 서비스)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>서비스의 일부 콘텐츠는 크레딧을 소모하는 유료 서비스입니다.</li>
+              <li>유료 서비스의 종류, 소모 크레딧 수, 이용 조건 등은 서비스 화면에 게시합니다.</li>
+            </ol>
+          </Article>
+
+          <Article title="제14조 (크레딧의 종류 및 사용)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>크레딧은 해(☀️) 크레딧과 달(🌙) 크레딧으로 구분됩니다.
+                <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                  <li>해 크레딧: 프리미엄 콘텐츠(정통사주, 궁합, 신년운세, 택일 등)에 사용</li>
+                  <li>달 크레딧: 스탠다드 콘텐츠(오늘의 운세, 타로, 더 많은 운세 등)에 사용</li>
+                </ul>
+              </li>
+              <li>크레딧은 충전 패키지 구매를 통해 충전되며, 해 크레딧과 달 크레딧이 조합되어 제공됩니다.</li>
+              <li>크레딧은 회원 본인만 사용할 수 있으며, 타인에게 양도, 선물, 판매할 수 없습니다.</li>
+              <li>유료 구매한 크레딧의 유효기간은 구매일로부터 1년이며, 유효기간 경과 시 미사용 크레딧은 소멸됩니다.</li>
+              <li>무료로 지급된 크레딧(이벤트, 프로모션 등)은 별도로 정한 유효기간을 따릅니다.</li>
+              <li>회원 탈퇴 시 미사용 크레딧은 소멸되며 복구되지 않습니다.</li>
+            </ol>
+          </Article>
+
+          <Article title="제15조 (결제)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>크레딧 충전을 위한 결제는 회사가 제공하는 결제 수단(신용카드, 간편결제 등)을 통해 이루어집니다.</li>
+              <li>결제 금액은 충전 패키지별로 서비스 화면에 게시된 가격을 따릅니다.</li>
+              <li>결제와 관련된 모든 거래는 결제대행사(PG사)를 통해 처리되며, 회사는 회원의 결제 정보(카드번호 등)를 직접 저장하지 않습니다.</li>
+            </ol>
+          </Article>
+
+          <Article title="제16조 (청약철회 및 환불)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>회원은 크레딧을 전혀 사용하지 않은 경우 결제일로부터 7일 이내에 청약철회(환불)를 요청할 수 있습니다.</li>
+              <li>이미 크레딧을 사용하여 풀이 결과를 확인한 경우에는 해당 크레딧에 대한 환불이 불가합니다.</li>
+              <li>환불 요청은 고객센터를 통해 접수하며, 접수일로부터 3영업일 이내에 처리합니다.</li>
+              <li>환불 시 결제 수수료, 이미 사용한 크레딧에 해당하는 금액 등을 공제한 나머지 금액을 환불합니다.</li>
+              <li>무료로 지급된 크레딧은 환불 대상이 아닙니다.</li>
+            </ol>
+          </Article>
+
+          {/* ── 제5장 회원의 의무 ── */}
+          <h2 className="text-[15px] font-bold text-cta/80 mt-4">제5장 회원의 의무</h2>
+
+          <Article title="제17조 (회원의 의무)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>회원은 관련 법령, 본 약관의 규정, 이용 안내 등 회사가 통지하는 사항을 준수하여야 합니다.</li>
+              <li>회원은 다음 각 호의 행위를 하여서는 아니 됩니다.
+                <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                  <li>타인의 정보를 도용하거나 허위 정보를 등록하는 행위</li>
+                  <li>회사의 서비스를 이용하여 얻은 정보를 상업적으로 이용하거나 제3자에게 제공하는 행위</li>
+                  <li>회사 또는 제3자의 지적재산권을 침해하는 행위</li>
+                  <li>서비스의 안정적 운영을 방해하는 행위</li>
+                  <li>자동화 도구를 이용한 대량 요청, 서버 부하 유발 행위</li>
+                  <li>AI 시스템의 프롬프트 해킹, 탈옥(jailbreak), 보안 우회를 시도하는 행위</li>
+                  <li>공공질서 및 미풍양속에 반하는 행위</li>
+                  <li>기타 관련 법령에 위반되는 행위</li>
+                </ul>
+              </li>
+              <li>회원은 자신의 계정 정보(이메일, 비밀번호 등)를 안전하게 관리할 책임이 있으며, 이를 타인에게 양도하거나 대여할 수 없습니다.</li>
+            </ol>
+          </Article>
+
+          {/* ── 제6장 회사의 의무 ── */}
+          <h2 className="text-[15px] font-bold text-cta/80 mt-4">제6장 회사의 의무</h2>
+
+          <Article title="제18조 (회사의 의무)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>회사는 관련 법령과 본 약관이 금지하거나 미풍양속에 반하는 행위를 하지 않으며, 지속적이고 안정적인 서비스 제공을 위하여 최선을 다합니다.</li>
+              <li>회사는 회원의 개인정보를 보호하기 위해 보안 시스템을 갖추며, 개인정보처리방침을 공시하고 이를 준수합니다.</li>
+              <li>회사는 서비스 이용과 관련하여 회원으로부터 제기된 의견이나 불만이 정당하다고 인정할 경우 적절한 조치를 취합니다.</li>
+            </ol>
+          </Article>
+
+          {/* ── 제7장 이용 제한 및 계약 해지 ── */}
+          <h2 className="text-[15px] font-bold text-cta/80 mt-4">제7장 이용 제한 및 계약 해지</h2>
+
+          <Article title="제19조 (이용 제한)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>회사는 회원이 제17조의 의무를 위반하거나 서비스의 정상적인 운영을 방해한 경우, 경고, 일시 정지, 영구 이용 정지 등의 조치를 취할 수 있습니다.</li>
+              <li>회사는 이용 제한 조치 시 그 사유, 일시, 기간 등을 회원에게 통지합니다. 다만, 긴급을 요하는 경우 사후에 통지할 수 있습니다.</li>
+            </ol>
+          </Article>
+
+          <Article title="제20조 (부정 사용 제재)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>자동화 수단을 이용하여 서버·AI 리소스를 무단으로 사용한 경우, 회사는 실제 손해액의 3배에 해당하는 금액을 청구할 수 있습니다.</li>
+              <li>AI 시스템 프롬프트 해킹, 학습 데이터 추출, 모델 정보 해킹을 시도한 경우 회사는 민·형사상 법적 조치를 취할 수 있으며, 실제 손해액의 3배에 해당하는 배상을 청구할 수 있습니다.</li>
+            </ol>
+          </Article>
+
+          <Article title="제21조 (계약 해지)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>회원은 언제든지 마이페이지를 통하여 탈퇴를 요청할 수 있으며, 회사는 즉시 처리합니다.</li>
+              <li>탈퇴 시 미사용 크레딧은 소멸되며, 보관함의 풀이 기록은 삭제됩니다.</li>
+              <li>회사는 회원이 다음 각 호에 해당하는 행위를 한 경우 사전 통지 후 이용계약을 해지할 수 있습니다.
+                <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                  <li>타인의 개인정보를 도용한 경우</li>
+                  <li>서비스 운영을 고의로 방해한 경우</li>
+                  <li>허위로 가입 신청을 한 경우</li>
+                  <li>기타 본 약관을 위반한 경우</li>
+                </ul>
+              </li>
+            </ol>
+          </Article>
+
+          {/* ── 제8장 손해배상 및 면책 ── */}
+          <h2 className="text-[15px] font-bold text-cta/80 mt-4">제8장 손해배상 및 면책</h2>
+
+          <Article title="제22조 (손해배상)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>회사는 무료로 제공되는 서비스와 관련하여 회원에게 어떠한 손해가 발생하더라도, 회사의 고의 또는 중대한 과실로 인한 경우를 제외하고 이에 대하여 책임을 부담하지 아니합니다.</li>
+              <li>유료 서비스의 경우, 회사의 귀책사유로 서비스 이용이 불가능한 때에는 회원이 결제한 금액 범위 내에서 보상합니다.</li>
+            </ol>
+          </Article>
+
+          <Article title="제23조 (면책 조항)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>회사는 천재지변, 전쟁, 기간통신사업자의 서비스 중단 또는 이에 준하는 불가항력으로 인하여 서비스를 제공할 수 없는 경우에는 책임이 면제됩니다.</li>
+              <li>회사는 서비스용 설비의 보수, 교체, 정기점검, 공사 등 부득이한 사유로 발생한 손해에 대한 책임이 면제됩니다.</li>
+              <li>회사는 회원의 귀책사유로 인한 서비스 이용의 장애에 대하여 책임을 지지 않습니다.</li>
+              <li>회사는 회원이 서비스를 이용하여 기대하는 이익을 얻지 못하거나, 서비스를 통하여 얻은 자료로 인한 손해에 관하여 책임을 지지 않습니다.</li>
+              <li>회사는 AI가 생성한 풀이 결과의 정확성, 신뢰성, 유용성에 대하여 어떠한 보증도 하지 않으며, 회원이 이를 신뢰하여 발생한 손해에 대해 책임을 지지 않습니다.</li>
+            </ol>
+          </Article>
+
+          {/* ── 제9장 분쟁 해결 ── */}
+          <h2 className="text-[15px] font-bold text-cta/80 mt-4">제9장 분쟁 해결</h2>
+
+          <Article title="제24조 (분쟁 해결)">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>회사와 회원 간에 서비스 이용과 관련하여 분쟁이 발생한 경우, 양 당사자는 분쟁의 해결을 위해 성실히 협의합니다.</li>
+              <li>전항의 협의에서도 분쟁이 해결되지 않을 경우 양 당사자는 전자문서·전자거래분쟁조정위원회, 한국소비자원 등 관련 기관의 조정을 신청할 수 있습니다.</li>
+            </ol>
+          </Article>
+
+          <Article title="제25조 (관할 법원)">
+            <p>
+              서비스 이용으로 발생한 분쟁에 대해 소송이 제기될 경우 회사의 본점 소재지를 관할하는
+              법원을 전속 관할 법원으로 합니다.
+            </p>
+          </Article>
+
+          {/* ── 부칙 ── */}
+          <h2 className="text-[15px] font-bold text-cta/80 mt-4">부칙</h2>
+          <p>본 약관은 2026년 5월 1일부터 시행합니다.</p>
+
         </section>
 
         <div className="mt-8 pt-6 border-t border-[var(--border-subtle)]">
           <p className="text-[12px] text-text-tertiary">
-            본 약관은 임시 게시본입니다. 정식 약관은 추후 업데이트될 예정입니다.
-            이 페이지에 대한 문의:{' '}
-            <Link href="/sangdamso" className="text-cta hover:underline">상담소</Link>
+            (주)하트웨어
           </p>
         </div>
       </div>
     </div>
+  );
+}
+
+function Article({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <article>
+      <h3 className="text-[15px] font-bold text-text-primary mb-2">{title}</h3>
+      <div className="space-y-2">{children}</div>
+    </article>
   );
 }

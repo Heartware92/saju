@@ -189,7 +189,6 @@
   height: 76px;
   pointer-events: none;
   opacity: 0.35;
-  animation: moon-float 14s ease-in-out infinite alternate;
 }
 
 .moonGlow {

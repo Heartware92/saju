@@ -9,7 +9,6 @@
  * 별똥별 위치/딜레이는 셔플된 고정값 — 서버·클라이언트 불일치 방지용 deterministic
  */
 import styles from './StarfallBackground.module.css';
-import MoonPhase from './MoonPhase';
 
 /* 모든 좌표/벡터는 컨테이너(9:16 프레임) 기준 % — 뷰포트 높이에 관계없이 동일한 궤적
    midpoint = startX + tx/2 = 50%, startY + ty/2 = 50% → 모든 별이 정확히 중앙 관통
@@ -37,12 +36,6 @@ export default function StarfallBackground() {
 
       {/* 은은한 성운(구름) */}
       <div className={styles.nebula} />
-
-      {/* 달 — 우상단. 오늘 KST 기준 실제 달 위상으로 자동 렌더 */}
-      <div className={styles.moon}>
-        <div className={styles.moonGlow} />
-        <MoonPhase size={76} />
-      </div>
 
       {/* 별똥별 */}
       {SHOOTING_STARS.map((s, i) => (

@@ -1291,7 +1291,7 @@ export const calculateSaju = (
   const dayZhiForKongmang = normalizeZhi(baZi.getDayZhi());
   const kongmangZhis = getKongmangZhis(dayGan, dayZhiForKongmang);
 
-  const createPillar = (ganRaw: string, zhiRaw: string): Pillar => {
+  const createPillar = (ganRaw: string, zhiRaw: string, isDayPillar = false): Pillar => {
     const gan = normalizeGan(ganRaw);
     const zhi = normalizeZhi(zhiRaw);
     return {
@@ -1302,7 +1302,7 @@ export const calculateSaju = (
       ganYinYang: STEM_YINYANG[gan] || '',
       zhiYinYang: BRANCH_YINYANG[zhi] || '',
       hiddenStems: BRANCH_HIDDEN_STEMS[zhi] || [],
-      tenGodGan: gan === dayGan ? '일주' : getTenGod(dayGan, gan),
+      tenGodGan: isDayPillar ? '일주' : getTenGod(dayGan, gan),
       tenGodZhi: getTenGodForBranch(dayGan, zhi),
       twelveStage: getTwelveStage(dayGan, zhi),
       sinSal12: getSinSal12(yearZhiForSinsal, zhi),
@@ -1313,7 +1313,7 @@ export const calculateSaju = (
   const pillars = {
     year: createPillar(baZi.getYearGan(), baZi.getYearZhi()),
     month: createPillar(baZi.getMonthGan(), baZi.getMonthZhi()),
-    day: createPillar(baZi.getDayGan(), baZi.getDayZhi()),
+    day: createPillar(baZi.getDayGan(), baZi.getDayZhi(), true),
     // 시간 미상 시 시주는 빈 placeholder — 하위 계산이 자연스럽게 시주를 스킵함
     hour: hourUnknown ? { ...EMPTY_HOUR_PILLAR } : createPillar(baZi.getTimeGan(), baZi.getTimeZhi())
   };

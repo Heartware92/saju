@@ -154,8 +154,33 @@ export default function Layout({ children }: LayoutProps) {
                   </Link>
                 ))}
               </nav>
-              <div className="absolute bottom-8 left-6 right-6">
-                <p className="text-xs text-text-tertiary text-center">
+              <div className="absolute bottom-8 left-6 right-6 flex flex-col items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-center">
+                  <Link
+                    href="/terms"
+                    onClick={() => setMenuOpen(false)}
+                    className="text-[11px] text-text-tertiary hover:text-text-secondary transition-colors"
+                  >
+                    이용약관
+                  </Link>
+                  <span className="text-[11px] text-text-tertiary/40">|</span>
+                  <Link
+                    href="/privacy"
+                    onClick={() => setMenuOpen(false)}
+                    className="text-[11px] text-text-tertiary hover:text-text-secondary transition-colors"
+                  >
+                    개인정보처리방침
+                  </Link>
+                  <span className="text-[11px] text-text-tertiary/40">|</span>
+                  <Link
+                    href="/licenses"
+                    onClick={() => setMenuOpen(false)}
+                    className="text-[11px] text-text-tertiary hover:text-text-secondary transition-colors"
+                  >
+                    오픈소스 라이선스
+                  </Link>
+                </div>
+                <p className="text-[11px] text-text-tertiary">
                   &copy; 2026 이천점
                 </p>
               </div>
