@@ -30,6 +30,8 @@ export const MAX_MESSAGES_PER_CONVERSATION = 50;
 
 export const RELATIONSHIP_PRESETS = ['솔로', '썸타는 중', '연애중', '결혼했어요', '새로운 출발', '기타'];
 
+export const CONCERN_PRESETS = ['재물·돈', '이직·취업', '연애·결혼', '건강', '학업·시험', '대인관계', '사업·창업', '기타'];
+
 export const QUICK_QUESTIONS = [
   '올해 재물운은 어떤가요?',
   '요즘 연애운이 궁금해요',

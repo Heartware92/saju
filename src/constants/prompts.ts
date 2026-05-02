@@ -4153,6 +4153,7 @@ ${METAPHOR_TITLE_RULE}
 export interface ConsultationStatus {
   relationshipStatus?: string;  // 연애상태 (솔로/연애중/결혼/기타)
   job?: string;                 // 직업/일
+  concern?: string;             // 요즘 고민 키워드
 }
 
 /**
@@ -4280,6 +4281,7 @@ export function buildConsultationSystemPrompt(
 나이: ${currentAge}세
 현재 연애상태: ${status.relationshipStatus || '미입력'}
 직업/일: ${status.job || '미입력'}
+요즘 고민: ${status.concern || '미입력'}
 오늘 날짜: ${today} (${currentMonth}월)
 
 [사주 원국 4주]
@@ -4346,6 +4348,7 @@ ${monthStr}
 4. **개인화**:
    - 이름("${profile.name}님")을 자연스럽게 2~3회 호명
    - 연애상태·직업 정보가 있으면 해당 주제에서 자연스럽게 반영
+   - "요즘 고민"이 입력되어 있으면: 질문이 모호하거나 "뭐든 봐주세요" 류일 때 해당 고민 주제를 우선적으로 다루되, 사용자가 명시적으로 다른 주제를 물으면 그 질문에 집중. 고민 키워드는 답변의 맥락 참고용이지, 모든 답변에 억지로 끼워넣지 말 것.
    - 막연한 답변 금지. "좋습니다" 대신 "7월에 상관 기운이 들어와 표현력이 강해집니다" 식 구체성
 
 5. **명리 인용 방식**:

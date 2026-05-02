@@ -13,6 +13,7 @@ import {
   STATUS_KEY,
   STORAGE_NOTICE_KEY,
   RELATIONSHIP_PRESETS,
+  CONCERN_PRESETS,
   loadConversations,
   formatRelativeTime,
   newConversation,
@@ -31,6 +32,8 @@ export default function ConsultationListPage() {
   const [jobInput, setJobInput] = useState('');
   const [relationshipSelect, setRelationshipSelect] = useState('');
   const [customRelationship, setCustomRelationship] = useState('');
+  const [concernSelect, setConcernSelect] = useState('');
+  const [customConcern, setCustomConcern] = useState('');
   const [storageBannerVisible, setStorageBannerVisible] = useState(false);
 
   useEffect(() => {
@@ -73,9 +76,11 @@ export default function ConsultationListPage() {
   const saveStatus = () => {
     if (!selectedProfileId) return;
     const finalRelationship = relationshipSelect === '기타' ? customRelationship.trim() : relationshipSelect;
+    const finalConcern = concernSelect === '기타' ? customConcern.trim() : concernSelect;
     const next: ConsultationStatus = {
       relationshipStatus: finalRelationship || undefined,
       job: jobInput.trim() || undefined,
+      concern: finalConcern || undefined,
     };
     setStatus(next);
     try { localStorage.setItem(STATUS_KEY(selectedProfileId), JSON.stringify(next)); } catch { /* ignore */ }
@@ -95,6 +100,17 @@ export default function ConsultationListPage() {
       setCustomRelationship('');
     }
     setJobInput(status.job || '');
+    const currentConcern = status.concern || '';
+    if (CONCERN_PRESETS.includes(currentConcern)) {
+      setConcernSelect(currentConcern);
+      setCustomConcern('');
+    } else if (currentConcern) {
+      setConcernSelect('기타');
+      setCustomConcern(currentConcern);
+    } else {
+      setConcernSelect('');
+      setCustomConcern('');
+    }
     setStatusModalOpen(true);
   };
 
@@ -221,7 +237,12 @@ export default function ConsultationListPage() {
                     💼 {status.job}
                   </span>
                 )}
-                {!status.relationshipStatus && !status.job && (
+                {status.concern && (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                    🔮 {status.concern}
+                  </span>
+                )}
+                {!status.relationshipStatus && !status.job && !status.concern && (
                   <span className="text-text-tertiary text-[13px]">상태를 설정하면 더 정확한 답변을 받아요</span>
                 )}
               </div>
@@ -352,7 +373,7 @@ export default function ConsultationListPage() {
                 )}
               </div>
 
-              <div className="mb-5">
+              <div className="mb-4">
                 <p className="text-[13px] font-semibold text-text-secondary mb-2 uppercase tracking-wider">직업 / 일</p>
                 <input
                   type="text" value={jobInput}
@@ -360,6 +381,30 @@ export default function ConsultationListPage() {
                   placeholder="예: IT 회사 대표, 대학생, 취업 준비중" maxLength={50}
                   className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-text-primary text-[15px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none"
                 />
+              </div>
+
+              <div className="mb-5">
+                <p className="text-[13px] font-semibold text-text-secondary mb-2 uppercase tracking-wider">요즘 고민 키워드</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {CONCERN_PRESETS.map(c => (
+                    <button
+                      key={c}
+                      onClick={() => setConcernSelect(concernSelect === c ? '' : c)}
+                      className={`px-3 py-1.5 rounded-full text-[14px] font-medium border transition-all
+                        ${concernSelect === c ? 'bg-cta/25 border-cta/60 text-cta' : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'}`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+                {concernSelect === '기타' && (
+                  <input
+                    type="text" value={customConcern}
+                    onChange={e => setCustomConcern(e.target.value)}
+                    placeholder="직접 입력 (예: 부동산 투자, 자녀 교육)" maxLength={30}
+                    className="w-full mt-2 px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-text-primary text-[15px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none"
+                  />
+                )}
               </div>
 
               <div className="flex gap-2">
