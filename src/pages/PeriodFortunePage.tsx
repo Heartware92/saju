@@ -875,8 +875,19 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
 
                 // 첫 줄 = 은유 제목, 나머지 = 본문 — 정통사주와 동일 포맷
                 const lines = text.trim().split('\n');
-                const metaphorTitle = lines[0]?.trim() ?? '';
-                const bodyText = lines.slice(1).join('\n').trim();
+                let metaphorTitle = lines[0]?.trim() ?? '';
+                let rawBody = lines.slice(1).join('\n').trim();
+
+                // monthly 이전 캐시 호환: 첫 줄이 "N월(" 패턴이면 은유 제목 없는 구 포맷
+                if (key === 'monthly' && /^\d{1,2}월\s*\(/.test(metaphorTitle)) {
+                  rawBody = text.trim();
+                  metaphorTitle = '';
+                }
+
+                // monthly: 월 사이 빈 줄 유지, 기타 섹션: 단락 내 불필요 줄바꿈 제거
+                const bodyText = key === 'monthly'
+                  ? rawBody
+                  : rawBody.replace(/\n(?!\n)/g, ' ');
 
                 return (
                   <motion.div
@@ -905,14 +916,24 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
                       {metaphorTitle}
                     </div>
 
-                    {/*
-                      [lucky] 섹션도 본문 텍스트만 표시.
-                      LuckyVisualCard(색·숫자·방향·시간대 등 시각 데이터)는 페이지 상단의
-                      "연간 행운 처방" 카드 한 곳에서만 노출 — 직원 피드백 "행운 처방·포인트 중복" 해결.
-                    */}
-                    <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line break-keep">
-                      {bodyText}
-                    </p>
+                    {key === 'monthly' ? (
+                      // 월별 흐름: 월 단위로 분리해서 시각적 간격 확보
+                      // 신규 포맷: \n\n 빈 줄 구분 / 구 포맷: "N월(" 패턴으로 분리
+                      <div className="space-y-3">
+                        {(bodyText.includes('\n\n')
+                          ? bodyText.split(/\n\n+/)
+                          : bodyText.split(/(?=\d{1,2}월\s*\()/)
+                        ).filter(Boolean).map((monthBlock, mi) => (
+                          <p key={mi} className="text-[15px] text-text-secondary leading-relaxed break-keep">
+                            {monthBlock.replace(/\n/g, ' ').trim()}
+                          </p>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line break-keep">
+                        {bodyText}
+                      </p>
+                    )}
                   </motion.div>
                 );
               })}
