@@ -19,6 +19,12 @@ interface Props {
   onClose: () => void;
 }
 
+interface ConsultationRecordItem {
+  id: string; profile_name: string | null; conversation_id: string;
+  title: string; message_count: number;
+  last_message_at: string | null; created_at: string; updated_at: string;
+}
+
 interface DetailData {
   user: {
     id: string; email: string; provider: string;
@@ -38,16 +44,17 @@ interface DetailData {
   orders: any[];
   sajuRecords: any[];
   tarotRecords: any[];
+  consultationRecords: ConsultationRecordItem[];
   transactions: any[];
   aggregates: {
     totalSpent: number; orderCount: number; refundCount: number; isVip: boolean;
-    sajuTotal: number; tarotTotal: number;
+    sajuTotal: number; tarotTotal: number; consultationTotal: number;
     sajuByCategory: Record<string, number>;
     tarotBySpread: Record<string, number>;
   };
 }
 
-type DrawerTab = 'overview' | 'profiles' | 'orders' | 'records' | 'transactions' | 'ops';
+type DrawerTab = 'overview' | 'profiles' | 'orders' | 'records' | 'consultations' | 'transactions' | 'ops';
 
 const fmtWon = (n: number) => `${(n ?? 0).toLocaleString('ko-KR')}원`;
 const fmtDate = (s: string | null) => s
@@ -119,6 +126,7 @@ export function MemberDetailDrawer({ userId, token, onClose }: Props) {
                 ['profiles', `프로필 (${data.profiles.length})`],
                 ['orders', `주문 (${data.orders.length})`],
                 ['records', `이용 (${data.sajuRecords.length + data.tarotRecords.length})`],
+                ['consultations', `상담 (${(data.consultationRecords ?? []).length})`],
                 ['transactions', `거래 (${data.transactions.length})`],
                 ['ops', '관리자 작업'],
               ] as [DrawerTab, string][]).map(([k, label]) => (
@@ -137,6 +145,7 @@ export function MemberDetailDrawer({ userId, token, onClose }: Props) {
               {tab === 'profiles' && <ProfilesTab data={data} />}
               {tab === 'orders' && <OrdersTab data={data} />}
               {tab === 'records' && <RecordsTab data={data} />}
+              {tab === 'consultations' && <ConsultationsTab data={data} token={token} />}
               {tab === 'transactions' && <TransactionsTab data={data} />}
               {tab === 'ops' && <OpsTab data={data} token={token} onRefresh={() => reloadDetail()} />}
             </div>
@@ -186,8 +195,9 @@ function OverviewTab({ data }: { data: DetailData }) {
         <Grid>
           <Row label="누적 결제" value={<span className={aggregates.isVip ? 'text-amber-300 font-bold' : ''}>{fmtWon(aggregates.totalSpent)}{aggregates.isVip && ' (VIP)'}</span>} />
           <Row label="주문 수" value={`${aggregates.orderCount}건 (환불 ${aggregates.refundCount}건)`} />
-          <Row label="사주 분석" value={`${aggregates.sajuTotal}회`} />
+          <Row label="��주 분석" value={`${aggregates.sajuTotal}회`} />
           <Row label="타로" value={`${aggregates.tarotTotal}회`} />
+          <Row label="상담소" value={`${aggregates.consultationTotal ?? 0}건`} />
           {credit && <>
             <Row label="☀ 해" value={<>잔액 <b>{credit.sun_balance}</b> · 발행 {credit.total_sun_purchased} · 소비 {credit.total_sun_consumed}</>} />
             <Row label="🌙 달" value={<>잔액 <b>{credit.moon_balance}</b> · 발행 {credit.total_moon_purchased} · 소비 {credit.total_moon_consumed}</>} />
@@ -292,10 +302,11 @@ function RecordsTab({ data }: { data: DetailData }) {
           : (TAROT_SPREAD_LABEL[r.spread_type] ?? r.spread_type);
         return (
           <div key={`${r._kind}-${r.id}`} className="flex items-center gap-3 py-1.5 px-3 rounded-lg bg-white/3 border border-white/5 text-[13px]">
-            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${r._kind === 'saju' ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' : 'bg-pink-500/15 text-pink-300 border-pink-500/30'}`}>
+            <span className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border ${r._kind === 'saju' ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' : 'bg-pink-500/15 text-pink-300 border-pink-500/30'}`}>
               {r._kind === 'saju' ? '사주' : '타로'}
             </span>
             <span className="text-text-primary font-medium">{label}</span>
+            {r.profile_name && <span className="text-[11px] text-text-tertiary">({r.profile_name})</span>}
             <span className="text-text-tertiary">
               {r.credit_type === 'sun' ? '☀' : '🌙'}{r.credit_used}
             </span>
@@ -303,6 +314,62 @@ function RecordsTab({ data }: { data: DetailData }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function ConsultationsTab({ data, token }: { data: DetailData; token: string | null }) {
+  const records = data.consultationRecords ?? [];
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<any>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const loadDetail = async (id: string) => {
+    if (expandedId === id) { setExpandedId(null); setDetail(null); return; }
+    setExpandedId(id);
+    setDetailLoading(true);
+    try {
+      const res = await fetch(`/api/admin/consultations/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      if (res.ok) setDetail(json);
+    } catch { /* ignore */ }
+    finally { setDetailLoading(false); }
+  };
+
+  if (records.length === 0) return <p className="text-[13px] text-text-tertiary">상담 기록 없음</p>;
+
+  return (
+    <div className="space-y-2">
+      {records.map(r => (
+        <div key={r.id} className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+          <button
+            onClick={() => loadDetail(r.id)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5 transition-colors"
+          >
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-500/15 text-teal-300 border border-teal-500/30">상담</span>
+            <span className="text-[13px] text-text-primary font-medium truncate flex-1">{r.title}</span>
+            <span className="text-[11px] text-text-tertiary">{r.message_count}개</span>
+            <span className="text-[11px] text-text-tertiary">{r.profile_name ?? '-'}</span>
+            <span className="text-[11px] text-text-tertiary whitespace-nowrap">{fmtDate(r.updated_at)}</span>
+          </button>
+          {expandedId === r.id && (
+            <div className="border-t border-white/10 px-3 py-3 max-h-[300px] overflow-y-auto space-y-2">
+              {detailLoading && <p className="text-[12px] text-text-tertiary">불러오는 중…</p>}
+              {detail?.messages?.map((msg: any, idx: number) => (
+                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] px-3 py-2 rounded-xl text-[12px] leading-relaxed whitespace-pre-wrap ${
+                    msg.role === 'user'
+                      ? 'bg-cta/60 text-white'
+                      : 'bg-white/5 border border-white/10 text-text-secondary'
+                  }`}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

@@ -31,7 +31,7 @@ interface Stats {
   users: { total: number; today: number; thisMonth: number };
   orders: { completed: number; refunded: number; refundRate: number };
   revenue: { total: number; thisMonth: number; prevMonth: number; refunded: number; growth: number | null };
-  usage: { sajuTotal: number; sajuToday: number; tarotTotal: number; tarotToday: number };
+  usage: { sajuTotal: number; sajuToday: number; tarotTotal: number; tarotToday: number; consultTotal?: number; consultToday?: number };
   credits: {
     sun: { issued: number; consumed: number; balance: number };
     moon: { issued: number; consumed: number; balance: number };
@@ -48,10 +48,18 @@ interface Order {
 interface UsageRecord {
   id: string; user_id: string; userEmail: string;
   category?: string; spread_type?: string;
+  profile_name?: string;
   credit_type: string; credit_used: number; created_at: string;
 }
 
-type Tab = 'overview' | 'members' | 'orders' | 'usage' | 'credits' | 'records' | 'ops' | 'insights';
+interface ConsultationRecord {
+  id: string; user_id: string; userEmail: string;
+  profile_name: string | null; conversation_id: string;
+  title: string; message_count: number;
+  last_message_at: string | null; created_at: string; updated_at: string;
+}
+
+type Tab = 'overview' | 'members' | 'orders' | 'usage' | 'credits' | 'records' | 'consultations' | 'ops' | 'insights';
 type SortKey = 'joined' | 'lastSeen' | 'totalSpent' | 'analysisCount' | 'orderCount';
 
 // ── 유틸 ──────────────────────────────────────────────────
@@ -159,6 +167,14 @@ export default function AdminPage() {
   const [recordType, setRecordType] = useState<'saju' | 'tarot'>('saju');
   const [recordCategory, setRecordCategory] = useState('');
   const [categorySummary, setCategorySummary] = useState<{ [k: string]: number }>({});
+
+  // Consultations
+  const [consultations, setConsultations] = useState<ConsultationRecord[]>([]);
+  const [consultPage, setConsultPage] = useState(1);
+  const [consultTotal, setConsultTotal] = useState(0);
+  const [consultSearch, setConsultSearch] = useState('');
+  const [consultDetailId, setConsultDetailId] = useState<string | null>(null);
+  const [consultDetail, setConsultDetail] = useState<any>(null);
 
   // CSV export — 훅 순서 보존을 위해 early return 앞에서 선언
   const [exporting, setExporting] = useState(false);
@@ -312,6 +328,27 @@ export default function AdminPage() {
     finally { setLoading(false); }
   }, [token, adminFetch]);
 
+  const fetchConsultations = useCallback(async (force = false) => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(consultPage), search: consultSearch });
+      const data = await adminFetch<{ records: ConsultationRecord[]; total: number; grandTotal: number }>(`/api/admin/consultations?${params}`, force);
+      if (data) { setConsultations(data.records); setConsultTotal(data.total); }
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [token, adminFetch, consultPage, consultSearch]);
+
+  const fetchConsultDetail = useCallback(async (id: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/admin/consultations/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setConsultDetail(json);
+    } catch (e: any) { setError(e.message); }
+  }, [token]);
+
   const fetchRecords = useCallback(async (force = false) => {
     if (!token) return;
     setLoading(true);
@@ -344,6 +381,7 @@ export default function AdminPage() {
   }, [tab, opsSummary, auditLogs.length, auditWarning, fetchOpsSummary, fetchAuditLogs]);
   useEffect(() => { if (tab === 'insights' && !insights) fetchInsights(); }, [tab, insights, fetchInsights]);
   useEffect(() => { if (tab === 'records' && records.length === 0) fetchRecords(); }, [tab, records.length, fetchRecords]);
+  useEffect(() => { if (tab === 'consultations' && consultations.length === 0) fetchConsultations(); }, [tab, consultations.length, fetchConsultations]);
 
   // ── 필터·정렬 변경 시 members 재호출
   const memberFilterKey = `${memberSearch}|${memberGender}|${memberAgeBucket}|${memberSegment}|${memberSort}|${memberOrder}|${memberPage}`;
@@ -375,6 +413,16 @@ export default function AdminPage() {
     fetchRecords();
   }, [tab, recordFilterKey, fetchRecords]);
 
+  // ── consultations 필터 변경 시 재호출
+  const consultFilterKey = `${consultSearch}|${consultPage}`;
+  const lastConsultFilterKey = useRef<string>('');
+  useEffect(() => {
+    if (tab !== 'consultations') return;
+    if (lastConsultFilterKey.current === consultFilterKey) return;
+    lastConsultFilterKey.current = consultFilterKey;
+    fetchConsultations();
+  }, [tab, consultFilterKey, fetchConsultations]);
+
   // 검색·필터 바뀌면 1페이지로
   useEffect(() => { setMemberPage(1); }, [memberSearch, memberGender, memberAgeBucket, memberSegment, memberSort, memberOrder]);
 
@@ -391,6 +439,7 @@ export default function AdminPage() {
     { key: 'usage',    label: `이용 분석${usageSummary?.kpi?.grandTotal !== undefined ? ` (${usageSummary.kpi.grandTotal})` : ''}` },
     { key: 'credits',  label: `크레딧 흐름${creditsSummary?.kpi?.txnCount !== undefined ? ` (${creditsSummary.kpi.txnCount})` : ''}` },
     { key: 'records',  label: `이용 기록 (${recordTotal || '…'})` },
+    { key: 'consultations', label: `상담소 (${consultTotal || '…'})` },
     { key: 'ops',      label: `운영${opsSummary?.kpi ? ` (${(opsSummary.kpi.bannedCount ?? 0) + (opsSummary.kpi.notedCount ?? 0)})` : ''}` },
     { key: 'insights', label: '인사이트' },
   ];
@@ -482,6 +531,7 @@ export default function AdminPage() {
     else if (tab === 'orders') { fetchOrdersSummary(true); fetchOrders(true); }
     else if (tab === 'usage') fetchUsageSummary(true);
     else if (tab === 'credits') fetchCreditsSummary(true);
+    else if (tab === 'consultations') fetchConsultations(true);
     else if (tab === 'ops') { fetchOpsSummary(true); fetchAuditLogs(true); }
     else if (tab === 'insights') fetchInsights(true);
     else fetchRecords(true);
@@ -508,9 +558,9 @@ export default function AdminPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {(tab === 'members' || tab === 'orders' || tab === 'records') && (
+          {(tab === 'members' || tab === 'orders' || tab === 'records' || tab === 'consultations') && (
             <button
-              onClick={tab === 'members' ? exportMembersCsv : tab === 'orders' ? exportOrdersCsv : exportRecordsCsv}
+              onClick={tab === 'members' ? exportMembersCsv : tab === 'orders' ? exportOrdersCsv : tab === 'consultations' ? exportRecordsCsv : exportRecordsCsv}
               disabled={exporting}
               className="text-[13px] text-text-secondary hover:text-text-primary border border-white/15 hover:border-white/30 px-3 py-1.5 rounded-lg transition-all disabled:opacity-40"
             >
@@ -579,11 +629,10 @@ export default function AdminPage() {
 
             <div>
               <h2 className="text-[15px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">서비스 이용</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <MetricCard label="사주 분석 (누적)" value={fmt(stats.usage.sajuTotal)} />
-                <MetricCard label="사주 분석 (오늘)" value={fmt(stats.usage.sajuToday)} color="text-cta" />
-                <MetricCard label="타로 분석 (누적)" value={fmt(stats.usage.tarotTotal)} />
-                <MetricCard label="타로 분석 (오늘)" value={fmt(stats.usage.tarotToday)} color="text-cta" />
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <MetricCard label="사주 분석 (누적)" value={fmt(stats.usage.sajuTotal)} sub={`오늘 ${fmt(stats.usage.sajuToday)}`} />
+                <MetricCard label="타로 분석 (누적)" value={fmt(stats.usage.tarotTotal)} sub={`오늘 ${fmt(stats.usage.tarotToday)}`} />
+                <MetricCard label="상담소 대화 (누적)" value={fmt(stats.usage.consultTotal ?? 0)} sub={`오늘 ${fmt(stats.usage.consultToday ?? 0)}`} />
               </div>
             </div>
 
@@ -848,7 +897,7 @@ export default function AdminPage() {
               <table className="w-full text-[14px]">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/3">
-                    {['사용자', '서비스', '크레딧 타입', '소비량', '일시'].map(h => (
+                    {['사용자', '프로필', '서비스', '크레딧', '소비', '일시'].map(h => (
                       <th key={h} className="px-3 py-2.5 text-left text-[12px] text-text-tertiary uppercase tracking-wider font-medium">{h}</th>
                     ))}
                   </tr>
@@ -856,27 +905,111 @@ export default function AdminPage() {
                 <tbody>
                   {records.map(r => (
                     <tr key={r.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
-                      <td className="px-3 py-2.5 text-text-secondary max-w-[200px] truncate">{r.userEmail}</td>
+                      <td className="px-3 py-2.5 text-text-secondary max-w-[180px] truncate">{r.userEmail}</td>
+                      <td className="px-3 py-2.5 text-text-tertiary max-w-[100px] truncate">{r.profile_name ?? '-'}</td>
                       <td className="px-3 py-2.5 text-text-primary">
                         {SAJU_CATEGORY_LABEL[r.category ?? ''] ?? TAROT_SPREAD_LABEL[r.spread_type ?? ''] ?? (r.category ?? r.spread_type ?? '-')}
                       </td>
                       <td className="px-3 py-2.5">
                         {r.credit_type === 'sun'
-                          ? <span className="text-amber-300">☀️ 해</span>
-                          : <span className="text-indigo-300">🌙 달</span>}
+                          ? <span className="text-amber-300">☀️</span>
+                          : <span className="text-indigo-300">🌙</span>}
                       </td>
-                      <td className="px-3 py-2.5 text-text-secondary">{r.credit_used}</td>
+                      <td className="px-3 py-2.5 text-text-secondary tabular-nums">{r.credit_used}</td>
                       <td className="px-3 py-2.5 text-text-tertiary">{fmtDate(r.created_at)}</td>
                     </tr>
                   ))}
                   {records.length === 0 && !loading && (
-                    <tr><td colSpan={5} className="px-3 py-8 text-center text-text-tertiary">데이터 없음</td></tr>
+                    <tr><td colSpan={6} className="px-3 py-8 text-center text-text-tertiary">데이터 없음</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
 
             <Pagination page={recordPage} total={recordTotal} pageSize={30} onChange={setRecordPage} />
+          </div>
+        )}
+
+        {/* ── 상담소 ── */}
+        {tab === 'consultations' && (
+          <div className="space-y-4">
+            <div className="flex gap-2 flex-wrap">
+              <input
+                type="text"
+                placeholder="프로필명 / 대화 제목 검색"
+                value={consultSearch}
+                onChange={e => { setConsultSearch(e.target.value); setConsultPage(1); }}
+                className="flex-1 max-w-sm px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-cta/50"
+              />
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-white/10">
+              <table className="w-full text-[14px]">
+                <thead>
+                  <tr className="border-b border-white/10 bg-white/3">
+                    {['사용자', '프로필', '대화 제목', '메시지 수', '마지막 메시지', '생성일'].map(h => (
+                      <th key={h} className="px-3 py-2.5 text-left text-[12px] text-text-tertiary uppercase tracking-wider font-medium">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {consultations.map(c => (
+                    <tr
+                      key={c.id}
+                      onClick={() => { setConsultDetailId(c.id); fetchConsultDetail(c.id); }}
+                      className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer"
+                    >
+                      <td className="px-3 py-2.5 text-text-secondary max-w-[200px] truncate">{c.userEmail}</td>
+                      <td className="px-3 py-2.5 text-text-primary">{c.profile_name ?? '-'}</td>
+                      <td className="px-3 py-2.5 text-text-primary font-medium max-w-[200px] truncate">{c.title}</td>
+                      <td className="px-3 py-2.5 text-center text-text-secondary tabular-nums">{c.message_count}</td>
+                      <td className="px-3 py-2.5 text-text-tertiary">{fmtDate(c.last_message_at)}</td>
+                      <td className="px-3 py-2.5 text-text-tertiary">{fmtDate(c.created_at)}</td>
+                    </tr>
+                  ))}
+                  {consultations.length === 0 && !loading && (
+                    <tr><td colSpan={6} className="px-3 py-8 text-center text-text-tertiary">상담 기록 없음</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination page={consultPage} total={consultTotal} pageSize={30} onChange={setConsultPage} />
+          </div>
+        )}
+
+        {/* ── 상담 상세 모달 ── */}
+        {consultDetailId && consultDetail && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/50" onClick={() => { setConsultDetailId(null); setConsultDetail(null); }} />
+            <div className="relative w-full max-w-[640px] max-h-[80vh] bg-[#0a0614] border border-white/15 rounded-2xl overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+                <div>
+                  <p className="text-[12px] text-text-tertiary uppercase tracking-wider">상담 대화 상세</p>
+                  <h3 className="text-[16px] font-bold text-text-primary">{consultDetail.title}</h3>
+                  <p className="text-[12px] text-text-tertiary mt-0.5">
+                    {consultDetail.userEmail} · {consultDetail.profile_name ?? '프로필 미등록'} · {consultDetail.message_count}개 메시지
+                  </p>
+                </div>
+                <button onClick={() => { setConsultDetailId(null); setConsultDetail(null); }} className="text-text-tertiary hover:text-text-primary text-[20px] px-2">×</button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+                {(consultDetail.messages ?? []).map((msg: any, idx: number) => (
+                  <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap ${
+                      msg.role === 'user'
+                        ? 'bg-cta/80 text-white rounded-tr-sm'
+                        : 'bg-white/5 border border-white/10 text-text-secondary rounded-tl-sm'
+                    }`}>
+                      {msg.content}
+                    </div>
+                  </div>
+                ))}
+                {(!consultDetail.messages || consultDetail.messages.length === 0) && (
+                  <p className="text-center text-text-tertiary text-[13px]">메시지 없음</p>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>

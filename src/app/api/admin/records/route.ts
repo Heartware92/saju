@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
   } else {
     let q = supabaseAdmin
       .from('saju_records')
-      .select('id, user_id, category, gender, calendar_type, credit_type, credit_used, created_at', { count: 'exact' })
+      .select('id, user_id, category, gender, calendar_type, credit_type, credit_used, profile_name, created_at', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, from + pageSize - 1);
     if (category) q = q.eq('category', category);

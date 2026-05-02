@@ -117,11 +117,41 @@ export default function ConsultationChatPage() {
     setReady(true);
   }, [pid, cid, profiles, router]);
 
-  // 자동 저장
+  // 자동 저장 (localStorage)
   useEffect(() => {
     if (!pid || conversations.length === 0 || !ready) return;
     saveConversations(pid, conversations, activeConversationId);
   }, [conversations, activeConversationId, pid, ready]);
+
+  // DB 동기화 — 대화에 메시지가 있을 때 서버에 저장
+  const syncToDb = useCallback(async (conv: StoredConversation) => {
+    if (!conv || conv.messages.length === 0) return;
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) return;
+      await fetch('/api/consultation/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          profileId: pid,
+          profileName: selectedProfile?.name ?? '',
+          conversationId: conv.id,
+          title: conv.title,
+          messages: conv.messages,
+        }),
+      });
+    } catch { /* silent */ }
+  }, [pid, selectedProfile?.name]);
+
+  // DB 동기화 — 대화가 변경되고 스트리밍 중이 아닐 때 서버에 저장
+  useEffect(() => {
+    if (!pid || !ready || loading) return;
+    const conv = conversations.find(c => c.id === activeConversationId);
+    if (!conv || conv.messages.length === 0) return;
+    const timer = setTimeout(() => syncToDb(conv), 1500);
+    return () => clearTimeout(timer);
+  }, [conversations, activeConversationId, pid, ready, loading, syncToDb]);
 
   // 자동 스크롤
   useEffect(() => {

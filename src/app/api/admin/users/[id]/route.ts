@@ -24,7 +24,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
   const user = userRes.user;
 
-  const [profilesRes, creditRes, ordersRes, sajuRes, tarotRes, txRes] = await Promise.all([
+  const [profilesRes, creditRes, ordersRes, sajuRes, tarotRes, txRes, consultRes] = await Promise.all([
     supabaseAdmin.from('birth_profiles')
       .select('*')
       .eq('user_id', id)
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .eq('user_id', id)
       .order('created_at', { ascending: false }),
     supabaseAdmin.from('saju_records')
-      .select('id, category, gender, birth_date, birth_time, birth_place, calendar_type, credit_type, credit_used, is_detailed, created_at')
+      .select('id, category, gender, birth_date, birth_time, birth_place, calendar_type, credit_type, credit_used, is_detailed, profile_name, created_at')
       .eq('user_id', id)
       .order('created_at', { ascending: false })
       .limit(RECORDS_LIMIT),
@@ -50,6 +50,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .eq('user_id', id)
       .order('created_at', { ascending: false })
       .limit(TRANSACTIONS_LIMIT),
+    supabaseAdmin.from('consultation_records')
+      .select('id, profile_name, conversation_id, title, message_count, last_message_at, created_at, updated_at')
+      .eq('user_id', id)
+      .order('updated_at', { ascending: false })
+      .limit(RECORDS_LIMIT),
   ]);
 
   const profiles = profilesRes.data ?? [];
@@ -109,6 +114,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     orders,
     sajuRecords: sajuRes.data ?? [],
     tarotRecords: tarotRes.data ?? [],
+    consultationRecords: consultRes.data ?? [],
     transactions: txRes.data ?? [],
     aggregates: {
       totalSpent,
@@ -117,6 +123,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       isVip: totalSpent >= VIP_THRESHOLD_WON,
       sajuTotal: (sajuRes.data ?? []).length,
       tarotTotal: (tarotRes.data ?? []).length,
+      consultationTotal: (consultRes.data ?? []).length,
       sajuByCategory,
       tarotBySpread,
     },

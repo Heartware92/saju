@@ -49,6 +49,8 @@ async function computeStats() {
     tarotRes,
     todayTarotRes,
     creditsRes,
+    consultRes,
+    todayConsultRes,
     // 30일 시계열용
     dailyOrdersRes,
     dailySignupsRes,
@@ -66,6 +68,8 @@ async function computeStats() {
     supabaseAdmin.from('tarot_records').select('id', { count: 'exact', head: true }),
     supabaseAdmin.from('tarot_records').select('id', { count: 'exact', head: true }).gte('created_at', todayStart),
     supabaseAdmin.from('user_credits').select('total_sun_purchased, total_moon_purchased, total_sun_consumed, total_moon_consumed, sun_balance, moon_balance'),
+    supabaseAdmin.from('consultation_records').select('id', { count: 'exact', head: true }),
+    supabaseAdmin.from('consultation_records').select('id', { count: 'exact', head: true }).gte('created_at', todayStart),
     // 30일 시계열
     supabaseAdmin.from('orders').select('amount, created_at').eq('status', 'completed').gte('created_at', thirtyDaysAgo),
     supabaseAdmin.from('user_credits').select('created_at').gte('created_at', thirtyDaysAgo),
@@ -150,6 +154,8 @@ async function computeStats() {
       sajuToday: todaySajuRes.count ?? 0,
       tarotTotal: tarotRes.count ?? 0,
       tarotToday: todayTarotRes.count ?? 0,
+      consultTotal: consultRes.count ?? 0,
+      consultToday: todayConsultRes.count ?? 0,
     },
     credits: {
       sun: { issued: totalSunIssued, consumed: totalSunConsumed, balance: totalSunBalance },
