@@ -15,6 +15,7 @@ import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, type ReportKind } from '../store/useReportCacheStore';
 import { RestoreReportModal } from '../components/RestoreReportModal';
+import { FortuneProfileSelect } from '../components/FortuneProfileSelect';
 import { getTojeongReading } from '../services/fortuneService';
 import { sajuDB } from '../services/supabase';
 import { findRecentArchive } from '../services/archiveService';
@@ -42,10 +43,15 @@ const GRADE_COLOR: Record<GwaeGrade, string> = {
 export default function TojeongResultPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const profileId = searchParams?.get('profileId') ?? null;
   const recordId = searchParams?.get('recordId') ?? null;
   const isArchiveMode = !!recordId;
+  const needsProfileSelect = !profileId && !isArchiveMode && !searchParams?.get('year');
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
-  const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
+  const targetProfile = useMemo(() => {
+    if (profileId) return profiles.find(p => p.id === profileId) ?? null;
+    return profiles.find(p => p.is_primary) ?? null;
+  }, [profiles, profileId]);
   const chargeForContent = useCreditStore(s => s.chargeForContent);
 
   // AI 내러티브 — 진입 즉시 자동 호출
@@ -104,10 +110,10 @@ export default function TojeongResultPage() {
       month = parseInt(searchParams!.get('month')!);
       day = parseInt(searchParams!.get('day')!);
       calendarType = (searchParams!.get('calendarType') || 'solar') as 'solar' | 'lunar';
-    } else if (primary) {
-      const [y, m, d] = primary.birth_date.split('-').map(Number);
+    } else if (targetProfile) {
+      const [y, m, d] = targetProfile.birth_date.split('-').map(Number);
       year = y; month = m; day = d;
-      calendarType = primary.calendar_type;
+      calendarType = targetProfile.calendar_type;
     } else {
       return { tojeong: null, reading: null, cacheKey: null };
     }
@@ -120,7 +126,7 @@ export default function TojeongResultPage() {
     } catch {
       return { tojeong: null, reading: null, cacheKey: null };
     }
-  }, [searchParams, primary]);
+  }, [searchParams, targetProfile]);
 
   // 보관함 매칭용 sourceBirth — 대표 프로필 또는 URL birth 쿼리에서 추출
   const sourceBirth = useMemo(() => {
@@ -137,15 +143,15 @@ export default function TojeongResultPage() {
         calendar_type: cal,
       };
     }
-    if (primary) {
+    if (targetProfile) {
       return {
-        birth_date: primary.birth_date,
-        gender: primary.gender,
-        calendar_type: primary.calendar_type,
+        birth_date: targetProfile.birth_date,
+        gender: targetProfile.gender,
+        calendar_type: targetProfile.calendar_type,
       };
     }
     return undefined;
-  }, [searchParams, primary]);
+  }, [searchParams, targetProfile]);
 
   // ── 보관함 DB 확인 → AI 호출 (순차 실행) ──
   // 보관함 체크를 먼저 완료한 뒤, 기존 풀이가 없을 때만 AI 호출
@@ -166,6 +172,7 @@ export default function TojeongResultPage() {
             category: 'tojeong',
             birth_date: sourceBirth.birth_date,
             gender: sourceBirth.gender,
+            profile_id: targetProfile?.id,
           });
           if (cancelled) return;
           if (found) {
@@ -279,6 +286,17 @@ export default function TojeongResultPage() {
       });
   };
 
+  if (needsProfileSelect) {
+    return (
+      <FortuneProfileSelect
+        serviceName="토정비결"
+        archiveCategory="tojeong"
+        creditType="sun"
+        creditCost={SUN_COST_BIG}
+      />
+    );
+  }
+
   if (!tojeong || !reading) {
     const hasUrlBirth = !!searchParams?.get('year');
     const profileStoreReady = hydrated && lastFetchedAt !== null && !profilesLoading;
@@ -289,7 +307,7 @@ export default function TojeongResultPage() {
         </div>
       );
     }
-    if (!primary && !hasUrlBirth) {
+    if (!targetProfile && !hasUrlBirth) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
           <p className="text-[17px] font-semibold text-text-primary mb-2">대표 프로필이 없어요</p>

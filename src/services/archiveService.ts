@@ -182,6 +182,7 @@ export async function findRecentArchive(params: {
   birth_date: string;          // YYYY-MM-DD
   gender: 'male' | 'female';
   context?: { key: string; value: string };
+  profile_id?: string;
 }): Promise<{ id: string; created_at: string } | null> {
   try {
     const user = await auth.getCurrentUser();
@@ -194,8 +195,10 @@ export async function findRecentArchive(params: {
       .eq('birth_date', params.birth_date)
       .eq('gender', params.gender)
       .order('created_at', { ascending: false });
+    if (params.profile_id) {
+      q = q.eq('profile_id', params.profile_id);
+    }
     if (params.context) {
-      // engine_result jsonb 의 특정 키 텍스트 매칭
       q = q.eq(`engine_result->>${params.context.key}`, params.context.value);
     }
     const { data, error } = await q.limit(1).maybeSingle();

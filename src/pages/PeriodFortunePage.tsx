@@ -18,6 +18,7 @@ import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, sajuKey, type ReportKind } from '../store/useReportCacheStore';
 import { RestoreReportModal } from '../components/RestoreReportModal';
+import { FortuneProfileSelect } from '../components/FortuneProfileSelect';
 import { sajuDB } from '../services/supabase';
 import { parseNewyearReport } from '../services/fortuneService';
 import { findRecentArchive } from '../services/archiveService';
@@ -153,14 +154,19 @@ function CalendarPicker({ value, onChange }: { value: string; onChange: (v: stri
 export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'date' }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const profileId = searchParams?.get('profileId') ?? null;
   const recordId = searchParams?.get('recordId') ?? null;
   const isArchiveMode = !!recordId;
+  const needsProfileSelect = !profileId && !isArchiveMode;
   const { user } = useUserStore();
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
 
   useEffect(() => { if (user) fetchProfiles(); }, [user, fetchProfiles]);
 
-  const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
+  const targetProfile = useMemo(() => {
+    if (profileId) return profiles.find(p => p.id === profileId) ?? null;
+    return profiles.find(p => p.is_primary) ?? null;
+  }, [profiles, profileId]);
 
   const today = new Date().toISOString().slice(0, 10);
   const initialDate = searchParams?.get('date') || today;
@@ -198,8 +204,8 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
         return null;
       }
     }
-    return primary ? computeSajuFromProfile(primary) : null;
-  }, [searchParams, primary, scope]);
+    return targetProfile ? computeSajuFromProfile(targetProfile) : null;
+  }, [searchParams, targetProfile, scope]);
 
   const fortune: PeriodFortune | null = useMemo(() => {
     if (!saju) return null;
@@ -323,7 +329,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     const isFresh = searchParams?.get('fresh') === '1';
 
     const runWithArchiveCheck = async () => {
-      if (refetchNonce === 0 && primary && !isFresh) {
+      if (refetchNonce === 0 && targetProfile && !isFresh) {
         let category: 'newyear' | 'period' | 'today' | undefined;
         let context: { key: string; value: string } | undefined;
         if (scope === 'year') {
@@ -341,9 +347,10 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
           try {
             const found = await findRecentArchive({
               category,
-              birth_date: primary.birth_date,
-              gender: primary.gender,
+              birth_date: targetProfile.birth_date,
+              gender: targetProfile.gender,
               context,
+              profile_id: targetProfile.id,
             });
             if (cancelled) return;
             if (found) {
@@ -513,7 +520,29 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saju, fortune, scope, pickedDate, targetYear, today, chargeForContent, isArchiveMode, dateConfirmed, refetchNonce]);
 
-  if (!primary && !searchParams?.get('year')) {
+  if (needsProfileSelect) {
+    const CURRENT_YEAR = new Date().getFullYear();
+    if (scope === 'year') {
+      return (
+        <FortuneProfileSelect
+          serviceName={`${targetYear} 신년운세`}
+          archiveCategory="newyear"
+          archiveContext={{ key: 'year', value: String(targetYear) }}
+          creditType="sun"
+          creditCost={SUN_COST_BIG}
+        />
+      );
+    }
+    return (
+      <FortuneProfileSelect
+        serviceName="지정일 운세"
+        creditType="sun"
+        creditCost={SUN_COST_BIG}
+      />
+    );
+  }
+
+  if (!targetProfile && !searchParams?.get('year')) {
     const profileStoreReady = hydrated && lastFetchedAt !== null && !profilesLoading;
     if (!profileStoreReady) {
       return (

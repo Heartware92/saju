@@ -24,6 +24,7 @@ import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, type ReportKind } from '../store/useReportCacheStore';
 import { RestoreReportModal } from '../components/RestoreReportModal';
+import { FortuneProfileSelect } from '../components/FortuneProfileSelect';
 import { findRecentArchive } from '../services/archiveService';
 import {
   getZamidusuReading,
@@ -51,10 +52,15 @@ const LOADING_MESSAGES = [
 export default function ZamidusuResultPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const profileId = searchParams?.get('profileId') ?? null;
   const recordId = searchParams?.get('recordId') ?? null;
   const isArchiveMode = !!recordId;
+  const needsProfileSelect = !profileId && !isArchiveMode && !(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
-  const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
+  const targetProfile = useMemo(() => {
+    if (profileId) return profiles.find(p => p.id === profileId) ?? null;
+    return profiles.find(p => p.is_primary) ?? null;
+  }, [profiles, profileId]);
 
   const [chart, setChart] = useState<ZamidusuResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +90,7 @@ export default function ZamidusuResultPage() {
   };
 
   const hasUrlBirth = !!(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
-  const primaryHourUnknown = !!primary && !primary.birth_time;
+  const primaryHourUnknown = !!targetProfile && !targetProfile.birth_time;
   const hourUnknown = hasUrlBirth
     ? searchParams?.get('unknownTime') === 'true'
     : primaryHourUnknown;
@@ -119,17 +125,17 @@ export default function ZamidusuResultPage() {
         calendarType: (searchParams!.get('calendarType') || 'solar') as 'solar' | 'lunar',
       };
     }
-    if (primary) {
-      const [y, m, d] = primary.birth_date.split('-').map(Number);
+    if (targetProfile) {
+      const [y, m, d] = targetProfile.birth_date.split('-').map(Number);
       return {
         year: y, month: m, day: d,
-        hour: primary.birth_time ? parseInt(primary.birth_time.split(':')[0]) : 12,
-        gender: primary.gender,
-        calendarType: primary.calendar_type,
+        hour: targetProfile.birth_time ? parseInt(targetProfile.birth_time.split(':')[0]) : 12,
+        gender: targetProfile.gender,
+        calendarType: targetProfile.calendar_type,
       };
     }
     return null;
-  }, [searchParams, hourUnknown, hasUrlBirth, primary]);
+  }, [searchParams, hourUnknown, hasUrlBirth, targetProfile]);
 
   const cacheKey = useMemo(() => {
     if (!birthInput) return null;
@@ -217,6 +223,7 @@ export default function ZamidusuResultPage() {
             category: 'zamidusu',
             birth_date: sourceBirth.birth_date,
             gender: sourceBirth.gender,
+            profile_id: targetProfile?.id,
           });
           if (cancelled) return;
           if (found) {
@@ -343,8 +350,20 @@ export default function ZamidusuResultPage() {
     );
   }
 
+  // ── 프로필 선택 가드 ──
+  if (needsProfileSelect) {
+    return (
+      <FortuneProfileSelect
+        serviceName="자미두수"
+        archiveCategory="zamidusu"
+        creditType="sun"
+        creditCost={SUN_COST_BIG}
+      />
+    );
+  }
+
   // ── 프로필 없음 가드 ──
-  if (!hasUrlBirth && !primary) {
+  if (!hasUrlBirth && !targetProfile) {
     const profileStoreReady = hydrated && lastFetchedAt !== null && !profilesLoading;
     if (!profileStoreReady) {
       return (

@@ -7,6 +7,7 @@ import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, sajuKey, type ReportKind } from '../store/useReportCacheStore';
 import { RestoreReportModal } from '../components/RestoreReportModal';
+import { FortuneProfileSelect } from '../components/FortuneProfileSelect';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { calculateSaju, type SajuResult } from '../utils/sajuCalculator';
@@ -83,11 +84,16 @@ function DatePicker({ value, onChange }: { value: string; onChange: (v: string) 
 export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 'date' }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const profileId = searchParams?.get('profileId') ?? null;
   const recordId = searchParams?.get('recordId') ?? null;
   const isArchiveMode = !!recordId;
+  const needsProfileSelect = !profileId && !isArchiveMode && !(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
 
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
-  const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
+  const targetProfile = useMemo(() => {
+    if (profileId) return profiles.find(p => p.id === profileId) ?? null;
+    return profiles.find(p => p.is_primary) ?? null;
+  }, [profiles, profileId]);
 
   const todayIso = new Date().toISOString().slice(0, 10);
   // 지정일 모드: 날짜 피커 상태 (기본값 = 오늘)
@@ -177,10 +183,10 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
       const gender = (searchParams!.get('gender') || 'male') as 'male' | 'female';
       const unknownTime = searchParams!.get('unknownTime') === 'true';
       setResult(calculateSaju(year, month, day, hour, minute, gender, unknownTime));
-    } else if (primary) {
-      setResult(computeSajuFromProfile(primary));
+    } else if (targetProfile) {
+      setResult(computeSajuFromProfile(targetProfile));
     }
-  }, [searchParams, primary, isArchiveMode]);
+  }, [searchParams, targetProfile, isArchiveMode]);
 
   // ── 보관함 DB 확인 → AI 호출 (순차 실행) ──
   // 보관함 체크를 먼저 완료한 뒤, 기존 풀이가 없을 때만 AI 호출
@@ -193,13 +199,14 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
     const isFresh = searchParams?.get('fresh') === '1';
 
     const run = async () => {
-      if (refetchNonce === 0 && primary && !isFresh) {
+      if (refetchNonce === 0 && targetProfile && !isFresh) {
         try {
           const found = await findRecentArchive({
             category: mode === 'date' ? 'period' : 'today',
-            birth_date: primary.birth_date,
-            gender: primary.gender,
+            birth_date: targetProfile.birth_date,
+            gender: targetProfile.gender,
             context: { key: 'isoDate', value: confirmedDate },
+            profile_id: targetProfile.id,
           });
           if (cancelled) return;
           if (found) {
@@ -260,6 +267,20 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result, confirmedDate, chargeForContent, isArchiveMode, refetchNonce]);
 
+  // ── 프로필 선택 가드 ───────────────────────────────────────
+  if (needsProfileSelect) {
+    const todayIsoCtx = new Date().toISOString().slice(0, 10);
+    return (
+      <FortuneProfileSelect
+        serviceName="오늘의 운세"
+        archiveCategory="today"
+        archiveContext={{ key: 'isoDate', value: todayIsoCtx }}
+        creditType="sun"
+        creditCost={SUN_COST_BIG}
+      />
+    );
+  }
+
   // ── 로딩·빈 상태 ───────────────────────────────────────────
   if (!result) {
     const hasUrlBirth = !!(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
@@ -272,7 +293,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
         </div>
       );
     }
-    if (!hasUrlBirth && !primary) {
+    if (!hasUrlBirth && !targetProfile) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-4">
           <p className="text-text-secondary">대표 프로필이 없어요</p>

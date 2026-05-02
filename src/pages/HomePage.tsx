@@ -15,8 +15,6 @@ import {
   STEM_TO_ELEMENT,
 } from '../lib/character';
 import { MORE_FORTUNE_CONFIGS, MORE_FORTUNE_ORDER } from '../constants/moreFortunes';
-import { findRecentArchive, type ArchiveCategory } from '../services/archiveService';
-import { RestoreReportModal } from '../components/RestoreReportModal';
 import MoonPhase from '../components/MoonPhase';
 
 /**
@@ -39,7 +37,7 @@ const MAIN_SERVICES = [
     id: 'traditional',
     title: '정통 사주',
     desc: '사주팔자 종합 분석',
-    direct: '/saju',
+    direct: '/saju/result',
     gradient: 'from-purple-500/20 to-indigo-500/10',
   },
   {
@@ -115,37 +113,12 @@ const fadeUp = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' as const } },
 };
 
-const SERVICE_ARCHIVE_MAP: Record<string, { category: ArchiveCategory; context?: () => { key: string; value: string }; title: string }> = {
-  newyear:     { category: 'newyear',     context: () => ({ key: 'year', value: String(CURRENT_YEAR) }), title: '신년운세' },
-  traditional: { category: 'traditional', title: '정통사주' },
-  today:       { category: 'today',       context: () => ({ key: 'isoDate', value: new Date().toISOString().split('T')[0] }), title: '오늘의 운세' },
-  gunghap:     { category: 'gunghap',     title: '궁합' },
-  taekil:      { category: 'taekil',      title: '택일 운세' },
-  tojeong:     { category: 'tojeong',     title: '토정비결' },
-  zamidusu:    { category: 'zamidusu',    title: '자미두수' },
-  love:        { category: 'love',        title: '애정운' },
-  wealth:      { category: 'wealth',      title: '재물운' },
-  career:      { category: 'career',      title: '직업·진로운' },
-  health:      { category: 'health',      title: '건강운' },
-  study:       { category: 'study',       title: '학업·시험운' },
-  people:      { category: 'people',      title: '귀인운' },
-  children:    { category: 'children',    title: '자녀·출산운' },
-  personality: { category: 'personality', title: '성격 심층' },
-  name:        { category: 'name',        title: '이름 풀이' },
-  dream:       { category: 'dream',       title: '꿈 해몽' },
-};
 
 export default function HomePage() {
   const { user } = useUserStore();
   const { profiles, fetchProfiles, loading: profilesLoading } = useProfileStore();
   const [imgError, setImgError] = useState(false);
   const router = useRouter();
-
-  const [archiveModal, setArchiveModal] = useState<{
-    title: string;
-    archiveId: string;
-    targetPath: string;
-  } | null>(null);
 
   useEffect(() => {
     if (user) fetchProfiles();
@@ -171,34 +144,13 @@ export default function HomePage() {
     return { pillars: result.pillars, element, character, unknownTime: result.hourUnknown };
   }, [primary]);
 
-  const handleServiceClick = useCallback(async (serviceId: string, targetPath: string) => {
+  const handleServiceClick = useCallback((serviceId: string, targetPath: string) => {
     if (!user) {
       router.push(`/login?from=${targetPath}`);
       return;
     }
-    if (!primary) {
-      router.push(targetPath);
-      return;
-    }
-    const mapping = SERVICE_ARCHIVE_MAP[serviceId];
-    if (!mapping) {
-      router.push(targetPath);
-      return;
-    }
-    try {
-      const found = await findRecentArchive({
-        category: mapping.category,
-        birth_date: primary.birth_date,
-        gender: primary.gender,
-        context: mapping.context?.(),
-      });
-      if (found) {
-        setArchiveModal({ title: mapping.title, archiveId: found.id, targetPath });
-        return;
-      }
-    } catch { /* ignore */ }
     router.push(targetPath);
-  }, [user, primary, router]);
+  }, [user, router]);
 
   return (
     <div className="min-h-screen">
@@ -532,21 +484,6 @@ export default function HomePage() {
         </motion.div>
       </section>
 
-      <RestoreReportModal
-        open={!!archiveModal}
-        title={archiveModal?.title}
-        onUseCached={() => {
-          if (!archiveModal) return;
-          router.push(`${archiveModal.targetPath}?recordId=${archiveModal.archiveId}`);
-          setArchiveModal(null);
-        }}
-        onRefresh={() => {
-          if (!archiveModal) return;
-          router.push(`${archiveModal.targetPath}?fresh=1`);
-          setArchiveModal(null);
-        }}
-        onClose={() => setArchiveModal(null)}
-      />
     </div>
   );
 }

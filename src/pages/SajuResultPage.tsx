@@ -18,6 +18,7 @@ import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, sajuKey, type ReportKind } from '../store/useReportCacheStore';
 import { RestoreReportModal } from '../components/RestoreReportModal';
+import { FortuneProfileSelect } from '../components/FortuneProfileSelect';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { determineGyeokguk } from '../engine/gyeokguk';
@@ -51,10 +52,15 @@ const JUNGTONGSAJU_MESSAGES = [
 export default function SajuResultPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const profileId = searchParams?.get('profileId') ?? null;
   const recordId = searchParams?.get('recordId') ?? null;
   const isArchiveMode = !!recordId;
+  const needsProfileSelect = !profileId && !isArchiveMode && !(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
-  const primary = useMemo(() => profiles.find(p => p.is_primary) ?? null, [profiles]);
+  const targetProfile = useMemo(() => {
+    if (profileId) return profiles.find(p => p.id === profileId) ?? null;
+    return profiles.find(p => p.is_primary) ?? null;
+  }, [profiles, profileId]);
 
   const [result, setResult] = useState<SajuResult | null>(null);
   const [report, setReport] = useState<JungtongsajuAIResult | null>(null);
@@ -147,10 +153,10 @@ export default function SajuResultPage() {
       }
 
       setResult(calculateSaju(finalY, finalM, finalD, finalH, finalMin, gender, unknownTime));
-    } else if (primary) {
-      setResult(computeSajuFromProfile(primary));
+    } else if (targetProfile) {
+      setResult(computeSajuFromProfile(targetProfile));
     }
-  }, [searchParams, primary]);
+  }, [searchParams, targetProfile]);
 
   // ── 로딩 안전장치: 2-pass 정통사주는 최대 120초 허용 ──
   const [reportTimedOut] = useLoadingGuard(reportLoading, 120_000);
@@ -172,12 +178,13 @@ export default function SajuResultPage() {
     const isFresh = searchParams?.get('fresh') === '1';
 
     const run = async () => {
-      if (refetchNonce === 0 && primary && !isFresh) {
+      if (refetchNonce === 0 && targetProfile && !isFresh) {
         try {
           const found = await findRecentArchive({
             category: 'traditional',
-            birth_date: primary.birth_date,
-            gender: primary.gender,
+            birth_date: targetProfile.birth_date,
+            gender: targetProfile.gender,
+            profile_id: targetProfile.id,
           });
           if (cancelled) return;
           if (found) {
@@ -239,6 +246,18 @@ export default function SajuResultPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result, isArchiveMode, refetchNonce]);
 
+  // ── 프로필 선택 가드 ──────────────────────────────────
+  if (needsProfileSelect) {
+    return (
+      <FortuneProfileSelect
+        serviceName="정통 사주"
+        archiveCategory="traditional"
+        creditType="sun"
+        creditCost={SUN_COST_BIG}
+      />
+    );
+  }
+
   // ── 로딩 / 빈 상태 ──────────────────────────────────
   if (!result) {
     const hasUrlBirth = !!(searchParams?.get('year') && searchParams?.get('month') && searchParams?.get('day'));
@@ -251,7 +270,7 @@ export default function SajuResultPage() {
         </div>
       );
     }
-    if (!hasUrlBirth && !primary) {
+    if (!hasUrlBirth && !targetProfile) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-4">
           <p className="text-text-secondary">대표 프로필이 없어요</p>

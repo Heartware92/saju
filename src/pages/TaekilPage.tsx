@@ -16,6 +16,7 @@ import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, sajuKey, type ReportKind } from '../store/useReportCacheStore';
 import { RestoreReportModal } from '../components/RestoreReportModal';
+import { FortuneProfileSelect } from '../components/FortuneProfileSelect';
 import { findRecentArchive } from '../services/archiveService';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
@@ -59,8 +60,10 @@ function daysInMonth(year: number, month: number) {
 export default function TaekilPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const profileId = searchParams?.get('profileId') ?? null;
   const recordId = searchParams?.get('recordId') ?? null;
   const isArchiveMode = !!recordId;
+  const needsProfileSelect = !profileId && !isArchiveMode;
   const { user } = useUserStore();
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
 
@@ -68,15 +71,15 @@ export default function TaekilPage() {
     if (user) fetchProfiles();
   }, [user, fetchProfiles]);
 
-  const primary = useMemo(
-    () => profiles.find((p) => p.is_primary) ?? null,
-    [profiles],
-  );
+  const targetProfile = useMemo(() => {
+    if (profileId) return profiles.find(p => p.id === profileId) ?? null;
+    return profiles.find((p) => p.is_primary) ?? null;
+  }, [profiles, profileId]);
 
   const saju = useMemo(() => {
-    if (!primary) return null;
-    return computeSajuFromProfile(primary);
-  }, [primary]);
+    if (!targetProfile) return null;
+    return computeSajuFromProfile(targetProfile);
+  }, [targetProfile]);
 
   // 카테고리 선택
   const [category, setCategory] = useState<TaekilCategory>('marriage');
@@ -179,14 +182,15 @@ export default function TaekilPage() {
 
   // ── 보관함 DB 확인 — 이전에 본 풀이가 있으면 모달 표시 ──
   useEffect(() => {
-    if (isArchiveMode || !primary) return;
+    if (isArchiveMode || !targetProfile) return;
     if (refetchNonce > 0) return;
     if (searchParams?.get('fresh') === '1') return;
     let cancelled = false;
     findRecentArchive({
       category: 'taekil',
-      birth_date: primary.birth_date,
-      gender: primary.gender,
+      birth_date: targetProfile.birth_date,
+      gender: targetProfile.gender,
+      profile_id: targetProfile.id,
     }).then(found => {
       if (cancelled || !found) return;
       setCacheGate({
@@ -200,7 +204,7 @@ export default function TaekilPage() {
       });
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [primary, isArchiveMode, refetchNonce, router]);
+  }, [targetProfile, isArchiveMode, refetchNonce, router]);
 
   // 연도 네비 (월 단위 X, 연 단위)
   const prevYear = () => {
@@ -296,8 +300,19 @@ export default function TaekilPage() {
     return cells;
   }, [result, viewYear, viewMonth]);
 
+  // 프로필 선택 가드
+  if (needsProfileSelect) {
+    return (
+      <FortuneProfileSelect
+        serviceName="택일 운세"
+        creditType="sun"
+        creditCost={SUN_COST_BIG}
+      />
+    );
+  }
+
   // 로딩 / 프로필 없음
-  if (!primary) {
+  if (!targetProfile) {
     const ready = hydrated && lastFetchedAt !== null && !profilesLoading;
     if (!ready) return <div className={styles.loading}>로딩 중...</div>;
     return (
@@ -330,7 +345,7 @@ export default function TaekilPage() {
         <div className={styles.headerCenter}>
           <h1>택일 운세</h1>
           <p className={styles.dateInfo}>
-            {primary.name} · 길일을 골라드려요
+            {targetProfile.name} · 길일을 골라드려요
           </p>
         </div>
       </div>

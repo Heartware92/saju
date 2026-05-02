@@ -40,6 +40,8 @@ import {
 import { sajuDB } from '../services/supabase';
 import { findRecentArchive, type ArchiveCategory } from '../services/archiveService';
 import { RestoreReportModal } from '../components/RestoreReportModal';
+import { FortuneProfileSelect } from '../components/FortuneProfileSelect';
+import { MOON_COST_PER_FORTUNE as MOON_COST_SELECT } from '../constants/moreFortunes';
 import { analyzeKoreanName } from '../utils/nameEumRyeong';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { DreamInputPanel } from '../components/dream/DreamInputPanel';
@@ -70,6 +72,7 @@ export default function MoreFortunePage({ category }: Props) {
   // ── 모든 Hooks는 무조건 상단에 호출 (React Hooks 규칙) ──
   const router = useRouter();
   const searchParams = useSearchParams();
+  const profileId = searchParams?.get('profileId') ?? null;
   const recordId = searchParams?.get('recordId') ?? null;
   const isArchiveMode = !!recordId;
 
@@ -79,18 +82,19 @@ export default function MoreFortunePage({ category }: Props) {
 
   const isValidCategory = !!category && (category in MORE_FORTUNE_CONFIGS);
   const cfg = isValidCategory ? MORE_FORTUNE_CONFIGS[category as MoreFortuneId] : null;
-  // [B안 호환] 비활성 5개 카테고리(love/wealth/career/health/people)는 보관함 옛 기록 재생 전용으로만 진입 허용.
   const isLegacy = !!category && isLegacyMoreCategory(category);
 
-  const primary = useMemo(
-    () => profiles.find((p) => p.is_primary) ?? profiles[0] ?? null,
-    [profiles],
-  );
+  const needsProfileSelect = !profileId && !isArchiveMode && !cfg?.needsNameInput && !cfg?.needsDreamInput;
+
+  const targetProfile = useMemo(() => {
+    if (profileId) return profiles.find(p => p.id === profileId) ?? null;
+    return profiles.find((p) => p.is_primary) ?? profiles[0] ?? null;
+  }, [profiles, profileId]);
 
   const saju = useMemo(() => {
-    if (!primary) return null;
-    return computeSajuFromProfile(primary);
-  }, [primary]);
+    if (!targetProfile) return null;
+    return computeSajuFromProfile(targetProfile);
+  }, [targetProfile]);
 
   // 이름 풀이 전용 state
   const [koreanName, setKoreanName] = useState('');
@@ -144,10 +148,10 @@ export default function MoreFortunePage({ category }: Props) {
   // 이름 풀이: 프로필의 이름을 기본값으로 — 보관함 재생 모드에서는 저장된 값 사용
   useEffect(() => {
     if (isArchiveMode) return;
-    if (category === 'name' && primary && !koreanName) {
-      setKoreanName(primary.name);
+    if (category === 'name' && targetProfile && !koreanName) {
+      setKoreanName(targetProfile.name);
     }
-  }, [category, primary, koreanName, isArchiveMode]);
+  }, [category, targetProfile, koreanName, isArchiveMode]);
 
   // ── 보관함 재생 모드 — recordId 쿼리가 있으면 저장된 기록으로 state 복원 ──
   useEffect(() => {
@@ -190,14 +194,15 @@ export default function MoreFortunePage({ category }: Props) {
 
   // ── 보관함 DB 확인 — 이전에 본 풀이가 있으면 모달 표시 ──
   useEffect(() => {
-    if (isArchiveMode || !primary || !category) return;
+    if (isArchiveMode || !targetProfile || !category) return;
     if (isLegacy) return;
     if (searchParams?.get('fresh') === '1') return;
     let cancelled = false;
     findRecentArchive({
       category: category as ArchiveCategory,
-      birth_date: primary.birth_date,
-      gender: primary.gender,
+      birth_date: targetProfile.birth_date,
+      gender: targetProfile.gender,
+      profile_id: targetProfile.id,
     }).then(found => {
       if (cancelled || !found) return;
       setCacheGate({
@@ -211,7 +216,7 @@ export default function MoreFortunePage({ category }: Props) {
       });
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [category, primary, isArchiveMode, isLegacy, router]);
+  }, [category, targetProfile, isArchiveMode, isLegacy, router]);
 
   // [B안] cfg 가 없는데 legacy + archive 모드면 보관함 재생 전용 fallback 화면 렌더.
   // 그 외 (legacy + 정상 진입 / 잘못된 카테고리) 는 위 useEffect 가 홈으로 redirect.
@@ -410,9 +415,20 @@ export default function MoreFortunePage({ category }: Props) {
     );
   }
 
+  // 프로필 선택 가드 (name/dream 제외)
+  if (needsProfileSelect && cfg) {
+    return (
+      <FortuneProfileSelect
+        serviceName={cfg.title}
+        archiveCategory={category as ArchiveCategory}
+        creditType="moon"
+        creditCost={MOON_COST_SELECT}
+      />
+    );
+  }
+
   // 꿈 해몽은 사주와 무관 — 프로필 없어도 진입 가능.
-  // 보관함 재생 모드는 프로필이 없어도 저장된 풀이만 보여주면 되므로 가드를 우회한다.
-  if (!isArchiveMode && category !== 'dream' && !primary) {
+  if (!isArchiveMode && category !== 'dream' && !targetProfile) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
         <p className="text-text-secondary mb-4">{cfg.title}을 보려면 대표 프로필이 필요해요.</p>
@@ -462,8 +478,8 @@ export default function MoreFortunePage({ category }: Props) {
             <p className={styles.dateInfo}>
               보관함 · {new Date(archivedAt).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })}
             </p>
-          ) : primary ? (
-            <p className={styles.dateInfo}>{primary.name} · {primary.birth_date}</p>
+          ) : targetProfile ? (
+            <p className={styles.dateInfo}>{targetProfile.name} · {targetProfile.birth_date}</p>
           ) : null}
         </div>
       </div>
