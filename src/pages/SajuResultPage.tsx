@@ -83,7 +83,6 @@ export default function SajuResultPage() {
   useEffect(() => {
     if (!recordId) return;
     let cancelled = false;
-    setReportLoading(true);
     sajuDB.getRecordById(recordId)
       .then((record) => {
         if (cancelled || !record) return;

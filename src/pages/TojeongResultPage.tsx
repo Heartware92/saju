@@ -85,7 +85,6 @@ export default function TojeongResultPage() {
   useEffect(() => {
     if (!recordId) return;
     let cancelled = false;
-    setAiLoading(true);
     sajuDB.getRecordById(recordId)
       .then((record) => {
         if (cancelled || !record) return;

@@ -261,8 +261,6 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
     if (!recordId) return;
     if (scope !== 'year' && scope !== 'date') return;
     let cancelled = false;
-    if (scope === 'year') setNewyearReportLoading(true);
-    else setPickedDateReportLoading(true);
     sajuDB.getRecordById(recordId)
       .then((record) => {
         if (cancelled || !record) return;

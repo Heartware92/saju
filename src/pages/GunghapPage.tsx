@@ -269,7 +269,6 @@ export default function GunghapPage() {
   useEffect(() => {
     if (!recordId) return;
     let cancelled = false;
-    setLoading(true);
     sajuDB.getRecordById(recordId)
       .then((record) => {
         if (cancelled || !record) return;

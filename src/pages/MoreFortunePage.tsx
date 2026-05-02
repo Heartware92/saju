@@ -158,7 +158,6 @@ export default function MoreFortunePage({ category }: Props) {
   useEffect(() => {
     if (!recordId) return;
     let cancelled = false;
-    setLoading(true);
     sajuDB.getRecordById(recordId)
       .then((record) => {
         if (cancelled) return;

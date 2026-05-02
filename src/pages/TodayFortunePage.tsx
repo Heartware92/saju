@@ -134,7 +134,6 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
   useEffect(() => {
     if (!recordId) return;
     let cancelled = false;
-    setReportLoading(true);
     sajuDB.getRecordById(recordId)
       .then((record) => {
         if (cancelled || !record) return;
