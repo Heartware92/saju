@@ -427,9 +427,9 @@ p, li, span, div, button, a {
 .service-card::before {
   content: '';
   position: absolute;
-  inset: -1.5px;
+  inset: -2.25px;
   border-radius: inherit;
-  padding: 1.5px;
+  padding: 2.25px;
   background: conic-gradient(
     from var(--border-angle),
     transparent 30%,
