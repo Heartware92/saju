@@ -437,12 +437,11 @@ export default function HomePage() {
             <motion.div key={svc.id} variants={fadeUp}>
               <button type="button" onClick={() => handleServiceClick(svc.id, svc.direct)} className="w-full text-left">
                 <div className={`
+                  service-card
                   relative rounded-xl p-3 h-[88px]
                   bg-gradient-to-br ${svc.gradient}
                   border border-[var(--border-subtle)]
-                  hover:border-cta/40 transition-all
                   flex flex-col items-center justify-center text-center gap-1
-                  active:scale-[0.97]
                 `}>
                   <h3 className="text-[19px] font-bold text-text-primary tracking-tight">{svc.title}</h3>
                   <p className="text-[15px] font-medium text-text-secondary">{svc.desc}</p>
@@ -466,12 +465,11 @@ export default function HomePage() {
             <motion.div key={svc.id} variants={fadeUp}>
               <button type="button" onClick={() => handleServiceClick(svc.id, svc.direct)} className="w-full text-left">
                 <div className={`
+                  service-card
                   relative rounded-xl p-3 h-[88px]
                   bg-gradient-to-br ${svc.gradient}
                   border border-[var(--border-subtle)]
-                  hover:border-cta/40 transition-all
                   flex flex-col items-center justify-center text-center gap-1
-                  active:scale-[0.97]
                 `}>
                   <h3 className="text-[19px] font-bold text-text-primary tracking-tight">{svc.title}</h3>
                   <p className="text-[15px] font-medium text-text-secondary">{svc.desc}</p>
@@ -498,7 +496,7 @@ export default function HomePage() {
           {SUB_SERVICES.map((svc) => (
             <motion.div key={svc.id} variants={fadeUp}>
               <button type="button" onClick={() => handleServiceClick(svc.id, svc.href)} className="w-full">
-                <div className="flex flex-col items-center justify-center h-[80px] p-2.5 rounded-xl bg-space-surface/60 border border-[var(--border-subtle)] hover:border-cta/40 hover:bg-space-surface transition-all active:scale-[0.95]">
+                <div className="service-card flex flex-col items-center justify-center h-[80px] p-2.5 rounded-xl bg-space-surface/60 border border-[var(--border-subtle)]">
                   <span className="text-[17px] font-bold text-text-primary text-center leading-tight mb-1 whitespace-nowrap">{svc.title}</span>
                   <span className="text-[14px] text-text-tertiary text-center leading-tight line-clamp-1 whitespace-nowrap">{svc.desc}</span>
                 </div>

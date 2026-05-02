@@ -141,14 +141,14 @@ export default function SajuProfilePage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        onClick={() => router.push('/saju/input')}
+        onClick={() => router.push('/saju/input?mode=profile-only')}
         className="w-full rounded-2xl border-2 border-dashed border-[var(--border-subtle)] hover:border-cta/40 p-4 flex items-center justify-center gap-2 text-text-tertiary hover:text-cta transition-all"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <line x1="12" y1="5" x2="12" y2="19" />
           <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
-        <span className="text-sm font-medium">새 프로필로 사주 보기</span>
+        <span className="text-sm font-medium">새 프로필 추가</span>
       </motion.button>
     </div>
   );

@@ -409,6 +409,62 @@ p, li, span, div, button, a {
 .stagger-4 { animation-delay: 0.4s; }
 
 /* ============================================
+   Home Service Card — 테두리 스윕 + 팝업 효과
+   ============================================ */
+
+@property --border-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.service-card {
+  position: relative;
+  overflow: visible;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+.service-card::before {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--border-angle),
+    transparent 30%,
+    rgba(232, 164, 144, 0.6) 45%,
+    rgba(201, 166, 255, 0.8) 50%,
+    rgba(124, 92, 252, 0.6) 55%,
+    transparent 70%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.service-card:hover,
+.service-card:active {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 8px 24px rgba(124, 92, 252, 0.18), 0 0 0 1px rgba(124, 92, 252, 0.25);
+}
+
+.service-card:hover::before,
+.service-card:active::before {
+  opacity: 1;
+  animation: rotate-border 2s linear infinite;
+}
+
+@keyframes rotate-border {
+  to { --border-angle: 360deg; }
+}
+
+/* ============================================
    Scrollbar
    ============================================ */
 
