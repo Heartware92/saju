@@ -35,15 +35,17 @@ function lastNDays(n: number): string[] {
 async function computeSummary() {
   const thirty = new Date(Date.now() - 30 * 86400_000).toISOString();
 
-  const [sajuRes, tarotRes, creditRes] = await Promise.all([
+  const [sajuRes, tarotRes, creditRes, consultRes] = await Promise.all([
     supabaseAdmin.from('saju_records').select('user_id, category, credit_used, credit_type, created_at'),
     supabaseAdmin.from('tarot_records').select('user_id, spread_type, credit_used, credit_type, created_at'),
     supabaseAdmin.from('credit_transactions').select('credit_type, amount, reason, type, created_at').eq('type', 'consume'),
+    supabaseAdmin.from('consultation_records').select('user_id, message_count, created_at, updated_at'),
   ]);
 
   const saju = sajuRes.data ?? [];
   const tarot = tarotRes.data ?? [];
   const creditConsumed = creditRes.data ?? [];
+  const consult = consultRes.data ?? [];
 
   // ── 카테고리 랭킹 (사주 18종 + 타로 5종) ──
   const sajuRank = new Map<string, { count: number; uniqueUsers: Set<string> }>();
@@ -75,6 +77,7 @@ async function computeSummary() {
   const dayIndex = new Map(days.map((d, i) => [d, i]));
   const dailySaju = new Array(30).fill(0);
   const dailyTarot = new Array(30).fill(0);
+  const dailyConsult = new Array(30).fill(0);
 
   for (const r of saju) {
     if (!r.created_at || r.created_at < thirty) continue;
@@ -86,11 +89,17 @@ async function computeSummary() {
     const idx = dayIndex.get(dayKey(r.created_at));
     if (idx !== undefined) dailyTarot[idx]++;
   }
+  for (const r of consult) {
+    if (!r.updated_at || r.updated_at < thirty) continue;
+    const idx = dayIndex.get(dayKey(r.updated_at));
+    if (idx !== undefined) dailyConsult[idx]++;
+  }
   const daily = days.map((d, i) => ({
     date: d,
     saju: dailySaju[i],
     tarot: dailyTarot[i],
-    total: dailySaju[i] + dailyTarot[i],
+    consult: dailyConsult[i],
+    total: dailySaju[i] + dailyTarot[i] + dailyConsult[i],
   }));
 
   // ── 시간대×요일 히트맵 (7일 × 24시, KST) ──
@@ -121,13 +130,18 @@ async function computeSummary() {
     else if (t.credit_type === 'moon') moonTxn += Math.abs(t.amount ?? 0);
   }
 
+  const totalConsultMessages = consult.reduce((s, c) => s + (c.message_count ?? 0), 0);
+
   return {
     kpi: {
       sajuTotal: saju.length,
       tarotTotal: tarot.length,
-      grandTotal: saju.length + tarot.length,
+      consultTotal: consult.length,
+      consultMessages: totalConsultMessages,
+      grandTotal: saju.length + tarot.length + consult.length,
       uniqueSajuUsers: new Set(saju.map(r => r.user_id)).size,
       uniqueTarotUsers: new Set(tarot.map(r => r.user_id)).size,
+      uniqueConsultUsers: new Set(consult.map(r => r.user_id)).size,
     },
     sajuRanking,
     tarotRanking,

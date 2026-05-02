@@ -133,6 +133,7 @@ export default function AdminPage() {
   const [memberGender, setMemberGender] = useState<'male' | 'female' | 'unknown' | ''>('');
   const [memberAgeBucket, setMemberAgeBucket] = useState<AgeBucketKey | ''>('');
   const [memberSegment, setMemberSegment] = useState<UserSegment | ''>('');
+  const [memberProvider, setMemberProvider] = useState('');
   const [memberSort, setMemberSort] = useState<SortKey>('joined');
   const [memberOrder, setMemberOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -249,6 +250,7 @@ export default function AdminPage() {
         gender: memberGender,
         ageBucket: memberAgeBucket,
         segment: memberSegment,
+        provider: memberProvider,
         sort: memberSort,
         order: memberOrder,
       });
@@ -256,7 +258,7 @@ export default function AdminPage() {
       if (data) { setMembers(data.users); setMemberTotal(data.total); }
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [token, adminFetch, memberPage, memberSearch, memberGender, memberAgeBucket, memberSegment, memberSort, memberOrder]);
+  }, [token, adminFetch, memberPage, memberSearch, memberGender, memberAgeBucket, memberSegment, memberProvider, memberSort, memberOrder]);
 
   const fetchOrders = useCallback(async (force = false) => {
     if (!token) return;
@@ -384,7 +386,7 @@ export default function AdminPage() {
   useEffect(() => { if (tab === 'consultations' && consultations.length === 0) fetchConsultations(); }, [tab, consultations.length, fetchConsultations]);
 
   // ── 필터·정렬 변경 시 members 재호출
-  const memberFilterKey = `${memberSearch}|${memberGender}|${memberAgeBucket}|${memberSegment}|${memberSort}|${memberOrder}|${memberPage}`;
+  const memberFilterKey = `${memberSearch}|${memberGender}|${memberAgeBucket}|${memberSegment}|${memberProvider}|${memberSort}|${memberOrder}|${memberPage}`;
   const lastMemberFilterKey = useRef<string>('');
   useEffect(() => {
     if (tab !== 'members') return;
@@ -424,7 +426,7 @@ export default function AdminPage() {
   }, [tab, consultFilterKey, fetchConsultations]);
 
   // 검색·필터 바뀌면 1페이지로
-  useEffect(() => { setMemberPage(1); }, [memberSearch, memberGender, memberAgeBucket, memberSegment, memberSort, memberOrder]);
+  useEffect(() => { setMemberPage(1); }, [memberSearch, memberGender, memberAgeBucket, memberSegment, memberProvider, memberSort, memberOrder]);
 
   if (!token) return (
     <div className="min-h-screen flex items-center justify-center text-text-secondary">
@@ -453,6 +455,7 @@ export default function AdminPage() {
         page: '1', pageSize: '5000',
         search: memberSearch, gender: memberGender,
         ageBucket: memberAgeBucket, segment: memberSegment,
+        provider: memberProvider,
         sort: memberSort, order: memberOrder,
       });
       const res = await fetch(`/api/admin/users?${params}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -724,6 +727,7 @@ export default function AdminPage() {
                 search={memberSearch} onSearchChange={setMemberSearch}
                 gender={memberGender} onGenderChange={setMemberGender}
                 ageBucket={memberAgeBucket} onAgeBucketChange={setMemberAgeBucket}
+                provider={memberProvider} onProviderChange={setMemberProvider}
                 totalCount={memberTotal}
               />
               <MembersTable

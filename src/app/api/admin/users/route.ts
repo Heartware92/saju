@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
   const gender = (searchParams.get('gender') ?? '') as 'male' | 'female' | 'unknown' | '';
   const ageBucket = (searchParams.get('ageBucket') ?? '') as AgeBucketKey | '';
   const segment = (searchParams.get('segment') ?? '') as UserSegment | '';
+  const provider = (searchParams.get('provider') ?? '') as string;
   const sort = (searchParams.get('sort') ?? 'joined') as SortKey;
   const order = (searchParams.get('order') ?? 'desc') as 'asc' | 'desc';
 
@@ -65,6 +66,9 @@ export async function GET(request: NextRequest) {
   }
   if (segment) {
     users = users.filter(u => u.segments.includes(segment));
+  }
+  if (provider) {
+    users = users.filter(u => u.provider === provider);
   }
 
   users.sort((a, b) => compareUsers(a, b, sort, order));

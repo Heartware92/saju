@@ -16,13 +16,16 @@ export interface UsageSummary {
   kpi: {
     sajuTotal: number;
     tarotTotal: number;
+    consultTotal?: number;
+    consultMessages?: number;
     grandTotal: number;
     uniqueSajuUsers: number;
     uniqueTarotUsers: number;
+    uniqueConsultUsers?: number;
   };
   sajuRanking: { category: string; count: number; uniqueUsers: number }[];
   tarotRanking: { spread: string; count: number; uniqueUsers: number }[];
-  daily: { date: string; saju: number; tarot: number; total: number }[];
+  daily: { date: string; saju: number; tarot: number; consult?: number; total: number }[];
   heatmap: number[][];
   credit: { sunConsumed: number; moonConsumed: number; sunTxn: number; moonTxn: number };
 }
@@ -81,10 +84,11 @@ export function UsageAnalyticsSection({ summary }: { summary: UsageSummary | nul
       {/* KPI */}
       <div>
         <h2 className="text-[15px] font-semibold text-text-secondary mb-3 uppercase tracking-wider">이용 요약</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <Kpi label="총 이용" value={fmt(kpi.grandTotal)} sub="사주 + 타로" />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <Kpi label="총 이용" value={fmt(kpi.grandTotal)} sub="사주 + 타로 + 상담" />
           <Kpi label="사주 이용" value={fmt(kpi.sajuTotal)} sub={`${fmt(kpi.uniqueSajuUsers)}명`} />
           <Kpi label="타로 이용" value={fmt(kpi.tarotTotal)} sub={`${fmt(kpi.uniqueTarotUsers)}명`} />
+          <Kpi label="상담소 대화" value={fmt(kpi.consultTotal ?? 0)} sub={`${fmt(kpi.uniqueConsultUsers ?? 0)}명 · ${fmt(kpi.consultMessages ?? 0)}메시지`} />
           <Kpi label="☀️ 해 소비" value={fmt(credit.sunConsumed)} sub={`거래장부 ${fmt(credit.sunTxn)}`} />
           <Kpi label="🌙 달 소비" value={fmt(credit.moonConsumed)} sub={`거래장부 ${fmt(credit.moonTxn)}`} />
         </div>

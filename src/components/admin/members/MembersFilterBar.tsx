@@ -5,7 +5,7 @@
  */
 'use client';
 
-import { AGE_BUCKETS, type AgeBucketKey } from '@/constants/adminLabels';
+import { AGE_BUCKETS, PROVIDER_LABEL, type AgeBucketKey } from '@/constants/adminLabels';
 
 interface Props {
   search: string; onSearchChange: (s: string) => void;
@@ -13,6 +13,7 @@ interface Props {
   onGenderChange: (g: 'male' | 'female' | 'unknown' | '') => void;
   ageBucket: AgeBucketKey | '';
   onAgeBucketChange: (a: AgeBucketKey | '') => void;
+  provider: string; onProviderChange: (p: string) => void;
   totalCount: number;
 }
 
@@ -20,9 +21,10 @@ export function MembersFilterBar({
   search, onSearchChange,
   gender, onGenderChange,
   ageBucket, onAgeBucketChange,
+  provider, onProviderChange,
   totalCount,
 }: Props) {
-  const hasFilter = !!search || !!gender || !!ageBucket;
+  const hasFilter = !!search || !!gender || !!ageBucket || !!provider;
 
   return (
     <div className="flex gap-2 flex-wrap items-center">
@@ -56,9 +58,20 @@ export function MembersFilterBar({
         ))}
       </select>
 
+      <select
+        value={provider}
+        onChange={e => onProviderChange(e.target.value)}
+        className="px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[14px] text-text-primary focus:outline-none focus:border-cta/50"
+      >
+        <option value="">전체 가입경로</option>
+        {Object.entries(PROVIDER_LABEL).map(([k, v]) => (
+          <option key={k} value={k}>{v}</option>
+        ))}
+      </select>
+
       {hasFilter && (
         <button
-          onClick={() => { onSearchChange(''); onGenderChange(''); onAgeBucketChange(''); }}
+          onClick={() => { onSearchChange(''); onGenderChange(''); onAgeBucketChange(''); onProviderChange(''); }}
           className="px-3 py-2 rounded-lg text-[13px] text-text-tertiary hover:text-text-secondary border border-white/10 hover:border-white/20 transition-colors"
         >
           필터 초기화
