@@ -392,7 +392,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
 
       setNewyearReport(null);
       setNewyearReportLoading(true);
-      getNewyearReport(saju, fortune, targetYear)
+      getNewyearReport(saju, fortune, targetYear, targetProfile?.id)
         .then(r => {
           if (cancelled) return;
           setNewyearReport(r);
@@ -432,7 +432,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
       }
       setPickedDateReport(null);
       setPickedDateReportLoading(true);
-      getPickedDateReport(saju, pickedDate)
+      getPickedDateReport(saju, pickedDate, targetProfile?.id)
         .then(r => {
           if (cancelled) return;
           setPickedDateReport(r);

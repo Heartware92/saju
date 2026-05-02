@@ -116,10 +116,9 @@ export const MyPage: React.FC = () => {
  */
 const ProfileTab: React.FC<{ user: any; onLogout: () => void }> = ({ user, onLogout }) => {
   const router = useRouter();
-  // 비밀번호 변경 모달
   const [showPwModal, setShowPwModal] = useState(false);
-  // 회원 탈퇴 모달
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const isSocialLogin = user?.app_metadata?.provider && user.app_metadata.provider !== 'email';
 
   return (
     <>
@@ -130,6 +129,22 @@ const ProfileTab: React.FC<{ user: any; onLogout: () => void }> = ({ user, onLog
           <div className="flex items-center justify-between py-3 border-b border-[var(--border-subtle)]">
             <span className="text-text-secondary text-sm">이메일</span>
             <span className="font-medium text-text-primary text-sm">{user?.email || '-'}</span>
+          </div>
+
+          {isSocialLogin && (
+            <div className="flex items-center justify-between py-3 border-b border-[var(--border-subtle)]">
+              <span className="text-text-secondary text-sm">로그인 방법</span>
+              <span className="font-medium text-text-primary text-sm capitalize">{user?.app_metadata?.provider}</span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between py-3 border-b border-[var(--border-subtle)]">
+            <span className="text-text-secondary text-sm">휴대폰 번호</span>
+            <span className="font-medium text-text-primary text-sm">
+              {user?.user_metadata?.phone
+                ? user.user_metadata.phone.replace(/(\d{3})(\d{3,4})(\d{4})/, '$1-$2-$3')
+                : '-'}
+            </span>
           </div>
 
           <div className="flex items-center justify-between py-3 border-b border-[var(--border-subtle)]">
@@ -146,9 +161,11 @@ const ProfileTab: React.FC<{ user: any; onLogout: () => void }> = ({ user, onLog
         </div>
 
         <div className="mt-6 pt-5 border-t border-[var(--border-subtle)] space-y-2">
-          <Button variant="outline" fullWidth onClick={() => setShowPwModal(true)}>
-            비밀번호 변경
-          </Button>
+          {!isSocialLogin && (
+            <Button variant="outline" fullWidth onClick={() => setShowPwModal(true)}>
+              비밀번호 변경
+            </Button>
+          )}
           <Button variant="outline" fullWidth onClick={onLogout}>
             로그아웃
           </Button>

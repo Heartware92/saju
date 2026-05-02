@@ -47,20 +47,14 @@ interface ArchiveSajuParams {
   creditType?: 'sun' | 'moon';
   creditUsed?: number;
   isDetailed?: boolean;
-  /**
-   * 풀이가 본 사주의 birth 정보. 호출자(fortuneService) 가 SajuResult.solarDate / gender 등을
-   * 이 안으로 전달하면, 같은 birth_date + gender 를 가진 birth_profiles 행을 자동 매칭해서
-   * profile_id / profile_name 에 채워준다.
-   *
-   * 미전달 시 대표 프로필로 fallback (옛날 호출자 호환).
-   */
+  /** 호출자가 이미 profile_id 를 알고 있으면 직접 전달 — sourceBirth 매칭을 건너뛴다. */
+  profileId?: string;
   sourceBirth?: {
-    birth_date: string;          // YYYY-MM-DD
-    birth_time?: string;          // HH:mm
+    birth_date: string;
+    birth_time?: string;
     gender: 'male' | 'female';
     calendar_type?: 'solar' | 'lunar';
   };
-  /** 궁합 카테고리 전용 — 상대방 정보 스냅샷. */
   partner?: {
     name: string;
     birth_date: string;
@@ -81,7 +75,6 @@ export async function archiveSaju(params: ArchiveSajuParams): Promise<void> {
     const user = await auth.getCurrentUser();
     if (!user) return;
 
-    // 1) sourceBirth 로 매칭 시도 (정확한 풀이 주체 식별)
     type Profile = {
       id: string;
       name: string;
@@ -93,7 +86,19 @@ export async function archiveSaju(params: ArchiveSajuParams): Promise<void> {
     };
     let profile: Profile | null = null;
 
-    if (params.sourceBirth) {
+    // 0) 호출자가 profileId 를 직접 전달하면 DB 조회로 바로 확정
+    if (params.profileId) {
+      const { data } = await supabase
+        .from('birth_profiles')
+        .select('id, name, birth_date, birth_time, birth_place, gender, calendar_type')
+        .eq('id', params.profileId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (data) profile = data as Profile;
+    }
+
+    // 1) sourceBirth 로 매칭 시도
+    if (!profile && params.sourceBirth) {
       let q = supabase
         .from('birth_profiles')
         .select('id, name, birth_date, birth_time, birth_place, gender, calendar_type')
@@ -110,7 +115,7 @@ export async function archiveSaju(params: ArchiveSajuParams): Promise<void> {
       if (matches && matches.length > 0) profile = matches[0] as Profile;
     }
 
-    // 2) 매칭 실패 시 대표 프로필 fallback (URL 직접 입력으로 진입 등)
+    // 2) 매칭 실패 시 대표 프로필 fallback
     if (!profile) {
       const { data } = await supabase
         .from('birth_profiles')
@@ -123,7 +128,7 @@ export async function archiveSaju(params: ArchiveSajuParams): Promise<void> {
       if (data) profile = data as Profile;
     }
 
-    // 3) 프로필이 전혀 없으면 sourceBirth 라도 있어야 저장 (이름 없는 기록)
+    // 3) 프로필이 전혀 없으면 sourceBirth 라도 있어야 저장
     const birth = profile ?? (params.sourceBirth
       ? {
           id: '',
