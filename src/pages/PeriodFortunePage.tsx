@@ -165,8 +165,9 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
 
   const targetProfile = useMemo(() => {
     if (profileId) return profiles.find(p => p.id === profileId) ?? null;
+    if (needsProfileSelect) return null;
     return profiles.find(p => p.is_primary) ?? null;
-  }, [profiles, profileId]);
+  }, [profiles, profileId, needsProfileSelect]);
 
   const today = new Date().toISOString().slice(0, 10);
   const initialDate = searchParams?.get('date') || today;
@@ -1045,6 +1046,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
         title={scope === 'year' ? '신년운세' : scope === 'date' ? '지정일 운세' : '오늘의 운세'}
         onUseCached={handleUseCached}
         onRefresh={handleRefetch}
+        onClose={() => setCacheGate(null)}
       />
     </motion.div>
   );

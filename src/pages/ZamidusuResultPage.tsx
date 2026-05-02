@@ -59,8 +59,9 @@ export default function ZamidusuResultPage() {
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const targetProfile = useMemo(() => {
     if (profileId) return profiles.find(p => p.id === profileId) ?? null;
+    if (needsProfileSelect) return null;
     return profiles.find(p => p.is_primary) ?? null;
-  }, [profiles, profileId]);
+  }, [profiles, profileId, needsProfileSelect]);
 
   const [chart, setChart] = useState<ZamidusuResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -940,6 +941,7 @@ export default function ZamidusuResultPage() {
         title="자미두수"
         onUseCached={handleUseCached}
         onRefresh={handleRefetch}
+        onClose={() => setCacheGate(null)}
       />
     </div>
   );

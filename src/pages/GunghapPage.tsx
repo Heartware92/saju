@@ -1121,6 +1121,7 @@ export default function GunghapPage() {
         title="궁합 분석"
         onUseCached={handleUseCached}
         onRefresh={handleRefetch}
+        onClose={() => setCacheGate(null)}
       />
     </div>
   );

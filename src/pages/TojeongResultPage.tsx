@@ -50,8 +50,9 @@ export default function TojeongResultPage() {
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const targetProfile = useMemo(() => {
     if (profileId) return profiles.find(p => p.id === profileId) ?? null;
+    if (needsProfileSelect) return null;
     return profiles.find(p => p.is_primary) ?? null;
-  }, [profiles, profileId]);
+  }, [profiles, profileId, needsProfileSelect]);
   const chargeForContent = useCreditStore(s => s.chargeForContent);
 
   // AI 내러티브 — 진입 즉시 자동 호출
@@ -559,6 +560,7 @@ export default function TojeongResultPage() {
         open={!!cacheGate}
         title="토정비결"
         onUseCached={handleUseCached}
+        onClose={() => setCacheGate(null)}
         onRefresh={handleRefetch}
       />
     </motion.div>

@@ -88,8 +88,9 @@ export default function MoreFortunePage({ category }: Props) {
 
   const targetProfile = useMemo(() => {
     if (profileId) return profiles.find(p => p.id === profileId) ?? null;
+    if (needsProfileSelect) return null;
     return profiles.find((p) => p.is_primary) ?? profiles[0] ?? null;
-  }, [profiles, profileId]);
+  }, [profiles, profileId, needsProfileSelect]);
 
   const saju = useMemo(() => {
     if (!targetProfile) return null;
@@ -723,6 +724,7 @@ export default function MoreFortunePage({ category }: Props) {
         title={cfg.title}
         onUseCached={handleUseCached}
         onRefresh={handleRefetch}
+        onClose={() => setCacheGate(null)}
       />
     </div>
   );

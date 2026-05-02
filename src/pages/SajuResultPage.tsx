@@ -59,8 +59,9 @@ export default function SajuResultPage() {
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
   const targetProfile = useMemo(() => {
     if (profileId) return profiles.find(p => p.id === profileId) ?? null;
+    if (needsProfileSelect) return null;
     return profiles.find(p => p.is_primary) ?? null;
-  }, [profiles, profileId]);
+  }, [profiles, profileId, needsProfileSelect]);
 
   const [result, setResult] = useState<SajuResult | null>(null);
   const [report, setReport] = useState<JungtongsajuAIResult | null>(null);
@@ -522,6 +523,7 @@ export default function SajuResultPage() {
         title="정통사주"
         onUseCached={handleUseCached}
         onRefresh={handleRefetch}
+        onClose={() => setCacheGate(null)}
       />
     </motion.div>
   );
