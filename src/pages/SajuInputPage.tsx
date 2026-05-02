@@ -36,6 +36,7 @@ export default function SajuInputPage() {
   // 프로필 관리 페이지에서 "+ 새 프로필 추가" 로 진입한 경우.
   // 분석 결과로 라우팅하지 않고 프로필만 저장 후 목록으로 복귀.
   const isProfileOnly = searchParams?.get('mode') === 'profile-only'
+  const fromPage = searchParams?.get('from')
 
   const currentYear = new Date().getFullYear()
   const { user } = useUserStore()
@@ -178,10 +179,8 @@ export default function SajuInputPage() {
     setEditingProfile(null)
     setProfileForm({ name: '', memo: '' })
 
-    // 프로필 저장 전용 모드: 저장 직후 프로필 목록으로 복귀
-    // replace — 저장 완료된 폼이 history에 남으면 뒤로가기 시 빈 폼으로 돌아가는 UX 버그 발생
     if (isProfileOnly) {
-      router.replace('/saju/profile')
+      router.replace(fromPage === 'sangdamso' ? '/sangdamso' : '/saju/profile')
     }
   }
 

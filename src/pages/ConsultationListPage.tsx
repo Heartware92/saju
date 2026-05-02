@@ -194,7 +194,7 @@ export default function ConsultationListPage() {
             );
           })}
           <Link
-            href="/saju/input"
+            href="/saju/input?mode=profile-only&from=sangdamso"
             className="flex-shrink-0 flex items-center justify-center px-4 py-3 rounded-xl border border-dashed border-white/20 text-text-tertiary hover:border-white/40 hover:text-text-secondary transition-all min-w-[80px]"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
