@@ -22,7 +22,7 @@ export default async function PrivacyPage({ searchParams }: { searchParams: Prom
 
       <div className="rounded-2xl p-6 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
         <p className="text-[13px] text-text-tertiary mb-4">
-          시행일: 2026-05-01 / 최종 개정일: 2026-05-01 / 버전 1.0
+          시행일: 2026-05-01 / 최종 개정일: 2026-05-02 / 버전 1.1
         </p>
 
         <section className="space-y-6 text-[14px] text-text-secondary leading-relaxed">
@@ -50,19 +50,19 @@ export default async function PrivacyPage({ searchParams }: { searchParams: Prom
               <tbody>
                 <tr className="border-t border-[var(--border-subtle)]">
                   <td className="px-3 py-2">이메일 가입</td>
-                  <td className="px-3 py-2">이메일, 비밀번호(암호화 저장)</td>
+                  <td className="px-3 py-2">이메일, 비밀번호(암호화 저장), 휴대폰 번호</td>
                 </tr>
                 <tr className="border-t border-[var(--border-subtle)]">
                   <td className="px-3 py-2">Google 로그인</td>
-                  <td className="px-3 py-2">이메일, 이름, Google 회원번호</td>
+                  <td className="px-3 py-2">이메일, 이름, Google 회원번호, 휴대폰 번호</td>
                 </tr>
                 <tr className="border-t border-[var(--border-subtle)]">
                   <td className="px-3 py-2">카카오 로그인</td>
-                  <td className="px-3 py-2">이메일, 닉네임, 카카오 회원번호</td>
+                  <td className="px-3 py-2">이메일, 닉네임, 카카오 회원번호, 휴대폰 번호</td>
                 </tr>
                 <tr className="border-t border-[var(--border-subtle)]">
                   <td className="px-3 py-2">네이버 로그인</td>
-                  <td className="px-3 py-2">이메일, 이름, 네이버 회원번호</td>
+                  <td className="px-3 py-2">이메일, 이름, 네이버 회원번호, 휴대폰 번호</td>
                 </tr>
               </tbody>
             </table>
@@ -101,7 +101,7 @@ export default async function PrivacyPage({ searchParams }: { searchParams: Prom
                 </tr>
                 <tr className="border-t border-[var(--border-subtle)]">
                   <td className="px-3 py-2">회원 관리</td>
-                  <td className="px-3 py-2">회원 식별, 본인 확인, 불량회원 부정 이용 방지</td>
+                  <td className="px-3 py-2">회원 식별, 본인 확인(SMS 인증), 불량회원 부정 이용 방지</td>
                 </tr>
                 <tr className="border-t border-[var(--border-subtle)]">
                   <td className="px-3 py-2">결제·정산</td>
