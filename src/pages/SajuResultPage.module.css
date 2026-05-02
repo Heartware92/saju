@@ -1400,19 +1400,37 @@
   margin-bottom: 4px;
 }
 
-.dwGanZhi {
-  font-size: 22px;
-  font-weight: 700;
-  font-family: var(--font-serif);
-  margin-bottom: 4px;
+.dwTenGod {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 3px;
 }
 
-.dwInfo {
-  font-size: 10px;
-  color: var(--text-secondary);
+.dwGanBox {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  font-family: var(--font-serif);
+  margin: 2px auto;
+}
+
+.dwMeta {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  margin-top: 1px;
+}
+
+.dwMetaSinsal {
+  font-size: 9px;
+  color: var(--cta-primary);
+  opacity: 0.8;
+  margin-top: 1px;
 }
 
 /* Sewoon (세운) */
@@ -1472,17 +1490,6 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
-}
-
-.dwInfoSub {
-  font-size: 9px;
-  color: var(--text-tertiary);
-}
-
-.dwInfoSinsal {
-  font-size: 9px;
-  color: var(--cta-primary);
-  opacity: 0.8;
 }
 
 /* AI Analysis */

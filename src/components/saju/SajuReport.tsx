@@ -1115,16 +1115,12 @@ function DaeWoonSection({
               aria-pressed={isSelected}
             >
               <div className={styles.dwAge}>{age}세</div>
-              <div className={styles.dwGanZhi}>
-                <span style={{ color: ELEMENT_COLORS[dw.ganElement] }}>{stemToHanja(dw.gan)}</span>
-                <span style={{ color: ELEMENT_COLORS[dw.zhiElement] }}>{zhiToHanja(dw.zhi)}</span>
-              </div>
-              <div className={styles.dwInfo}>
-                <span>{dw.tenGod}</span>
-                <span className={styles.dwInfoSub}>{dw.tenGodZhi}</span>
-                <span className={styles.dwInfoSub}>{dw.twelveStage}</span>
-                {dw.sinSal12 && <span className={styles.dwInfoSinsal}>{dw.sinSal12}</span>}
-              </div>
+              <div className={styles.dwTenGod}>{dw.tenGod}</div>
+              <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[dw.ganElement]}22`, color: ELEMENT_COLORS[dw.ganElement] }}>{stemToHanja(dw.gan)}</div>
+              <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[dw.zhiElement]}22`, color: ELEMENT_COLORS[dw.zhiElement] }}>{zhiToHanja(dw.zhi)}</div>
+              <div className={styles.dwMeta}>{dw.tenGodZhi}</div>
+              <div className={styles.dwMeta}>{dw.twelveStage}</div>
+              {dw.sinSal12 && <div className={styles.dwMetaSinsal}>{dw.sinSal12}</div>}
             </button>
           );
         })}
@@ -1158,16 +1154,12 @@ function DaeWoonSection({
             >
               <div className={styles.swYear}>{sw.year}년</div>
               <div className={styles.swAnimal}>{sw.animal}띠</div>
-              <div className={styles.swGanZhi}>
-                <span style={{ color: ELEMENT_COLORS[sw.ganElement] }}>{stemToHanja(sw.gan)}</span>
-                <span style={{ color: ELEMENT_COLORS[sw.zhiElement] }}>{zhiToHanja(sw.zhi)}</span>
-              </div>
-              <div className={styles.swInfo}>
-                <span>{sw.tenGod}</span>
-                <span className={styles.dwInfoSub}>{sw.tenGodZhi}</span>
-                <span className={styles.dwInfoSub}>{sw.twelveStage}</span>
-                {sw.sinSal12 && <span className={styles.dwInfoSinsal}>{sw.sinSal12}</span>}
-              </div>
+              <div className={styles.dwTenGod}>{sw.tenGod}</div>
+              <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[sw.ganElement]}22`, color: ELEMENT_COLORS[sw.ganElement] }}>{stemToHanja(sw.gan)}</div>
+              <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[sw.zhiElement]}22`, color: ELEMENT_COLORS[sw.zhiElement] }}>{zhiToHanja(sw.zhi)}</div>
+              <div className={styles.dwMeta}>{sw.tenGodZhi}</div>
+              <div className={styles.dwMeta}>{sw.twelveStage}</div>
+              {sw.sinSal12 && <div className={styles.dwMetaSinsal}>{sw.sinSal12}</div>}
             </button>
           );
         })}
@@ -1201,7 +1193,7 @@ function DaeWoonSection({
                   <div
                     key={m.month}
                     style={{
-                      padding: '10px 8px',
+                      padding: '10px 6px',
                       borderRadius: 10,
                       border: `1px solid ${c}55`,
                       background: `${c}10`,
@@ -1209,18 +1201,16 @@ function DaeWoonSection({
                     }}
                   >
                     <div style={{ fontSize: 13, fontWeight: 700, color: c }}>{m.month}월</div>
-                    <div style={{ fontSize: 13, marginTop: 2 }}>
-                      <span style={{ color: ELEMENT_COLORS[m.ganElement] }}>{stemToHanja(m.gan)}</span>
-                      <span style={{ color: ELEMENT_COLORS[m.zhiElement] }}>{zhiToHanja(m.zhi)}</span>
-                    </div>
-                    <div style={{ fontSize: 11, color: c, marginTop: 2, opacity: 0.85 }}>{m.grade}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>{m.tenGod}</div>
+                    <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[m.ganElement]}22`, color: ELEMENT_COLORS[m.ganElement], margin: '3px auto' }}>{stemToHanja(m.gan)}</div>
+                    <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[m.zhiElement]}22`, color: ELEMENT_COLORS[m.zhiElement], margin: '0 auto' }}>{zhiToHanja(m.zhi)}</div>
                     <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.4 }}>
-                      <div>{m.tenGod}</div>
                       <div>{m.tenGodZhi}</div>
                       <div>{m.twelveStage}</div>
                       {m.sinSal12 && <div style={{ color: 'var(--text-tertiary)' }}>{m.sinSal12}</div>}
                     </div>
-                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2 }}>{m.keyword}</div>
+                    <div style={{ fontSize: 11, color: c, marginTop: 3, fontWeight: 600 }}>{m.grade}</div>
+                    {m.keyword && <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 2 }}>{m.keyword}</div>}
                   </div>
                 );
               })}
