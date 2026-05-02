@@ -81,8 +81,7 @@ export const auth = {
    */
   signInWithProvider: async (provider: 'google' | 'kakao') => {
     const baseUrl =
-      process.env.NEXT_PUBLIC_BASE_URL ||
-      (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+      typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
