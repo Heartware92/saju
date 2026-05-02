@@ -64,7 +64,7 @@ export default function SajuResultPage() {
 
   const [result, setResult] = useState<SajuResult | null>(null);
   const [report, setReport] = useState<JungtongsajuAIResult | null>(null);
-  const [reportLoading, setReportLoading] = useState(false);
+  const [reportLoading, setReportLoading] = useState(!isArchiveMode && !needsProfileSelect);
 
   const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
   const [refetchNonce, setRefetchNonce] = useState(0);
@@ -188,6 +188,7 @@ export default function SajuResultPage() {
           });
           if (cancelled) return;
           if (found) {
+            setReportLoading(false);
             setCacheGate({
               kind: 'jungtong',
               key: '',

@@ -56,7 +56,7 @@ export default function TojeongResultPage() {
 
   // AI 내러티브 — 진입 즉시 자동 호출
   const [aiContent, setAiContent] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(!isArchiveMode && !needsProfileSelect);
   const [aiError, setAiError] = useState<string | null>(null);
 
   // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
@@ -176,6 +176,7 @@ export default function TojeongResultPage() {
           });
           if (cancelled) return;
           if (found) {
+            setAiLoading(false);
             setCacheGate({
               kind: 'tojeong',
               key: '',

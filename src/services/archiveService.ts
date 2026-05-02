@@ -210,6 +210,43 @@ export async function findRecentArchive(params: {
   }
 }
 
+export async function findRecentArchivesBatch(params: {
+  category: ArchiveCategory;
+  profileIds: string[];
+  context?: { key: string; value: string };
+}): Promise<Record<string, { id: string; created_at: string }>> {
+  try {
+    const user = await auth.getCurrentUser();
+    if (!user || params.profileIds.length === 0) return {};
+
+    let q = supabase
+      .from('saju_records')
+      .select('id, created_at, profile_id')
+      .eq('user_id', user.id)
+      .eq('category', params.category)
+      .in('profile_id', params.profileIds)
+      .order('created_at', { ascending: false });
+
+    if (params.context) {
+      q = q.eq(`engine_result->>${params.context.key}`, params.context.value);
+    }
+
+    const { data, error } = await q;
+    if (error || !data) return {};
+
+    const result: Record<string, { id: string; created_at: string }> = {};
+    for (const row of data as { id: string; created_at: string; profile_id: string }[]) {
+      if (row.profile_id && !result[row.profile_id]) {
+        result[row.profile_id] = { id: row.id, created_at: row.created_at };
+      }
+    }
+    return result;
+  } catch (err) {
+    console.error('[archive] findRecentArchivesBatch failed', err);
+    return {};
+  }
+}
+
 interface ArchiveTarotParams {
   spreadType: string;
   cards: Record<string, unknown>;

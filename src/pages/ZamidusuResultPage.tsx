@@ -66,7 +66,7 @@ export default function ZamidusuResultPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedPalace, setSelectedPalace] = useState<number | null>(null);
   const [aiResult, setAiResult] = useState<ZamidusuAIResult | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(!isArchiveMode && !needsProfileSelect);
   const [introOpen, setIntroOpen] = useState(false);
 
   // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
@@ -227,6 +227,7 @@ export default function ZamidusuResultPage() {
           });
           if (cancelled) return;
           if (found) {
+            setAiLoading(false);
             setCacheGate({
               kind: 'zamidusu',
               key: '',

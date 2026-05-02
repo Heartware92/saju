@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
-import { findRecentArchive, type ArchiveCategory } from '../services/archiveService';
+import { findRecentArchivesBatch, type ArchiveCategory } from '../services/archiveService';
 import { BackButton } from './ui/BackButton';
 import type { BirthProfile } from '../types/credit';
 
@@ -33,7 +33,7 @@ export function FortuneProfileSelect({
   const { profiles, fetchProfiles, loading: profilesLoading } = useProfileStore();
   const { sunBalance, moonBalance } = useCreditStore();
 
-  const [initialized, setInitialized] = useState(false);
+  const [initialized, setInitialized] = useState(profiles.length > 0);
   const [archiveMap, setArchiveMap] = useState<Record<string, ArchiveInfo | null>>({});
   const [archiveChecking, setArchiveChecking] = useState(!!archiveCategory);
 
@@ -60,24 +60,11 @@ export function FortuneProfileSelect({
       return;
     }
     setArchiveChecking(true);
-    Promise.all(
-      profiles.map(async (p) => {
-        try {
-          const found = await findRecentArchive({
-            category: archiveCategory,
-            birth_date: p.birth_date,
-            gender: p.gender,
-            context: archiveContext,
-            profile_id: p.id,
-          });
-          return [p.id, found] as const;
-        } catch {
-          return [p.id, null] as const;
-        }
-      }),
-    ).then((results) => {
-      const map: Record<string, ArchiveInfo | null> = {};
-      for (const [id, found] of results) map[id] = found;
+    findRecentArchivesBatch({
+      category: archiveCategory,
+      profileIds: profiles.map(p => p.id),
+      context: archiveContext,
+    }).then((map) => {
       setArchiveMap(map);
       setArchiveChecking(false);
     });
@@ -127,9 +114,9 @@ export function FortuneProfileSelect({
 
   const handleConfirmCredit = useCallback(() => {
     if (!selectedProfile) return;
-    navigate(selectedProfile.id);
+    navigate(selectedProfile.id, archiveCategory ? '&fresh=1' : '');
     setModalType(null);
-  }, [selectedProfile, navigate]);
+  }, [selectedProfile, navigate, archiveCategory]);
 
   const closeModal = () => {
     setModalType(null);
@@ -148,12 +135,13 @@ export function FortuneProfileSelect({
 
   return (
     <div className="px-4 pt-4 pb-8">
-      <div className="flex items-start gap-1 mb-6">
+      <div className="flex items-center justify-between mb-6 px-1">
         <BackButton to="/" />
-        <div>
-          <h1 className="text-xl font-bold text-text-primary mb-1">{serviceName}</h1>
+        <div className="text-center">
+          <h1 className="text-lg font-bold text-text-primary">{serviceName}</h1>
           <p className="text-sm text-text-secondary">프로필을 선택하세요</p>
         </div>
+        <div className="w-9" />
       </div>
 
       <div className="space-y-3 mb-6">

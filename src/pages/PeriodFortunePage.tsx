@@ -233,7 +233,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
 
   // 신년운세 종합 리포트 (scope='year'에서만 사용)
   const [newyearReport, setNewyearReport] = useState<NewyearReportAIResult | null>(null);
-  const [newyearReportLoading, setNewyearReportLoading] = useState(false);
+  const [newyearReportLoading, setNewyearReportLoading] = useState(scope === 'year' && !isArchiveMode);
 
   // 지정일 운세 7섹션 리포트 (scope='date'에서만 사용)
   const [pickedDateReport, setPickedDateReport] = useState<PickedDateReportAIResult | null>(null);
@@ -354,6 +354,8 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
             });
             if (cancelled) return;
             if (found) {
+              setNewyearReportLoading(false);
+              setPickedDateReportLoading(false);
               setCacheGate({
                 kind: 'newyear',
                 key: '',

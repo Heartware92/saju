@@ -105,7 +105,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
 
   const [result, setResult] = useState<SajuResult | null>(null);
   const [report, setReport] = useState<TodayFortuneAIResult | null>(null);
-  const [reportLoading, setReportLoading] = useState(false);
+  const [reportLoading, setReportLoading] = useState(!isArchiveMode && !needsProfileSelect && confirmedDate !== null);
   const [archivedAt, setArchivedAt] = useState<string | null>(null);
 
   const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
@@ -210,6 +210,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
           });
           if (cancelled) return;
           if (found) {
+            setReportLoading(false);
             setCacheGate({
               kind: 'today',
               key: '',
