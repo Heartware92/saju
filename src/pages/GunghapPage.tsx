@@ -391,6 +391,7 @@ export default function GunghapPage() {
         }
         // 보관함 저장 — 반려동물 분기. partner.birth_date 는 비어있어 메타로만 보존.
         archiveSaju({
+          profileId: selectedProfile.id,
           sourceBirth: {
             birth_date: selectedProfile.birth_date,
             birth_time: selectedProfile.birth_time ?? undefined,
@@ -536,6 +537,7 @@ export default function GunghapPage() {
       }
       // 보관함 저장 — 카테고리/역할/상대방 메타 포함. archiveService 가 sourceBirth 로 자동 프로필 매칭.
       archiveSaju({
+        profileId: selectedProfile.id,
         sourceBirth: {
           birth_date: selectedProfile.birth_date,
           birth_time: selectedProfile.birth_time ?? undefined,

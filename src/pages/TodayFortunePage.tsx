@@ -241,7 +241,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
 
       setReport(null);
       setReportLoading(true);
-      getTodayFortuneReport(result, confirmedDate)
+      getTodayFortuneReport(result, confirmedDate, targetProfile?.id)
         .then(r => {
           if (cancelled) return;
           setReport(r);

@@ -220,7 +220,7 @@ export default function SajuResultPage() {
       getJungtongsajuReport(result, (partial) => {
         if (cancelled) return;
         setReport(partial);
-      })
+      }, targetProfile?.id)
         .then(r => {
           if (cancelled) return;
           setReport(r);

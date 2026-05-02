@@ -262,7 +262,7 @@ export default function TaekilPage() {
     setAiError(null);
     setAiLoading(true);
     try {
-      const r = await getTaekilAdvice(saju, payload);
+      const r = await getTaekilAdvice(saju, payload, targetProfile?.id);
       if (!r.success || !r.advice) {
         throw new Error(r.error || '길일 분석을 가져오지 못했어요.');
       }

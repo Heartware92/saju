@@ -217,7 +217,7 @@ export default function TojeongResultPage() {
         useReportCacheStore.getState().setError('tojeong', cacheKey, timeoutMsg);
       }, 45_000);
 
-      getTojeongReading(tojeong, sourceBirth)
+      getTojeongReading(tojeong, sourceBirth, targetProfile?.id)
         .then(r => {
           if (cancelled) return;
           clearTimeout(timeoutId);
@@ -262,7 +262,7 @@ export default function TojeongResultPage() {
     setAiContent(null);
     setAiError(null);
     setAiLoading(true);
-    getTojeongReading(tojeong, sourceBirth)
+    getTojeongReading(tojeong, sourceBirth, targetProfile?.id)
       .then(r => {
         const cache = useReportCacheStore.getState();
         if (!r.success || !r.content) {

@@ -349,7 +349,7 @@ export default function MoreFortunePage({ category }: Props) {
       let resp: FortuneResp = { success: false, error: '알 수 없는 카테고리' };
 
       if (category === 'dream') {
-        resp = await getDreamInterpretation(dreamText.trim());
+        resp = await getDreamInterpretation(dreamText.trim(), targetProfile?.id);
       } else {
         // 여기서 saju는 이미 위 가드로 보장됨
         const s = saju!;
@@ -360,16 +360,16 @@ export default function MoreFortunePage({ category }: Props) {
         // case 'health': resp = await getHealthShort(s); break;
         // case 'people': resp = await getPeopleShort(s); break;
         switch (category) {
-          case 'study':       resp = await getStudyShort(s); break;
-          case 'children':    resp = await getChildrenShort(s); break;
-          case 'personality': resp = await getPersonalityShort(s); break;
+          case 'study':       resp = await getStudyShort(s, targetProfile?.id); break;
+          case 'children':    resp = await getChildrenShort(s, targetProfile?.id); break;
+          case 'personality': resp = await getPersonalityShort(s, targetProfile?.id); break;
           case 'name': {
             const kor = analyzeKoreanName(koreanName);
             resp = await getNameFortune(s, {
               koreanName: koreanName.trim(),
               koreanInitialsElements: kor.elements,
               hanjaName: hanjaName.trim() || undefined,
-            });
+            }, targetProfile?.id);
             break;
           }
         }

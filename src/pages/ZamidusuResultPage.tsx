@@ -268,7 +268,7 @@ export default function ZamidusuResultPage() {
         useReportCacheStore.getState().setError('zamidusu', cacheKey, timeoutMsg);
       }, 45_000);
 
-      getZamidusuReading(chart, sourceBirth)
+      getZamidusuReading(chart, sourceBirth, targetProfile?.id)
         .then(r => {
           if (cancelled) return;
           clearTimeout(timeoutId);
@@ -428,7 +428,7 @@ export default function ZamidusuResultPage() {
     if (!chart) return;
     aiStartedRef.current = true;
     setAiLoading(true);
-    getZamidusuReading(chart, sourceBirth)
+    getZamidusuReading(chart, sourceBirth, targetProfile?.id)
       .then(r => {
         setAiResult(r);
         setAiLoading(false);
