@@ -12,6 +12,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/useUserStore';
 import { useCreditStore } from '@/store/useCreditStore';
+import { useProfileStore } from '@/store/useProfileStore';
 import { orderDB, sajuDB, auth, supabase } from '@/services/supabase';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -22,7 +23,7 @@ type TabType = 'profile' | 'credits' | 'records' | 'orders';
 
 export const MyPage: React.FC = () => {
   const router = useRouter();
-  const { user, logout } = useUserStore();
+  const { user } = useUserStore();
   const { sunBalance, moonBalance, transactions, fetchTransactions } = useCreditStore();
 
   const [activeTab, setActiveTab] = useState<TabType>('profile');
@@ -58,9 +59,15 @@ export const MyPage: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    await logout();
-    // replace — 로그아웃 후 뒤로가기로 마이페이지(인증 상태) 돌아가면 안 되므로
+    // loading: true를 유지해서 ProtectedRoute가 로그인 카드 대신 스피너를 보여주도록 함
+    useUserStore.setState({ loading: true });
+    await supabase.auth.signOut().catch(() => {});
+    useCreditStore.getState().reset();
+    useProfileStore.getState().reset();
     router.replace('/');
+    setTimeout(() => {
+      useUserStore.setState({ user: null, loading: false });
+    }, 300);
   };
 
   const tabs: { id: TabType; label: string; icon: string | React.ReactNode }[] = [
