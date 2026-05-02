@@ -224,11 +224,11 @@ export default function MoreFortunePage({ category }: Props) {
     const legacyLabel = LEGACY_MORE_LABELS[category as LegacyMoreCategory];
     return (
       <div className={styles.container}>
-        <div className={styles.header}>
-          <BackButton />
-          <div className={styles.headerCenter}>
-            <h1>{legacyLabel}</h1>
-            <p className={styles.dateInfo}>보관된 풀이</p>
+        <div className="flex items-center relative mb-4">
+          <BackButton className="absolute left-0" />
+          <div className="flex-1 text-center">
+            <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>{legacyLabel}</h1>
+            <p className="text-xs text-text-tertiary">보관된 풀이</p>
           </div>
         </div>
         <div className={styles.content}>
@@ -470,16 +470,16 @@ export default function MoreFortunePage({ category }: Props) {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <BackButton />
-        <div className={styles.headerCenter}>
-          <h1>{cfg.title}</h1>
+      <div className="flex items-center relative mb-4">
+        <BackButton className="absolute left-0" />
+        <div className="flex-1 text-center">
+          <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>{cfg.title}</h1>
           {isArchiveMode && archivedAt ? (
-            <p className={styles.dateInfo}>
+            <p className="text-xs text-text-tertiary">
               보관함 · {new Date(archivedAt).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })}
             </p>
           ) : targetProfile ? (
-            <p className={styles.dateInfo}>{targetProfile.name} · {targetProfile.birth_date}</p>
+            <p className="text-xs text-text-tertiary">{targetProfile.name} · {targetProfile.birth_date}</p>
           ) : null}
         </div>
       </div>

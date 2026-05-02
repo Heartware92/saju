@@ -260,7 +260,7 @@ export const getTodayFortune = async (
     const isoDate = new Date().toISOString().slice(0, 10);
     const todayGz = calcTodayGanZhi(result, isoDate);
     const prompt = generateTodayFortunePrompt(result, todayGz, isoDate);
-    const content = await callGPT(prompt, 1600);
+    const content = await callGPT(prompt, 3500);
     archiveSaju({ profileId, sourceBirth: sourceBirthFromSaju(result), category: 'today', resultData: result as unknown as Record<string, unknown>, interpretation: content, creditType: 'moon', isDetailed: false });
     return { success: true, content };
   } catch (error: any) {
@@ -732,9 +732,18 @@ export const getJungtongsajuReport = async (
 
 // ── 오늘의 운세 ──────────────────────────────────────────────
 
+export interface TodayScores {
+  overall: number;
+  wealth: number;
+  work: number;
+  love: number;
+  health: number;
+}
+
 export interface TodayFortuneAIResult {
   success: boolean;
   sections?: Partial<Record<TodaySectionKey, string>>;
+  scores?: TodayScores;
   rawText?: string;
   error?: string;
   todayGz?: TodayGanZhi;
@@ -803,6 +812,18 @@ function calcTodayGanZhi(result: SajuResult, isoDate: string): TodayGanZhi {
   };
 }
 
+export function parseTodayScores(raw: string): TodayScores | undefined {
+  const m = raw.match(/\[today_scores\]\s*종합:(\d+)\s*재물:(\d+)\s*업무:(\d+)\s*관계:(\d+)\s*건강:(\d+)/);
+  if (!m) return undefined;
+  return {
+    overall: Math.min(100, Math.max(0, Number(m[1]))),
+    wealth:  Math.min(100, Math.max(0, Number(m[2]))),
+    work:    Math.min(100, Math.max(0, Number(m[3]))),
+    love:    Math.min(100, Math.max(0, Number(m[4]))),
+    health:  Math.min(100, Math.max(0, Number(m[5]))),
+  };
+}
+
 export const parseTodayFortune = (raw: string): Partial<Record<TodaySectionKey, string>> => {
   const out: Partial<Record<TodaySectionKey, string>> = {};
   const keysPattern = TODAY_SECTION_KEYS.join('|');
@@ -824,15 +845,15 @@ export const getTodayFortuneReport = async (
     const date = isoDate ?? new Date().toISOString().slice(0, 10);
     const todayGz = calcTodayGanZhi(result, date);
     const prompt = generateTodayFortunePrompt(result, todayGz, date);
-    // 5섹션 × 평균 120자 ≈ 600자 → 2000 토큰으로 충분
-    const content = await callGPT(prompt, 2000);
+    const content = await callGPT(prompt, 3500);
+    const scores = parseTodayScores(content);
     const sections = parseTodayFortune(content);
     archiveSaju({ profileId, sourceBirth: sourceBirthFromSaju(result), category: 'today', resultData: result as unknown as Record<string, unknown>, engineResult: { todayGz, isoDate: date }, interpretation: content });
 
     if (Object.keys(sections).length === 0) {
-      return { success: true, rawText: content, todayGz, isoDate: date };
+      return { success: true, rawText: content, scores, todayGz, isoDate: date };
     }
-    return { success: true, sections, todayGz, isoDate: date };
+    return { success: true, sections, scores, todayGz, isoDate: date };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

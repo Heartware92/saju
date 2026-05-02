@@ -119,12 +119,13 @@ export default function ManageProfilesPage() {
   return (
     <div className="px-4 pt-4 pb-10">
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-5 px-1">
-        <BackButton />
-        <h1 className="text-base font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
-          프로필 관리
-        </h1>
-        <div className="w-9" />
+      <div className="flex items-center relative mb-5 px-1">
+        <BackButton className="absolute left-0" />
+        <div className="flex-1 text-center">
+          <h1 className="text-base font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+            프로필 관리
+          </h1>
+        </div>
       </div>
 
       {/* 안내 */}

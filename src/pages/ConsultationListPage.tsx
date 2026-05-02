@@ -150,12 +150,14 @@ export default function ConsultationListPage() {
   return (
     <div className="pb-6">
 
-      {/* 헤더 */}
-      <div className="flex items-center gap-1 px-5 pt-4 pb-2">
-        <BackButton to="/" className="-ml-2" />
-        <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
-          상담소
-        </h1>
+      {/* 헤더 — 뒤로가기 좌측 + 중앙 정렬 타이틀 */}
+      <div className="flex items-center relative px-5 pt-4 pb-2">
+        <BackButton to="/" className="absolute left-0" />
+        <div className="flex-1 text-center">
+          <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+            상담소
+          </h1>
+        </div>
       </div>
 
       {/* 기기 저장 안내 배너 */}

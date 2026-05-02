@@ -634,12 +634,13 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
       className="min-h-screen px-4 pt-4 pb-10"
     >
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-4 px-1">
-        <BackButton />
-        <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
-          {pageTitle}
-        </h1>
-        <div className="w-9" />
+      <div className="flex items-center relative mb-4 px-1">
+        <BackButton className="absolute left-0" />
+        <div className="flex-1 text-center">
+          <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+            {pageTitle}
+          </h1>
+        </div>
       </div>
 
       {/* 지정일 — 진입 단계 (달력 + 안내) — 날짜 클릭 후 결과 단계로 전환 */}

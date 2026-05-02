@@ -41,6 +41,8 @@ import { RestoreReportModal } from '../components/RestoreReportModal';
 import Link from 'next/link';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { useLoadingGuard } from '../hooks/useLoadingGuard';
+import type { SajuResult } from '../utils/sajuCalculator';
+import { STEM_TO_HANJA, ZHI_TO_HANJA, STEM_TO_ELEMENT, ELEMENT_CELL_COLORS, type Element } from '../lib/character';
 
 // ──────────────────────────────────────────────
 // 카테고리 그룹 정의
@@ -134,14 +136,61 @@ const defaultPet: PetInput = {
   adoptionDate: '',
 };
 
-type Step = 'category' | 'role' | 'input' | 'result';
+type Step = 'category' | 'input' | 'result';
 
 const STEP_LABELS: Record<Step, string> = {
   category: '관계 선택',
-  role: '역할 입력',
   input: '상대 정보',
   result: '결과',
 };
+
+const AUTO_ROLES: Record<string, [string, string]> = {
+  secret_crush: ['나', '짝사랑 상대'],
+  som: ['나', '썸 상대'],
+  lover: ['남자친구', '여자친구'],
+  spouse: ['남편', '아내'],
+  ex_lover: ['나', '전 연인'],
+  ex_spouse: ['나', '전 배우자'],
+  soulmate: ['나', '소울메이트'],
+  rival: ['나', '라이벌'],
+  mentor: ['멘티', '멘토'],
+  friend: ['나', '친구'],
+  parent_child: ['부모', '자녀'],
+  sibling: ['나', '형제·자매'],
+  work: ['나', '동료'],
+  business: ['나', '사업 파트너'],
+  idol_fan: ['팬', '아이돌'],
+  pet: ['나', '반려동물'],
+  custom: ['나', '상대'],
+};
+
+// 프롬프트에 은유 제목+점수 요청 래퍼 추가
+function wrapWithTitleScore(prompt: string): string {
+  return prompt + `
+
+★★★ 응답 시작 형식 — 반드시 준수 ★★★
+응답의 가장 첫 줄에 아래 형식을 정확히 지켜 한 줄로 출력하세요:
+[gunghap_header] 은유적 한 줄 제목 | 점수(0~100 정수) [/gunghap_header]
+
+예시: [gunghap_header] 서로의 영혼을 비추는 거울 같은 만남 | 88 [/gunghap_header]
+
+규칙:
+- 제목은 두 사주의 일간 오행 관계를 은유로 표현 (20~50자)
+- 점수는 두 사주의 합충·오행 조화·십성 궁합을 종합한 0~100 정수
+- 이 줄 다음부터 본문 시작
+`;
+}
+
+function parseGunghapHeader(text: string): { title: string; score: number | null; body: string } {
+  const headerMatch = text.match(/\[gunghap_header\]\s*(.+?)\s*\|\s*(\d{1,3})\s*\[\/gunghap_header\]/);
+  if (headerMatch) {
+    const title = headerMatch[1].trim();
+    const score = Math.min(100, Math.max(0, parseInt(headerMatch[2], 10)));
+    const body = text.replace(/\[gunghap_header\].*?\[\/gunghap_header\]\s*\n?/, '').trim();
+    return { title, score, body };
+  }
+  return { title: '', score: null, body: text };
+}
 
 // ──────────────────────────────────────────────
 // GPT 호출 (55초 타임아웃 + 빈 응답·잘림 방어)
@@ -209,6 +258,10 @@ export default function GunghapPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [mySajuResult, setMySajuResult] = useState<SajuResult | null>(null);
+  const [otherSajuResult, setOtherSajuResult] = useState<SajuResult | null>(null);
+  const [gunghapTitle, setGunghapTitle] = useState('');
+  const [gunghapScore, setGunghapScore] = useState<number | null>(null);
 
   // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
   const [loadingTimedOut] = useLoadingGuard(loading, 70_000);
@@ -258,12 +311,14 @@ export default function GunghapPage() {
 
   const isPetCategory = category === 'pet';
 
-  // 반려동물은 "역할" 입력이 의미 없으므로 role 단계 자동 스킵
+  // 카테고리 선택 시 자동 역할 결정
   useEffect(() => {
-    if (step === 'role' && isPetCategory) {
-      setStep('input');
+    const roles = AUTO_ROLES[category];
+    if (roles) {
+      setMyRole(roles[0]);
+      setOtherRole(roles[1]);
     }
-  }, [step, isPetCategory]);
+  }, [category]);
 
   // ── 보관함 재생 모드 — recordId 가 있으면 DB 에서 풀이 텍스트 복원, 바로 result step ──
   useEffect(() => {
@@ -338,6 +393,7 @@ export default function GunghapPage() {
     try {
       const myResult = computeSajuFromProfile(selectedProfile);
       if (!myResult) throw new Error('내 사주 계산 실패');
+      setMySajuResult(myResult);
 
       // ── 반려동물 전용 분기 (사주 없이 주인 사주 + 동물 상징 기운으로 해석) ──
       if (isPetCategory) {
@@ -434,6 +490,7 @@ export default function GunghapPage() {
           };
       const otherResult = computeSajuFromProfile(otherBase);
       if (!otherResult) throw new Error('상대방 사주 계산 실패');
+      setOtherSajuResult(otherResult);
 
       // 캐시 키 — 두 사주 + 카테고리 + 역할 + custom 라벨까지 포함해야 결과가 달라질 때 새로 호출
       const cacheKey = [
@@ -514,17 +571,22 @@ export default function GunghapPage() {
           );
       }
 
-      // 역할 컨텍스트 주입
+      // 역할 컨텍스트 주입 + 제목/점수 요청 래핑
       prompt = injectRoleContext(prompt, myName, myRole, otherName, otherRole);
+      prompt = wrapWithTitleScore(prompt);
 
       const text = await callGunghapGPT(prompt);
       // 프롬프트 차원에서 제거했지만, 과거 패턴 잔재 방어용 — 대괄호 유무 관계없이 첫 줄의 xxx_gunghap 태그 소거
-      const cleaned = text
+      const tagCleaned = text
         .replace(
           /^\s*\[?(?:secret_crush|som|lover|spouse|ex|soulmate|rival|friend|mentor|family|parent_child|sibling|work|business|general)_gunghap\]?\s*\n?/i,
           '',
         )
         .trim();
+      const { title, score, body } = parseGunghapHeader(tagCleaned);
+      setGunghapTitle(title);
+      setGunghapScore(score);
+      const cleaned = body;
       setResult(cleaned);
       setStep('result');
       const cache = useReportCacheStore.getState();
@@ -627,7 +689,7 @@ export default function GunghapPage() {
     );
   }
 
-  const stepOrder: Step[] = ['category', 'role', 'input', 'result'];
+  const stepOrder: Step[] = ['category', 'input', 'result'];
   const stepIdx = stepOrder.indexOf(step);
 
   /**
@@ -638,8 +700,6 @@ export default function GunghapPage() {
     if (step === 'result') {
       setStep('input');
     } else if (step === 'input') {
-      setStep(isPetCategory ? 'category' : 'role');
-    } else if (step === 'role') {
       setStep('category');
     } else if (typeof window !== 'undefined') {
       window.history.length > 1 ? window.history.back() : window.location.assign('/');
@@ -648,11 +708,11 @@ export default function GunghapPage() {
 
   return (
     <div className="min-h-screen pb-24">
-      {/* 헤더 — 뒤로가기 + 타이틀 */}
+      {/* 헤더 — 뒤로가기 좌측 + 중앙 정렬 타이틀 */}
       <div className="px-5 pt-4 pb-4">
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-1">
-          <BackButton onClick={handleGunghapBack} label="이전 단계" className="-ml-2 mt-1" />
-          <div>
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center relative">
+          <BackButton onClick={handleGunghapBack} label="이전 단계" className="absolute left-0" />
+          <div className="flex-1 text-center">
             <h1 className="text-2xl font-bold text-text-primary mb-1" style={{ fontFamily: 'var(--font-serif)' }}>
               궁합 분석
             </h1>
@@ -735,81 +795,16 @@ export default function GunghapPage() {
             </AnimatePresence>
 
             <button
-              onClick={() => setStep('role')}
+              onClick={() => setStep('input')}
               disabled={category === 'custom' && !customLabel.trim()}
               className="w-full py-3.5 rounded-2xl bg-cta text-white font-bold text-[17px] active:scale-[0.98] transition-all disabled:opacity-40"
             >
-              다음 — 역할 입력
+              다음 — 상대 정보
             </button>
           </motion.div>
         )}
 
-        {/* ── STEP 2: 역할 입력 ── */}
-        {step === 'role' && (
-          <motion.div key="role" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="px-5">
-
-            {/* 선택된 관계 배지 */}
-            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5 bg-gradient-to-r ${selectedCat.accent} border border-white/15`}>
-              <span className="text-[15px] font-semibold text-text-primary">{getCategoryDisplayLabel()}</span>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] space-y-4">
-              <div>
-                <p className="text-[15px] font-bold text-text-primary mb-0.5">
-                  각자의 역할을 입력해주세요
-                </p>
-                <p className="text-[13px] text-text-tertiary">선택사항 · 입력할수록 분석이 더 개인화됩니다</p>
-              </div>
-
-              {/* 내 역할 */}
-              <div>
-                <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">
-                  {selectedProfile?.name}의 역할
-                </label>
-                <input
-                  type="text"
-                  value={myRole}
-                  onChange={e => setMyRole(e.target.value)}
-                  placeholder="예: 남자친구, 엄마, 팬, 직속 상사"
-                  maxLength={50}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[16px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none transition"
-                />
-              </div>
-
-              {/* 상대 역할 */}
-              <div>
-                <label className="text-[13px] font-medium text-text-tertiary mb-1.5 block">
-                  상대방의 역할
-                </label>
-                <input
-                  type="text"
-                  value={otherRole}
-                  onChange={e => setOtherRole(e.target.value)}
-                  placeholder="예: 여자친구, 딸, 아이돌, 팀장"
-                  maxLength={50}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-text-primary text-[16px] placeholder-text-tertiary focus:border-cta/50 focus:outline-none transition"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-2 mt-5">
-              <button
-                onClick={() => setStep('category')}
-                className="px-5 py-3.5 rounded-2xl border border-white/15 text-text-secondary font-medium text-[16px] active:scale-[0.98] transition-all"
-              >
-                이전
-              </button>
-              <button
-                onClick={() => setStep('input')}
-                className="flex-1 py-3.5 rounded-2xl bg-cta text-white font-bold text-[17px] active:scale-[0.98] transition-all"
-              >
-                {myRole.trim() || otherRole.trim() ? '역할 입력 완료' : '건너뛰기'}
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── STEP 3: 상대방 정보 입력 ── */}
+        {/* ── STEP 2: 상대방 정보 입력 ── */}
         {step === 'input' && (
           <motion.div key="input" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="px-5">
 
@@ -1027,7 +1022,7 @@ export default function GunghapPage() {
 
             <div className="flex gap-2 mt-5">
               <button
-                onClick={() => setStep('role')}
+                onClick={() => setStep('category')}
                 className="px-5 py-3.5 rounded-2xl border border-white/15 text-text-secondary font-medium text-[16px] active:scale-[0.98] transition-all"
               >
                 이전
@@ -1051,41 +1046,116 @@ export default function GunghapPage() {
           </motion.div>
         )}
 
-        {/* ── STEP 4: 결과 ── */}
+        {/* ── STEP 3: 결과 ── */}
         {step === 'result' && (
           <motion.div key="result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="px-5">
 
-            {/* 결과 헤더 */}
-            <div className={`p-4 rounded-2xl mb-4 bg-gradient-to-br ${selectedCat.accent} border border-white/15`}>
-              <div className="flex items-center gap-3">
-                <span className="inline-block w-1 h-10 rounded-full bg-white/60" />
-                <div className="flex-1">
-                  <p className="text-[13px] text-text-tertiary uppercase tracking-wider">{getCategoryDisplayLabel()} 궁합</p>
-                  <p className="text-[16px] font-bold text-text-primary mt-0.5">
-                    {selectedProfile?.name}
-                    {isPetCategory ? ' 🐾 ' : ' · '}
+            {/* 은유 대제목 + 점수 헤더 */}
+            {gunghapTitle && gunghapScore != null && (
+              <div className={`rounded-2xl mb-4 p-6 text-center bg-gradient-to-br ${selectedCat.accent} border border-white/15`}>
+                <p className="text-[18px] font-bold text-text-primary leading-relaxed mb-3" style={{ fontFamily: 'var(--font-serif)' }}>
+                  {gunghapTitle}
+                </p>
+                <p className="text-[56px] font-black text-white leading-none">{gunghapScore}</p>
+                <p className="text-[13px] text-text-secondary mt-1">궁합 점수</p>
+              </div>
+            )}
+
+            {/* 관계 + 이름 배지 */}
+            <div className="rounded-2xl mb-4 p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
+              <p className="text-center text-[13px] font-bold text-cta uppercase tracking-wider mb-3">{getCategoryDisplayLabel()}</p>
+              <div className="flex items-center justify-center gap-4">
+                <div className="text-center">
+                  <p className="text-[16px] font-bold text-text-primary">{selectedProfile?.name}</p>
+                  <p className="text-[12px] text-text-tertiary mt-0.5">
+                    {selectedProfile?.birth_date?.replace(/-/g, '.')}
+                  </p>
+                  {myRole && <p className="text-[12px] text-cta/80 mt-0.5">{myRole}</p>}
+                </div>
+                <span className="text-[20px] text-cta/60">
+                  {isPetCategory ? '🐾' : '·'}
+                </span>
+                <div className="text-center">
+                  <p className="text-[16px] font-bold text-text-primary">
                     {otherDisplayName}
                     {isPetCategory && pet.species && (
-                      <span className="text-[13px] font-normal text-text-secondary ml-1">
-                        ({PET_SPECIES_VIBE[pet.species].label})
-                      </span>
+                      <span className="text-[12px] font-normal text-text-secondary ml-1">({PET_SPECIES_VIBE[pet.species].label})</span>
                     )}
                   </p>
-                  {!isPetCategory && (myRole.trim() || otherRole.trim()) && (
-                    <p className="text-[13px] text-text-secondary mt-0.5">
-                      {myRole.trim() && `${selectedProfile?.name}: ${myRole}`}
-                      {myRole.trim() && otherRole.trim() && ' / '}
-                      {otherRole.trim() && `${otherDisplayName}: ${otherRole}`}
+                  {!isPetCategory && (
+                    <p className="text-[12px] text-text-tertiary mt-0.5">
+                      {otherMode === 'profile'
+                        ? selectedOtherProfile?.birth_date?.replace(/-/g, '.')
+                        : other.birth_date?.replace(/-/g, '.')}
                     </p>
                   )}
+                  {otherRole && <p className="text-[12px] text-cta/80 mt-0.5">{otherRole}</p>}
                 </div>
               </div>
             </div>
 
+            {/* 두 사람 사주명식 표 (반려동물 제외) */}
+            {!isPetCategory && mySajuResult && otherSajuResult && (
+              <div className="rounded-2xl mb-4 overflow-hidden border border-[var(--border-subtle)]">
+                {/* 헤더 */}
+                <div className="grid grid-cols-8 text-center text-[12px] font-bold text-cta bg-cta/10 py-2">
+                  <span>시주</span><span>일주</span><span>월주</span><span>연주</span>
+                  <span>시주</span><span>일주</span><span>월주</span><span>연주</span>
+                </div>
+                {/* 천간 */}
+                <div className="grid grid-cols-8 text-center">
+                  {[mySajuResult, otherSajuResult].flatMap((r, ri) =>
+                    (['hour', 'day', 'month', 'year'] as const).map(p => {
+                      const gan = r.pillars[p]?.gan;
+                      const el = gan ? (STEM_TO_ELEMENT[gan] as Element) : undefined;
+                      const colors = el ? ELEMENT_CELL_COLORS[el] : undefined;
+                      const isUnknown = p === 'hour' && r.hourUnknown;
+                      return (
+                        <div
+                          key={`gan-${ri}-${p}`}
+                          className="py-2.5 flex flex-col items-center justify-center"
+                          style={colors && !isUnknown ? { backgroundColor: colors.bg, color: colors.fg } : { backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-tertiary)' }}
+                        >
+                          <span className="text-[24px] font-bold" style={{ fontFamily: 'var(--font-serif)' }}>
+                            {isUnknown ? '?' : (gan ? STEM_TO_HANJA[gan] ?? gan : '?')}
+                          </span>
+                          <span className="text-[10px] mt-0.5 opacity-80">{isUnknown ? '' : (gan ?? '')}</span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                {/* 지지 */}
+                <div className="grid grid-cols-8 text-center">
+                  {[mySajuResult, otherSajuResult].flatMap((r, ri) =>
+                    (['hour', 'day', 'month', 'year'] as const).map(p => {
+                      const zhi = r.pillars[p]?.zhi;
+                      const el = zhi ? (STEM_TO_ELEMENT[zhi] as Element | undefined) : undefined;
+                      const zhiEl = r.pillars[p]?.zhiElement as Element | undefined;
+                      const colors = (zhiEl ? ELEMENT_CELL_COLORS[zhiEl] : undefined) ?? (el ? ELEMENT_CELL_COLORS[el] : undefined);
+                      const isUnknown = p === 'hour' && r.hourUnknown;
+                      return (
+                        <div
+                          key={`zhi-${ri}-${p}`}
+                          className="py-2.5 flex flex-col items-center justify-center"
+                          style={colors && !isUnknown ? { backgroundColor: colors.bg, color: colors.fg } : { backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-tertiary)' }}
+                        >
+                          <span className="text-[24px] font-bold" style={{ fontFamily: 'var(--font-serif)' }}>
+                            {isUnknown ? '?' : (zhi ? ZHI_TO_HANJA[zhi] ?? zhi : '?')}
+                          </span>
+                          <span className="text-[10px] mt-0.5 opacity-80">{isUnknown ? '' : (zhi ?? '')}</span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* 반려동물 재미 해석 안내 — 결과 상단 */}
             {isPetCategory && (
               <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[13px] text-amber-200 leading-relaxed">
-                💡 이 결과는 <b>주인의 사주 + 동물 상징 기운</b>으로 풀어낸 재미 해석입니다. 정통 사주 풀이가 아닌 라이프스타일 참고용으로 가볍게 봐주세요.
+                이 결과는 <b>주인의 사주 + 동물 상징 기운</b>으로 풀어낸 재미 해석입니다. 정통 사주 풀이가 아닌 라이프스타일 참고용으로 가볍게 봐주세요.
               </div>
             )}
 

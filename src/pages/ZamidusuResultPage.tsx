@@ -309,10 +309,10 @@ export default function ZamidusuResultPage() {
   if (hourUnknown && !isArchiveMode) {
     return (
       <div className={styles.container}>
-        <div className={styles.header}>
-          <BackButton />
-          <div className={styles.headerCenter}>
-            <h1>자미두수</h1>
+        <div className="flex items-center relative mb-4">
+          <BackButton className="absolute left-0" />
+          <div className="flex-1 text-center">
+            <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>자미두수</h1>
           </div>
         </div>
         <div style={{
@@ -442,11 +442,11 @@ export default function ZamidusuResultPage() {
   return (
     <div className={styles.container}>
       {/* Header */}
-      <div className={styles.header}>
-        <BackButton />
-        <div className={styles.headerCenter}>
-          <h1>자미두수</h1>
-          <p className={styles.dateInfo}>
+      <div className="flex items-center relative mb-4">
+        <BackButton className="absolute left-0" />
+        <div className="flex-1 text-center">
+          <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>자미두수</h1>
+          <p className="text-xs text-text-tertiary">
             {chart.solarDate} {chart.timeRange}
           </p>
         </div>

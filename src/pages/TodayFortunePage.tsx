@@ -11,10 +11,10 @@ import { FortuneProfileSelect } from '../components/FortuneProfileSelect';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { calculateSaju, type SajuResult } from '../utils/sajuCalculator';
-import { getTodayFortuneReport, parseTodayFortune, type TodayFortuneAIResult } from '../services/fortuneService';
+import { getTodayFortuneReport, parseTodayFortune, parseTodayScores, type TodayFortuneAIResult } from '../services/fortuneService';
 import { sajuDB } from '../services/supabase';
 import { findRecentArchive } from '../services/archiveService';
-import { TODAY_SECTION_KEYS, TODAY_SECTION_LABELS } from '../constants/prompts';
+import { TODAY_SECTION_KEYS, TODAY_SECTION_LABELS, TODAY_SCORE_LABELS, type TodayScoreDomain } from '../constants/prompts';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { LuckyVisualCard, ELEMENT_LUCKY } from '../components/saju/LuckyVisualCard';
 import { useLoadingGuard } from '../hooks/useLoadingGuard';
@@ -153,11 +153,12 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
         }
         // 저장된 interpretation 을 sections 로 파싱 (rawText fallback 포함)
         const content = record.interpretation_detailed ?? record.interpretation_basic ?? '';
+        const scores = parseTodayScores(content);
         const sections = parseTodayFortune(content);
         const engine = (record.engine_result ?? {}) as { todayGz?: TodayFortuneAIResult['todayGz']; isoDate?: string };
         const archivedReport: TodayFortuneAIResult = Object.keys(sections).length > 0
-          ? { success: true, sections, todayGz: engine.todayGz, isoDate: engine.isoDate }
-          : { success: true, rawText: content, todayGz: engine.todayGz, isoDate: engine.isoDate };
+          ? { success: true, sections, scores, todayGz: engine.todayGz, isoDate: engine.isoDate }
+          : { success: true, rawText: content, scores, todayGz: engine.todayGz, isoDate: engine.isoDate };
         setReport(archivedReport);
         setConfirmedDate(engine.isoDate ?? record.created_at.slice(0, 10));
         setArchivedAt(record.created_at);
@@ -441,6 +442,54 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
         </div>
       </motion.div>
 
+      {/* 점수 그래프 */}
+      {report?.scores && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="rounded-2xl px-5 py-4 mb-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <span className="inline-block w-1 h-5 rounded-full bg-cta" />
+            <span
+              className="text-[17px] font-bold text-text-primary tracking-tight"
+              style={{ fontFamily: 'var(--font-serif)' }}
+            >
+              오늘의 운세 지수
+            </span>
+            <span className="ml-auto text-[24px] font-bold text-cta" style={{ fontFamily: 'var(--font-serif)' }}>
+              {report.scores.overall}
+            </span>
+            <span className="text-[13px] text-text-tertiary">/ 100</span>
+          </div>
+          <div className="space-y-2.5">
+            {(['wealth', 'work', 'love', 'health'] as TodayScoreDomain[]).map((domain) => {
+              const score = report.scores![domain];
+              const barColor = score >= 75 ? 'bg-[#7c5cfc]' : score >= 50 ? 'bg-[#a78bfa]' : score >= 30 ? 'bg-[#f59e0b]' : 'bg-[#ef4444]';
+              return (
+                <div key={domain} className="flex items-center gap-3">
+                  <span className="text-[13px] text-text-tertiary w-8 shrink-0 text-right">
+                    {TODAY_SCORE_LABELS[domain]}
+                  </span>
+                  <div className="flex-1 h-2.5 rounded-full bg-white/5 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${score}%` }}
+                      transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
+                      className={`h-full rounded-full ${barColor}`}
+                    />
+                  </div>
+                  <span className="text-[13px] font-semibold text-text-primary w-7 text-right">
+                    {score}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+
       {/* 에러 */}
       {report?.error && (
         <div className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
@@ -452,7 +501,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
       {report?.rawText && (
         <div className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
           <p className="text-[15px] text-text-secondary leading-relaxed whitespace-pre-line">
-            {report.rawText}
+            {report.rawText.replace(/^\s*\[today_scores\][^\n]*\n?/, '')}
           </p>
         </div>
       )}

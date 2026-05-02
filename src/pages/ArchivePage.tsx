@@ -154,9 +154,9 @@ export default function ArchivePage() {
   return (
     <div className="min-h-screen bg-space-deep px-4 pt-4 pb-4">
       {/* Header — 뒤로가기 + 타이틀 */}
-      <div className="flex items-center gap-1 mb-4">
-        <BackButton to="/" />
-        <div>
+      <div className="flex items-center relative mb-4">
+        <BackButton to="/" className="absolute left-0" />
+        <div className="flex-1 text-center">
           <h1 className="text-xl font-bold text-text-primary">보관함</h1>
           <p className="text-sm text-text-secondary mt-0.5">이전에 본 풀이를 그대로 다시 볼 수 있어요</p>
         </div>

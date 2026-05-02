@@ -263,12 +263,13 @@ export default function SajuInputPage() {
   return (
     <div className={styles.container}>
       {/* 통일 헤더 — 모든 진입 경로에서 카테고리 헤더 대신 단순 제목 + BackButton */}
-      <div className="flex items-center justify-between mb-4 px-1 pt-2">
-        <BackButton to={isProfileOnly ? '/saju/profile' : '/saju'} />
-        <h1 className="text-base font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
-          {isProfileOnly ? '새 프로필' : '사주 정보 입력'}
-        </h1>
-        <div className="w-9" />
+      <div className="flex items-center relative mb-4 px-1 pt-2">
+        <BackButton to={isProfileOnly ? '/saju/profile' : '/saju'} className="absolute left-0" />
+        <div className="flex-1 text-center">
+          <h1 className="text-base font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+            {isProfileOnly ? '새 프로필' : '사주 정보 입력'}
+          </h1>
+        </div>
       </div>
 
       <motion.div

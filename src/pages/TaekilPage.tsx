@@ -318,8 +318,11 @@ export default function TaekilPage() {
     if (!ready) return <div className={styles.loading}>로딩 중...</div>;
     return (
       <div className={styles.container}>
-        <div className={styles.header}>
-          <BackButton />
+        <div className="flex items-center relative mb-4">
+          <BackButton className="absolute left-0" />
+          <div className="flex-1 text-center">
+            <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>택일 운세</h1>
+          </div>
         </div>
         <div className={styles.section} style={{ textAlign: 'center', padding: '48px 24px' }}>
           <h2>대표 프로필이 없어요</h2>
@@ -341,11 +344,11 @@ export default function TaekilPage() {
   return (
     <div className={styles.container}>
       {/* Header */}
-      <div className={styles.header}>
-        <BackButton />
-        <div className={styles.headerCenter}>
-          <h1>택일 운세</h1>
-          <p className={styles.dateInfo}>
+      <div className="flex items-center relative mb-4">
+        <BackButton className="absolute left-0" />
+        <div className="flex-1 text-center">
+          <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>택일 운세</h1>
+          <p className="text-xs text-text-tertiary">
             {targetProfile.name} · 길일을 골라드려요
           </p>
         </div>

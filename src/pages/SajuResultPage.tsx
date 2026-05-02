@@ -328,12 +328,13 @@ export default function SajuResultPage() {
       className="min-h-screen px-4 pt-4 pb-12"
     >
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-4 px-1">
-        <BackButton />
-        <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
-          정통사주
-        </h1>
-        <div className="w-9" />
+      <div className="flex items-center relative mb-4 px-1">
+        <BackButton className="absolute left-0" />
+        <div className="flex-1 text-center">
+          <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+            정통사주
+          </h1>
+        </div>
       </div>
 
       {/* 시간 미상 배너 */}
