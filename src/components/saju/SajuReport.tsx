@@ -12,6 +12,7 @@ import { SajuResult, TEN_GODS_MAP, type Interaction, type SinSal } from '../../u
 import { determineGyeokguk, analyzeGyeokgukStatus } from '../../engine/gyeokguk';
 import { stemToHanja, zhiToHanja } from '../../lib/character';
 import { buildMonthlyFlow, type FortuneGrade } from '../../engine/periodFortune';
+import { resolveTerm } from '../../constants/termDictionary';
 import styles from '../../pages/SajuResultPage.module.css';
 
 function CollapsibleSection({
@@ -135,6 +136,47 @@ const SECTION_HELP_TEXT: Record<string, string> = {
   strength: '일간(日干·자기 자신)이 얼마나 힘 있게 서 있는지 판정한 결과예요. 득령(월지 지원)·득지(일지 지원)·득세(전체 지원)의 3단계로 체크해 매우 신강부터 매우 신약까지 5단계로 판별해요.',
   daewoon: '10년 단위로 바뀌는 큰 흐름의 운이에요. 대운이 시작되는 나이부터 각 구간이 어떤 오행·십성 기운을 가져오는지 보면 인생의 변동 시기를 읽을 수 있어요.',
 };
+
+function TermTap({ text, className, hint }: { text: string; className?: string; hint?: 'stem' | 'branch' | 'stage' }) {
+  const [open, setOpen] = useState(false);
+  const entry = resolveTerm(text, hint);
+  if (!entry) return <span className={className}>{text}</span>;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        className={`${className ?? ''} ${styles.termTap}`}
+        aria-label={`${text} 설명 보기`}
+      >
+        {text}
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={styles.termBackdrop}
+            onClick={() => setOpen(false)}
+          >
+            <motion.div
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 30, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className={styles.termPopover}
+            >
+              <div className={styles.termPopoverTitle}>{entry.term}</div>
+              <div className={styles.termPopoverShort}>{entry.short}</div>
+              <div className={styles.termPopoverDesc}>{entry.description}</div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
 
 const StemCell = ({ gan }: { gan: string }) => (
   <span className={styles.stemCell}>
@@ -275,12 +317,15 @@ function Crystal({ hanja, color, percent, delay, idSuffix }: {
       </defs>
       <path d={GEM_PATH} fill="rgba(255,255,255,0.03)" stroke={`${color}55`} strokeWidth="1" />
       <g clipPath={`url(#${clipId})`}>
-        <motion.path
-          d={buildWavePath(liquidTop)}
-          fill={`url(#${gradId})`}
+        <motion.g
           animate={{ x: [-80, 0] }}
-          transition={{ duration: 3.2, repeat: Infinity, ease: 'linear' }}
-        />
+          transition={{ duration: 3.2, repeat: Infinity, ease: 'linear', repeatType: 'loop' }}
+        >
+          <path
+            d={buildWavePath(liquidTop)}
+            fill={`url(#${gradId})`}
+          />
+        </motion.g>
       </g>
       <path d={GEM_PATH} fill="none" stroke={color} strokeWidth="1.4" strokeLinejoin="round" />
       <path
@@ -1195,22 +1240,22 @@ function DaeWoonSection({
                     style={{
                       padding: '10px 6px',
                       borderRadius: 10,
-                      border: `1px solid ${c}55`,
-                      background: `${c}10`,
+                      border: `1px solid ${c}66`,
+                      background: `${c}22`,
                       textAlign: 'center',
                     }}
                   >
-                    <div style={{ fontSize: 13, fontWeight: 700, color: c }}>{m.month}월</div>
-                    <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>{m.tenGod}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: c }}>{m.month}월</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{m.tenGod}</div>
                     <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[m.ganElement]}22`, color: ELEMENT_COLORS[m.ganElement], margin: '3px auto' }}>{stemToHanja(m.gan)}</div>
                     <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[m.zhiElement]}22`, color: ELEMENT_COLORS[m.zhiElement], margin: '0 auto' }}>{zhiToHanja(m.zhi)}</div>
-                    <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.4 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.5 }}>
                       <div>{m.tenGodZhi}</div>
                       <div>{m.twelveStage}</div>
                       {m.sinSal12 && <div style={{ color: 'var(--text-tertiary)' }}>{m.sinSal12}</div>}
                     </div>
-                    <div style={{ fontSize: 11, color: c, marginTop: 3, fontWeight: 600 }}>{m.grade}</div>
-                    {m.keyword && <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 2 }}>{m.keyword}</div>}
+                    <div style={{ fontSize: 13, color: c, marginTop: 3, fontWeight: 700 }}>{m.grade}</div>
+                    {m.keyword && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{m.keyword}</div>}
                   </div>
                 );
               })}
@@ -1267,11 +1312,11 @@ export default function SajuReport({
           <div className={styles.pillarsRow}>
             <span className={styles.label}>천간 십성</span>
             <span className={result.hourUnknown ? styles.hourUnknownCell : ''}>
-              {result.hourUnknown ? '—' : pillars.hour.tenGodGan}
+              {result.hourUnknown ? '—' : <TermTap text={pillars.hour.tenGodGan} />}
             </span>
             <span className={styles.highlight}>(본인)</span>
-            <span>{pillars.month.tenGodGan}</span>
-            <span>{pillars.year.tenGodGan}</span>
+            <span><TermTap text={pillars.month.tenGodGan} /></span>
+            <span><TermTap text={pillars.year.tenGodGan} /></span>
           </div>
           <div className={`${styles.pillarsRow} ${styles.stemRow}`}>
             <span className={styles.label}>천간</span>
@@ -1297,33 +1342,41 @@ export default function SajuReport({
             <span style={{ color: ELEMENT_COLORS[pillars.month.zhiElement] }}><BranchCell zhi={pillars.month.zhi} /></span>
             <span style={{ color: ELEMENT_COLORS[pillars.year.zhiElement] }}><BranchCell zhi={pillars.year.zhi} /></span>
           </div>
-          {/* 지지 십성 — 지장간 본기 기준. 직원 피드백: 지지 십성 누락 보완 */}
+          {/* 지지 십성 — 지장간 본기 기준 */}
           <div className={styles.pillarsRow}>
             <span className={styles.label}>지지 십성</span>
             <span className={result.hourUnknown ? styles.hourUnknownCell : ''}>
-              {result.hourUnknown ? '—' : pillars.hour.tenGodZhi}
+              {result.hourUnknown ? '—' : <TermTap text={pillars.hour.tenGodZhi} />}
             </span>
-            <span>{pillars.day.tenGodZhi}</span>
-            <span>{pillars.month.tenGodZhi}</span>
-            <span>{pillars.year.tenGodZhi}</span>
+            <span><TermTap text={pillars.day.tenGodZhi} /></span>
+            <span><TermTap text={pillars.month.tenGodZhi} /></span>
+            <span><TermTap text={pillars.year.tenGodZhi} /></span>
           </div>
           <div className={styles.pillarsRow}>
             <span className={styles.label}>지장간</span>
             <span className={`${styles.hiddenStems} ${result.hourUnknown ? styles.hourUnknownCell : ''}`}>
-              {result.hourUnknown ? '—' : pillars.hour.hiddenStems.map(stemToHanja).join(' ')}
+              {result.hourUnknown ? '—' : pillars.hour.hiddenStems.map((g, i) => (
+                <TermTap key={`${g}-${i}`} text={g} hint="stem" className={styles.hiddenStemTap} />
+              ))}
             </span>
-            <span className={styles.hiddenStems}>{pillars.day.hiddenStems.map(stemToHanja).join(' ')}</span>
-            <span className={styles.hiddenStems}>{pillars.month.hiddenStems.map(stemToHanja).join(' ')}</span>
-            <span className={styles.hiddenStems}>{pillars.year.hiddenStems.map(stemToHanja).join(' ')}</span>
+            <span className={styles.hiddenStems}>{pillars.day.hiddenStems.map((g, i) => (
+              <TermTap key={`${g}-${i}`} text={g} hint="stem" className={styles.hiddenStemTap} />
+            ))}</span>
+            <span className={styles.hiddenStems}>{pillars.month.hiddenStems.map((g, i) => (
+              <TermTap key={`${g}-${i}`} text={g} hint="stem" className={styles.hiddenStemTap} />
+            ))}</span>
+            <span className={styles.hiddenStems}>{pillars.year.hiddenStems.map((g, i) => (
+              <TermTap key={`${g}-${i}`} text={g} hint="stem" className={styles.hiddenStemTap} />
+            ))}</span>
           </div>
           <div className={styles.pillarsRow}>
             <span className={styles.label}>12운성</span>
             <span className={result.hourUnknown ? styles.hourUnknownCell : ''}>
-              {result.hourUnknown ? '—' : pillars.hour.twelveStage}
+              {result.hourUnknown ? '—' : <TermTap text={pillars.hour.twelveStage} hint="stage" />}
             </span>
-            <span>{pillars.day.twelveStage}</span>
-            <span>{pillars.month.twelveStage}</span>
-            <span>{pillars.year.twelveStage}</span>
+            <span><TermTap text={pillars.day.twelveStage} hint="stage" /></span>
+            <span><TermTap text={pillars.month.twelveStage} hint="stage" /></span>
+            <span><TermTap text={pillars.year.twelveStage} hint="stage" /></span>
           </div>
         </div>
 
