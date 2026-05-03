@@ -16,7 +16,7 @@
  * 북반구(서울) 기준: waxing = 오른쪽부터 밝아짐
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 export interface MoonPhaseProps {
   size?: number;
@@ -47,6 +47,9 @@ function phaseName(phase: number): string {
 }
 
 export default function MoonPhase({ size = 76 }: MoonPhaseProps) {
+  const uid = useId();
+  const litId = `moon-lit-${uid}`;
+  const darkId = `moon-dark-${uid}`;
   const [phase, setPhase] = useState(0.5);
 
   useEffect(() => {
@@ -95,22 +98,22 @@ export default function MoonPhase({ size = 76 }: MoonPhaseProps) {
       role="img"
     >
       <defs>
-        <radialGradient id="moon-lit" cx="35%" cy="35%">
+        <radialGradient id={litId} cx="35%" cy="35%">
           <stop offset="0%" stopColor="#fffdf5" />
           <stop offset="55%" stopColor="#fff0cc" />
           <stop offset="100%" stopColor="#f0d090" />
         </radialGradient>
-        <radialGradient id="moon-dark" cx="50%" cy="50%">
+        <radialGradient id={darkId} cx="50%" cy="50%">
           <stop offset="0%" stopColor="#3a2a5a" stopOpacity="0.85" />
           <stop offset="100%" stopColor="#1a1230" stopOpacity="0.75" />
         </radialGradient>
       </defs>
 
-      <circle r={R} fill="url(#moon-dark)" />
+      <circle r={R} fill={`url(#${darkId})`} />
 
       <path
         d={litPath}
-        fill="url(#moon-lit)"
+        fill={`url(#${litId})`}
         style={{
           filter: 'drop-shadow(0 0 6px rgba(255, 230, 180, 0.35))',
         }}
