@@ -1253,24 +1253,21 @@ function DaeWoonSection({
                       textAlign: 'center',
                     }}
                   >
-                    <div style={{ fontSize: 15, fontWeight: 700, color: c }}>{m.month}월</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{m.tenGod}</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: c }}>{m.month}월</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{m.tenGod}</div>
                     <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[m.ganElement]}22`, color: ELEMENT_COLORS[m.ganElement], margin: '3px auto' }}>{stemToHanja(m.gan)}</div>
                     <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[m.zhiElement]}22`, color: ELEMENT_COLORS[m.zhiElement], margin: '0 auto' }}>{zhiToHanja(m.zhi)}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.5 }}>
                       <div>{m.tenGodZhi}</div>
                       <div>{m.twelveStage}</div>
                       {m.sinSal12 && <div style={{ color: 'var(--text-tertiary)' }}>{m.sinSal12}</div>}
                     </div>
-                    <div style={{ fontSize: 13, color: c, marginTop: 3, fontWeight: 700 }}>{m.grade}</div>
-                    {m.keyword && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{m.keyword}</div>}
+                    <div style={{ fontSize: 14, color: c, marginTop: 3, fontWeight: 700 }}>{m.grade}</div>
+                    {m.keyword && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{m.keyword}</div>}
                   </div>
                 );
               })}
             </div>
-            <p className={styles.sectionHint} style={{ margin: '8px 0 0' }}>
-              월별 등급은 일간({result.dayMaster})에 대한 그 달 천간 십성과 용신 오행 부합 여부로 자동 계산됩니다.
-            </p>
           </motion.div>
         )}
       </AnimatePresence>
