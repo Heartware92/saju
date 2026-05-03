@@ -151,7 +151,7 @@ export default function ConsultationListPage() {
     <div className="pb-6">
 
       {/* 헤더 — 뒤로가기 좌측 + 중앙 정렬 타이틀 */}
-      <div className="flex items-center relative px-5 pt-4 pb-2">
+      <div className="flex items-center relative mb-4 px-1">
         <BackButton to="/" className="absolute left-0" />
         <div className="flex-1 text-center">
           <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>

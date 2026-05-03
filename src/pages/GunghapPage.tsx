@@ -716,10 +716,10 @@ export default function GunghapPage() {
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center relative">
           <BackButton onClick={handleGunghapBack} label="이전 단계" className="absolute left-0" />
           <div className="flex-1 text-center">
-            <h1 className="text-2xl font-bold text-text-primary mb-1" style={{ fontFamily: 'var(--font-serif)' }}>
+            <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
               궁합 분석
             </h1>
-            <p className="text-sm text-text-secondary">두 사람의 사주로 보는 인연의 흐름</p>
+            <p className="text-sm text-text-tertiary mt-0.5">두 사람의 사주로 보는 인연의 흐름</p>
           </div>
         </motion.div>
       </div>

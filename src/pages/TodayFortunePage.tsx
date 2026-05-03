@@ -384,7 +384,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
           </svg>
         </button>
         <div className="flex-1 flex flex-col items-center">
-          <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+          <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
             {pageTitle}
           </h1>
           {isArchiveMode && archivedAt && (

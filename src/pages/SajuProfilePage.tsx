@@ -83,11 +83,11 @@ export default function SajuProfilePage() {
   return (
     <div className="px-4 pt-4 pb-8">
       {/* 헤더 — 뒤로가기 좌측 + 중앙 정렬 타이틀 */}
-      <div className="flex items-center relative mb-6">
+      <div className="flex items-center relative mb-4 px-1">
         <BackButton to="/" className="absolute left-0" />
         <div className="flex-1 text-center">
-          <h1 className="text-xl font-bold text-text-primary mb-1">사주 분석</h1>
-          <p className="text-sm text-text-secondary">프로필을 선택하거나 새로 추가하세요</p>
+          <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>사주 분석</h1>
+          <p className="text-sm text-text-tertiary mt-0.5">프로필을 선택하거나 새로 추가하세요</p>
         </div>
       </div>
 

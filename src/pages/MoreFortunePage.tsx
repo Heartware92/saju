@@ -227,11 +227,11 @@ export default function MoreFortunePage({ category }: Props) {
     const legacyLabel = LEGACY_MORE_LABELS[category as LegacyMoreCategory];
     return (
       <div className={styles.container}>
-        <div className="flex items-center relative mb-4">
+        <div className="flex items-center relative mb-4 px-1">
           <BackButton className="absolute left-0" />
           <div className="flex-1 text-center">
-            <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>{legacyLabel}</h1>
-            <p className="text-xs text-text-tertiary">보관된 풀이</p>
+            <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>{legacyLabel}</h1>
+            <p className="text-sm text-text-tertiary mt-0.5">보관된 풀이</p>
           </div>
         </div>
         <div className={styles.content}>
@@ -472,16 +472,16 @@ export default function MoreFortunePage({ category }: Props) {
 
   return (
     <div className={styles.container}>
-      <div className="flex items-center relative mb-4">
+      <div className="flex items-center relative mb-4 px-1">
         <BackButton className="absolute left-0" />
         <div className="flex-1 text-center">
-          <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>{cfg.title}</h1>
+          <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>{cfg.title}</h1>
           {isArchiveMode && archivedAt ? (
-            <p className="text-xs text-text-tertiary">
+            <p className="text-sm text-text-tertiary mt-0.5">
               보관함 · {new Date(archivedAt).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })}
             </p>
           ) : targetProfile ? (
-            <p className="text-xs text-text-tertiary">{targetProfile.name} · {targetProfile.birth_date}</p>
+            <p className="text-sm text-text-tertiary mt-0.5">{targetProfile.name} · {targetProfile.birth_date}</p>
           ) : null}
         </div>
       </div>

@@ -25,12 +25,13 @@ const LIBRARIES = [
 export default function LicensesPage() {
   return (
     <div className="min-h-screen px-4 pt-4 pb-12 max-w-[720px] mx-auto">
-      <div className="flex items-center justify-between mb-6 px-1">
-        <BackButton />
-        <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
-          오픈소스 라이선스
-        </h1>
-        <div className="w-9" />
+      <div className="flex items-center relative mb-4 px-1">
+        <BackButton className="absolute left-0" />
+        <div className="flex-1 text-center">
+          <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+            오픈소스 라이선스
+          </h1>
+        </div>
       </div>
 
       <div className="rounded-2xl p-6 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">

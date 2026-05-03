@@ -370,7 +370,7 @@ export default function TojeongResultPage() {
       <div className="flex items-center relative mb-4 px-1">
         <BackButton className="absolute left-0" />
         <div className="flex-1 text-center">
-          <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+          <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
             {tojeong.targetYear}년 토정비결
           </h1>
         </div>
