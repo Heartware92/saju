@@ -178,14 +178,14 @@ export default function TarotResultPage() {
       className="w-full px-4 pt-4 pb-10 max-w-[640px] mx-auto"
     >
       {/* 헤더 */}
-      <div className="flex items-center relative mb-4 px-1">
+      <div className="flex items-center relative mb-5 pt-3 px-1">
         <BackButton to="/archive" className="absolute left-0" />
         <div className="flex-1 text-center">
-          <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+          <h1 className="text-2xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
             {modeLabel}
           </h1>
           {modeDesc && (
-            <p className="text-sm text-text-tertiary mt-0.5">{modeDesc}</p>
+            <p className="text-base text-text-tertiary mt-1">{modeDesc}</p>
           )}
           {createdAt && (
             <p className="text-[11px] text-text-tertiary mt-0.5 opacity-70">

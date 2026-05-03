@@ -11,10 +11,10 @@ export default async function TermsPage({ searchParams }: { searchParams: Promis
   return (
     <div className={`min-h-screen px-4 pb-12 max-w-[720px] mx-auto ${isEmbed ? 'pt-2' : 'pt-4'}`}>
       {!isEmbed && (
-        <div className="flex items-center relative mb-4 px-1">
+        <div className="flex items-center relative mb-5 pt-3 px-1">
           <BackButton className="absolute left-0" />
           <div className="flex-1 text-center">
-            <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+            <h1 className="text-2xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
               이용약관
             </h1>
           </div>
