@@ -19,6 +19,7 @@ import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, sajuKey, type ReportKind } from '../store/useReportCacheStore';
 import { RestoreReportModal } from '../components/RestoreReportModal';
 import { FortuneProfileSelect } from '../components/FortuneProfileSelect';
+import { QuickFortuneGate } from '../components/QuickFortuneGate';
 import { sajuDB } from '../services/supabase';
 import { parseNewyearReport } from '../services/fortuneService';
 import { findRecentArchive } from '../services/archiveService';
@@ -539,8 +540,9 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
       );
     }
     return (
-      <FortuneProfileSelect
+      <QuickFortuneGate
         serviceName="지정일 운세"
+        archiveCategory="period"
         creditType="sun"
         creditCost={SUN_COST_BIG}
       />

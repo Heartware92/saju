@@ -16,7 +16,7 @@ import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, sajuKey, type ReportKind } from '../store/useReportCacheStore';
 import { RestoreReportModal } from '../components/RestoreReportModal';
-import { FortuneProfileSelect } from '../components/FortuneProfileSelect';
+import { QuickFortuneGate } from '../components/QuickFortuneGate';
 import { findRecentArchive } from '../services/archiveService';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
@@ -304,11 +304,11 @@ export default function TaekilPage() {
     return cells;
   }, [result, viewYear, viewMonth]);
 
-  // 프로필 선택 가드
   if (needsProfileSelect) {
     return (
-      <FortuneProfileSelect
+      <QuickFortuneGate
         serviceName="택일 운세"
+        archiveCategory="taekil"
         creditType="sun"
         creditCost={SUN_COST_BIG}
       />

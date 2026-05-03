@@ -7,7 +7,7 @@ import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, sajuKey, type ReportKind } from '../store/useReportCacheStore';
 import { RestoreReportModal } from '../components/RestoreReportModal';
-import { FortuneProfileSelect } from '../components/FortuneProfileSelect';
+import { QuickFortuneGate } from '../components/QuickFortuneGate';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { calculateSaju, type SajuResult } from '../utils/sajuCalculator';
@@ -276,7 +276,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
   if (needsProfileSelect) {
     const todayIsoCtx = new Date().toISOString().slice(0, 10);
     return (
-      <FortuneProfileSelect
+      <QuickFortuneGate
         serviceName="오늘의 운세"
         archiveCategory="today"
         archiveContext={{ key: 'isoDate', value: todayIsoCtx }}

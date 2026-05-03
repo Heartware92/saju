@@ -15,7 +15,7 @@ import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, type ReportKind } from '../store/useReportCacheStore';
 import { RestoreReportModal } from '../components/RestoreReportModal';
-import { FortuneProfileSelect } from '../components/FortuneProfileSelect';
+import { QuickFortuneGate } from '../components/QuickFortuneGate';
 import { getTojeongReading } from '../services/fortuneService';
 import { sajuDB } from '../services/supabase';
 import { findRecentArchive } from '../services/archiveService';
@@ -292,7 +292,7 @@ export default function TojeongResultPage() {
 
   if (needsProfileSelect) {
     return (
-      <FortuneProfileSelect
+      <QuickFortuneGate
         serviceName="토정비결"
         archiveCategory="tojeong"
         creditType="sun"

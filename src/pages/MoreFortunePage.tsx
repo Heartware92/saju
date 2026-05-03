@@ -40,7 +40,7 @@ import {
 import { sajuDB } from '../services/supabase';
 import { findRecentArchive, type ArchiveCategory } from '../services/archiveService';
 import { RestoreReportModal } from '../components/RestoreReportModal';
-import { FortuneProfileSelect } from '../components/FortuneProfileSelect';
+import { QuickFortuneGate } from '../components/QuickFortuneGate';
 import { MOON_COST_PER_FORTUNE as MOON_COST_SELECT } from '../constants/moreFortunes';
 import { analyzeKoreanName } from '../utils/nameEumRyeong';
 import { AILoadingBar } from '../components/AILoadingBar';
@@ -418,10 +418,9 @@ export default function MoreFortunePage({ category }: Props) {
     );
   }
 
-  // 프로필 선택 가드 (name/dream 제외)
   if (needsProfileSelect && cfg) {
     return (
-      <FortuneProfileSelect
+      <QuickFortuneGate
         serviceName={cfg.title}
         archiveCategory={category as ArchiveCategory}
         creditType="moon"

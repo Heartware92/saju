@@ -24,7 +24,7 @@ import { useProfileStore } from '../store/useProfileStore';
 import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, type ReportKind } from '../store/useReportCacheStore';
 import { RestoreReportModal } from '../components/RestoreReportModal';
-import { FortuneProfileSelect } from '../components/FortuneProfileSelect';
+import { QuickFortuneGate } from '../components/QuickFortuneGate';
 import { findRecentArchive } from '../services/archiveService';
 import {
   getZamidusuReading,
@@ -357,7 +357,7 @@ export default function ZamidusuResultPage() {
   // ── 프로필 선택 가드 ──
   if (needsProfileSelect) {
     return (
-      <FortuneProfileSelect
+      <QuickFortuneGate
         serviceName="자미두수"
         archiveCategory="zamidusu"
         creditType="sun"
