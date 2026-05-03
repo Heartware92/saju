@@ -15,7 +15,7 @@ import { OpsSection, type OpsSummary } from '@/components/admin/ops/OpsSection';
 import { InsightsSection, type Insights } from '@/components/admin/insights/InsightsSection';
 import { AuditLogSection, type AuditLog } from '@/components/admin/ops/AuditLogSection';
 import { toCsv, downloadCsv, timestampSuffix } from '@/components/admin/csvExport';
-import { SAJU_CATEGORY_LABEL, TAROT_SPREAD_LABEL, ORDER_STATUS_LABEL, GENDER_LABEL, PROVIDER_LABEL, CREDIT_REASON_LABEL, type UserSegment, type AgeBucketKey } from '@/constants/adminLabels';
+import { SAJU_CATEGORY_LABEL, TAROT_SPREAD_LABEL, ORDER_STATUS_LABEL, GENDER_LABEL, PROVIDER_LABEL, CREDIT_REASON_LABEL, DELETION_REASON_LABEL, type UserSegment, type AgeBucketKey } from '@/constants/adminLabels';
 
 // ── 타입 ──────────────────────────────────────────────────
 interface DailyPoint {
@@ -57,6 +57,29 @@ interface ConsultationRecord {
   profile_name: string | null; conversation_id: string;
   title: string; message_count: number;
   last_message_at: string | null; created_at: string; updated_at: string;
+}
+
+interface DeletedMemberCredit {
+  total_sun_purchased: number;
+  total_moon_purchased: number;
+  total_sun_consumed: number;
+  total_moon_consumed: number;
+}
+
+interface DeletedMemberMetadata {
+  created_at?: string | null;
+  credit?: DeletedMemberCredit;
+  order_count?: number;
+}
+
+interface DeletedMember {
+  id: string;
+  user_id: string;
+  email: string;
+  reason: string | null;
+  reason_code: string | null;
+  metadata: DeletedMemberMetadata | null;
+  deleted_at: string;
 }
 
 type Tab = 'overview' | 'members' | 'orders' | 'usage' | 'credits' | 'records' | 'consultations' | 'ops' | 'insights';
@@ -125,6 +148,7 @@ export default function AdminPage() {
   const [dailyRange, setDailyRange] = useState<7 | 30>(7);
 
   // Members
+  const [memberSubTab, setMemberSubTab] = useState<'active' | 'deleted'>('active');
   const [memberSummary, setMemberSummary] = useState<MemberSummary | null>(null);
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [memberPage, setMemberPage] = useState(1);
@@ -138,6 +162,13 @@ export default function AdminPage() {
   const [memberOrder, setMemberOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Deleted Members
+  const [deletedMembers, setDeletedMembers] = useState<DeletedMember[]>([]);
+  const [deletedTotal, setDeletedTotal] = useState(0);
+  const [deletedPage, setDeletedPage] = useState(1);
+  const [deletedSearch, setDeletedSearch] = useState('');
+  const [deletedReasonCounts, setDeletedReasonCounts] = useState<Record<string, number>>({});
 
   // Orders
   const [orders, setOrders] = useState<Order[]>([]);
@@ -260,6 +291,21 @@ export default function AdminPage() {
     finally { setLoading(false); }
   }, [token, adminFetch, memberPage, memberSearch, memberGender, memberAgeBucket, memberSegment, memberProvider, memberSort, memberOrder]);
 
+  const fetchDeletedMembers = useCallback(async (force = false) => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(deletedPage), search: deletedSearch });
+      const data = await adminFetch<{ items: DeletedMember[]; total: number; reasonCounts: Record<string, number> }>(`/api/admin/account-deletions?${params}`, force);
+      if (data) {
+        setDeletedMembers(data.items);
+        setDeletedTotal(data.total);
+        setDeletedReasonCounts(data.reasonCounts ?? {});
+      }
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [token, adminFetch, deletedPage, deletedSearch]);
+
   const fetchOrders = useCallback(async (force = false) => {
     if (!token) return;
     setLoading(true);
@@ -366,9 +412,13 @@ export default function AdminPage() {
   useEffect(() => { if (tab === 'overview' && !stats) fetchStats(); }, [tab, stats, fetchStats]);
   useEffect(() => {
     if (tab !== 'members') return;
-    if (!memberSummary) fetchMemberSummary();
-    if (members.length === 0) fetchMembers();
-  }, [tab, memberSummary, members.length, fetchMemberSummary, fetchMembers]);
+    if (memberSubTab === 'active') {
+      if (!memberSummary) fetchMemberSummary();
+      if (members.length === 0) fetchMembers();
+    } else {
+      if (deletedMembers.length === 0) fetchDeletedMembers();
+    }
+  }, [tab, memberSubTab, memberSummary, members.length, deletedMembers.length, fetchMemberSummary, fetchMembers, fetchDeletedMembers]);
   useEffect(() => {
     if (tab !== 'orders') return;
     if (!ordersSummary) fetchOrdersSummary();
@@ -394,6 +444,16 @@ export default function AdminPage() {
     lastMemberFilterKey.current = memberFilterKey;
     fetchMembers();
   }, [tab, memberFilterKey, fetchMembers]);
+
+  // ── deleted members 필터 변경 시 재호출
+  const deletedFilterKey = `${deletedSearch}|${deletedPage}`;
+  const lastDeletedFilterKey = useRef<string>('');
+  useEffect(() => {
+    if (tab !== 'members' || memberSubTab !== 'deleted') return;
+    if (lastDeletedFilterKey.current === deletedFilterKey) return;
+    lastDeletedFilterKey.current = deletedFilterKey;
+    fetchDeletedMembers();
+  }, [tab, memberSubTab, deletedFilterKey, fetchDeletedMembers]);
 
   // ── orders 필터 변경 시 재호출
   const orderFilterKey = `${orderStatus}|${orderSearch}|${orderPage}`;
@@ -427,6 +487,7 @@ export default function AdminPage() {
 
   // 검색·필터 바뀌면 1페이지로
   useEffect(() => { setMemberPage(1); }, [memberSearch, memberGender, memberAgeBucket, memberSegment, memberProvider, memberSort, memberOrder]);
+  useEffect(() => { setDeletedPage(1); }, [deletedSearch]);
 
   if (!token) return (
     <div className="min-h-screen flex items-center justify-center text-text-secondary">
@@ -530,7 +591,10 @@ export default function AdminPage() {
   const refreshCurrentTab = () => {
     setError('');
     if (tab === 'overview') fetchStats(true);
-    else if (tab === 'members') { fetchMemberSummary(true); fetchMembers(true); }
+    else if (tab === 'members') {
+      if (memberSubTab === 'active') { fetchMemberSummary(true); fetchMembers(true); }
+      else fetchDeletedMembers(true);
+    }
     else if (tab === 'orders') { fetchOrdersSummary(true); fetchOrders(true); }
     else if (tab === 'usage') fetchUsageSummary(true);
     else if (tab === 'credits') fetchCreditsSummary(true);
@@ -709,58 +773,90 @@ export default function AdminPage() {
         {/* ── 회원 관리 ── */}
         {tab === 'members' && (
           <div className="space-y-6">
-            <DemographicsSummary
-              summary={memberSummary}
-              activeSegment={memberSegment}
-              onSegmentChange={setMemberSegment}
-            />
-
-            <BulkActionBar
-              selectedIds={selectedIds}
-              token={token}
-              onClearSelection={() => setSelectedIds(new Set())}
-              onDone={() => { setSelectedIds(new Set()); fetchMembers(true); fetchMemberSummary(true); }}
-            />
-
-            <div className="space-y-3">
-              <MembersFilterBar
-                search={memberSearch} onSearchChange={setMemberSearch}
-                gender={memberGender} onGenderChange={setMemberGender}
-                ageBucket={memberAgeBucket} onAgeBucketChange={setMemberAgeBucket}
-                provider={memberProvider} onProviderChange={setMemberProvider}
-                totalCount={memberTotal}
-              />
-              <MembersTable
-                rows={members}
-                loading={loading}
-                sort={memberSort}
-                order={memberOrder}
-                onSortChange={(s, o) => { setMemberSort(s); setMemberOrder(o); }}
-                onRowClick={setSelectedUserId}
-                selectedIds={selectedIds}
-                onToggleSelect={id => {
-                  setSelectedIds(prev => {
-                    const next = new Set(prev);
-                    if (next.has(id)) next.delete(id); else next.add(id);
-                    return next;
-                  });
-                }}
-                onToggleAll={() => {
-                  setSelectedIds(prev => {
-                    const allVisible = members.every(m => prev.has(m.id));
-                    if (allVisible) {
-                      const next = new Set(prev);
-                      for (const m of members) next.delete(m.id);
-                      return next;
-                    }
-                    const next = new Set(prev);
-                    for (const m of members) next.add(m.id);
-                    return next;
-                  });
-                }}
-              />
-              <Pagination page={memberPage} total={memberTotal} pageSize={20} onChange={setMemberPage} />
+            {/* 서브탭 토글 */}
+            <div className="flex gap-1 p-1 bg-white/5 rounded-lg border border-white/10 w-fit">
+              {(['active', 'deleted'] as const).map(st => (
+                <button
+                  key={st}
+                  onClick={() => setMemberSubTab(st)}
+                  className={`px-4 py-1.5 rounded text-[14px] font-medium transition-colors ${memberSubTab === st ? 'bg-cta text-white' : 'text-text-tertiary hover:text-text-secondary'}`}
+                >
+                  {st === 'active' ? '활성 회원' : '탈퇴 회원'}
+                </button>
+              ))}
             </div>
+
+            {/* ── 활성 회원 ── */}
+            {memberSubTab === 'active' && (
+              <>
+                <DemographicsSummary
+                  summary={memberSummary}
+                  activeSegment={memberSegment}
+                  onSegmentChange={setMemberSegment}
+                />
+
+                <BulkActionBar
+                  selectedIds={selectedIds}
+                  token={token}
+                  onClearSelection={() => setSelectedIds(new Set())}
+                  onDone={() => { setSelectedIds(new Set()); fetchMembers(true); fetchMemberSummary(true); }}
+                />
+
+                <div className="space-y-3">
+                  <MembersFilterBar
+                    search={memberSearch} onSearchChange={setMemberSearch}
+                    gender={memberGender} onGenderChange={setMemberGender}
+                    ageBucket={memberAgeBucket} onAgeBucketChange={setMemberAgeBucket}
+                    provider={memberProvider} onProviderChange={setMemberProvider}
+                    totalCount={memberTotal}
+                  />
+                  <MembersTable
+                    rows={members}
+                    loading={loading}
+                    sort={memberSort}
+                    order={memberOrder}
+                    onSortChange={(s, o) => { setMemberSort(s); setMemberOrder(o); }}
+                    onRowClick={setSelectedUserId}
+                    selectedIds={selectedIds}
+                    onToggleSelect={id => {
+                      setSelectedIds(prev => {
+                        const next = new Set(prev);
+                        if (next.has(id)) next.delete(id); else next.add(id);
+                        return next;
+                      });
+                    }}
+                    onToggleAll={() => {
+                      setSelectedIds(prev => {
+                        const allVisible = members.every(m => prev.has(m.id));
+                        if (allVisible) {
+                          const next = new Set(prev);
+                          for (const m of members) next.delete(m.id);
+                          return next;
+                        }
+                        const next = new Set(prev);
+                        for (const m of members) next.add(m.id);
+                        return next;
+                      });
+                    }}
+                  />
+                  <Pagination page={memberPage} total={memberTotal} pageSize={20} onChange={setMemberPage} />
+                </div>
+              </>
+            )}
+
+            {/* ── 탈퇴 회원 ── */}
+            {memberSubTab === 'deleted' && (
+              <DeletedMembersPanel
+                items={deletedMembers}
+                total={deletedTotal}
+                page={deletedPage}
+                search={deletedSearch}
+                reasonCounts={deletedReasonCounts}
+                loading={loading}
+                onSearchChange={v => { setDeletedSearch(v); setDeletedPage(1); }}
+                onPageChange={setDeletedPage}
+              />
+            )}
           </div>
         )}
 
@@ -1026,6 +1122,133 @@ export default function AdminPage() {
           onClose={() => setSelectedUserId(null)}
         />
       )}
+    </div>
+  );
+}
+
+// ── 이용기간 포맷 ──────────────────────────────────────────────
+function fmtDuration(from: string | null | undefined, to: string): string {
+  if (!from) return '-';
+  const ms = new Date(to).getTime() - new Date(from).getTime();
+  if (isNaN(ms) || ms < 0) return '-';
+  const days = Math.floor(ms / 86_400_000);
+  if (days < 30) return `${days}일`;
+  const months = Math.floor(days / 30);
+  const rem = days % 30;
+  return rem > 0 ? `${months}개월 ${rem}일` : `${months}개월`;
+}
+
+// ── 탈퇴 회원 패널 ─────────────────────────────────────────────
+interface DeletedMembersPanelProps {
+  items: DeletedMember[];
+  total: number;
+  page: number;
+  search: string;
+  reasonCounts: Record<string, number>;
+  loading: boolean;
+  onSearchChange: (v: string) => void;
+  onPageChange: (p: number) => void;
+}
+
+function DeletedMembersPanel({
+  items, total, page, search, reasonCounts, loading, onSearchChange, onPageChange,
+}: DeletedMembersPanelProps) {
+  const grandTotal = Object.values(reasonCounts).reduce((s, n) => s + n, 0);
+  const reasonOrder = ['not_useful', 'rarely_used', 'hard_to_use', 'other', 'too_expensive', 'privacy', 'unknown'];
+  const sortedReasons = Object.entries(reasonCounts).sort(([a], [b]) => {
+    const ai = reasonOrder.indexOf(a);
+    const bi = reasonOrder.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  return (
+    <div className="space-y-5">
+      {/* 요약 카드 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 col-span-2 md:col-span-1">
+          <p className="text-[13px] text-text-tertiary uppercase tracking-wider mb-1">총 탈퇴 수</p>
+          <p className="text-[22px] font-bold text-text-primary">{grandTotal.toLocaleString('ko-KR')}</p>
+        </div>
+        {sortedReasons.map(([code, cnt]) => {
+          const pct = grandTotal > 0 ? Math.round(cnt / grandTotal * 100) : 0;
+          return (
+            <div key={code} className="bg-white/5 border border-white/10 rounded-xl p-4">
+              <p className="text-[13px] text-text-tertiary uppercase tracking-wider mb-1 truncate">
+                {DELETION_REASON_LABEL[code] ?? code}
+              </p>
+              <p className="text-[22px] font-bold text-text-primary">{cnt.toLocaleString('ko-KR')}</p>
+              <p className="text-[13px] text-text-tertiary mt-0.5">{pct}%</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 검색 */}
+      <input
+        type="text"
+        placeholder="이메일 검색"
+        value={search}
+        onChange={e => onSearchChange(e.target.value)}
+        className="w-full max-w-sm px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-cta/50"
+      />
+
+      {/* 테이블 */}
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-[14px]">
+          <thead>
+            <tr className="border-b border-white/10 bg-white/3">
+              {['이메일', '탈퇴 사유', '가입일', '탈퇴일', '이용기간', '누적결제', '크레딧 사용'].map(h => (
+                <th key={h} className="px-3 py-2.5 text-left text-[12px] text-text-tertiary uppercase tracking-wider font-medium whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {items.map(m => {
+              const credit = m.metadata?.credit;
+              const totalPurchased = credit ? credit.total_sun_purchased + credit.total_moon_purchased : 0;
+              const totalConsumed = credit ? credit.total_sun_consumed + credit.total_moon_consumed : 0;
+              const orderCount = m.metadata?.order_count ?? 0;
+              const joinedAt = m.metadata?.created_at ?? null;
+              return (
+                <tr key={m.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                  <td className="px-3 py-2.5 text-text-secondary max-w-[200px] truncate">{m.email}</td>
+                  <td className="px-3 py-2.5 text-text-primary whitespace-nowrap">
+                    {DELETION_REASON_LABEL[m.reason_code ?? 'unknown'] ?? (m.reason_code ?? '미선택')}
+                  </td>
+                  <td className="px-3 py-2.5 text-text-tertiary whitespace-nowrap">
+                    {joinedAt ? new Date(joinedAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '-'}
+                  </td>
+                  <td className="px-3 py-2.5 text-text-tertiary whitespace-nowrap">
+                    {new Date(m.deleted_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                  </td>
+                  <td className="px-3 py-2.5 text-text-secondary tabular-nums whitespace-nowrap">
+                    {fmtDuration(joinedAt, m.deleted_at)}
+                  </td>
+                  <td className="px-3 py-2.5 text-text-secondary tabular-nums whitespace-nowrap">
+                    {orderCount > 0 ? `${orderCount}건` : '-'}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    {totalPurchased > 0 || totalConsumed > 0 ? (
+                      <span className="text-text-secondary tabular-nums">
+                        <span className="text-amber-300">☀️{credit?.total_sun_consumed ?? 0}</span>
+                        {' / '}
+                        <span className="text-indigo-300">🌙{credit?.total_moon_consumed ?? 0}</span>
+                      </span>
+                    ) : (
+                      <span className="text-text-tertiary">-</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {items.length === 0 && !loading && (
+              <tr><td colSpan={7} className="px-3 py-8 text-center text-text-tertiary">탈퇴 회원 데이터 없음</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <Pagination page={page} total={total} pageSize={50} onChange={onPageChange} />
     </div>
   );
 }

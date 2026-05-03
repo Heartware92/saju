@@ -162,6 +162,18 @@ export const NEW_DAYS = 7;
 export const ACTIVE_DAYS = 30;
 export const DORMANT_DAYS = 60;
 
+// ── 탈퇴 사유 ────────────────────────────────────────────────
+/** account_deletion_logs.reason_code 라벨 */
+export const DELETION_REASON_LABEL: Record<string, string> = {
+  not_useful:  '서비스 불만족',
+  rarely_used: '미사용',
+  hard_to_use: '사용 어려움',
+  too_expensive: '가격 부담',   // 레거시
+  privacy:     '개인정보 우려', // 레거시
+  other:       '기타',
+  unknown:     '미선택',
+};
+
 // ── 통합 라벨 조회 ───────────────────────────────────────────
 /** saju category / tarot spread / credit reason 을 모두 커버하는 단일 조회 */
 export function lookupServiceLabel(key: string | null | undefined): string {
