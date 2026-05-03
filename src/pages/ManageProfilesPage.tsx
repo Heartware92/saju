@@ -4,7 +4,7 @@
  * 프로필 관리 페이지 — 대표 지정 / 수정 / 삭제 / 추가
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -43,13 +43,54 @@ export default function ManageProfilesPage() {
   const [editing, setEditing] = useState<BirthProfile | null>(null);
   const [editForm, setEditForm] = useState<{
     name: string;
-    birth_date: string;
-    birth_time: string;
+    birthDateStr: string;
+    birthTimeStr: string;
+    unknownTime: boolean;
     gender: 'male' | 'female';
     calendar_type: 'solar' | 'lunar';
     birth_place: string;
     memo: string;
   } | null>(null);
+
+  const currentYear = new Date().getFullYear();
+
+  const validateBirthDate = (s: string) => {
+    if (!s) return { ok: false, msg: '생년월일을 입력해주세요' };
+    if (!/^\d{8}$/.test(s)) return { ok: false, msg: '8자리 숫자로 입력해주세요 (예: 19920914)' };
+    const y = parseInt(s.slice(0, 4), 10);
+    const m = parseInt(s.slice(4, 6), 10);
+    const d = parseInt(s.slice(6, 8), 10);
+    if (y < 1900 || y > currentYear) return { ok: false, msg: `연도는 1900~${currentYear} 사이여야 합니다` };
+    if (m < 1 || m > 12) return { ok: false, msg: '월은 01~12 사이여야 합니다' };
+    if (d < 1 || d > 31) return { ok: false, msg: '일은 01~31 사이여야 합니다' };
+    const dt = new Date(y, m - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) {
+      return { ok: false, msg: '존재하지 않는 날짜입니다' };
+    }
+    return { ok: true, year: y, month: m, day: d };
+  };
+
+  const validateBirthTime = (s: string) => {
+    if (!s) return { ok: false, msg: '출생 시간을 입력해주세요' };
+    if (!/^\d{4}$/.test(s)) return { ok: false, msg: '4자리 숫자로 입력해주세요 (예: 1322)' };
+    const h = parseInt(s.slice(0, 2), 10);
+    const mi = parseInt(s.slice(2, 4), 10);
+    if (h > 23) return { ok: false, msg: '시는 00~23 사이여야 합니다' };
+    if (mi > 59) return { ok: false, msg: '분은 00~59 사이여야 합니다' };
+    return { ok: true, hour: h, minute: mi };
+  };
+
+  const editDateValidation = useMemo(
+    () => (editForm ? validateBirthDate(editForm.birthDateStr) : { ok: false }),
+    [editForm?.birthDateStr],
+  );
+  const editTimeValidation = useMemo(
+    () => (editForm?.unknownTime ? { ok: true } : editForm ? validateBirthTime(editForm.birthTimeStr) : { ok: false }),
+    [editForm?.birthTimeStr, editForm?.unknownTime],
+  );
+
+  const editDateError = editForm && editForm.birthDateStr.length > 0 && !editDateValidation.ok ? (editDateValidation as { ok: false; msg: string }).msg : '';
+  const editTimeError = editForm && !editForm.unknownTime && editForm.birthTimeStr.length > 0 && !editTimeValidation.ok ? (editTimeValidation as { ok: false; msg: string }).msg : '';
 
   useEffect(() => {
     if (user) fetchProfiles();
@@ -80,10 +121,13 @@ export default function ManageProfilesPage() {
 
   const openEdit = (p: BirthProfile) => {
     setEditing(p);
+    const dateStr = p.birth_date.replace(/-/g, '');
+    const timeStr = p.birth_time ? p.birth_time.replace(':', '') : '';
     setEditForm({
       name: p.name,
-      birth_date: p.birth_date,
-      birth_time: p.birth_time ?? '',
+      birthDateStr: dateStr,
+      birthTimeStr: timeStr,
+      unknownTime: !p.birth_time,
       gender: p.gender,
       calendar_type: p.calendar_type ?? 'solar',
       birth_place: p.birth_place || 'seoul',
@@ -93,11 +137,19 @@ export default function ManageProfilesPage() {
 
   const saveEdit = async () => {
     if (!editing || !editForm) return;
+    if (!editDateValidation.ok || !editTimeValidation.ok) return;
+
+    const { year, month, day } = editDateValidation as { year: number; month: number; day: number };
+    const birthDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const birthTime = editForm.unknownTime
+      ? undefined
+      : `${editForm.birthTimeStr.slice(0, 2)}:${editForm.birthTimeStr.slice(2, 4)}`;
+
     const longitude = CITY_COORDINATES[editForm.birth_place]?.lng ?? null;
     const ok = await updateProfile(editing.id, {
       name: editForm.name.trim(),
-      birth_date: editForm.birth_date,
-      birth_time: editForm.birth_time || undefined,
+      birth_date: birthDate,
+      birth_time: birthTime,
       gender: editForm.gender,
       calendar_type: editForm.calendar_type,
       birth_place: editForm.birth_place,
@@ -313,25 +365,46 @@ export default function ManageProfilesPage() {
                 </div>
 
                 <div>
-                  <label className="text-[13px] text-text-tertiary block mb-1">생년월일</label>
+                  <label className="text-[13px] text-text-tertiary block mb-1">생년월일 (YYYYMMDD)</label>
                   <input
-                    type="date"
-                    value={editForm.birth_date}
-                    onChange={(e) => setEditForm({ ...editForm, birth_date: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] text-sm text-text-primary focus:border-cta/50 outline-none"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={8}
+                    placeholder="YYYYMMDD (숫자 8자리)"
+                    value={editForm.birthDateStr}
+                    onChange={(e) => setEditForm({ ...editForm, birthDateStr: e.target.value.replace(/\D/g, '').slice(0, 8) })}
+                    className={`w-full px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.04)] border text-sm text-text-primary outline-none ${editDateError ? 'border-red-500/60' : 'border-[var(--border-subtle)] focus:border-cta/50'}`}
                   />
+                  {editDateError && <p className="text-[12px] text-red-400 mt-1">{editDateError}</p>}
                 </div>
 
                 <div>
-                  <label className="text-[13px] text-text-tertiary block mb-1">
-                    출생시간 <span className="text-text-tertiary">(모르면 비워두세요)</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[13px] text-text-tertiary">출생 시간 (HHMM)</label>
+                    <label className="flex items-center gap-1.5 text-[13px] text-text-tertiary cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editForm.unknownTime}
+                        onChange={(e) => setEditForm({ ...editForm, unknownTime: e.target.checked, birthTimeStr: e.target.checked ? '' : editForm.birthTimeStr })}
+                        className="accent-cta"
+                      />
+                      <span>모름</span>
+                    </label>
+                  </div>
                   <input
-                    type="time"
-                    value={editForm.birth_time}
-                    onChange={(e) => setEditForm({ ...editForm, birth_time: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] text-sm text-text-primary focus:border-cta/50 outline-none"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="HHMM (숫자 4자리, 24시 표기)"
+                    value={editForm.birthTimeStr}
+                    onChange={(e) => setEditForm({ ...editForm, birthTimeStr: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                    disabled={editForm.unknownTime}
+                    className={`w-full px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.04)] border text-sm text-text-primary outline-none disabled:opacity-40 ${editTimeError ? 'border-red-500/60' : 'border-[var(--border-subtle)] focus:border-cta/50'}`}
                   />
+                  {editTimeError && <p className="text-[12px] text-red-400 mt-1">{editTimeError}</p>}
+                  {editForm.unknownTime && (
+                    <p className="text-[12px] text-text-tertiary mt-1">시간을 모르면 시주(時柱)가 정확하지 않을 수 있습니다</p>
+                  )}
                 </div>
 
                 <div>
@@ -373,7 +446,7 @@ export default function ManageProfilesPage() {
                 </button>
                 <button
                   onClick={saveEdit}
-                  disabled={!editForm.name.trim() || !editForm.birth_date}
+                  disabled={!editForm.name.trim() || !editDateValidation.ok || !editTimeValidation.ok}
                   className="flex-1 py-2.5 rounded-lg bg-cta text-white text-[15px] font-semibold disabled:opacity-40 active:scale-[0.98]"
                 >
                   저장
