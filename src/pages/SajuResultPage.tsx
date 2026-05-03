@@ -179,6 +179,14 @@ export default function SajuResultPage() {
 
     const isFresh = searchParams?.get('fresh') === '1';
 
+    if (isFresh) {
+      setReport(null);
+      setReportLoading(true);
+      setSavedRecordId(null);
+      const cacheKey = sajuKey(result);
+      useReportCacheStore.getState().invalidate('jungtong', cacheKey);
+    }
+
     const run = async () => {
       if (refetchNonce === 0 && targetProfile && !isFresh) {
         try {
@@ -209,14 +217,18 @@ export default function SajuResultPage() {
 
       if (report || reportLoading) return;
       const cacheKey = sajuKey(result);
-      const cached = useReportCacheStore.getState().getReport<JungtongsajuAIResult>('jungtong', cacheKey);
-      if (cached?.error) {
-        setReport({ success: false, error: cached.error });
-        return;
-      }
-      if (cached?.data) {
-        setReport(cached.data);
-        return;
+
+      // fresh=1 일 때 메모리 캐시 무시 — 새 AI 호출 강제
+      if (!isFresh) {
+        const cached = useReportCacheStore.getState().getReport<JungtongsajuAIResult>('jungtong', cacheKey);
+        if (cached?.error) {
+          setReport({ success: false, error: cached.error });
+          return;
+        }
+        if (cached?.data) {
+          setReport(cached.data);
+          return;
+        }
       }
 
       setReportLoading(true);
@@ -337,6 +349,9 @@ export default function SajuResultPage() {
           <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
             정통사주
           </h1>
+          <p className="text-sm text-text-tertiary mt-0.5">
+            {targetProfile?.name ? `${targetProfile.name} · ` : ''}{result.solarDate} (양력) | {result.lunarDateSimple} (음력)
+          </p>
         </div>
       </div>
 
