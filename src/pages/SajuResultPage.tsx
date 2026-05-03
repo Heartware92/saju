@@ -343,17 +343,17 @@ export default function SajuResultPage() {
       className="min-h-screen px-4 pt-4 pb-12"
     >
       {/* 헤더 */}
-      <div className="flex items-center relative mb-5 pt-3 px-1">
+      <div className="flex items-center relative pt-3 px-1">
         <BackButton className="absolute left-0" />
         <div className="flex-1 text-center">
           <h1 className="text-2xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
             정통사주
           </h1>
-          <p className="text-base text-text-tertiary mt-1">
-            {targetProfile?.name ? `${targetProfile.name} · ` : ''}{result.solarDate} (양력) | {result.lunarDateSimple} (음력)
-          </p>
         </div>
       </div>
+      <p className="text-sm text-text-tertiary text-center mt-2 mb-4">
+        {targetProfile?.name ? `${targetProfile.name} · ` : ''}{result.solarDate} (양력) | {result.lunarDateSimple} (음력)
+      </p>
 
       {/* 시간 미상 배너 */}
       {result.hourUnknown && (

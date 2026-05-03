@@ -68,15 +68,15 @@ export default function ManseryeokPage() {
   return (
     <div className={styles.container}>
       {/* Header */}
-      <div className="flex items-center relative mb-5 pt-3 px-1">
+      <div className="flex items-center relative pt-3 px-1">
         <BackButton className="absolute left-0" />
         <div className="flex-1 text-center">
           <h1 className="text-2xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>만세력</h1>
-          <p className="text-base text-text-tertiary mt-1">
-            {primary.name} · {saju.solarDate} (양력) | {saju.lunarDateSimple} (음력)
-          </p>
         </div>
       </div>
+      <p className="text-sm text-text-tertiary text-center mt-2 mb-4">
+        {primary.name} · {saju.solarDate} (양력) | {saju.lunarDateSimple} (음력)
+      </p>
 
       {/* 시간 미상 안내 배너 */}
       {saju.hourUnknown && (
