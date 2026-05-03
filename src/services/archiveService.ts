@@ -217,6 +217,49 @@ export async function findRecentArchive(params: {
   }
 }
 
+/**
+ * 지정일 운세 등 같은 카테고리의 모든 기록을 날짜별로 반환.
+ * QuickFortuneGate에서 "기존 결과 보기" 날짜 목록 표시에 사용.
+ */
+export async function findArchiveList(params: {
+  category: ArchiveCategory;
+  birth_date: string;
+  gender: 'male' | 'female';
+  profile_id?: string;
+  limit?: number;
+}): Promise<{ id: string; created_at: string; context_date?: string }[]> {
+  try {
+    const user = await auth.getCurrentUser();
+    if (!user) return [];
+    let q = supabase
+      .from('saju_records')
+      .select('id, created_at, engine_result')
+      .eq('user_id', user.id)
+      .eq('category', params.category)
+      .eq('birth_date', params.birth_date)
+      .eq('gender', params.gender)
+      .order('created_at', { ascending: false });
+    if (params.profile_id) {
+      q = q.eq('profile_id', params.profile_id);
+    }
+    if (params.limit) {
+      q = q.limit(params.limit);
+    } else {
+      q = q.limit(30);
+    }
+    const { data, error } = await q;
+    if (error || !data) return [];
+    return (data as { id: string; created_at: string; engine_result?: Record<string, unknown> }[]).map(row => ({
+      id: row.id,
+      created_at: row.created_at,
+      context_date: (row.engine_result?.isoDate as string) ?? undefined,
+    }));
+  } catch (err) {
+    console.error('[archive] findArchiveList failed', err);
+    return [];
+  }
+}
+
 export async function findRecentArchivesBatch(params: {
   category: ArchiveCategory;
   profileIds: string[];

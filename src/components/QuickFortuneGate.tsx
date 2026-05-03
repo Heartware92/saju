@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
-import { findRecentArchive, type ArchiveCategory } from '../services/archiveService';
+import { findRecentArchive, findArchiveList, type ArchiveCategory } from '../services/archiveService';
 
 export interface QuickFortuneGateProps {
   serviceName: string;
@@ -38,7 +38,8 @@ export function QuickFortuneGate({
   const [initialized, setInitialized] = useState(profiles.length > 0);
   const [checking, setChecking] = useState(true);
   const [archive, setArchive] = useState<{ id: string; created_at: string } | null>(null);
-  const [modalType, setModalType] = useState<'credit' | 'existing' | 'insufficient' | null>(null);
+  const [archiveList, setArchiveList] = useState<{ id: string; created_at: string; context_date?: string }[]>([]);
+  const [modalType, setModalType] = useState<'credit' | 'existing' | 'date-list' | 'insufficient' | null>(null);
 
   const balance = creditType === 'sun' ? sunBalance : moonBalance;
   const creditLabel = creditType === 'sun' ? '☀️ 해' : '🌙 달';
@@ -68,38 +69,59 @@ export function QuickFortuneGate({
     }
   }, [initialized, profiles, user, router, onClose]);
 
+  const isDateList = archiveCategory === 'period' && !archiveContext;
+
   useEffect(() => {
     if (!initialized || !primaryProfile) return;
     let cancelled = false;
     setChecking(true);
-    findRecentArchive({
-      category: archiveCategory,
-      birth_date: primaryProfile.birth_date,
-      gender: primaryProfile.gender,
-      profile_id: primaryProfile.id,
-      context: archiveContext,
-    }).then(found => {
-      if (!cancelled) {
-        setArchive(found);
-        setChecking(false);
-      }
-    }).catch(() => {
-      if (!cancelled) setChecking(false);
-    });
+
+    if (isDateList) {
+      findArchiveList({
+        category: archiveCategory,
+        birth_date: primaryProfile.birth_date,
+        gender: primaryProfile.gender,
+        profile_id: primaryProfile.id,
+      }).then(list => {
+        if (!cancelled) {
+          setArchiveList(list);
+          setChecking(false);
+        }
+      }).catch(() => {
+        if (!cancelled) setChecking(false);
+      });
+    } else {
+      findRecentArchive({
+        category: archiveCategory,
+        birth_date: primaryProfile.birth_date,
+        gender: primaryProfile.gender,
+        profile_id: primaryProfile.id,
+        context: archiveContext,
+      }).then(found => {
+        if (!cancelled) {
+          setArchive(found);
+          setChecking(false);
+        }
+      }).catch(() => {
+        if (!cancelled) setChecking(false);
+      });
+    }
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialized, primaryProfile?.id, archiveCategory, contextKey]);
+  }, [initialized, primaryProfile?.id, archiveCategory, contextKey, isDateList]);
 
   useEffect(() => {
     if (checking) return;
-    if (archive) {
+    if (isDateList && archiveList.length > 0) {
+      setModalType('date-list');
+    } else if (archive) {
       setModalType('existing');
     } else if (balance < creditCost) {
       setModalType('insufficient');
     } else {
       setModalType('credit');
     }
-  }, [checking, archive, balance, creditCost]);
+  }, [checking, archive, archiveList, balance, creditCost, isDateList]);
 
   const navigate = useCallback(
     (extra?: string) => {
@@ -182,7 +204,7 @@ export function QuickFortuneGate({
               transition={{ duration: 0.15 }}
             >
               <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[rgba(124,92,252,0.18)] border border-cta/40 flex items-center justify-center text-2xl">
-                {modalType === 'existing' ? '📜' : modalType === 'insufficient' ? '💳' : creditType === 'sun' ? '☀️' : '🌙'}
+                {modalType === 'date-list' ? '📅' : modalType === 'existing' ? '📜' : modalType === 'insufficient' ? '💳' : creditType === 'sun' ? '☀️' : '🌙'}
               </div>
 
               {primaryProfile && (
@@ -204,6 +226,42 @@ export function QuickFortuneGate({
                     <button type="button" onClick={handleNewReading} className="block w-full h-12 rounded-lg border border-cta/40 text-cta font-semibold text-[15px] hover:bg-cta/10 transition-all">
                       새로 풀이 받기
                       <span className="block text-[12px] font-normal text-text-tertiary mt-0.5">{creditLabel} {creditCost}개 소모</span>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {modalType === 'date-list' && (
+                <>
+                  <h3 className="text-[17px] font-bold text-text-primary mb-2">이전에 본 날짜가 있어요</h3>
+                  <p className="text-[14px] text-text-secondary leading-relaxed mb-3">
+                    다시 보고 싶은 날짜를 선택하세요.
+                  </p>
+                  <div className="max-h-[200px] overflow-y-auto space-y-1.5 mb-4 px-1">
+                    {archiveList.map(item => {
+                      const dateLabel = item.context_date
+                        ? item.context_date.replace(/-/g, '.')
+                        : new Date(item.created_at).toLocaleDateString('ko-KR');
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => navigate(`&recordId=${item.id}`)}
+                          className="w-full h-10 rounded-lg border border-[var(--border-subtle)] text-[14px] text-text-primary font-medium hover:bg-cta/10 hover:border-cta/40 transition-all flex items-center justify-center gap-2"
+                        >
+                          <span>{dateLabel}</span>
+                          <span className="text-[12px] text-text-tertiary">결과 보기</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="space-y-2.5">
+                    <button type="button" onClick={handleNewReading} className="block w-full h-12 rounded-lg bg-gradient-to-r from-cta to-cta-active text-white font-bold text-[15px] hover:opacity-90 transition-all">
+                      새 날짜로 풀이 받기
+                      <span className="block text-[12px] font-normal text-white/70 mt-0.5">{creditLabel} {creditCost}개 소모</span>
+                    </button>
+                    <button type="button" onClick={handleClose} className="block w-full h-12 rounded-lg border border-[var(--border-subtle)] text-text-secondary font-medium text-[15px] hover:bg-white/5 transition-all">
+                      취소
                     </button>
                   </div>
                 </>
