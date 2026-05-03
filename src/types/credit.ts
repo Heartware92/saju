@@ -69,6 +69,8 @@ export interface SajuRecord {
   /** 궁합용 — 상대방 이름·생일 스냅샷. */
   partner_name?: string | null;
   partner_birth_date?: string | null;
+  /** 공유 링크용 토큰 — 최초 공유 시 생성 */
+  share_token?: string | null;
 }
 
 export interface TarotRecord {
@@ -81,6 +83,8 @@ export interface TarotRecord {
   credit_type?: CreditType;
   credit_used: number;
   created_at: string;
+  /** 공유 링크용 토큰 */
+  share_token?: string | null;
 }
 
 /**

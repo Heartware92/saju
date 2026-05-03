@@ -70,10 +70,10 @@ interface ArchiveSajuParams {
  * 매칭 키: user_id + birth_date + gender (calendar_type 까지 일치하면 더 정확).
  * 동일 birth 프로필이 여러 개면 대표 → 생성순으로 첫 번째.
  */
-export async function archiveSaju(params: ArchiveSajuParams): Promise<void> {
+export async function archiveSaju(params: ArchiveSajuParams): Promise<string | null> {
   try {
     const user = await auth.getCurrentUser();
-    if (!user) return;
+    if (!user) return null;
 
     type Profile = {
       id: string;
@@ -141,7 +141,7 @@ export async function archiveSaju(params: ArchiveSajuParams): Promise<void> {
         }
       : null);
 
-    if (!birth) return;
+    if (!birth) return null;
 
     const payload = {
       user_id: user.id,
@@ -164,9 +164,11 @@ export async function archiveSaju(params: ArchiveSajuParams): Promise<void> {
       partner_birth_date: params.partner?.birth_date ?? null,
     };
 
-    await sajuDB.saveRecord(payload as unknown as Parameters<typeof sajuDB.saveRecord>[0]);
+    const saved = await sajuDB.saveRecord(payload as unknown as Parameters<typeof sajuDB.saveRecord>[0]);
+    return saved?.id ?? null;
   } catch (err) {
     console.error('[archive] saju save failed', err);
+    return null;
   }
 }
 
@@ -262,12 +264,12 @@ interface ArchiveTarotParams {
 }
 
 /** 타로 풀이 기록 저장. 인증·DB 실패는 콘솔에 명시 로그 (silent X) — 보관함 미저장 디버깅용. */
-export async function archiveTarot(params: ArchiveTarotParams): Promise<void> {
+export async function archiveTarot(params: ArchiveTarotParams): Promise<string | null> {
   try {
     const user = await auth.getCurrentUser();
     if (!user) {
       console.warn('[archive] tarot save SKIPPED — no auth user. spreadType=', params.spreadType);
-      return;
+      return null;
     }
 
     const payload = {
@@ -280,9 +282,10 @@ export async function archiveTarot(params: ArchiveTarotParams): Promise<void> {
       credit_used: params.creditUsed ?? 0,
     };
 
-    await tarotDB.saveRecord(payload as unknown as Parameters<typeof tarotDB.saveRecord>[0]);
-    console.log('[archive] tarot saved', { spreadType: params.spreadType, userId: user.id });
+    const saved = await tarotDB.saveRecord(payload as unknown as Parameters<typeof tarotDB.saveRecord>[0]);
+    return saved?.id ?? null;
   } catch (err) {
     console.error('[archive] tarot save FAILED', { spreadType: params.spreadType, err });
+    return null;
   }
 }

@@ -18,6 +18,7 @@ import { TODAY_SECTION_KEYS, TODAY_SECTION_LABELS, TODAY_SCORE_LABELS, type Toda
 import { AILoadingBar } from '../components/AILoadingBar';
 import { LuckyVisualCard, ELEMENT_LUCKY } from '../components/saju/LuckyVisualCard';
 import { useLoadingGuard } from '../hooks/useLoadingGuard';
+import { ShareBar } from '@/components/share/ShareBar';
 
 const TODAY_MESSAGES = [
   '일진과 원국의 오행을 대조하는 중입니다',
@@ -108,6 +109,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
   const [report, setReport] = useState<TodayFortuneAIResult | null>(null);
   const [reportLoading, setReportLoading] = useState(!isArchiveMode && !needsProfileSelect && confirmedDate !== null);
   const [archivedAt, setArchivedAt] = useState<string | null>(null);
+  const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
 
   const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
   const [refetchNonce, setRefetchNonce] = useState(0);
@@ -211,6 +213,7 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
           });
           if (cancelled) return;
           if (found) {
+            setSavedRecordId(found.id);
             setReportLoading(false);
             setCacheGate({
               kind: 'today',
@@ -577,6 +580,12 @@ export default function TodayFortunePage({ mode = 'today' }: { mode?: 'today' | 
               </motion.div>
             );
           })}
+        </div>
+      )}
+
+      {(recordId || savedRecordId) && (
+        <div className="mt-6">
+          <ShareBar recordId={(recordId || savedRecordId)!} type="saju" category="today" />
         </div>
       )}
 

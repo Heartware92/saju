@@ -33,6 +33,7 @@ import { AILoadingBar } from '../components/AILoadingBar';
 import { LuckyVisualCard, ELEMENT_LUCKY } from '../components/saju/LuckyVisualCard';
 import { TermChip } from '../components/ui/TermChip';
 import { useLoadingGuard } from '../hooks/useLoadingGuard';
+import { ShareBar } from '@/components/share/ShareBar';
 
 const NEWYEAR_MESSAGES = [
   '세운과 원국의 합충을 분석하는 중입니다',
@@ -240,6 +241,8 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
   const [pickedDateReport, setPickedDateReport] = useState<PickedDateReportAIResult | null>(null);
   const [pickedDateReportLoading, setPickedDateReportLoading] = useState(false);
 
+  const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
+
   // ── 캐시 게이트 ─ 캐시 hit 시 silent restore 대신 모달 띄움. 사용자가 [기존 보기] / [새로 풀이] 선택. ──
   const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
   const [refetchNonce, setRefetchNonce] = useState(0);
@@ -353,6 +356,7 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
             });
             if (cancelled) return;
             if (found) {
+              setSavedRecordId(found.id);
               setNewyearReportLoading(false);
               setPickedDateReportLoading(false);
               setCacheGate({
@@ -1039,6 +1043,12 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
       )}
 
       </>)}
+
+      {(recordId || savedRecordId) && (
+        <div className="mt-6">
+          <ShareBar recordId={(recordId || savedRecordId)!} type="saju" category={scope === 'year' ? 'newyear' : scope === 'date' ? 'period' : 'today'} />
+        </div>
+      )}
 
       <RestoreReportModal
         open={!!cacheGate}

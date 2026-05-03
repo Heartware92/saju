@@ -28,6 +28,7 @@ import SajuReport from '../components/saju/SajuReport';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { BackButton } from '../components/ui/BackButton';
 import { useLoadingGuard } from '../hooks/useLoadingGuard';
+import { ShareBar } from '@/components/share/ShareBar';
 
 // 정통사주 = AI 풀이 가치, 만세력 = 무료 데이터.
 // 사용자가 풀이 맥락을 알 수 있도록 핵심 요약만 카드로 노출하고
@@ -66,6 +67,7 @@ export default function SajuResultPage() {
   const [result, setResult] = useState<SajuResult | null>(null);
   const [report, setReport] = useState<JungtongsajuAIResult | null>(null);
   const [reportLoading, setReportLoading] = useState(!isArchiveMode && !needsProfileSelect);
+  const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
 
   const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
   const [refetchNonce, setRefetchNonce] = useState(0);
@@ -188,6 +190,7 @@ export default function SajuResultPage() {
           });
           if (cancelled) return;
           if (found) {
+            setSavedRecordId(found.id);
             setReportLoading(false);
             setCacheGate({
               kind: 'jungtong',
@@ -516,6 +519,12 @@ export default function SajuResultPage() {
             </div>
           </div>
         </motion.div>
+      )}
+
+      {(recordId || savedRecordId) && (
+        <div className="mt-6">
+          <ShareBar recordId={(recordId || savedRecordId)!} type="saju" category="traditional" />
+        </div>
       )}
 
       <RestoreReportModal

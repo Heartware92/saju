@@ -32,6 +32,7 @@ import {
 import { getTaekilAdvice } from '../services/fortuneService';
 import { useLoadingGuard } from '../hooks/useLoadingGuard';
 import styles from './SajuResultPage.module.css';
+import { ShareBar } from '@/components/share/ShareBar';
 
 const GRADE_COLOR: Record<TaekilGrade, string> = {
   '대길': '#34D399',
@@ -119,6 +120,7 @@ export default function TaekilPage() {
     }
   }, [aiTimedOut, aiAdvice]);
 
+  const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
   const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
   const [refetchNonce, setRefetchNonce] = useState(0);
   const handleUseCached = () => { cacheGate?.restore(); setCacheGate(null); };
@@ -194,6 +196,7 @@ export default function TaekilPage() {
       profile_id: targetProfile.id,
     }).then(found => {
       if (cancelled || !found) return;
+      setSavedRecordId(found.id);
       setCacheGate({
         kind: 'taekil',
         key: '',
@@ -1011,6 +1014,12 @@ export default function TaekilPage() {
 
         </motion.div>
       </div>
+
+      {(recordId || savedRecordId) && (
+        <div style={{ marginTop: 24, padding: '0 16px' }}>
+          <ShareBar recordId={(recordId || savedRecordId)!} type="saju" category="taekil" />
+        </div>
+      )}
 
       <RestoreReportModal
         open={!!cacheGate}

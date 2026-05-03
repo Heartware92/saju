@@ -17,6 +17,7 @@ import { sajuDB, tarotDB } from '../services/supabase';
 import { useUserStore } from '../store/useUserStore';
 import { SAJU_CATEGORY_LABEL, TAROT_SPREAD_LABEL } from '../constants/adminLabels';
 import type { SajuRecord, TarotRecord } from '../types/credit';
+import { ShareBar } from '@/components/share/ShareBar';
 
 type TabType = 'saju' | 'tarot';
 
@@ -241,24 +242,27 @@ export default function ArchivePage() {
                           </div>
                         </Card>
                       </Link>
-                      {/* 삭제 버튼 — Link 외부 absolute 로 배치해서 카드 클릭 충돌 방지 */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setPendingDelete({ kind: 'saju', id: record.id, label: categoryLabel });
-                        }}
-                        className="absolute bottom-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center text-text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                        aria-label={`${categoryLabel} 기록 삭제`}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                          <path d="M10 11v6M14 11v6" />
-                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                        </svg>
-                      </button>
+                      {/* 공유 + 삭제 버튼 — Link 외부 absolute 로 배치해서 카드 클릭 충돌 방지 */}
+                      <div className="absolute bottom-2 right-2 flex items-center gap-0.5">
+                        <ShareBar recordId={record.id} type="saju" category={record.category} compact />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setPendingDelete({ kind: 'saju', id: record.id, label: categoryLabel });
+                          }}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                          aria-label={`${categoryLabel} 기록 삭제`}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                            <path d="M10 11v6M14 11v6" />
+                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   );
                 })
@@ -297,23 +301,26 @@ export default function ArchivePage() {
                           </div>
                         </Card>
                       </Link>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setPendingDelete({ kind: 'tarot', id: record.id, label: spreadLabel });
-                        }}
-                        className="absolute bottom-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center text-text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                        aria-label={`${spreadLabel} 기록 삭제`}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                          <path d="M10 11v6M14 11v6" />
-                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                        </svg>
-                      </button>
+                      <div className="absolute bottom-2 right-2 flex items-center gap-0.5">
+                        <ShareBar recordId={record.id} type="tarot" category={record.spread_type} compact />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setPendingDelete({ kind: 'tarot', id: record.id, label: spreadLabel });
+                          }}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                          aria-label={`${spreadLabel} 기록 삭제`}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                            <path d="M10 11v6M14 11v6" />
+                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   );
                 })

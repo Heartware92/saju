@@ -43,6 +43,7 @@ import { AILoadingBar } from '../components/AILoadingBar';
 import { useLoadingGuard } from '../hooks/useLoadingGuard';
 import type { SajuResult } from '../utils/sajuCalculator';
 import { STEM_TO_HANJA, ZHI_TO_HANJA, STEM_TO_ELEMENT, ELEMENT_CELL_COLORS, type Element } from '../lib/character';
+import { ShareBar } from '@/components/share/ShareBar';
 
 // ──────────────────────────────────────────────
 // 카테고리 그룹 정의
@@ -262,6 +263,7 @@ export default function GunghapPage() {
   const [otherSajuResult, setOtherSajuResult] = useState<SajuResult | null>(null);
   const [gunghapTitle, setGunghapTitle] = useState('');
   const [gunghapScore, setGunghapScore] = useState<number | null>(null);
+  const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
 
   // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
   const [loadingTimedOut] = useLoadingGuard(loading, 70_000);
@@ -354,6 +356,7 @@ export default function GunghapPage() {
       gender: primaryProfile.gender,
     }).then(found => {
       if (cancelled || !found) return;
+      setSavedRecordId(found.id);
       setCacheGate({
         kind: 'gunghap',
         key: '',
@@ -1181,6 +1184,12 @@ export default function GunghapPage() {
                 다른 상대 분석
               </button>
             </div>
+
+            {(recordId || savedRecordId) && (
+              <div className="mt-6">
+                <ShareBar recordId={(recordId || savedRecordId)!} type="saju" category="gunghap" />
+              </div>
+            )}
 
           </motion.div>
         )}

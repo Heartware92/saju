@@ -16,6 +16,7 @@ import { tarotDB } from '../services/supabase';
 import { TAROT_DECK, ELEMENT_COLORS, getCardImg, type TarotCard } from '../engine/tarot/deck';
 import { TAROT_SPREAD_LABEL } from '../constants/adminLabels';
 import { BackButton } from '../components/ui/BackButton';
+import { ShareBar } from '@/components/share/ShareBar';
 
 interface SavedCard {
   card: TarotCard;
@@ -240,6 +241,12 @@ export default function TarotResultPage() {
           새로 카드 뽑기
         </button>
       </div>
+
+      {recordId && (
+        <div className="mt-6">
+          <ShareBar recordId={recordId} type="tarot" category={spreadType || 'tarot'} />
+        </div>
+      )}
     </motion.div>
   );
 }

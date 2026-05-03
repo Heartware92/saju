@@ -23,6 +23,7 @@ import { AILoadingBar } from '../components/AILoadingBar';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { BackButton } from '../components/ui/BackButton';
 import { useLoadingGuard } from '../hooks/useLoadingGuard';
+import { ShareBar } from '@/components/share/ShareBar';
 
 const TOJEONG_MESSAGES = [
   '괘의 상징을 풀어 쓰는 중입니다',
@@ -69,6 +70,7 @@ export default function TojeongResultPage() {
     }
   }, [aiTimedOut, aiContent]);
 
+  const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
   const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
   const [refetchNonce, setRefetchNonce] = useState(0);
   const handleUseCached = () => { cacheGate?.restore(); setCacheGate(null); };
@@ -176,6 +178,7 @@ export default function TojeongResultPage() {
           });
           if (cancelled) return;
           if (found) {
+            setSavedRecordId(found.id);
             setAiLoading(false);
             setCacheGate({
               kind: 'tojeong',
@@ -554,6 +557,12 @@ export default function TojeongResultPage() {
             </p>
           )}
         </section>
+      )}
+
+      {(recordId || savedRecordId) && (
+        <div className="mt-6">
+          <ShareBar recordId={(recordId || savedRecordId)!} type="saju" category="tojeong" />
+        </div>
       )}
 
       <RestoreReportModal

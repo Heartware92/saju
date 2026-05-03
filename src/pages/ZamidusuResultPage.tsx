@@ -39,6 +39,7 @@ import { AILoadingBar } from '../components/AILoadingBar';
 import { BackButton } from '../components/ui/BackButton';
 import { StarChart } from '../components/zamidusu/StarChart';
 import { useLoadingGuard } from '../hooks/useLoadingGuard';
+import { ShareBar } from '@/components/share/ShareBar';
 
 const LOADING_MESSAGES = [
   '명반 12궁의 별자리를 배치하는 중입니다',
@@ -80,6 +81,7 @@ export default function ZamidusuResultPage() {
   }, [aiTimedOut, aiResult]);
   const chargeForContent = useCreditStore(s => s.chargeForContent);
 
+  const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
   const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
   const [refetchNonce, setRefetchNonce] = useState(0);
   const handleUseCached = () => { cacheGate?.restore(); setCacheGate(null); };
@@ -227,6 +229,7 @@ export default function ZamidusuResultPage() {
           });
           if (cancelled) return;
           if (found) {
+            setSavedRecordId(found.id);
             setAiLoading(false);
             setCacheGate({
               kind: 'zamidusu',
@@ -934,6 +937,12 @@ export default function ZamidusuResultPage() {
         )}
 
       </motion.div>
+
+      {(recordId || savedRecordId) && (
+        <div style={{ marginTop: 24, padding: '0 16px' }}>
+          <ShareBar recordId={(recordId || savedRecordId)!} type="saju" category="zamidusu" />
+        </div>
+      )}
 
       <RestoreReportModal
         open={!!cacheGate}

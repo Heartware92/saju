@@ -48,6 +48,7 @@ import { DreamInputPanel } from '../components/dream/DreamInputPanel';
 import { BackButton } from '../components/ui/BackButton';
 import { useLoadingGuard } from '../hooks/useLoadingGuard';
 import styles from './SajuResultPage.module.css';
+import { ShareBar } from '@/components/share/ShareBar';
 
 interface Props {
   /** 카테고리 id. /saju/more/[category] 동적 라우트에서 주입된다. */
@@ -109,6 +110,7 @@ export default function MoreFortunePage({ category }: Props) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
 
   // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
   const [loadingTimedOut] = useLoadingGuard(loading, 70_000);
@@ -205,6 +207,7 @@ export default function MoreFortunePage({ category }: Props) {
       profile_id: targetProfile.id,
     }).then(found => {
       if (cancelled || !found) return;
+      setSavedRecordId(found.id);
       setCacheGate({
         kind: `more:${category}` as const,
         key: '',
@@ -716,6 +719,12 @@ export default function MoreFortunePage({ category }: Props) {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {(recordId || savedRecordId) && result && (
+          <div style={{ marginTop: 16, padding: '0 16px' }}>
+            <ShareBar recordId={(recordId || savedRecordId)!} type="saju" category={category || 'traditional'} />
+          </div>
+        )}
       </motion.div>
 
       <RestoreReportModal
