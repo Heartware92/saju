@@ -1152,12 +1152,13 @@ const getKongmangZhis = (dayGan: string, dayZhi: string): [string, string] | nul
 };
 
 const calculateSeWoon = (dayGan: string, currentYear: number, yearZhiBirth: string = ''): SeWoon[] => {
-  const seWoons: SeWoon[] = [];
-
-  // 다른 어플처럼 과거~미래를 함께 보여준다 — 현재년 -7 ~ +4 (총 12년)
-  // 자동 센터 스크롤이 currentYear 카드를 가운데로 끌어다 놓는다.
   const startYear = currentYear - 7;
-  for (let i = 0; i < 12; i++) {
+  return calculateSeWoonRange(dayGan, startYear, 12, yearZhiBirth);
+};
+
+export const calculateSeWoonRange = (dayGan: string, startYear: number, count: number, yearZhiBirth: string = ''): SeWoon[] => {
+  const seWoons: SeWoon[] = [];
+  for (let i = 0; i < count; i++) {
     const year = startYear + i;
     const solar = Solar.fromYmd(year, 6, 15);
     const lunar = solar.getLunar();
@@ -1179,7 +1180,6 @@ const calculateSeWoon = (dayGan: string, currentYear: number, yearZhiBirth: stri
       animal: getAnimal(zhi)
     });
   }
-
   return seWoons;
 };
 

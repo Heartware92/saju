@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SajuResult, TEN_GODS_MAP, type Interaction, type SinSal } from '../../utils/sajuCalculator';
+import { SajuResult, TEN_GODS_MAP, calculateSeWoonRange, type Interaction, type SinSal } from '../../utils/sajuCalculator';
 import { determineGyeokguk, analyzeGyeokgukStatus } from '../../engine/gyeokguk';
 import { stemToHanja, zhiToHanja } from '../../lib/character';
 import { buildMonthlyFlow, type FortuneGrade } from '../../engine/periodFortune';
@@ -1087,6 +1087,7 @@ function DaeWoonSection({
   const birthYear = parseInt(result.solarDate.split('-')[0]);
   const currentYear = new Date().getFullYear();
   const currentAge = currentYear - birthYear;
+  const yearZhi = result.pillars.year.zhi;
 
   // 사용자가 선택한 대운(시작 나이) — 진입 즉시 현재 대운 자동 펼침
   const [selectedDwAge, setSelectedDwAge] = useState<number | null>(() => {
@@ -1096,15 +1097,28 @@ function DaeWoonSection({
     }
     return null;
   });
-  // 사용자가 선택한 세운(연도) — 진입 즉시 현재 연도 자동 펼침
-  const [selectedYear, setSelectedYear] = useState<number | null>(currentYear);
+  // 사용자가 선택한 세운(연도)
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
-  // 선택된 대운의 [시작 연도, 끝 연도] — 세운 영역에서 그 범위만 강조
+  // 선택된 대운의 [시작 연도, 끝 연도]
   const selectedDwRange = useMemo(() => {
     if (selectedDwAge == null) return null;
     const startYear = birthYear + selectedDwAge;
     return { startYear, endYear: startYear + 9 };
   }, [selectedDwAge, birthYear]);
+
+  // 대운 선택에 따라 세운 10년분 동적 계산
+  const displaySeWoon = useMemo(() => {
+    if (selectedDwRange) {
+      return calculateSeWoonRange(result.dayMaster, selectedDwRange.startYear, 10, yearZhi);
+    }
+    return seWoon;
+  }, [selectedDwRange, result.dayMaster, yearZhi, seWoon]);
+
+  // 대운 변경 시 세운 선택 초기화
+  useEffect(() => {
+    setSelectedYear(null);
+  }, [selectedDwAge]);
 
   // 선택된 연도의 월운 — 클릭 시점에만 계산
   const monthlyFlow = useMemo(() => {
@@ -1124,26 +1138,6 @@ function DaeWoonSection({
       container.scrollLeft = Math.max(0, offset);
     }
   }, []);
-
-  useEffect(() => {
-    if (currentSwRef.current && swScrollRef.current) {
-      const container = swScrollRef.current;
-      const card = currentSwRef.current;
-      const offset = card.offsetLeft - container.offsetLeft - container.clientWidth / 2 + card.clientWidth / 2;
-      container.scrollLeft = Math.max(0, offset);
-    }
-  }, []);
-
-  // 대운 선택 시 세운 영역에서 해당 범위 첫 카드로 스크롤
-  useEffect(() => {
-    if (!selectedDwRange || !swScrollRef.current) return;
-    const container = swScrollRef.current;
-    const targetCard = container.querySelector<HTMLElement>(`[data-sw-year="${selectedDwRange.startYear}"]`);
-    if (targetCard) {
-      const offset = targetCard.offsetLeft - container.offsetLeft - container.clientWidth / 2 + targetCard.clientWidth / 2;
-      container.scrollTo({ left: Math.max(0, offset), behavior: 'smooth' });
-    }
-  }, [selectedDwRange]);
 
   const monthlyGradeColor: Record<FortuneGrade, string> = {
     '대길': '#34D399', '길': '#86EFAC', '중길': '#FBBF24',
@@ -1191,28 +1185,24 @@ function DaeWoonSection({
         세운 (연운)
         {selectedDwRange && (
           <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 400 }}>
-            · {selectedDwRange.startYear}~{selectedDwRange.endYear}년 강조 중
+            · {selectedDwRange.startYear}~{selectedDwRange.endYear}년
           </span>
         )}
       </div>
       <div className={styles.daewoonScroll} ref={swScrollRef}>
-        {[...seWoon].reverse().map((sw, idx) => {
+        {displaySeWoon.map((sw) => {
           const isCurrent = sw.year === currentYear;
-          const inDwRange = selectedDwRange && sw.year >= selectedDwRange.startYear && sw.year <= selectedDwRange.endYear;
           const isSelected = selectedYear === sw.year;
-          // 대운 선택돼있고 그 범위 밖이면 흐리게
-          const dimmed = selectedDwRange && !inDwRange;
           return (
             <div
               role="button"
               tabIndex={0}
-              key={idx}
+              key={sw.year}
               ref={isCurrent ? currentSwRef : undefined}
               data-sw-year={sw.year}
               onClick={() => setSelectedYear(isSelected ? null : sw.year)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedYear(isSelected ? null : sw.year); } }}
               className={`${styles.sewoonCard} ${isCurrent ? styles.current : ''} ${isSelected ? styles.selected : ''}`}
-              style={dimmed ? { opacity: 0.35 } : undefined}
               aria-pressed={isSelected}
             >
               <div className={styles.swYear}>{sw.year}년</div>
