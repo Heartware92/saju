@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('[admin/account-deletions] query failed:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: '데이터 조회에 실패했습니다.' }, { status: 500 });
     }
 
     // 사유 카테고리별 집계 (현재 페이지 외 전체 통계)
@@ -71,6 +71,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('[admin/account-deletions] unexpected:', error);
-    return NextResponse.json({ error: error?.message || '서버 오류' }, { status: 500 });
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }

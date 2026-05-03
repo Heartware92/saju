@@ -14,7 +14,10 @@ import {
   pillarToHanja,
   STEM_TO_ELEMENT,
 } from '../lib/character';
-import { MORE_FORTUNE_CONFIGS, MORE_FORTUNE_ORDER } from '../constants/moreFortunes';
+import { MORE_FORTUNE_CONFIGS, MORE_FORTUNE_ORDER, MOON_COST_PER_FORTUNE } from '../constants/moreFortunes';
+import { SUN_COST_BIG } from '../constants/creditCosts';
+import { QuickFortuneGate, type QuickFortuneGateProps } from '../components/QuickFortuneGate';
+import type { ArchiveCategory } from '../services/archiveService';
 import MoonPhase from '../components/MoonPhase';
 
 /**
@@ -114,10 +117,38 @@ const fadeUp = {
 };
 
 
+type GateConfig = Omit<QuickFortuneGateProps, 'onClose'>;
+
+function buildGateConfig(path: string): GateConfig | null {
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  const GATE_SERVICES: Record<string, GateConfig> = {
+    '/saju/today': { serviceName: '오늘의 운세', archiveCategory: 'today' as ArchiveCategory, archiveContext: { key: 'isoDate', value: todayIso }, creditType: 'sun', creditCost: SUN_COST_BIG, targetPath: '/saju/today' },
+    '/saju/date': { serviceName: '지정일 운세', archiveCategory: 'period' as ArchiveCategory, creditType: 'sun', creditCost: SUN_COST_BIG, targetPath: '/saju/date' },
+    '/saju/taekil': { serviceName: '택일 운세', archiveCategory: 'taekil' as ArchiveCategory, creditType: 'sun', creditCost: SUN_COST_BIG, targetPath: '/saju/taekil' },
+    '/saju/tojeong': { serviceName: '토정비결', archiveCategory: 'tojeong' as ArchiveCategory, creditType: 'sun', creditCost: SUN_COST_BIG, targetPath: '/saju/tojeong' },
+    '/saju/zamidusu': { serviceName: '자미두수', archiveCategory: 'zamidusu' as ArchiveCategory, creditType: 'sun', creditCost: SUN_COST_BIG, targetPath: '/saju/zamidusu' },
+  };
+
+  if (GATE_SERVICES[path]) return GATE_SERVICES[path];
+
+  const moreMatch = path.match(/^\/saju\/more\/(.+)$/);
+  if (moreMatch) {
+    const category = moreMatch[1];
+    const cfg = (MORE_FORTUNE_CONFIGS as Record<string, (typeof MORE_FORTUNE_CONFIGS)[keyof typeof MORE_FORTUNE_CONFIGS]>)[category];
+    if (cfg) {
+      return { serviceName: cfg.title, archiveCategory: category as ArchiveCategory, creditType: 'moon', creditCost: MOON_COST_PER_FORTUNE, targetPath: path };
+    }
+  }
+
+  return null;
+}
+
 export default function HomePage() {
   const { user } = useUserStore();
   const { profiles, fetchProfiles, loading: profilesLoading } = useProfileStore();
   const [imgError, setImgError] = useState(false);
+  const [activeGate, setActiveGate] = useState<GateConfig | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -150,7 +181,12 @@ export default function HomePage() {
       router.push(`/login?from=${targetPath}`);
       return;
     }
-    router.push(targetPath);
+    const gate = buildGateConfig(targetPath);
+    if (gate) {
+      setActiveGate(gate);
+    } else {
+      router.push(targetPath);
+    }
   }, [user, router]);
 
   return (
@@ -484,6 +520,14 @@ export default function HomePage() {
           </Link>
         </motion.div>
       </section>
+
+      {/* 서비스 진입 게이트 모달 */}
+      {activeGate && (
+        <QuickFortuneGate
+          {...activeGate}
+          onClose={() => setActiveGate(null)}
+        />
+      )}
 
     </div>
   );

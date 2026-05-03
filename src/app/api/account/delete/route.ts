@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('[delete-account] unexpected error:', error);
     return NextResponse.json(
-      { error: error?.message || '탈퇴 처리 중 오류가 발생했어요.' },
+      { error: '탈퇴 처리 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.' },
       { status: 500 },
     );
   }

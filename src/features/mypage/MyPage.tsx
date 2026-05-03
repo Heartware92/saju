@@ -238,7 +238,8 @@ const ChangePasswordModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       setDone(true);
       setTimeout(onClose, 1500);
     } catch (err: any) {
-      setError(err?.message || '비밀번호 변경 중 오류가 발생했어요.');
+      console.error('Password change error:', err);
+      setError('비밀번호 변경 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.');
     } finally {
       setLoading(false);
     }

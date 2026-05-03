@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     console.error('[payment/verify]', e);
     return NextResponse.json(
-      { success: false, error: e?.message ?? 'unknown error' },
+      { success: false, error: '결제 검증 중 오류가 발생했습니다.' },
       { status: 500 }
     );
   }

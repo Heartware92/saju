@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error('[SMS] Verify error:', err);
     return NextResponse.json(
-      { error: err?.message || '인증 확인에 실패했습니다.' },
+      { error: '인증 확인에 실패했습니다. 잠시 후 다시 시도해주세요.' },
       { status: 500 }
     );
   }

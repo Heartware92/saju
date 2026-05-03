@@ -59,7 +59,8 @@ export const LoginPage: React.FC = () => {
     try {
       await auth.signInWithProvider(pendingSocialProvider);
     } catch (err: any) {
-      setError(err?.message || '소셜 로그인 중 오류가 발생했습니다.');
+      console.error('Social login error:', err);
+      setError('소셜 로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     }
     setPendingSocialProvider(null);
   };
@@ -77,11 +78,13 @@ export const LoginPage: React.FC = () => {
       await login(email, password);
       router.replace('/');
     } catch (err: any) {
-      const msg = err?.message || '로그인에 실패했습니다.';
+      const msg = err?.message || '';
       if (msg.includes('Invalid login')) {
         setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+      } else if (msg.includes('Email not confirmed')) {
+        setError('이메일 인증이 완료되지 않았습니다. 메일함을 확인해주세요.');
       } else {
-        setError(msg);
+        setError('로그인에 실패했습니다. 잠시 후 다시 시도해주세요.');
       }
     }
   };

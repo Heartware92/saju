@@ -13,6 +13,7 @@ interface UserState {
   user: AuthUser | null;
   loading: boolean;
   error: string | null;
+  _hydrated: boolean;
 
   // Actions
   initialize: () => Promise<void>;
@@ -28,6 +29,7 @@ export const useUserStore = create<UserState>()(
       user: null,
       loading: false,
       error: null,
+      _hydrated: false,
 
       /**
        * 앱 초기화 시 인증 상태 확인
@@ -83,12 +85,14 @@ export const useUserStore = create<UserState>()(
           set({ loading: false });
         } catch (error: any) {
           console.error('Login error:', error);
-          set({
-            error: error.message === 'Invalid login credentials'
-              ? '이메일 또는 비밀번호가 올바르지 않습니다'
-              : error.message,
-            loading: false
-          });
+          const msg = error.message || '';
+          let userMsg = '로그인에 실패했습니다. 잠시 후 다시 시도해주세요.';
+          if (msg.includes('Invalid login')) {
+            userMsg = '이메일 또는 비밀번호가 올바르지 않습니다';
+          } else if (msg.includes('Email not confirmed')) {
+            userMsg = '이메일 인증이 완료되지 않았습니다. 메일함을 확인해주세요.';
+          }
+          set({ error: userMsg, loading: false });
           throw error;
         }
       },
@@ -111,12 +115,16 @@ export const useUserStore = create<UserState>()(
           }, 1000);
         } catch (error: any) {
           console.error('Signup error:', error);
-          set({
-            error: error.message === 'User already registered'
-              ? '이미 가입된 이메일입니다'
-              : error.message,
-            loading: false
-          });
+          const msg = error.message || '';
+          let userMsg = '회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.';
+          if (msg.includes('already registered') || msg.includes('already been registered')) {
+            userMsg = '이미 가입된 이메일입니다';
+          } else if (msg.includes('weak_password') || msg.includes('too short')) {
+            userMsg = '비밀번호가 너무 짧습니다. 6자 이상 입력해주세요.';
+          } else if (msg.includes('invalid') && msg.includes('email')) {
+            userMsg = '올바른 이메일 형식이 아닙니다.';
+          }
+          set({ error: userMsg, loading: false });
           throw error;
         }
       },
@@ -160,7 +168,10 @@ export const useUserStore = create<UserState>()(
     }),
     {
       name: 'user-storage',
-      partialize: (state) => ({ user: state.user })
+      partialize: (state) => ({ user: state.user }),
+      onRehydrateStorage: () => () => {
+        useUserStore.setState({ _hydrated: true });
+      },
     }
   )
 );

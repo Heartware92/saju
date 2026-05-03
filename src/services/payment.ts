@@ -115,11 +115,14 @@ export const processPayment = async (
 
     // 5. 결제 실패
     if (response?.code !== undefined) {
+      const isCanceled = response.code === 'PAY_PROCESS_CANCELED' || response.code === 'USER_CANCEL';
       await orderDB.updateOrderStatus(order.id, 'failed');
       return {
         success: false,
         error: response.code,
-        message: response.message || '결제에 실패했습니다',
+        message: isCanceled
+          ? '결제를 취소하였습니다.'
+          : '결제에 실패했습니다. 잠시 후 다시 시도해 주세요.',
       };
     }
 
@@ -159,7 +162,7 @@ export const processPayment = async (
     return {
       success: false,
       error: 'PAYMENT_ERROR',
-      message: error?.message || '결제 처리 중 오류가 발생했습니다',
+      message: '결제 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
     };
   }
 };
@@ -200,7 +203,7 @@ export const handlePaymentCallback = async (
     return {
       success: false,
       error: 'CALLBACK_ERROR',
-      message: error?.message || '결제 콜백 처리 중 오류가 발생했습니다',
+      message: '결제 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
     };
   }
 };
@@ -251,7 +254,7 @@ export const requestRefund = async (orderId: string, reason?: string): Promise<P
     return {
       success: false,
       error: 'REFUND_ERROR',
-      message: error?.message || '환불 처리 중 오류가 발생했습니다',
+      message: '환불 처리 중 오류가 발생했습니다. 고객센터에 문의해주세요.',
     };
   }
 };

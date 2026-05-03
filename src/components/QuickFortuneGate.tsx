@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
@@ -14,6 +14,10 @@ export interface QuickFortuneGateProps {
   archiveContext?: { key: string; value: string };
   creditType: 'sun' | 'moon';
   creditCost: number;
+  /** 확인 후 이동할 경로 (미지정 시 현재 pathname 사용) */
+  targetPath?: string;
+  /** 모달 닫기 콜백 (미지정 시 router.back) */
+  onClose?: () => void;
 }
 
 export function QuickFortuneGate({
@@ -22,6 +26,8 @@ export function QuickFortuneGate({
   archiveContext,
   creditType,
   creditCost,
+  targetPath,
+  onClose,
 }: QuickFortuneGateProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -37,7 +43,12 @@ export function QuickFortuneGate({
   const balance = creditType === 'sun' ? sunBalance : moonBalance;
   const creditLabel = creditType === 'sun' ? '☀️ 해' : '🌙 달';
   const primaryProfile = profiles.find(p => p.is_primary) ?? profiles[0] ?? null;
-  const loading = !initialized || checking;
+  const navPath = targetPath ?? pathname;
+
+  const contextKey = useMemo(
+    () => (archiveContext ? `${archiveContext.key}:${archiveContext.value}` : ''),
+    [archiveContext],
+  );
 
   useEffect(() => {
     if (user) {
@@ -49,12 +60,17 @@ export function QuickFortuneGate({
 
   useEffect(() => {
     if (initialized && (!user || profiles.length === 0)) {
-      router.replace('/saju/input');
+      if (onClose) {
+        onClose();
+      } else {
+        router.replace('/saju/input');
+      }
     }
-  }, [initialized, profiles, user, router]);
+  }, [initialized, profiles, user, router, onClose]);
 
   useEffect(() => {
     if (!initialized || !primaryProfile) return;
+    let cancelled = false;
     setChecking(true);
     findRecentArchive({
       category: archiveCategory,
@@ -63,12 +79,16 @@ export function QuickFortuneGate({
       profile_id: primaryProfile.id,
       context: archiveContext,
     }).then(found => {
-      setArchive(found);
-      setChecking(false);
+      if (!cancelled) {
+        setArchive(found);
+        setChecking(false);
+      }
     }).catch(() => {
-      setChecking(false);
+      if (!cancelled) setChecking(false);
     });
-  }, [initialized, primaryProfile, archiveCategory, archiveContext]);
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialized, primaryProfile?.id, archiveCategory, contextKey]);
 
   useEffect(() => {
     if (checking) return;
@@ -84,9 +104,9 @@ export function QuickFortuneGate({
   const navigate = useCallback(
     (extra?: string) => {
       if (!primaryProfile) return;
-      router.push(`${pathname}?profileId=${primaryProfile.id}${extra ?? ''}`);
+      router.push(`${navPath}?profileId=${primaryProfile.id}${extra ?? ''}`);
     },
-    [pathname, router, primaryProfile],
+    [navPath, router, primaryProfile],
   );
 
   const handleViewExisting = useCallback(() => {
@@ -105,7 +125,13 @@ export function QuickFortuneGate({
     navigate('&fresh=1');
   }, [navigate]);
 
-  const goBack = useCallback(() => router.back(), [router]);
+  const handleClose = useCallback(() => {
+    if (onClose) {
+      onClose();
+    } else {
+      router.back();
+    }
+  }, [onClose, router]);
 
   if (!initialized && !user) return null;
 
@@ -116,7 +142,7 @@ export function QuickFortuneGate({
         animate={{ opacity: 1 }}
         transition={{ duration: 0.15 }}
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={goBack}
+        onClick={handleClose}
       />
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
@@ -126,7 +152,7 @@ export function QuickFortuneGate({
       >
         <button
           type="button"
-          onClick={goBack}
+          onClick={handleClose}
           className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full text-text-tertiary hover:text-text-primary hover:bg-white/10 transition-colors"
           aria-label="닫기"
         >
@@ -136,21 +162,17 @@ export function QuickFortuneGate({
         </button>
 
         <AnimatePresence mode="wait">
-          {loading ? (
+          {checking ? (
             <motion.div
-              key="skeleton"
+              key="checking"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.12 }}
-              className="py-2"
+              className="py-6 flex flex-col items-center gap-3"
             >
-              <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[rgba(124,92,252,0.12)] animate-pulse" />
-              <div className="h-4 w-32 mx-auto mb-3 rounded bg-white/8 animate-pulse" />
-              <div className="h-5 w-48 mx-auto mb-2 rounded bg-white/10 animate-pulse" />
-              <div className="h-4 w-56 mx-auto mb-5 rounded bg-white/6 animate-pulse" />
-              <div className="h-12 w-full rounded-lg bg-white/8 animate-pulse mb-2.5" />
-              <div className="h-12 w-full rounded-lg bg-white/5 animate-pulse" />
+              <div className="w-10 h-10 border-3 border-cta border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-text-tertiary">확인 중...</p>
             </motion.div>
           ) : (
             <motion.div
@@ -198,7 +220,7 @@ export function QuickFortuneGate({
                     <button type="button" onClick={handleConfirmCredit} className="block w-full h-12 rounded-lg bg-gradient-to-r from-cta to-cta-active text-white font-bold text-[15px] hover:opacity-90 transition-all">
                       풀이 받기
                     </button>
-                    <button type="button" onClick={goBack} className="block w-full h-12 rounded-lg border border-[var(--border-subtle)] text-text-secondary font-medium text-[15px] hover:bg-white/5 transition-all">
+                    <button type="button" onClick={handleClose} className="block w-full h-12 rounded-lg border border-[var(--border-subtle)] text-text-secondary font-medium text-[15px] hover:bg-white/5 transition-all">
                       취소
                     </button>
                   </div>
@@ -216,7 +238,7 @@ export function QuickFortuneGate({
                     <button type="button" onClick={() => router.push('/payment')} className="block w-full h-12 rounded-lg bg-gradient-to-r from-cta to-cta-active text-white font-bold text-[15px] hover:opacity-90 transition-all">
                       크레딧 충전하기
                     </button>
-                    <button type="button" onClick={goBack} className="block w-full h-12 rounded-lg border border-[var(--border-subtle)] text-text-secondary font-medium text-[15px] hover:bg-white/5 transition-all">
+                    <button type="button" onClick={handleClose} className="block w-full h-12 rounded-lg border border-[var(--border-subtle)] text-text-secondary font-medium text-[15px] hover:bg-white/5 transition-all">
                       취소
                     </button>
                   </div>

@@ -54,7 +54,8 @@ export default function PhoneVerifyPage() {
       setOtpVerified(false);
       setOtpCode('');
     } catch (err: any) {
-      setError(err?.message || '인증번호 발송에 실패했습니다.');
+      console.error('OTP send error:', err);
+      setError('인증번호 발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setOtpLoading(false);
     }
@@ -91,7 +92,8 @@ export default function PhoneVerifyPage() {
 
       router.replace('/');
     } catch (err: any) {
-      setError(err?.message || '인증번호가 올바르지 않습니다.');
+      console.error('OTP verify error:', err);
+      setError('인증번호가 올바르지 않습니다. 다시 확인해주세요.');
     } finally {
       setOtpLoading(false);
     }

@@ -42,7 +42,7 @@ export function BulkActionBar({ selectedIds, token, onClearSelection, onDone }: 
       onDone();
     } catch (e: any) {
       setResult({ success: 0, failed: count });
-      alert(`벌크 액션 실패: ${e.message}`);
+      alert('처리에 실패했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setBusy(false);
     }

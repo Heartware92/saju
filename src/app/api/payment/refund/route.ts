@@ -192,7 +192,7 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     console.error('[payment/refund]', e);
     return NextResponse.json(
-      { success: false, error: e?.message ?? 'unknown error' },
+      { success: false, error: '환불 처리 중 오류가 발생했습니다. 고객센터에 문의해주세요.' },
       { status: 500 }
     );
   }

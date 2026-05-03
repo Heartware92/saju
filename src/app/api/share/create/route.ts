@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     console.error('[share/create]', e);
     return NextResponse.json(
-      { success: false, error: e?.message ?? 'unknown error' },
+      { success: false, error: '공유 링크 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' },
       { status: 500 },
     );
   }

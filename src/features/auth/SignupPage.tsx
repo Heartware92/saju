@@ -89,7 +89,8 @@ export const SignupPage: React.FC = () => {
       setOtpVerified(false);
       setOtpCode('');
     } catch (err: any) {
-      setError(err?.message || '인증번호 발송에 실패했습니다.');
+      console.error('OTP send error:', err);
+      setError('인증번호 발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setOtpLoading(false);
     }
@@ -114,7 +115,8 @@ export const SignupPage: React.FC = () => {
       setOtpVerified(true);
       setOtpTimer(0);
     } catch (err: any) {
-      setError(err?.message || '인증번호가 올바르지 않습니다.');
+      console.error('OTP verify error:', err);
+      setError('인증번호가 올바르지 않습니다. 다시 확인해주세요.');
     } finally {
       setOtpLoading(false);
     }
@@ -165,7 +167,7 @@ export const SignupPage: React.FC = () => {
         router.replace('/');
       }, 1500);
     } catch (err: any) {
-      const msg = err?.message || '회원가입에 실패했습니다.';
+      const msg = err?.message || '';
       if (msg.includes('already registered') || msg.includes('already been registered')) {
         setError('이미 가입된 이메일입니다.');
       } else if (msg.includes('invalid') && msg.includes('email')) {
@@ -173,7 +175,7 @@ export const SignupPage: React.FC = () => {
       } else if (msg.includes('weak_password') || msg.includes('too short')) {
         setError('비밀번호가 너무 짧습니다. 6자 이상 입력해주세요.');
       } else {
-        setError(msg);
+        setError('회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
       }
     }
   };
