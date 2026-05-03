@@ -20,11 +20,11 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, message }) => {
-  const { user, loading, _hydrated } = useUserStore();
+  const { user, loading } = useUserStore();
   const pathname = usePathname();
 
-  // 1) persist 하이드레이션 전 또는 사용자 정보 로딩 중 — 잠시 스피너
-  if (!_hydrated || loading) {
+  // 1) 사용자 정보 로딩 중 — 잠시 스피너 (초기값 loading=true → initialize() 완료 시 false)
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg">
         <div className="text-center space-y-4">

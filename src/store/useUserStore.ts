@@ -13,7 +13,6 @@ interface UserState {
   user: AuthUser | null;
   loading: boolean;
   error: string | null;
-  _hydrated: boolean;
 
   // Actions
   initialize: () => Promise<void>;
@@ -27,9 +26,8 @@ export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
       user: null,
-      loading: false,
+      loading: true,
       error: null,
-      _hydrated: false,
 
       /**
        * 앱 초기화 시 인증 상태 확인
@@ -169,9 +167,6 @@ export const useUserStore = create<UserState>()(
     {
       name: 'user-storage',
       partialize: (state) => ({ user: state.user }),
-      onRehydrateStorage: () => () => {
-        useUserStore.setState({ _hydrated: true });
-      },
     }
   )
 );
