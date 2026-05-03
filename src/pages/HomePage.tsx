@@ -155,7 +155,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen">
       {/* 달 — 우상단 고정, 스크롤 시 자연스럽게 올라감 */}
-      <div className="absolute top-14 right-4 w-[76px] h-[76px] pointer-events-none opacity-35 z-[1]">
+      <div className="absolute top-14 right-4 w-[76px] h-[76px] pointer-events-none opacity-70 z-[1]">
         <div
           className="absolute inset-[-30px] rounded-full"
           style={{
