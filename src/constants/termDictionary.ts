@@ -4,7 +4,7 @@
  * 톤: 학술적 용어 최소화, 실생활 언어로 2문장 이내.
  */
 
-export type TermCategory = 'sipsung' | 'grade' | 'ganzhi' | 'concept' | 'stage' | 'stem' | 'branch';
+export type TermCategory = 'sipsung' | 'grade' | 'ganzhi' | 'concept' | 'stage' | 'stem' | 'branch' | 'sinsal';
 
 export interface TermEntry {
   term: string;
@@ -194,6 +194,20 @@ export const TERM_DICTIONARY: Record<string, TermEntry> = {
   '유': { term: '유', category: 'branch', short: '닭띠 · 금(金) 기운', description: '유시(17:00~19:00)에 해당하는 금 기운. 정확하고 섬세하며 결실의 에너지예요.' },
   '술': { term: '술', category: 'branch', short: '개띠 · 토(土) 기운', description: '술시(19:00~21:00)에 해당하는 토 기운. 충직하고 의리있으며 저녁의 마무리 에너지예요.' },
   '해': { term: '해(지지)', category: 'branch', short: '돼지띠 · 수(水) 기운', description: '해시(21:00~23:00)에 해당하는 수 기운. 관대하고 낙천적이며 풍요의 에너지예요.' },
+
+  // ── 12신살(十二神殺) ─────────────────────────────────────────────
+  '겁살': { term: '겁살', category: 'sinsal', short: '갑작스러운 변동', description: '예기치 못한 재물 손실이나 갑작스러운 변화가 올 수 있는 기운. 도난·사고에 주의하고, 무리한 투자는 피하세요.' },
+  '재살': { term: '재살', category: 'sinsal', short: '재앙·재난 주의', description: '뜻밖의 재난이나 사고를 조심해야 하는 기운. 안전에 각별히 신경 쓰고 위험한 활동은 자제하세요.' },
+  '천살': { term: '천살', category: 'sinsal', short: '하늘에서 오는 재앙', description: '자연재해·불가항력적 사건처럼 통제하기 어려운 일이 생길 수 있는 기운. 겸손함과 대비가 필요해요.' },
+  '지살': { term: '지살', category: 'sinsal', short: '이동·변동의 기운', description: '땅에서 오는 변동. 이사, 직장 이동 등 환경 변화가 생기기 쉬워요. 변화를 잘 활용하면 좋은 기회가 됩니다.' },
+  '도화': { term: '도화', category: 'sinsal', short: '매력·인기의 기운', description: '이성을 끄는 매력과 인기가 높아지는 기운. 연예·예술·대인관계에 유리하지만, 과하면 구설수에 주의하세요.' },
+  '월살': { term: '월살', category: 'sinsal', short: '고립·외로움의 기운', description: '주변과 단절되거나 고립감을 느끼기 쉬운 기운. 가족·친구와의 관계를 돌보고 소통에 신경 쓰세요.' },
+  '망신': { term: '망신', category: 'sinsal', short: '실수·체면 손상', description: '실수로 인한 망신이나 체면 손상이 올 수 있는 기운. 말과 행동을 신중히 하고, 과시를 삼가세요.' },
+  '장성': { term: '장성', category: 'sinsal', short: '권위·리더십의 기운', description: '장군의 별처럼 통솔력과 권위가 높아지는 기운. 리더 역할에 유리하고 승진·권한 확대의 기회가 와요.' },
+  '반안': { term: '반안', category: 'sinsal', short: '안정·편안함의 기운', description: '안장 위에 편히 앉은 것처럼 안정적인 기운. 여행·이동이 순조롭고 편안한 시기예요.' },
+  '역마': { term: '역마', category: 'sinsal', short: '이동·활동의 기운', description: '역참의 말처럼 바쁘게 움직이는 기운. 해외·여행·이직 등 이동수가 많아요. 활동적인 일에 유리합니다.' },
+  '육해': { term: '육해', category: 'sinsal', short: '육친 간 갈등', description: '가까운 사람(가족·친척)과 갈등이 생기기 쉬운 기운. 관계에서 양보와 이해가 필요한 시기예요.' },
+  '화개': { term: '화개', category: 'sinsal', short: '학문·예술·영성의 기운', description: '학문이나 종교, 예술에 몰두하는 기운. 고독하지만 깊이 있는 탐구에 유리해요. 영적·철학적 성향이 강해져요.' },
 };
 
 /**

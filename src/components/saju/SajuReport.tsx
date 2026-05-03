@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SajuResult, TEN_GODS_MAP, type Interaction, type SinSal } from '../../utils/sajuCalculator';
 import { determineGyeokguk, analyzeGyeokgukStatus } from '../../engine/gyeokguk';
@@ -141,6 +142,36 @@ function TermTap({ text, className, hint }: { text: string; className?: string; 
   const [open, setOpen] = useState(false);
   const entry = resolveTerm(text, hint);
   if (!entry) return <span className={className}>{text}</span>;
+
+  const popover = (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className={styles.termBackdrop}
+          onClick={() => setOpen(false)}
+        >
+          <motion.div
+            initial={{ y: 30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 30, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className={styles.termPopover}
+          >
+            <button type="button" onClick={() => setOpen(false)} className={styles.termPopoverClose} aria-label="닫기">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
+            </button>
+            <div className={styles.termPopoverTitle}>{entry.term}</div>
+            <div className={styles.termPopoverShort}>{entry.short}</div>
+            <div className={styles.termPopoverDesc}>{entry.description}</div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   return (
     <>
       <button
@@ -151,32 +182,7 @@ function TermTap({ text, className, hint }: { text: string; className?: string; 
       >
         {text}
       </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={styles.termBackdrop}
-            onClick={() => setOpen(false)}
-          >
-            <motion.div
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 30, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className={styles.termPopover}
-            >
-              <button type="button" onClick={() => setOpen(false)} className={styles.termPopoverClose} aria-label="닫기">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
-              </button>
-              <div className={styles.termPopoverTitle}>{entry.term}</div>
-              <div className={styles.termPopoverShort}>{entry.short}</div>
-              <div className={styles.termPopoverDesc}>{entry.description}</div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {typeof document !== 'undefined' ? createPortal(popover, document.body) : popover}
     </>
   );
 }
@@ -1175,7 +1181,7 @@ function DaeWoonSection({
               <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[dw.zhiElement]}22`, color: ELEMENT_COLORS[dw.zhiElement] }}>{zhiToHanja(dw.zhi)}</div>
               <div className={styles.dwMeta}><TermTap text={dw.tenGodZhi} /></div>
               <div className={styles.dwMeta}><TermTap text={dw.twelveStage} hint="stage" /></div>
-              {dw.sinSal12 && <div className={styles.dwMetaSinsal}>{dw.sinSal12}</div>}
+              {dw.sinSal12 && <div className={styles.dwMetaSinsal}><TermTap text={dw.sinSal12} /></div>}
             </div>
           );
         })}
@@ -1216,7 +1222,7 @@ function DaeWoonSection({
               <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[sw.zhiElement]}22`, color: ELEMENT_COLORS[sw.zhiElement] }}>{zhiToHanja(sw.zhi)}</div>
               <div className={styles.dwMeta}><TermTap text={sw.tenGodZhi} /></div>
               <div className={styles.dwMeta}><TermTap text={sw.twelveStage} hint="stage" /></div>
-              {sw.sinSal12 && <div className={styles.dwMetaSinsal}>{sw.sinSal12}</div>}
+              {sw.sinSal12 && <div className={styles.dwMetaSinsal}><TermTap text={sw.sinSal12} /></div>}
             </div>
           );
         })}
@@ -1264,7 +1270,7 @@ function DaeWoonSection({
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.5 }}>
                       <div><TermTap text={m.tenGodZhi} /></div>
                       <div><TermTap text={m.twelveStage} hint="stage" /></div>
-                      {m.sinSal12 && <div style={{ color: 'var(--text-tertiary)' }}>{m.sinSal12}</div>}
+                      {m.sinSal12 && <div style={{ color: 'var(--text-tertiary)' }}><TermTap text={m.sinSal12} /></div>}
                     </div>
                     <div style={{ fontSize: 14, color: c, marginTop: 3, fontWeight: 700 }}>{m.grade}</div>
                     {m.keyword && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{m.keyword}</div>}
