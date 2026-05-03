@@ -13,7 +13,7 @@ import { supabaseAdmin } from '@/services/supabaseAdmin';
 export const maxDuration = 30;
 
 interface DeleteAccountBody {
-  reasonCode?: 'not_useful' | 'too_expensive' | 'privacy' | 'hard_to_use' | 'other';
+  reasonCode?: 'not_useful' | 'rarely_used' | 'hard_to_use' | 'other';
   reason?: string;
 }
 
