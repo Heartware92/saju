@@ -1071,8 +1071,8 @@ function DaeWoonSection({
   const dwScrollRef = useRef<HTMLDivElement>(null);
   const swScrollRef = useRef<HTMLDivElement>(null);
   // 카드를 button 으로 바꿔 클릭·키보드 접근성 확보 — ref 타입도 HTMLButtonElement 로
-  const currentDwRef = useRef<HTMLButtonElement>(null);
-  const currentSwRef = useRef<HTMLButtonElement>(null);
+  const currentDwRef = useRef<HTMLDivElement>(null);
+  const currentSwRef = useRef<HTMLDivElement>(null);
 
   // 가로 스크롤에 마우스 드래그 + 터치 스와이프 활성화
   useDragScroll(dwScrollRef);
@@ -1159,22 +1159,24 @@ function DaeWoonSection({
           const isCurrent = currentAge >= age && currentAge < age + 10;
           const isSelected = selectedDwAge === age;
           return (
-            <button
-              type="button"
+            <div
+              role="button"
+              tabIndex={0}
               key={age}
               ref={isCurrent ? currentDwRef : undefined}
               onClick={() => setSelectedDwAge(isSelected ? null : age)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDwAge(isSelected ? null : age); } }}
               className={`${styles.daewoonCard} ${isCurrent ? styles.current : ''} ${isSelected ? styles.selected : ''}`}
               aria-pressed={isSelected}
             >
               <div className={styles.dwAge}>{age}세</div>
-              <div className={styles.dwTenGod}>{dw.tenGod}</div>
+              <div className={styles.dwTenGod}><TermTap text={dw.tenGod} /></div>
               <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[dw.ganElement]}22`, color: ELEMENT_COLORS[dw.ganElement] }}>{stemToHanja(dw.gan)}</div>
               <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[dw.zhiElement]}22`, color: ELEMENT_COLORS[dw.zhiElement] }}>{zhiToHanja(dw.zhi)}</div>
-              <div className={styles.dwMeta}>{dw.tenGodZhi}</div>
-              <div className={styles.dwMeta}>{dw.twelveStage}</div>
+              <div className={styles.dwMeta}><TermTap text={dw.tenGodZhi} /></div>
+              <div className={styles.dwMeta}><TermTap text={dw.twelveStage} hint="stage" /></div>
               {dw.sinSal12 && <div className={styles.dwMetaSinsal}>{dw.sinSal12}</div>}
-            </button>
+            </div>
           );
         })}
       </div>
@@ -1195,25 +1197,27 @@ function DaeWoonSection({
           // 대운 선택돼있고 그 범위 밖이면 흐리게
           const dimmed = selectedDwRange && !inDwRange;
           return (
-            <button
-              type="button"
+            <div
+              role="button"
+              tabIndex={0}
               key={idx}
               ref={isCurrent ? currentSwRef : undefined}
               data-sw-year={sw.year}
               onClick={() => setSelectedYear(isSelected ? null : sw.year)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedYear(isSelected ? null : sw.year); } }}
               className={`${styles.sewoonCard} ${isCurrent ? styles.current : ''} ${isSelected ? styles.selected : ''}`}
               style={dimmed ? { opacity: 0.35 } : undefined}
               aria-pressed={isSelected}
             >
               <div className={styles.swYear}>{sw.year}년</div>
               <div className={styles.swAnimal}>{sw.animal}띠</div>
-              <div className={styles.dwTenGod}>{sw.tenGod}</div>
+              <div className={styles.dwTenGod}><TermTap text={sw.tenGod} /></div>
               <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[sw.ganElement]}22`, color: ELEMENT_COLORS[sw.ganElement] }}>{stemToHanja(sw.gan)}</div>
               <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[sw.zhiElement]}22`, color: ELEMENT_COLORS[sw.zhiElement] }}>{zhiToHanja(sw.zhi)}</div>
-              <div className={styles.dwMeta}>{sw.tenGodZhi}</div>
-              <div className={styles.dwMeta}>{sw.twelveStage}</div>
+              <div className={styles.dwMeta}><TermTap text={sw.tenGodZhi} /></div>
+              <div className={styles.dwMeta}><TermTap text={sw.twelveStage} hint="stage" /></div>
               {sw.sinSal12 && <div className={styles.dwMetaSinsal}>{sw.sinSal12}</div>}
-            </button>
+            </div>
           );
         })}
       </div>
@@ -1254,12 +1258,12 @@ function DaeWoonSection({
                     }}
                   >
                     <div style={{ fontSize: 16, fontWeight: 700, color: c }}>{m.month}월</div>
-                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{m.tenGod}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><TermTap text={m.tenGod} /></div>
                     <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[m.ganElement]}22`, color: ELEMENT_COLORS[m.ganElement], margin: '3px auto' }}>{stemToHanja(m.gan)}</div>
                     <div className={styles.dwGanBox} style={{ background: `${ELEMENT_COLORS[m.zhiElement]}22`, color: ELEMENT_COLORS[m.zhiElement], margin: '0 auto' }}>{zhiToHanja(m.zhi)}</div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.5 }}>
-                      <div>{m.tenGodZhi}</div>
-                      <div>{m.twelveStage}</div>
+                      <div><TermTap text={m.tenGodZhi} /></div>
+                      <div><TermTap text={m.twelveStage} hint="stage" /></div>
                       {m.sinSal12 && <div style={{ color: 'var(--text-tertiary)' }}>{m.sinSal12}</div>}
                     </div>
                     <div style={{ fontSize: 14, color: c, marginTop: 3, fontWeight: 700 }}>{m.grade}</div>
