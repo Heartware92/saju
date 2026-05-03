@@ -167,6 +167,9 @@ function TermTap({ text, className, hint }: { text: string; className?: string; 
               onClick={(e) => e.stopPropagation()}
               className={styles.termPopover}
             >
+              <button type="button" onClick={() => setOpen(false)} className={styles.termPopoverClose} aria-label="닫기">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
+              </button>
               <div className={styles.termPopoverTitle}>{entry.term}</div>
               <div className={styles.termPopoverShort}>{entry.short}</div>
               <div className={styles.termPopoverDesc}>{entry.description}</div>
@@ -317,15 +320,20 @@ function Crystal({ hanja, color, percent, delay, idSuffix }: {
       </defs>
       <path d={GEM_PATH} fill="rgba(255,255,255,0.03)" stroke={`${color}55`} strokeWidth="1" />
       <g clipPath={`url(#${clipId})`}>
-        <motion.g
-          animate={{ x: [-80, 0] }}
-          transition={{ duration: 3.2, repeat: Infinity, ease: 'linear', repeatType: 'loop' }}
-        >
+        <g>
+          <animateTransform
+            attributeName="transform"
+            type="translate"
+            from="-80 0"
+            to="0 0"
+            dur="3.2s"
+            repeatCount="indefinite"
+          />
           <path
             d={buildWavePath(liquidTop)}
             fill={`url(#${gradId})`}
           />
-        </motion.g>
+        </g>
       </g>
       <path d={GEM_PATH} fill="none" stroke={color} strokeWidth="1.4" strokeLinejoin="round" />
       <path

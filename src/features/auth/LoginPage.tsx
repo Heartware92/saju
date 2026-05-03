@@ -238,6 +238,9 @@ export const LoginPage: React.FC = () => {
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setPendingSocialProvider(null)} />
           <div className="flex min-h-full items-end sm:items-center justify-center">
             <div onClick={(e) => e.stopPropagation()} className="relative w-full sm:max-w-[420px] rounded-t-2xl sm:rounded-2xl p-6 bg-space-surface border border-[var(--border-subtle)] animate-slideUp">
+              <button type="button" onClick={() => setPendingSocialProvider(null)} className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white/5 text-[var(--text-tertiary)] hover:bg-white/10 hover:text-[var(--text-primary)] transition-colors" aria-label="닫기">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
+              </button>
               <h3 className="text-base font-bold text-text-primary mb-1">약관 동의</h3>
               <p className="text-xs text-text-secondary mb-4">서비스 이용을 위해 약관에 동의해주세요.</p>
 

@@ -1569,6 +1569,7 @@
 }
 
 .termPopover {
+  position: relative;
   width: min(320px, calc(100vw - 32px));
   padding: 20px;
   background: #1C1033;
@@ -1576,6 +1577,26 @@
   border-radius: 16px;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
   text-align: center;
+}
+.termPopoverClose {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s, color 0.15s;
+}
+.termPopoverClose:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
 }
 
 .termPopoverTitle {

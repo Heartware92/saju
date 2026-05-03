@@ -247,7 +247,10 @@ const ChangePasswordModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
 
   return (
     <div className="fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[400px] rounded-2xl p-6 bg-[rgba(28,18,50,0.98)] border border-[var(--border-subtle)]">
+      <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-[400px] rounded-2xl p-6 bg-[rgba(28,18,50,0.98)] border border-[var(--border-subtle)]">
+        <button type="button" onClick={onClose} className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white/5 text-[var(--text-tertiary)] hover:bg-white/10 hover:text-[var(--text-primary)] transition-colors" aria-label="닫기">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
+        </button>
         <h3 className="text-base font-bold text-text-primary mb-4">비밀번호 변경</h3>
 
         {done ? (

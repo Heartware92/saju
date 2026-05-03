@@ -290,8 +290,11 @@ export default function ManageProfilesPage() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 40, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-[360px] rounded-2xl p-5 bg-[rgba(28,18,50,0.98)] border border-[var(--border-subtle)]"
+              className="relative w-full max-w-[360px] rounded-2xl p-5 bg-[rgba(28,18,50,0.98)] border border-[var(--border-subtle)]"
             >
+              <button type="button" onClick={() => setConfirmDelete(null)} className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white/5 text-[var(--text-tertiary)] hover:bg-white/10 hover:text-[var(--text-primary)] transition-colors" aria-label="닫기">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
+              </button>
               <h3 className="text-base font-bold text-text-primary mb-1">프로필을 삭제할까요?</h3>
               <p className="text-[14px] text-text-secondary mb-4">
                 <span className="font-semibold">{confirmDelete.name}</span> 님의 프로필이 영구 삭제됩니다.
@@ -331,8 +334,11 @@ export default function ManageProfilesPage() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 40, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-[380px] rounded-2xl p-5 bg-[rgba(28,18,50,0.98)] border border-[var(--border-subtle)]"
+              className="relative w-full max-w-[380px] rounded-2xl p-5 bg-[rgba(28,18,50,0.98)] border border-[var(--border-subtle)]"
             >
+              <button type="button" onClick={() => { setEditing(null); setEditForm(null); }} className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white/5 text-[var(--text-tertiary)] hover:bg-white/10 hover:text-[var(--text-primary)] transition-colors" aria-label="닫기">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
+              </button>
               <h3 className="text-base font-bold text-text-primary mb-4">프로필 수정</h3>
 
               <div className="space-y-3">
