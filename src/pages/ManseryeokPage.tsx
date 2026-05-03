@@ -45,7 +45,7 @@ export default function ManseryeokPage() {
         <div className="flex items-center relative mb-4">
           <BackButton className="absolute left-0" />
           <div className="flex-1 text-center">
-            <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>만세력</h1>
+            <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>만세력</h1>
           </div>
         </div>
         <div className={styles.section} style={{ textAlign: 'center', padding: '48px 24px' }}>
@@ -71,8 +71,8 @@ export default function ManseryeokPage() {
       <div className="flex items-center relative mb-4">
         <BackButton className="absolute left-0" />
         <div className="flex-1 text-center">
-          <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>만세력</h1>
-          <p className="text-xs text-text-tertiary">
+          <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>만세력</h1>
+          <p className="text-sm text-text-tertiary mt-0.5">
             {primary.name} · {saju.solarDate} (양력) | {saju.lunarDateSimple} (음력)
           </p>
         </div>
