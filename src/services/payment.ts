@@ -100,7 +100,7 @@ export const processPayment = async (
       paymentId,
       orderName: `크레딧 ${request.creditAmount}개 (${packageInfo.name})`,
       totalAmount: request.amount,
-      currency: 'KRW',
+      currency: 'CURRENCY_KRW',
       payMethod: 'CARD',
       redirectUrl: `${BASE_URL}/payment/callback`,
       customer: {
