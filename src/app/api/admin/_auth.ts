@@ -1,37 +1,36 @@
 /**
  * 어드민 인증 헬퍼 — 모든 /api/admin/* 라우트에서 공통 사용
- * ADMIN_EMAIL 환경변수에 등록된 이메일만 접근 허용
+ *
+ * 인증 방식: ADMIN_API_KEY 환경변수와 일치하는 키를 x-admin-key 헤더로 전달.
+ * Supabase 로그인과 완전히 분리되어 관리자 계정 없이도 접근 가능.
  */
-import { supabaseAdmin } from '@/services/supabaseAdmin';
 
 export interface AdminActor {
-  userId: string;
   email: string;
 }
 
 export async function requireAdmin(request: Request): Promise<AdminActor | Response> {
-  const auth = request.headers.get('authorization') ?? '';
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (!token) {
-    return new Response(JSON.stringify({ error: '인증이 필요합니다.' }), {
+  const apiKey = request.headers.get('x-admin-key') ?? '';
+
+  if (!apiKey) {
+    return new Response(JSON.stringify({ error: '관리자 인증키가 필요합니다.' }), {
       status: 401, headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  const { data, error } = await supabaseAdmin.auth.getUser(token);
-  if (error || !data?.user) {
-    return new Response(JSON.stringify({ error: '세션이 만료되었습니다.' }), {
-      status: 401, headers: { 'Content-Type': 'application/json' },
+  const validKey = process.env.ADMIN_API_KEY ?? '';
+  if (!validKey) {
+    console.error('[admin] ADMIN_API_KEY 환경변수가 설정되지 않았습니다.');
+    return new Response(JSON.stringify({ error: '서버 설정 오류입니다.' }), {
+      status: 500, headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  const adminEmails = (process.env.ADMIN_EMAIL ?? '').split(',').map(e => e.trim()).filter(Boolean);
-  if (!adminEmails.includes(data.user.email ?? '')) {
-    const detectedEmail = data.user.email ?? '(이메일 없음)';
-    return new Response(JSON.stringify({ error: `관리자 권한이 없습니다. (감지된 이메일: ${detectedEmail})` }), {
+  if (apiKey !== validKey) {
+    return new Response(JSON.stringify({ error: '인증키가 올바르지 않습니다.' }), {
       status: 403, headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  return { userId: data.user.id, email: data.user.email ?? '' };
+  return { email: 'admin' };
 }

@@ -32,7 +32,7 @@ export function BulkActionBar({ selectedIds, token, onClearSelection, onDone }: 
     try {
       const r = await fetch('/api/admin/users/bulk', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': token ?? '' },
         body: JSON.stringify({ userIds: [...selectedIds], ...body }),
       });
       const j = await r.json();

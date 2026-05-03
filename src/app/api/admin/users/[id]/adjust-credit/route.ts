@@ -80,7 +80,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const target = await supabaseAdmin.auth.admin.getUserById(userId);
   const { ipAddress, userAgent } = clientMeta(request);
   await writeAudit({
-    actorUserId: auth.userId,
+    actorUserId: undefined,
     actorEmail: auth.email,
     targetUserId: userId,
     targetEmail: target.data?.user?.email ?? null,

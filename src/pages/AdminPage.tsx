@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { supabase } from '../services/supabase';
 import { DemographicsSummary, type MemberSummary } from '@/components/admin/members/DemographicsSummary';
 import { MembersFilterBar } from '@/components/admin/members/MembersFilterBar';
 import { MembersTable, type MemberRow } from '@/components/admin/members/MembersTable';
@@ -208,14 +207,19 @@ export default function AdminPage() {
   const [consultDetailId, setConsultDetailId] = useState<string | null>(null);
   const [consultDetail, setConsultDetail] = useState<any>(null);
 
+  // API key 입력 상태
+  const [keyInput, setKeyInput] = useState('');
+  const [keyError, setKeyError] = useState('');
+
   // CSV export — 훅 순서 보존을 위해 early return 앞에서 선언
   const [exporting, setExporting] = useState(false);
 
-  // 세션 토큰
+  // sessionStorage에서 저장된 API key 복원
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setToken(data.session?.access_token ?? null);
-    });
+    try {
+      const saved = sessionStorage.getItem('admin:apiKey');
+      if (saved) setToken(saved);
+    } catch { /* ignore */ }
   }, []);
 
   /**
@@ -243,7 +247,7 @@ export default function AdminPage() {
     }
 
     const url = force ? path + (path.includes('?') ? '&' : '?') + 'force=1' : path;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(url, { headers: { 'x-admin-key': token } });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
     try {
@@ -390,7 +394,7 @@ export default function AdminPage() {
   const fetchConsultDetail = useCallback(async (id: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`/api/admin/consultations/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`/api/admin/consultations/${id}`, { headers: { 'x-admin-key': token ?? '' } });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       setConsultDetail(json);
@@ -489,9 +493,54 @@ export default function AdminPage() {
   useEffect(() => { setMemberPage(1); }, [memberSearch, memberGender, memberAgeBucket, memberSegment, memberProvider, memberSort, memberOrder]);
   useEffect(() => { setDeletedPage(1); }, [deletedSearch]);
 
+  const handleKeySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setKeyError('');
+    if (!keyInput.trim()) { setKeyError('인증키를 입력해주세요.'); return; }
+    try {
+      const res = await fetch('/api/admin/stats', { headers: { 'x-admin-key': keyInput.trim() } });
+      if (res.ok) {
+        setToken(keyInput.trim());
+        try { sessionStorage.setItem('admin:apiKey', keyInput.trim()); } catch {}
+      } else {
+        const json = await res.json().catch(() => ({}));
+        setKeyError(json.error || '인증에 실패했습니다.');
+      }
+    } catch {
+      setKeyError('서버에 연결할 수 없습니다.');
+    }
+  };
+
+  const handleLogoutAdmin = () => {
+    setToken(null);
+    try { sessionStorage.removeItem('admin:apiKey'); } catch {}
+  };
+
   if (!token) return (
-    <div className="min-h-screen flex items-center justify-center text-text-secondary">
-      세션 로딩 중…
+    <div className="min-h-screen flex items-center justify-center bg-[#0a0614]">
+      <form onSubmit={handleKeySubmit} className="w-full max-w-[380px] p-6 rounded-2xl bg-white/5 border border-white/10">
+        <h1 className="text-[18px] font-bold text-text-primary mb-1">사주 어드민</h1>
+        <p className="text-[13px] text-text-tertiary mb-5">관리자 인증키를 입력하세요.</p>
+        {keyError && (
+          <div className="mb-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-[13px] text-red-300">
+            {keyError}
+          </div>
+        )}
+        <input
+          type="password"
+          value={keyInput}
+          onChange={e => setKeyInput(e.target.value)}
+          placeholder="Admin API Key"
+          autoFocus
+          className="w-full h-11 rounded-lg bg-white/5 border border-white/15 px-3 text-text-primary text-sm outline-none focus:border-cta/50 focus:ring-1 focus:ring-cta/30 mb-3"
+        />
+        <button
+          type="submit"
+          className="w-full h-11 rounded-lg bg-cta text-white font-bold text-sm hover:opacity-90 transition-all"
+        >
+          접속
+        </button>
+      </form>
     </div>
   );
 
@@ -519,7 +568,7 @@ export default function AdminPage() {
         provider: memberProvider,
         sort: memberSort, order: memberOrder,
       });
-      const res = await fetch(`/api/admin/users?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`/api/admin/users?${params}`, { headers: { 'x-admin-key': token ?? '' } });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? '실패');
       const rows = (json.users as MemberRow[]).map(u => [
@@ -547,7 +596,7 @@ export default function AdminPage() {
     setExporting(true);
     try {
       const params = new URLSearchParams({ page: '1', pageSize: '10000', status: orderStatus, search: orderSearch });
-      const res = await fetch(`/api/admin/orders?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`/api/admin/orders?${params}`, { headers: { 'x-admin-key': token ?? '' } });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? '실패');
       const rows = (json.orders as Order[]).map(o => [
@@ -571,7 +620,7 @@ export default function AdminPage() {
     setExporting(true);
     try {
       const params = new URLSearchParams({ page: '1', pageSize: '10000', type: recordType, category: recordCategory });
-      const res = await fetch(`/api/admin/records?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`/api/admin/records?${params}`, { headers: { 'x-admin-key': token ?? '' } });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? '실패');
       const rows = (json.records as UsageRecord[]).map(r => [
@@ -639,6 +688,12 @@ export default function AdminPage() {
             className="text-[14px] text-cta hover:text-cta/80 border border-cta/30 hover:border-cta/60 px-3 py-1.5 rounded-lg transition-all"
           >
             새로고침
+          </button>
+          <button
+            onClick={handleLogoutAdmin}
+            className="text-[13px] text-text-tertiary hover:text-red-300 border border-white/10 hover:border-red-500/30 px-3 py-1.5 rounded-lg transition-all"
+          >
+            로그아웃
           </button>
         </div>
       </div>

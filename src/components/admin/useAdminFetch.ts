@@ -56,7 +56,7 @@ export function useAdminFetch<T = unknown>({
     setState(s => ({ ...s, loading: true, error: '' }));
     try {
       const res = await fetch(finalUrl, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 'x-admin-key': token ?? '' },
         signal: ac.signal,
       });
       const json = await res.json();

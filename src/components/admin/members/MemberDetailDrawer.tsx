@@ -71,7 +71,7 @@ export function MemberDetailDrawer({ userId, token, onClose }: Props) {
     if (!userId || !token) return;
     setError(''); setLoading(true);
     try {
-      const r = await fetch(`/api/admin/users/${userId}?force=1`, { headers: { Authorization: `Bearer ${token}` } });
+      const r = await fetch(`/api/admin/users/${userId}?force=1`, { headers: { 'x-admin-key': token ?? '' } });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
       setData(j);
@@ -82,7 +82,7 @@ export function MemberDetailDrawer({ userId, token, onClose }: Props) {
   useEffect(() => {
     if (!userId || !token) return;
     setData(null); setError(''); setTab('overview'); setLoading(true);
-    fetch(`/api/admin/users/${userId}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`/api/admin/users/${userId}`, { headers: { 'x-admin-key': token ?? '' } })
       .then(async r => {
         const j = await r.json();
         if (!r.ok) throw new Error(j.error);
@@ -329,7 +329,7 @@ function ConsultationsTab({ data, token }: { data: DetailData; token: string | n
     setExpandedId(id);
     setDetailLoading(true);
     try {
-      const res = await fetch(`/api/admin/consultations/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`/api/admin/consultations/${id}`, { headers: { 'x-admin-key': token ?? '' } });
       const json = await res.json();
       if (res.ok) setDetail(json);
     } catch { /* ignore */ }
@@ -449,7 +449,7 @@ function OpsTab({ data, token, onRefresh }: { data: DetailData; token: string | 
     }
     run('크레딧 조정', () => fetch(`/api/admin/users/${data.user.id}/adjust-credit`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': token ?? '' },
       body: JSON.stringify({ creditType, delta, reason: creditReason }),
     }));
   };
@@ -457,7 +457,7 @@ function OpsTab({ data, token, onRefresh }: { data: DetailData; token: string | 
   const submitNote = () => {
     run('메모 저장', () => fetch(`/api/admin/users/${data.user.id}/note`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': token ?? '' },
       body: JSON.stringify({ note }),
     }));
   };
@@ -467,7 +467,7 @@ function OpsTab({ data, token, onRefresh }: { data: DetailData; token: string | 
     if (!confirm(isBanned ? '차단을 해제하시겠습니까?' : '1년 차단을 적용하시겠습니까?')) return;
     run(isBanned ? '차단 해제' : '차단', () => fetch(`/api/admin/users/${data.user.id}/ban`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': token ?? '' },
       body: JSON.stringify({ action }),
     }));
   };

@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
         });
         const target = await supabaseAdmin.auth.admin.getUserById(uid);
         await writeAudit({
-          actorUserId: auth.userId, actorEmail: auth.email,
+          actorUserId: undefined, actorEmail: auth.email,
           targetUserId: uid, targetEmail: target.data?.user?.email ?? null,
           action: 'credit_adjust', creditType: body.creditType, amount: body.delta,
           before: { [field]: before }, after: { [field]: after },
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
           user_metadata: { ...(ur.user.user_metadata ?? {}), admin_note: newNote, admin_note_at: new Date().toISOString() },
         });
         await writeAudit({
-          actorUserId: auth.userId, actorEmail: auth.email,
+          actorUserId: undefined, actorEmail: auth.email,
           targetUserId: uid, targetEmail: ur.user.email ?? null,
           action: 'note_update',
           before: { note: prev }, after: { note: newNote },
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
         await supabaseAdmin.auth.admin.updateUserById(uid, { ban_duration: banDuration } as any);
         const { data: after } = await supabaseAdmin.auth.admin.getUserById(uid);
         await writeAudit({
-          actorUserId: auth.userId, actorEmail: auth.email,
+          actorUserId: undefined, actorEmail: auth.email,
           targetUserId: uid, targetEmail: after?.user?.email ?? before?.user?.email ?? null,
           action,
           before: { bannedUntil: (before?.user as any)?.banned_until ?? null },

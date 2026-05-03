@@ -37,7 +37,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { ipAddress, userAgent } = clientMeta(request);
   await writeAudit({
-    actorUserId: auth.userId,
+    actorUserId: undefined,
     actorEmail: auth.email,
     targetUserId: userId,
     targetEmail: userRes.user.email ?? null,

@@ -7,7 +7,7 @@ import { supabaseAdmin } from '@/services/supabaseAdmin';
 export type AuditAction = 'credit_adjust' | 'note_update' | 'ban' | 'unban';
 
 export interface AuditEntry {
-  actorUserId: string;
+  actorUserId?: string;
   actorEmail: string;
   targetUserId?: string | null;
   targetEmail?: string | null;
@@ -24,7 +24,7 @@ export interface AuditEntry {
 export async function writeAudit(entry: AuditEntry): Promise<void> {
   try {
     const { error } = await supabaseAdmin.from('admin_audit_logs').insert({
-      actor_user_id: entry.actorUserId,
+      actor_user_id: entry.actorUserId ?? null,
       actor_email: entry.actorEmail,
       target_user_id: entry.targetUserId ?? null,
       target_email: entry.targetEmail ?? null,
