@@ -418,6 +418,12 @@ p, li, span, div, button, a {
   inherits: false;
 }
 
+@property --border-fill {
+  syntax: "<number>";
+  initial-value: 0;
+  inherits: false;
+}
+
 .service-card {
   position: relative;
   overflow: visible;
@@ -431,12 +437,10 @@ p, li, span, div, button, a {
   border-radius: inherit;
   padding: 2.25px;
   background: conic-gradient(
-    from var(--border-angle),
-    transparent 30%,
-    rgba(232, 164, 144, 0.6) 45%,
-    rgba(201, 166, 255, 0.8) 50%,
-    rgba(124, 92, 252, 0.6) 55%,
-    transparent 70%
+    from 0deg,
+    rgba(124, 92, 252, 0.9) 0deg,
+    rgba(201, 166, 255, 0.8) calc(var(--border-fill) * 1deg),
+    transparent calc(var(--border-fill) * 1deg)
   );
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -446,6 +450,7 @@ p, li, span, div, button, a {
   transition: opacity 0.15s ease;
   pointer-events: none;
   z-index: 1;
+  --border-fill: 0;
 }
 
 .service-card:hover,
@@ -457,11 +462,17 @@ p, li, span, div, button, a {
 .service-card:hover::before,
 .service-card:active::before {
   opacity: 1;
-  animation: rotate-border 2s linear infinite;
+  animation: fill-border 1.2s ease-out forwards, thicken-border 0.3s ease 1.2s forwards;
 }
 
-@keyframes rotate-border {
-  to { --border-angle: 360deg; }
+@keyframes fill-border {
+  from { --border-fill: 0; }
+  to   { --border-fill: 360; }
+}
+
+@keyframes thicken-border {
+  from { inset: -2.25px; padding: 2.25px; }
+  to   { inset: -3.5px;  padding: 3.5px; }
 }
 
 /* ============================================

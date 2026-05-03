@@ -179,8 +179,7 @@
 }
 
 /* ─────────────────────────────────────────────
-   달 (Moon) — 우상단, 은은한 후광
-   직원 피드백: 본문 읽기에 방해되어 투명도 더 낮춤 (전체 0.35) */
+   달 (Moon) — 우상단, 은은한 후광 */
 .moon {
   position: absolute;
   top: 7%;
@@ -188,7 +187,7 @@
   width: 76px;
   height: 76px;
   pointer-events: none;
-  opacity: 0.35;
+  opacity: 0.55;
 }
 
 .moonGlow {
