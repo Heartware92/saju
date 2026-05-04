@@ -476,7 +476,11 @@ export default function GunghapPage() {
         if (cancelled || !record) return;
         const content = record.interpretation_detailed ?? record.interpretation_basic ?? '';
         if (content) {
-          setResult(content);
+          const { title, score, domainScores, body } = parseGunghapHeader(content);
+          setResult(body);
+          setGunghapTitle(title);
+          setGunghapScore(score);
+          setGunghapDomainScores(domainScores);
           setStep('result');
 
           const eng = record.engine_result as Record<string, unknown> | undefined;
@@ -1065,6 +1069,7 @@ export default function GunghapPage() {
             {/* 내 정보 요약 */}
             {selectedProfile && (
               <div className="mb-4 p-3 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-cta/15 flex items-center justify-center text-[14px] font-bold text-cta shrink-0">1</div>
                 <div className={`px-3 py-1 rounded-full bg-gradient-to-br ${selectedCat.accent} text-[12px] font-semibold text-text-primary border border-white/15 flex-shrink-0`}>
                   {getCategoryDisplayLabel()}
                 </div>
@@ -1083,7 +1088,13 @@ export default function GunghapPage() {
 
             {/* 상대방 입력 */}
             <div className="p-4 rounded-2xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] space-y-4">
-              <p className="text-[15px] font-bold text-text-primary">상대방 정보</p>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-8 h-8 rounded-full bg-cta/15 flex items-center justify-center text-[14px] font-bold text-cta shrink-0">2</div>
+                <div>
+                  <p className="text-[17px] font-bold text-text-primary">상대방 정보</p>
+                  <p className="text-[13px] text-text-tertiary">궁합을 볼 두 번째 사람</p>
+                </div>
+              </div>
 
               {/* 모드 탭 — 내 등록 프로필 중 상대로 쓸 수 있는 게 있을 때만 노출 */}
               {otherProfileChoices.length > 0 && (
@@ -1367,60 +1378,62 @@ export default function GunghapPage() {
             </div>
 
             {/* 두 사람 사주명식 표 (반려동물 제외) */}
-            {!isPetCategory && mySajuResult && otherSajuResult && (
-              <div className="rounded-2xl mb-4 overflow-hidden border border-[var(--border-subtle)]">
-                {/* 헤더 */}
-                <div className="grid grid-cols-8 text-center text-[12px] font-bold text-cta bg-cta/10 py-2">
-                  <span>시주</span><span>일주</span><span>월주</span><span>연주</span>
-                  <span>시주</span><span>일주</span><span>월주</span><span>연주</span>
-                </div>
-                {/* 천간 */}
-                <div className="grid grid-cols-8 text-center">
-                  {[mySajuResult, otherSajuResult].flatMap((r, ri) =>
-                    (['hour', 'day', 'month', 'year'] as const).map(p => {
-                      const gan = r.pillars[p]?.gan;
-                      const el = gan ? (STEM_TO_ELEMENT[gan] as Element) : undefined;
-                      const colors = el ? ELEMENT_CELL_COLORS[el] : undefined;
-                      const isUnknown = p === 'hour' && r.hourUnknown;
-                      return (
-                        <div
-                          key={`gan-${ri}-${p}`}
-                          className="py-2.5 flex flex-col items-center justify-center"
-                          style={colors && !isUnknown ? { backgroundColor: colors.bg, color: colors.fg } : { backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-tertiary)' }}
-                        >
-                          <span className="text-[24px] font-bold" style={{ fontFamily: 'var(--font-serif)' }}>
-                            {isUnknown ? '?' : (gan ? STEM_TO_HANJA[gan] ?? gan : '?')}
-                          </span>
-                          <span className="text-[10px] mt-0.5 opacity-80">{isUnknown ? '' : (gan ?? '')}</span>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-                {/* 지지 */}
-                <div className="grid grid-cols-8 text-center">
-                  {[mySajuResult, otherSajuResult].flatMap((r, ri) =>
-                    (['hour', 'day', 'month', 'year'] as const).map(p => {
-                      const zhi = r.pillars[p]?.zhi;
-                      const el = zhi ? (STEM_TO_ELEMENT[zhi] as Element | undefined) : undefined;
-                      const zhiEl = r.pillars[p]?.zhiElement as Element | undefined;
-                      const colors = (zhiEl ? ELEMENT_CELL_COLORS[zhiEl] : undefined) ?? (el ? ELEMENT_CELL_COLORS[el] : undefined);
-                      const isUnknown = p === 'hour' && r.hourUnknown;
-                      return (
-                        <div
-                          key={`zhi-${ri}-${p}`}
-                          className="py-2.5 flex flex-col items-center justify-center"
-                          style={colors && !isUnknown ? { backgroundColor: colors.bg, color: colors.fg } : { backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-tertiary)' }}
-                        >
-                          <span className="text-[24px] font-bold" style={{ fontFamily: 'var(--font-serif)' }}>
-                            {isUnknown ? '?' : (zhi ? ZHI_TO_HANJA[zhi] ?? zhi : '?')}
-                          </span>
-                          <span className="text-[10px] mt-0.5 opacity-80">{isUnknown ? '' : (zhi ?? '')}</span>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
+            {!isPetCategory && !archiveMeta && mySajuResult && otherSajuResult && (
+              <div className="space-y-3 mb-4">
+                {[
+                  { label: selectedProfile?.name ?? '나', result: mySajuResult },
+                  { label: otherDisplayName, result: otherSajuResult },
+                ].map((person, pi) => (
+                  <div key={pi} className="rounded-2xl overflow-hidden border border-[var(--border-subtle)]">
+                    <div className="bg-cta/10 py-1.5 px-3 text-[13px] font-bold text-cta">
+                      {person.label}
+                    </div>
+                    <div className="grid grid-cols-4 text-center text-[11px] font-bold text-text-tertiary py-1.5">
+                      <span>시주</span><span>일주</span><span>월주</span><span>연주</span>
+                    </div>
+                    <div className="grid grid-cols-4 text-center">
+                      {(['hour', 'day', 'month', 'year'] as const).map(p => {
+                        const gan = person.result.pillars[p]?.gan;
+                        const el = gan ? (STEM_TO_ELEMENT[gan] as Element) : undefined;
+                        const colors = el ? ELEMENT_CELL_COLORS[el] : undefined;
+                        const isUnknown = p === 'hour' && person.result.hourUnknown;
+                        return (
+                          <div
+                            key={`gan-${pi}-${p}`}
+                            className="py-2.5 flex flex-col items-center justify-center"
+                            style={colors && !isUnknown ? { backgroundColor: colors.bg, color: colors.fg } : { backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-tertiary)' }}
+                          >
+                            <span className="text-[22px] font-bold" style={{ fontFamily: 'var(--font-serif)' }}>
+                              {isUnknown ? '?' : (gan ? STEM_TO_HANJA[gan] ?? gan : '?')}
+                            </span>
+                            <span className="text-[10px] mt-0.5 opacity-80">{isUnknown ? '' : (gan ?? '')}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="grid grid-cols-4 text-center">
+                      {(['hour', 'day', 'month', 'year'] as const).map(p => {
+                        const zhi = person.result.pillars[p]?.zhi;
+                        const el = zhi ? (STEM_TO_ELEMENT[zhi] as Element | undefined) : undefined;
+                        const zhiEl = person.result.pillars[p]?.zhiElement as Element | undefined;
+                        const colors = (zhiEl ? ELEMENT_CELL_COLORS[zhiEl] : undefined) ?? (el ? ELEMENT_CELL_COLORS[el] : undefined);
+                        const isUnknown = p === 'hour' && person.result.hourUnknown;
+                        return (
+                          <div
+                            key={`zhi-${pi}-${p}`}
+                            className="py-2.5 flex flex-col items-center justify-center"
+                            style={colors && !isUnknown ? { backgroundColor: colors.bg, color: colors.fg } : { backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-tertiary)' }}
+                          >
+                            <span className="text-[22px] font-bold" style={{ fontFamily: 'var(--font-serif)' }}>
+                              {isUnknown ? '?' : (zhi ? ZHI_TO_HANJA[zhi] ?? zhi : '?')}
+                            </span>
+                            <span className="text-[10px] mt-0.5 opacity-80">{isUnknown ? '' : (zhi ?? '')}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
