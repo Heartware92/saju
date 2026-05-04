@@ -315,6 +315,25 @@ export default function ZamidusuResultPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chart, cacheKey, isArchiveMode, refetchNonce]);
 
+  // ── 시각화 데이터 (chart 가 null 일 수 있으므로 가드. 훅 순서 보장 위해 early return 앞에 둠) ──
+  const currentAge = useMemo(() => {
+    if (!birthInput) return 0;
+    return Math.max(0, new Date().getFullYear() - birthInput.year + 1);
+  }, [birthInput]);
+  const coreScores = useMemo(() => (chart ? calcCoreScores(chart) : []), [chart]);
+  const overallScore = useMemo(
+    () => (coreScores.length > 0 ? calcOverallScore(coreScores) : 0),
+    [coreScores],
+  );
+  const mutagenPlacements = useMemo(
+    () => (chart ? calcMutagenPlacements(chart) : []),
+    [chart],
+  );
+  const daehanSegments = useMemo(
+    () => (chart ? calcDaehanTimeline(chart, currentAge) : []),
+    [chart, currentAge],
+  );
+
   // ── 시간 미상 가드 ──
   // 보관함 재생 모드에선 이 가드를 우회 — 과거에 시간 알았던 시점에 받은 풀이를
   // 이후 프로필 시간을 미상으로 바꿨다는 이유로 못 보게 막으면 안 됨.
@@ -431,14 +450,6 @@ export default function ZamidusuResultPage() {
 
   const sections = aiResult?.sections ?? {};
   const aiFailed = !!aiResult && !aiResult.success;
-
-  const currentAge = birthInput
-    ? Math.max(0, new Date().getFullYear() - birthInput.year + 1)
-    : 0;
-  const coreScores = useMemo(() => calcCoreScores(chart), [chart]);
-  const overallScore = useMemo(() => calcOverallScore(coreScores), [coreScores]);
-  const mutagenPlacements = useMemo(() => calcMutagenPlacements(chart), [chart]);
-  const daehanSegments = useMemo(() => calcDaehanTimeline(chart, currentAge), [chart, currentAge]);
 
   const retryAI = () => {
     aiStartedRef.current = false;
