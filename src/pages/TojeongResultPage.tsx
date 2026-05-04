@@ -283,17 +283,21 @@ export default function TojeongResultPage() {
         if (cancelled) return;
       }
 
-      const cached = useReportCacheStore.getState().getReport<string>('tojeong', cacheKey);
-      if (cached?.error) {
-        setAiError(cached.error);
-        setAiLoading(false);
-        return;
-      }
-      if (cached?.data) {
-        setAiContent(cached.data);
-        setAiLoading(false);
-        aiStartedRef.current = true;
-        return;
+      if (!isFresh) {
+        const cached = useReportCacheStore.getState().getReport<string>('tojeong', cacheKey);
+        if (cached?.error) {
+          setAiError(cached.error);
+          setAiLoading(false);
+          return;
+        }
+        if (cached?.data) {
+          setAiContent(cached.data);
+          setAiLoading(false);
+          aiStartedRef.current = true;
+          return;
+        }
+      } else {
+        useReportCacheStore.getState().invalidate('tojeong', cacheKey);
       }
 
       if (aiStartedRef.current) return;
