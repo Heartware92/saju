@@ -106,8 +106,10 @@ export default function MoreFortunePage({ category }: Props) {
   const [charMeanings, setCharMeanings] = useState<string[]>([]);
 
   // 꿈 해몽 전용 state — DreamInputPanel에서 onChange로 주입되는 합성 텍스트/유효성
+  // dreamInputResetKey: "다른 꿈 풀이받기" 클릭 시 패널을 강제 remount 해 내부 상태(선명/흐릿 모드, 칩 선택 등)를 초기화
   const [dreamText, setDreamText] = useState('');
   const [dreamValid, setDreamValid] = useState(false);
+  const [dreamInputResetKey, setDreamInputResetKey] = useState(0);
 
   // 결과 state
   const [loading, setLoading] = useState(false);
@@ -510,87 +512,84 @@ export default function MoreFortunePage({ category }: Props) {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <span style={{ display: 'inline-block', width: 4, height: 22, borderRadius: 2, background: 'var(--cta-primary)' }} />
-            <div>
-              <p style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase' }}>
-                MORE FORTUNE
-              </p>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{cfg.title}</h2>
-            </div>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{cfg.title}</h2>
           </div>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.75, margin: 0 }}>
             {cfg.longDesc}
           </p>
         </div>
 
-        {/* 꿈 해몽 전용 입력 — 선명/흐릿 두 모드. 보관함 재생 모드에서는 저장된 텍스트만 간단 표시 */}
-        {category === 'dream' && !isArchiveMode && (
-          <div className={styles.section}>
-            <h2 style={{ fontSize: 18, marginBottom: 14, fontWeight: 700 }}>꿈 내용 입력</h2>
-            <DreamInputPanel
-              onTextChange={setDreamText}
-              onValidChange={setDreamValid}
-            />
-          </div>
+        {/* 입력·버튼 영역 — 결과가 나오면 숨겨서 결과만 보이도록 (보관함 모드는 이 블록을 건너뜀) */}
+        {!result && !isArchiveMode && (
+          <>
+            {category === 'dream' && (
+              <div className={styles.section}>
+                <h2 style={{ fontSize: 18, marginBottom: 14, fontWeight: 700 }}>꿈 내용 입력</h2>
+                <DreamInputPanel
+                  key={dreamInputResetKey}
+                  onTextChange={setDreamText}
+                  onValidChange={setDreamValid}
+                />
+              </div>
+            )}
+
+            {category === 'name' && (
+              <NameInputPanel
+                koreanName={koreanName}
+                onKoreanNameChange={setKoreanName}
+                charMeanings={charMeanings}
+                onCharMeaningsChange={setCharMeanings}
+                readOnly={false}
+              />
+            )}
+
+            <div className={styles.section} style={{ padding: 0, background: 'none', border: 'none' }}>
+              <button
+                onClick={handleRead}
+                disabled={!canSubmit || loading || moonBalance < MOON_COST_PER_FORTUNE}
+                style={{
+                  width: '100%',
+                  padding: '16px',
+                  background: 'linear-gradient(135deg, var(--cta-primary), var(--cta-secondary, var(--cta-primary)))',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 14,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: (!canSubmit || loading || moonBalance < MOON_COST_PER_FORTUNE) ? 'not-allowed' : 'pointer',
+                  opacity: (!canSubmit || loading || moonBalance < MOON_COST_PER_FORTUNE) ? 0.5 : 1,
+                  boxShadow: '0 4px 20px rgba(139,92,246,0.3)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {cfg.ctaButton} <span style={{ opacity: 0.85, fontSize: 13 }}>🌙 {MOON_COST_PER_FORTUNE}</span>
+              </button>
+              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 6 }}>
+                보유 🌙 {moonBalance} · 1회 {MOON_COST_PER_FORTUNE}개 소모
+              </p>
+            </div>
+
+            {error && (
+              <div
+                className={styles.section}
+                style={{
+                  background: 'rgba(248,113,113,0.08)',
+                  border: '1px solid rgba(248,113,113,0.35)',
+                }}
+              >
+                <p style={{ fontSize: 13, color: '#F87171', margin: 0 }}>{error}</p>
+              </div>
+            )}
+          </>
         )}
+
+        {/* 보관함 재생 모드: 저장된 꿈 텍스트만 표시 */}
         {category === 'dream' && isArchiveMode && dreamText && (
           <div className={styles.section}>
             <h2 style={{ fontSize: 14, marginBottom: 8 }}>당신이 적은 꿈</h2>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-line' }}>
               {dreamText}
             </p>
-          </div>
-        )}
-
-        {/* 이름 풀이 전용 입력 */}
-        {category === 'name' && (
-          <NameInputPanel
-            koreanName={koreanName}
-            onKoreanNameChange={setKoreanName}
-            charMeanings={charMeanings}
-            onCharMeaningsChange={setCharMeanings}
-            readOnly={isArchiveMode}
-          />
-        )}
-
-        {/* 풀이 보기 버튼 — 보관함 재생 모드에서는 숨김 (이미 저장된 결과를 아래에 렌더) */}
-        {!isArchiveMode && (
-          <div className={styles.section} style={{ padding: 0, background: 'none', border: 'none' }}>
-            <button
-              onClick={handleRead}
-              disabled={!canSubmit || loading || moonBalance < MOON_COST_PER_FORTUNE}
-              style={{
-                width: '100%',
-                padding: '16px',
-                background: 'linear-gradient(135deg, var(--cta-primary), var(--cta-secondary, var(--cta-primary)))',
-                color: 'white',
-                border: 'none',
-                borderRadius: 14,
-                fontSize: 15,
-                fontWeight: 700,
-                cursor: (!canSubmit || loading || moonBalance < MOON_COST_PER_FORTUNE) ? 'not-allowed' : 'pointer',
-                opacity: (!canSubmit || loading || moonBalance < MOON_COST_PER_FORTUNE) ? 0.5 : 1,
-                boxShadow: '0 4px 20px rgba(139,92,246,0.3)',
-                transition: 'all 0.2s',
-              }}
-            >
-              {cfg.ctaButton} <span style={{ opacity: 0.85, fontSize: 13 }}>🌙 {MOON_COST_PER_FORTUNE}</span>
-            </button>
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 6 }}>
-              보유 🌙 {moonBalance} · 1회 {MOON_COST_PER_FORTUNE}개 소모
-            </p>
-          </div>
-        )}
-
-        {/* 에러 */}
-        {error && (
-          <div
-            className={styles.section}
-            style={{
-              background: 'rgba(248,113,113,0.08)',
-              border: '1px solid rgba(248,113,113,0.35)',
-            }}
-          >
-            <p style={{ fontSize: 13, color: '#F87171', margin: 0 }}>{error}</p>
           </div>
         )}
 
@@ -608,6 +607,11 @@ export default function MoreFortunePage({ category }: Props) {
                 if (category === 'name') {
                   setKoreanName('');
                   setCharMeanings([]);
+                }
+                if (category === 'dream') {
+                  setDreamText('');
+                  setDreamValid(false);
+                  setDreamInputResetKey((k) => k + 1);
                 }
               }}
             />
@@ -901,7 +905,7 @@ function MoreFortuneResultCard({
               cursor: 'pointer',
             }}
           >
-            {category === 'name' ? '다른 이름 풀이받기' : '다시 풀이 받기'}
+            {category === 'name' ? '다른 이름 풀이받기' : category === 'dream' ? '다른 꿈 풀이받기' : '다시 풀이 받기'}
           </button>
         )}
       </div>
