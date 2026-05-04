@@ -166,13 +166,27 @@ export default function ZamidusuResultPage() {
     };
   }, [birthInput]);
 
-  // 명반 계산 — 보관함 재생 모드에서도 chart 는 birth_date 기반으로 재계산해 SVG 등 렌더 가능하게
+  // 명반 계산 — 보관함 재생 모드에서도 chart 는 birth_date 기반으로 재계산해 SVG 등 렌더 가능하게.
+  // birthInput 객체 reference 가 매 렌더 갱신되어도 명반 식별이 동일하면 chart reference 를
+  // 유지해야 하위 effect (AI 호출) 가 cleanup→재실행 되며 setTimeout 이 무한 cancel 되는
+  // 무한 로딩 버그를 방지.
   useEffect(() => {
     if (!birthInput) return;
     try {
       const b = birthInput;
       const result = calculateZamidusu(b.year, b.month, b.day, b.hour, b.gender, b.calendarType);
-      setChart(result);
+      setChart((prev) => {
+        if (
+          prev &&
+          prev.solarDate === result.solarDate &&
+          prev.lunarDate === result.lunarDate &&
+          prev.gender === result.gender &&
+          prev.timeRange === result.timeRange
+        ) {
+          return prev;
+        }
+        return result;
+      });
     } catch (e: any) {
       setError(e?.message || '명반 계산 실패');
     }
