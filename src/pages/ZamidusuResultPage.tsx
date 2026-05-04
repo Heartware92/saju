@@ -58,6 +58,40 @@ const LOADING_MESSAGES = [
   '별자리 속 이야기를 엮는 중입니다',
 ];
 
+/**
+ * 긴 본문을 읽기 쉬운 단락 배열로 분리.
+ * - 이미 빈 줄(\n\n)로 단락이 나뉘어 있으면 그대로 존중
+ * - 한 단락 안에 문장이 너무 많으면 sentencesPerPara 단위로 추가 분할
+ * - 한국어 문장 종결(. ! ? + 공백) 기준
+ */
+function splitIntoParagraphs(text: string, sentencesPerPara = 3): string[] {
+  const paras = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  const out: string[] = [];
+  for (const para of paras) {
+    const flat = para.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+    const parts = flat.split(/([.!?])\s+/);
+    const sentences: string[] = [];
+    for (let i = 0; i < parts.length; i += 2) {
+      const s = (parts[i] || '').trim();
+      const punct = parts[i + 1] || '';
+      const combined = (s + punct).trim();
+      if (combined) sentences.push(combined);
+    }
+    if (sentences.length === 0) {
+      out.push(flat);
+      continue;
+    }
+    if (sentences.length <= sentencesPerPara) {
+      out.push(sentences.join(' '));
+      continue;
+    }
+    for (let i = 0; i < sentences.length; i += sentencesPerPara) {
+      out.push(sentences.slice(i, i + sentencesPerPara).join(' '));
+    }
+  }
+  return out;
+}
+
 
 export default function ZamidusuResultPage() {
   const searchParams = useSearchParams();
@@ -958,9 +992,24 @@ export default function ZamidusuResultPage() {
                 </div>
               )}
 
-              <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.85, letterSpacing: '-0.005em', whiteSpace: 'pre-line', margin: 0 }}>
-                {hasHeadline ? body : text}
-              </p>
+              {(() => {
+                const raw = hasHeadline ? body : text;
+                const paragraphs = splitIntoParagraphs(raw);
+                return paragraphs.map((p, i) => (
+                  <p
+                    key={i}
+                    style={{
+                      fontSize: 15,
+                      color: 'var(--text-secondary)',
+                      lineHeight: 1.85,
+                      letterSpacing: '-0.005em',
+                      margin: i === 0 ? 0 : '14px 0 0',
+                    }}
+                  >
+                    {p}
+                  </p>
+                ));
+              })()}
             </motion.div>
           );
         })}

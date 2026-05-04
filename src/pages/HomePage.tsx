@@ -155,6 +155,16 @@ export default function HomePage() {
     if (user) fetchProfiles();
   }, [user, fetchProfiles]);
 
+  // bfcache(모바일 Safari·Chrome 등) 복원 시 게이트 모달이 떠 있던 상태 그대로
+  // 보이는 현상 방지 — 페이지가 다시 보여질 때 강제로 모달 닫기.
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setActiveGate(null);
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, []);
+
   // 로그인 직후 첫 진입 — 프로필 페치 완료 전에 "등록 유도" 카드가 flash되는 현상 방지
   const showProfileSkeleton = !!user && profilesLoading && profiles.length === 0;
 
