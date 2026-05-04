@@ -430,7 +430,7 @@ export const getTojeongReading = async (
 
     // ── Pass 2: 재물 + 애정 + 건강 + 직장 + 개운 ──
     const pass2Prompt = generateTojeongPass2Prompt(tj, pass1Content);
-    const pass2Content = await callGPT(pass2Prompt, 4500);
+    const pass2Content = await callGPT(pass2Prompt, 5500);
     const pass2Sections = parseTojeongSections(pass2Content);
 
     // ── 병합 ──

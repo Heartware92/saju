@@ -105,16 +105,21 @@ function DomainBar({ label, score, grade }: { label: string; score: number; grad
   );
 }
 
-const SECTION_ICON: Record<TojeongSectionKey, string> = {
-  chongun: '🌐',
-  gwae: '☰',
-  monthly: '📅',
-  wealth: '💰',
-  love: '💕',
-  health: '🏥',
-  career: '💼',
-  advice: '🔮',
-};
+function parseMonthlyEntries(raw: string): { month: number; keyword: string; text: string }[] {
+  const entries: { month: number; keyword: string; text: string }[] = [];
+  const parts = raw.split(/(?=\d{1,2}월\s*[—\-–]\s*)/);
+  for (const part of parts) {
+    const m = part.match(/^(\d{1,2})월\s*[—\-–]\s*(.+?)[\n\r]/);
+    if (!m) continue;
+    const month = parseInt(m[1], 10);
+    const keyword = m[2].trim();
+    const text = part.slice(m[0].length).trim();
+    if (month >= 1 && month <= 12 && text) {
+      entries.push({ month, keyword, text });
+    }
+  }
+  return entries;
+}
 
 const DOMAIN_DEFS: { key: 'wealth' | 'love' | 'health' | 'career'; label: string }[] = [
   { key: 'wealth', label: '재물운' },
@@ -679,8 +684,45 @@ export default function TojeongResultPage() {
           {TOJEONG_SECTION_KEYS.map((key, idx) => {
             const body = aiSections[key];
             if (!body) return null;
+
+            // 월별운세 섹션 — "N월 — 키워드" 패턴으로 월별 카드 분리
+            if (key === 'monthly') {
+              const monthEntries = parseMonthlyEntries(body);
+              if (monthEntries.length > 0) {
+                return (
+                  <motion.section
+                    key={key}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 + idx * 0.05 }}
+                    className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="inline-block w-1 h-5 rounded-full bg-cta" />
+                      <div className="text-[16px] font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+                        {TOJEONG_SECTION_LABELS[key]}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {monthEntries.map(me => (
+                        <div key={me.month} className="rounded-lg p-3 bg-white/5">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="text-[15px] font-bold text-text-primary" style={{ minWidth: 36 }}>{me.month}월</span>
+                            <span className="text-[13px] text-cta/70 font-semibold whitespace-nowrap">{me.keyword}</span>
+                          </div>
+                          <div className="text-[14px] text-text-secondary leading-relaxed">
+                            {me.text}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.section>
+                );
+              }
+            }
+
             const lines = body.split('\n').filter(l => l.trim());
-            const metaphor = lines.length > 0 && lines[0].length < 40 ? lines[0] : null;
+            const metaphor = key !== 'monthly' && lines.length > 0 && lines[0].length < 40 ? lines[0] : null;
             const bodyLines = metaphor ? lines.slice(1) : lines;
             return (
               <motion.section
@@ -690,17 +732,18 @@ export default function TojeongResultPage() {
                 transition={{ delay: 0.15 + idx * 0.05 }}
                 className="rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
               >
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[16px]">{SECTION_ICON[key]}</span>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="inline-block w-1 h-5 rounded-full bg-cta" />
                   <div className="text-[16px] font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
                     {TOJEONG_SECTION_LABELS[key]}
                   </div>
                 </div>
                 {metaphor && (
-                  <div className="text-[14px] text-cta/80 font-semibold mb-2 italic" style={{ fontFamily: 'var(--font-serif)' }}>
-                    {metaphor}
+                  <div className="text-[13px] text-text-tertiary font-medium mb-3 pl-3" style={{ fontFamily: 'var(--font-serif)' }}>
+                    — {metaphor}
                   </div>
                 )}
+                {!metaphor && <div className="mb-2" />}
                 <div className="text-[15px] text-text-secondary leading-[1.85] whitespace-pre-line tracking-[-0.005em]">
                   {bodyLines.join('\n')}
                 </div>
