@@ -1436,33 +1436,23 @@ export default function GunghapPage() {
               </div>
             </div>
 
-            {/* 액션 버튼 */}
-            <div className="flex gap-2 mt-5">
-              <button
-                onClick={() => {
-                  if (isArchiveMode) {
-                    setActiveRecordId(null); setArchiveMeta(null); setResult(''); setStep('landing');
-                    if (urlRecordId) router.replace('/saju/gunghap');
-                  } else { reset(); }
-                }}
-                className="flex-1 py-3.5 rounded-2xl border border-white/15 text-text-secondary font-medium text-[16px] active:scale-[0.98] transition-all"
-              >
-                {isArchiveMode ? '목록으로' : '처음으로'}
-              </button>
-              <button
-                onClick={() => {
-                  if (isArchiveMode) {
-                    setActiveRecordId(null); setArchiveMeta(null); setResult(''); setStep('category');
-                    if (urlRecordId) router.replace('/saju/gunghap');
-                    return;
-                  }
-                  setStep('input'); setResult(''); setError('');
-                }}
-                className="flex-1 py-3.5 rounded-2xl bg-cta/20 border border-cta/40 text-cta font-bold text-[16px] active:scale-[0.98] transition-all"
-              >
-                다른 상대 분석
-              </button>
-            </div>
+            {/* 액션 버튼 — 보관함 모드에서는 상단 뒤로가기로 충분하므로 숨김 */}
+            {!isArchiveMode && (
+              <div className="flex gap-2 mt-5">
+                <button
+                  onClick={reset}
+                  className="flex-1 py-3.5 rounded-2xl border border-white/15 text-text-secondary font-medium text-[16px] active:scale-[0.98] transition-all"
+                >
+                  처음으로
+                </button>
+                <button
+                  onClick={() => { setStep('input'); setResult(''); setError(''); }}
+                  className="flex-1 py-3.5 rounded-2xl bg-cta/20 border border-cta/40 text-cta font-bold text-[16px] active:scale-[0.98] transition-all"
+                >
+                  다른 상대 분석
+                </button>
+              </div>
+            )}
 
             {(activeRecordId || savedRecordId) && (
               <div className="mt-6">
