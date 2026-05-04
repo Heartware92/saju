@@ -35,6 +35,8 @@ import { LuckyVisualCard, ELEMENT_LUCKY } from '../components/saju/LuckyVisualCa
 import { TermChip } from '../components/ui/TermChip';
 import { useLoadingGuard } from '../hooks/useLoadingGuard';
 import { ShareBar } from '@/components/share/ShareBar';
+import { RadarChart } from '../components/charts/RadarChart';
+import { MonthlyTrendChart } from '../components/charts/MonthlyTrendChart';
 
 const NEWYEAR_MESSAGES = [
   '세운과 원국의 합충을 분석하는 중입니다',
@@ -723,6 +725,18 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
         className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
       >
         <div className="text-[15px] font-semibold text-text-secondary mb-3 px-1 uppercase tracking-wider">영역별 운세</div>
+
+        {/* 레이더 차트 — 5개 영역 한눈에 비교 */}
+        <RadarChart
+          domains={fortune.domains.filter(d => d.key !== 'overall').map(d => ({
+            label: d.label,
+            score: d.score,
+            color: GRADE_COLOR[d.grade],
+          }))}
+          size={250}
+          className="mb-4"
+        />
+
         <div className="space-y-2.5">
           {fortune.domains.filter(d => d.key !== 'overall').map(d => (
             <DomainBar key={d.key} label={d.label} score={d.score} grade={d.grade} />
@@ -862,6 +876,10 @@ export default function PeriodFortunePage({ scope }: { scope: FortuneScope | 'da
           className="rounded-2xl p-4 mb-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
         >
           <div className="text-[15px] font-semibold text-text-secondary mb-3 px-1 uppercase tracking-wider">월별 흐름 (12개월)</div>
+
+          {/* 트렌드 라인 차트 */}
+          <MonthlyTrendChart data={fortune.monthlyFlow} className="mb-4" />
+
           <div className="grid grid-cols-3 gap-1.5">
             {fortune.monthlyFlow.map(m => (
               <div

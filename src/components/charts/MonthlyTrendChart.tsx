@@ -1,0 +1,138 @@
+'use client';
+
+import { motion } from 'framer-motion';
+import type { FortuneGrade } from '../../engine/periodFortune';
+
+interface MonthlyPoint {
+  month: number;
+  grade: FortuneGrade;
+  keyword: string;
+}
+
+interface MonthlyTrendChartProps {
+  data: MonthlyPoint[];
+  className?: string;
+}
+
+const GRADE_TO_NUM: Record<FortuneGrade, number> = {
+  '대길': 100,
+  '길': 83,
+  '중길': 67,
+  '평': 50,
+  '중흉': 33,
+  '흉': 17,
+};
+
+const GRADE_COLOR: Record<FortuneGrade, string> = {
+  '대길': '#34D399',
+  '길': '#86EFAC',
+  '중길': '#FBBF24',
+  '평': '#CBD5E1',
+  '중흉': '#FB923C',
+  '흉': '#F87171',
+};
+
+export function MonthlyTrendChart({ data, className = '' }: MonthlyTrendChartProps) {
+  if (data.length === 0) return null;
+
+  const W = 340;
+  const H = 160;
+  const padL = 8;
+  const padR = 8;
+  const padT = 16;
+  const padB = 28;
+
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+
+  const points = data.map((d, i) => {
+    const x = padL + (i / (data.length - 1)) * plotW;
+    const val = GRADE_TO_NUM[d.grade];
+    const y = padT + plotH - (val / 100) * plotH;
+    return { x, y, ...d, val };
+  });
+
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const areaPath = linePath + ` L${points[points.length - 1].x},${padT + plotH} L${points[0].x},${padT + plotH} Z`;
+
+  const gradientId = 'trend-grad';
+
+  return (
+    <div className={`overflow-x-auto ${className}`}>
+      <svg
+        width={W}
+        height={H}
+        viewBox={`0 0 ${W} ${H}`}
+        className="mx-auto"
+        style={{ minWidth: W }}
+      >
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgba(139,92,246,0.35)" />
+            <stop offset="100%" stopColor="rgba(139,92,246,0.02)" />
+          </linearGradient>
+        </defs>
+
+        {/* Horizontal grid lines */}
+        {[100, 67, 33].map(val => {
+          const y = padT + plotH - (val / 100) * plotH;
+          return (
+            <line
+              key={val}
+              x1={padL} y1={y} x2={padL + plotW} y2={y}
+              stroke="rgba(255,255,255,0.05)"
+              strokeWidth={0.5}
+              strokeDasharray="4,4"
+            />
+          );
+        })}
+
+        {/* Area fill */}
+        <motion.path
+          d={areaPath}
+          fill={`url(#${gradientId})`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+        />
+
+        {/* Line */}
+        <motion.path
+          d={linePath}
+          fill="none"
+          stroke="rgba(139,92,246,0.8)"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
+        />
+
+        {/* Data points and labels */}
+        {points.map((p, i) => (
+          <g key={i}>
+            <motion.circle
+              cx={p.x} cy={p.y} r={3.5}
+              fill={GRADE_COLOR[p.grade]}
+              stroke="rgba(15,10,30,0.8)"
+              strokeWidth={1.5}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.4 + i * 0.05 }}
+            />
+            {/* Month label */}
+            <text
+              x={p.x} y={H - 6}
+              textAnchor="middle"
+              fontSize={10}
+              fill="rgba(255,255,255,0.45)"
+            >
+              {p.month}월
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
