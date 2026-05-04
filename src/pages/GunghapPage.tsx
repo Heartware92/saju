@@ -295,14 +295,14 @@ function parseGunghapHeader(text: string): {
   const domainScores: GunghapDomainScores = {};
   let body = text;
 
-  const headerMatch = text.match(/\[gunghap_header\]\s*(.+?)\s*\|\s*(\d{1,3})\s*\[\/gunghap_header\]/);
+  const headerMatch = text.match(/\[gunghap[_\s]?header\]\s*(.+?)\s*\|\s*(\d{1,3})\s*\[\/gunghap[_\s]?header\]/);
   if (headerMatch) {
     title = headerMatch[1].trim();
     score = Math.min(100, Math.max(0, parseInt(headerMatch[2], 10)));
-    body = body.replace(/\[gunghap_header\].*?\[\/gunghap_header\]\s*\n?/, '').trim();
+    body = body.replace(/\[gunghap[_\s]?header\].*?\[\/gunghap[_\s]?header\]\s*\n?/, '').trim();
   }
 
-  const scoresMatch = body.match(/\[gunghap_scores\]\s*(.+?)\s*\[\/gunghap_scores\]/);
+  const scoresMatch = body.match(/\[gunghap[_\s]?scores\]\s*(.+?)\s*\[\/gunghap[_\s]?scores\]/);
   if (scoresMatch) {
     const pairs = scoresMatch[1].split('|').map(s => s.trim());
     const keyMap: Record<string, GunghapDomainKey> = {
@@ -319,7 +319,7 @@ function parseGunghapHeader(text: string): {
         domainScores[domainKey] = Math.min(100, Math.max(0, parseInt(v, 10)));
       }
     }
-    body = body.replace(/\[gunghap_scores\].*?\[\/gunghap_scores\]\s*\n?/, '').trim();
+    body = body.replace(/\[gunghap[_\s]?scores\].*?\[\/gunghap[_\s]?scores\]\s*\n?/, '').trim();
   }
 
   return { title, score, domainScores, body };
@@ -412,6 +412,7 @@ export default function GunghapPage() {
   // 기존 궁합 결과 목록
   const [archiveList, setArchiveList] = useState<GunghapArchiveItem[]>([]);
   const [archiveLoading, setArchiveLoading] = useState(true);
+  const [forceNewReading, setForceNewReading] = useState(false);
 
   // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
   const [loadingTimedOut] = useLoadingGuard(loading, 70_000);
@@ -566,19 +567,21 @@ export default function GunghapPage() {
           petTrimmed.birthDate ?? '_',
           petTrimmed.adoptionDate ?? '_',
         ].join('|');
-        const petCached = useReportCacheStore.getState().getReport<string>('gunghap', petCacheKey);
-        if (petCached?.error) {
-          setError(petCached.error);
-          setLoading(false);
-          return;
+        if (!forceNewReading) {
+          const petCached = useReportCacheStore.getState().getReport<string>('gunghap', petCacheKey);
+          if (petCached?.error) {
+            setError(petCached.error);
+            setLoading(false);
+            return;
+          }
+          if (petCached?.data) {
+            setResult(petCached.data);
+            setStep('result');
+            setLoading(false);
+            return;
+          }
         }
-        // 재진입 silent restore
-        if (petCached?.data) {
-          setResult(petCached.data);
-          setStep('result');
-          setLoading(false);
-          return;
-        }
+        setForceNewReading(false);
         activeCacheKey = petCacheKey;
         const petPrompt = generatePetGunghapPrompt(myResult, selectedProfile.name, petTrimmed);
         const petText = await callGunghapGPT(petPrompt);
@@ -655,19 +658,25 @@ export default function GunghapPage() {
         category === 'custom' ? customLabel.trim() : '_',
       ].join('|');
 
-      const cached = useReportCacheStore.getState().getReport<string>('gunghap', cacheKey);
-      if (cached?.error) {
-        setError(cached.error);
-        setLoading(false);
-        return;
+      if (!forceNewReading) {
+        const cached = useReportCacheStore.getState().getReport<string>('gunghap', cacheKey);
+        if (cached?.error) {
+          setError(cached.error);
+          setLoading(false);
+          return;
+        }
+        if (cached?.data) {
+          const { title, score, domainScores: ds, body } = parseGunghapHeader(cached.data);
+          setGunghapTitle(title);
+          setGunghapScore(score);
+          setGunghapDomainScores(ds);
+          setResult(body);
+          setStep('result');
+          setLoading(false);
+          return;
+        }
       }
-      // 재진입 silent restore
-      if (cached?.data) {
-        setResult(cached.data);
-        setStep('result');
-        setLoading(false);
-        return;
-      }
+      setForceNewReading(false);
       activeCacheKey = cacheKey;
 
       const myName = selectedProfile.name;
@@ -924,7 +933,7 @@ export default function GunghapPage() {
 
             {/* 새로 궁합 보기 버튼 — 최상단 */}
             <button
-              onClick={() => setStep('category')}
+              onClick={() => { setForceNewReading(true); setStep('category'); }}
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-cta to-cta-active text-white font-bold text-[17px] active:scale-[0.98] transition-all"
             >
               새로 궁합 보기
@@ -1388,10 +1397,10 @@ export default function GunghapPage() {
                     <div className="bg-cta/10 py-1.5 px-3 text-[13px] font-bold text-cta">
                       {person.label}
                     </div>
-                    <div className="grid grid-cols-4 text-center text-[11px] font-bold text-text-tertiary py-1.5">
+                    <div className="grid grid-cols-4 gap-[2px] text-center text-[11px] font-bold text-text-tertiary py-1.5 px-[1px]">
                       <span>시주</span><span>일주</span><span>월주</span><span>연주</span>
                     </div>
-                    <div className="grid grid-cols-4 text-center">
+                    <div className="grid grid-cols-4 gap-[2px] text-center px-[1px]">
                       {(['hour', 'day', 'month', 'year'] as const).map(p => {
                         const gan = person.result.pillars[p]?.gan;
                         const el = gan ? (STEM_TO_ELEMENT[gan] as Element) : undefined;
@@ -1400,8 +1409,8 @@ export default function GunghapPage() {
                         return (
                           <div
                             key={`gan-${pi}-${p}`}
-                            className="py-2.5 flex flex-col items-center justify-center"
-                            style={colors && !isUnknown ? { backgroundColor: colors.bg, color: colors.fg } : { backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-tertiary)' }}
+                            className="py-2.5 flex flex-col items-center justify-center rounded-md"
+                            style={colors && !isUnknown ? { backgroundColor: colors.bg, color: colors.fg } : { backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-tertiary)' }}
                           >
                             <span className="text-[22px] font-bold" style={{ fontFamily: 'var(--font-serif)' }}>
                               {isUnknown ? '?' : (gan ? STEM_TO_HANJA[gan] ?? gan : '?')}
@@ -1411,7 +1420,7 @@ export default function GunghapPage() {
                         );
                       })}
                     </div>
-                    <div className="grid grid-cols-4 text-center">
+                    <div className="grid grid-cols-4 gap-[2px] text-center px-[1px] pb-[1px]">
                       {(['hour', 'day', 'month', 'year'] as const).map(p => {
                         const zhi = person.result.pillars[p]?.zhi;
                         const el = zhi ? (STEM_TO_ELEMENT[zhi] as Element | undefined) : undefined;
@@ -1421,8 +1430,8 @@ export default function GunghapPage() {
                         return (
                           <div
                             key={`zhi-${pi}-${p}`}
-                            className="py-2.5 flex flex-col items-center justify-center"
-                            style={colors && !isUnknown ? { backgroundColor: colors.bg, color: colors.fg } : { backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-tertiary)' }}
+                            className="py-2.5 flex flex-col items-center justify-center rounded-md"
+                            style={colors && !isUnknown ? { backgroundColor: colors.bg, color: colors.fg } : { backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-tertiary)' }}
                           >
                             <span className="text-[22px] font-bold" style={{ fontFamily: 'var(--font-serif)' }}>
                               {isUnknown ? '?' : (zhi ? ZHI_TO_HANJA[zhi] ?? zhi : '?')}
@@ -1447,7 +1456,7 @@ export default function GunghapPage() {
             {/* 결과 본문 */}
             <div className="p-5 rounded-2xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
               <div className="text-[16px] text-text-primary leading-[1.85] whitespace-pre-wrap">
-                {result}
+                {result.replace(/\[\/?\s*gunghap[_\s]?(?:header|scores)\s*\]/gi, '').replace(/^\s*\n/, '')}
               </div>
             </div>
 
