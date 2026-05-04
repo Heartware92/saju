@@ -372,12 +372,15 @@ async function callGunghapGPT(prompt: string): Promise<string> {
 export default function GunghapPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const recordId = searchParams?.get('recordId') ?? null;
-  const isArchiveMode = !!recordId;
+  const urlRecordId = searchParams?.get('recordId') ?? null;
   const { user } = useUserStore();
   const { profiles } = useProfileStore();
 
-  const [step, setStep] = useState<Step>('landing');
+  // 내부 recordId — URL 파라미터 또는 랜딩에서 클릭한 결과
+  const [activeRecordId, setActiveRecordId] = useState<string | null>(urlRecordId);
+  const isArchiveMode = !!activeRecordId;
+
+  const [step, setStep] = useState<Step>(urlRecordId ? 'result' : 'landing');
   const [category, setCategory] = useState<GunghapCategory>('lover');
   const [customLabel, setCustomLabel] = useState('');
   const [myRole, setMyRole] = useState('');
@@ -396,6 +399,15 @@ export default function GunghapPage() {
   const [gunghapScore, setGunghapScore] = useState<number | null>(null);
   const [gunghapDomainScores, setGunghapDomainScores] = useState<GunghapDomainScores>({});
   const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
+
+  // 보관함 재생 시 record에서 가져온 메타 정보
+  const [archiveMeta, setArchiveMeta] = useState<{
+    categoryLabel: string;
+    profileName: string;
+    partnerName: string;
+    myRole: string;
+    otherRole: string;
+  } | null>(null);
 
   // 기존 궁합 결과 목록
   const [archiveList, setArchiveList] = useState<GunghapArchiveItem[]>([]);
@@ -454,9 +466,10 @@ export default function GunghapPage() {
     }
   }, [category]);
 
-  // ── 보관함 재생 모드 — recordId 가 있으면 DB 에서 풀이 텍스트 복원, 바로 result step ──
+  // ── 보관함 재생 모드 — activeRecordId 가 있으면 DB 에서 풀이 텍스트 + 메타 복원 ──
   useEffect(() => {
-    if (!recordId) return;
+    if (!activeRecordId) return;
+    const recordId = activeRecordId;
     let cancelled = false;
     sajuDB.getRecordById(recordId)
       .then((record) => {
@@ -465,6 +478,17 @@ export default function GunghapPage() {
         if (content) {
           setResult(content);
           setStep('result');
+
+          const eng = record.engine_result as Record<string, unknown> | undefined;
+          const cat = (eng?.gunghapCategory as string) ?? '';
+          const customLbl = (eng?.customLabel as string) ?? '';
+          setArchiveMeta({
+            categoryLabel: customLbl || CATEGORY_LABEL_MAP[cat] || cat || '궁합',
+            profileName: record.profile_name ?? '나',
+            partnerName: record.partner_name ?? '상대',
+            myRole: (eng?.myRole as string) ?? '',
+            otherRole: (eng?.otherRole as string) ?? '',
+          });
         } else {
           setError('보관된 풀이 본문이 없어요.');
         }
@@ -475,7 +499,7 @@ export default function GunghapPage() {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [recordId]);
+  }, [activeRecordId]);
 
   // ── 궁합 기존 결과 목록 로딩 — 없으면 바로 카테고리 선택으로 ──
   useEffect(() => {
@@ -820,7 +844,14 @@ export default function GunghapPage() {
    */
   const handleGunghapBack = () => {
     if (step === 'result' && isArchiveMode) {
-      router.push('/saju/gunghap');
+      setActiveRecordId(null);
+      setArchiveMeta(null);
+      setResult('');
+      setStep('landing');
+      if (urlRecordId) {
+        router.replace('/saju/gunghap');
+      }
+      return;
     } else if (step === 'result') {
       setStep('input');
     } else if (step === 'input') {
@@ -904,7 +935,7 @@ export default function GunghapPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.03 }}
                         onClick={() => {
-                          router.push(`/saju/gunghap?recordId=${item.id}`);
+                          setActiveRecordId(item.id);
                         }}
                         className="w-full text-left rounded-2xl bg-space-surface/60 border border-[var(--border-subtle)] p-4 hover:border-cta/50 transition-all active:scale-[0.98]"
                       >
@@ -1292,33 +1323,43 @@ export default function GunghapPage() {
 
             {/* 관계 + 이름 배지 */}
             <div className="rounded-2xl mb-4 p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-              <p className="text-center text-[13px] font-bold text-cta uppercase tracking-wider mb-3">{getCategoryDisplayLabel()}</p>
+              <p className="text-center text-[13px] font-bold text-cta uppercase tracking-wider mb-3">
+                {archiveMeta ? archiveMeta.categoryLabel : getCategoryDisplayLabel()}
+              </p>
               <div className="flex items-center justify-center gap-4">
                 <div className="text-center">
-                  <p className="text-[16px] font-bold text-text-primary">{selectedProfile?.name}</p>
-                  <p className="text-[12px] text-text-tertiary mt-0.5">
-                    {selectedProfile?.birth_date?.replace(/-/g, '.')}
+                  <p className="text-[16px] font-bold text-text-primary">
+                    {archiveMeta ? archiveMeta.profileName : selectedProfile?.name}
                   </p>
-                  {myRole && <p className="text-[12px] text-cta/80 mt-0.5">{myRole}</p>}
+                  {!archiveMeta && (
+                    <p className="text-[12px] text-text-tertiary mt-0.5">
+                      {selectedProfile?.birth_date?.replace(/-/g, '.')}
+                    </p>
+                  )}
+                  {(archiveMeta ? archiveMeta.myRole : myRole) && (
+                    <p className="text-[12px] text-cta/80 mt-0.5">{archiveMeta ? archiveMeta.myRole : myRole}</p>
+                  )}
                 </div>
                 <span className="text-[20px] text-cta/60">
-                  {isPetCategory ? '🐾' : '·'}
+                  {isPetCategory && !archiveMeta ? '🐾' : '·'}
                 </span>
                 <div className="text-center">
                   <p className="text-[16px] font-bold text-text-primary">
-                    {otherDisplayName}
-                    {isPetCategory && pet.species && (
+                    {archiveMeta ? archiveMeta.partnerName : otherDisplayName}
+                    {!archiveMeta && isPetCategory && pet.species && (
                       <span className="text-[12px] font-normal text-text-secondary ml-1">({PET_SPECIES_VIBE[pet.species].label})</span>
                     )}
                   </p>
-                  {!isPetCategory && (
+                  {!archiveMeta && !isPetCategory && (
                     <p className="text-[12px] text-text-tertiary mt-0.5">
                       {otherMode === 'profile'
                         ? selectedOtherProfile?.birth_date?.replace(/-/g, '.')
                         : other.birth_date?.replace(/-/g, '.')}
                     </p>
                   )}
-                  {otherRole && <p className="text-[12px] text-cta/80 mt-0.5">{otherRole}</p>}
+                  {(archiveMeta ? archiveMeta.otherRole : otherRole) && (
+                    <p className="text-[12px] text-cta/80 mt-0.5">{archiveMeta ? archiveMeta.otherRole : otherRole}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1398,14 +1439,23 @@ export default function GunghapPage() {
             {/* 액션 버튼 */}
             <div className="flex gap-2 mt-5">
               <button
-                onClick={() => isArchiveMode ? router.push('/saju/gunghap') : reset()}
+                onClick={() => {
+                  if (isArchiveMode) {
+                    setActiveRecordId(null); setArchiveMeta(null); setResult(''); setStep('landing');
+                    if (urlRecordId) router.replace('/saju/gunghap');
+                  } else { reset(); }
+                }}
                 className="flex-1 py-3.5 rounded-2xl border border-white/15 text-text-secondary font-medium text-[16px] active:scale-[0.98] transition-all"
               >
                 {isArchiveMode ? '목록으로' : '처음으로'}
               </button>
               <button
                 onClick={() => {
-                  if (isArchiveMode) { router.push('/saju/gunghap'); return; }
+                  if (isArchiveMode) {
+                    setActiveRecordId(null); setArchiveMeta(null); setResult(''); setStep('category');
+                    if (urlRecordId) router.replace('/saju/gunghap');
+                    return;
+                  }
                   setStep('input'); setResult(''); setError('');
                 }}
                 className="flex-1 py-3.5 rounded-2xl bg-cta/20 border border-cta/40 text-cta font-bold text-[16px] active:scale-[0.98] transition-all"
@@ -1414,9 +1464,9 @@ export default function GunghapPage() {
               </button>
             </div>
 
-            {(recordId || savedRecordId) && (
+            {(activeRecordId || savedRecordId) && (
               <div className="mt-6">
-                <ShareBar recordId={(recordId || savedRecordId)!} type="saju" category="gunghap" />
+                <ShareBar recordId={(activeRecordId || savedRecordId)!} type="saju" category="gunghap" />
               </div>
             )}
 
