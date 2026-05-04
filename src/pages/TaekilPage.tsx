@@ -1,16 +1,16 @@
 'use client';
 
 /**
- * 택일 운세 페이지
- * - 카테고리(결혼·이사·개업 등) + 날짜 범위 선택
- * - 캘린더 뷰로 길/흉 날짜 색상 표시
- * - 대표 프로필 기반 자동 계산
+ * 택일 운세 페이지 — 스텝 기반 UX
+ * Step 1: 행사 카테고리 선택
+ * Step 2: 캘린더에서 후보 날짜 최대 5개 선택
+ * Step 3: "택일 풀이보기" → AI 분석 결과 (포디움 + 상세 카드)
  */
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { sajuDB } from '../services/supabase';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
@@ -49,6 +49,7 @@ const GRADE_BG: Record<TaekilGrade, string> = {
 };
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+const MAX_PICKS = 5;
 
 interface TaekilDateAdvice {
   rank: number;
@@ -83,10 +84,6 @@ function parseTaekilStructuredAdvice(raw: string): { dates: TaekilDateAdvice[]; 
   return { dates, avoid };
 }
 
-function toIso(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
-
 function daysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();
 }
@@ -100,6 +97,7 @@ export default function TaekilPage() {
   const needsProfileSelect = !profileId && !isArchiveMode;
   const { user } = useUserStore();
   const { profiles, fetchProfiles, hydrated, loading: profilesLoading, lastFetchedAt } = useProfileStore();
+  const resultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (user) fetchProfiles();
@@ -116,36 +114,30 @@ export default function TaekilPage() {
     return computeSajuFromProfile(targetProfile);
   }, [targetProfile]);
 
-  // 카테고리 선택
-  const [category, setCategory] = useState<TaekilCategory>('marriage');
+  // ── Step 상태 ──
+  const [category, setCategory] = useState<TaekilCategory | null>(null);
 
-  // 오늘/연도 제한 — 오늘 연도 ~ +5년 범위만 허용
   const today = new Date();
   const todayYear = today.getFullYear();
   const MAX_YEAR = todayYear + 5;
   const MIN_YEAR = todayYear;
 
-  // 연·월 네비게이션 (연 ◀▶, 월은 12개 버튼)
   const [viewYear, setViewYear] = useState(todayYear);
   const [viewMonth, setViewMonth] = useState(today.getMonth() + 1);
 
-  // 택일 결과
+  // 택일 엔진 결과 (카테고리 + 월 변경시 재계산)
   const [result, setResult] = useState<TaekilResult | null>(null);
-  const [selectedDay, setSelectedDay] = useState<TaekilDay | null>(null);
 
-  // 직원 피드백: 후보 날짜 다중 선택 → Top 3 비교 (그래프/표)
-  // single = 캘린더에서 한 날짜 상세, compare = 여러 후보 토글하여 비교
-  const [pickMode, setPickMode] = useState<'single' | 'compare'>('single');
-  const MAX_CANDIDATES = 7;
-  const [candidateDates, setCandidateDates] = useState<string[]>([]);
+  // 사용자가 선택한 후보 날짜 (최대 5개)
+  const [pickedDates, setPickedDates] = useState<string[]>([]);
 
-  // AI 추천 — 자동 호출 X, 날짜 선택 후 수동 버튼 트리거
+  // AI 결과
   const [aiAdvice, setAiAdvice] = useState<string | null>(null);
   const [parsedAdvice, setParsedAdvice] = useState<{ dates: TaekilDateAdvice[]; avoid: string } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [showResult, setShowResult] = useState(false);
 
-  // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
   const [aiTimedOut] = useLoadingGuard(aiLoading, 70_000);
   useEffect(() => {
     if (aiTimedOut) {
@@ -163,49 +155,45 @@ export default function TaekilPage() {
     setRefetchNonce(n => n + 1);
   };
 
-  // 캐시 키 — saju + 연·월 + 카테고리 + (compare 모드면 후보 셋). 같은 조합은 같은 advice를 가짐.
+  // 캐시 키
   const taekilCacheKey = useMemo(() => {
-    if (!saju) return null;
-    const candKey = pickMode === 'compare' && candidateDates.length > 0
-      ? `:cmp=${[...candidateDates].sort().join(',')}`
-      : '';
-    return `${sajuKey(saju)}:${viewYear}-${viewMonth}:${category}${candKey}`;
-  }, [saju, viewYear, viewMonth, category, pickMode, candidateDates]);
+    if (!saju || !category || pickedDates.length === 0) return null;
+    return `${sajuKey(saju)}:${category}:${[...pickedDates].sort().join(',')}`;
+  }, [saju, category, pickedDates]);
 
-  // 연/월/카테고리 변경 시 자동으로 캘린더 재계산 + 캐시된 advice 복원
+  // 카테고리/연월 변경시 엔진 재계산
   const compute = useCallback(() => {
-    if (!saju) return;
+    if (!saju || !category) { setResult(null); return; }
     const start = `${viewYear}-${String(viewMonth).padStart(2, '0')}-01`;
     const lastDay = daysInMonth(viewYear, viewMonth);
     const end = `${viewYear}-${String(viewMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
     const r = calculateTaekil(saju, category, start, end);
     setResult(r);
-    setSelectedDay(null);
-    setCandidateDates([]);
-    setAiError(null);
-
-    // 카테고리/연월 전환 시 캐시된 advice 자동 복원 (없으면 비움)
-    if (saju) {
-      const candKey = pickMode === 'compare' && candidateDates.length > 0
-        ? `:cmp=${[...candidateDates].sort().join(',')}`
-        : '';
-      const k = `${sajuKey(saju)}:${viewYear}-${viewMonth}:${category}${candKey}`;
-      const cached = useReportCacheStore.getState().getReport<string>('taekil', k);
-      if (cached?.data) {
-        setAiAdvice(cached.data);
-        setParsedAdvice(parseTaekilStructuredAdvice(cached.data));
-        return;
-      }
-    }
-    setAiAdvice(null);
-    setParsedAdvice(null);
-  }, [saju, viewYear, viewMonth, category, pickMode, candidateDates]);
+  }, [saju, viewYear, viewMonth, category]);
 
   useEffect(() => {
     compute();
   }, [compute]);
 
-  // ── 보관함 재생 모드 — recordId 가 있으면 DB 에서 advice 텍스트만 복원 (캘린더 calc 는 그대로 동작) ──
+  // 카테고리 변경시 선택/결과 초기화
+  useEffect(() => {
+    setPickedDates([]);
+    setAiAdvice(null);
+    setParsedAdvice(null);
+    setAiError(null);
+    setShowResult(false);
+  }, [category]);
+
+  // 연/월 변경시에도 선택 초기화
+  useEffect(() => {
+    setPickedDates([]);
+    setAiAdvice(null);
+    setParsedAdvice(null);
+    setAiError(null);
+    setShowResult(false);
+  }, [viewYear, viewMonth]);
+
+  // ── 보관함 재생 모드 ──
   useEffect(() => {
     if (!recordId) return;
     let cancelled = false;
@@ -216,13 +204,14 @@ export default function TaekilPage() {
         if (content) {
           setAiAdvice(content);
           setParsedAdvice(parseTaekilStructuredAdvice(content));
+          setShowResult(true);
         }
       })
       .catch((e) => console.error('[archive replay] taekil load failed', e));
     return () => { cancelled = true; };
   }, [recordId]);
 
-  // ── 보관함 DB 확인 — 이전에 본 풀이가 있으면 모달 표시 ──
+  // ── 보관함 DB 확인 ──
   useEffect(() => {
     if (isArchiveMode || !targetProfile) return;
     if (refetchNonce > 0) return;
@@ -249,57 +238,57 @@ export default function TaekilPage() {
     return () => { cancelled = true; };
   }, [targetProfile, isArchiveMode, refetchNonce, router]);
 
-  // 연도 네비 (월 단위 X, 연 단위)
-  const prevYear = () => {
-    if (viewYear > MIN_YEAR) setViewYear(y => y - 1);
-  };
-  const nextYear = () => {
-    if (viewYear < MAX_YEAR) setViewYear(y => y + 1);
-  };
+  const prevYear = () => { if (viewYear > MIN_YEAR) setViewYear(y => y - 1); };
+  const nextYear = () => { if (viewYear < MAX_YEAR) setViewYear(y => y + 1); };
 
-  // 후보 날짜 정렬 + 등급 데이터 — 비교 그래프/표용
-  const candidateDays = useMemo(() => {
-    if (!result || candidateDates.length === 0) return [];
+  // 선택한 날짜들의 TaekilDay 데이터 (점수순 정렬)
+  const pickedDays = useMemo(() => {
+    if (!result || pickedDates.length === 0) return [];
     const map = new Map(result.days.map(d => [d.date, d]));
-    return candidateDates
+    return pickedDates
       .map(date => map.get(date))
       .filter((d): d is TaekilDay => !!d)
       .sort((a, b) => b.score - a.score);
-  }, [result, candidateDates]);
+  }, [result, pickedDates]);
 
-  const toggleCandidate = (date: string) => {
-    setCandidateDates(prev => {
+  const togglePick = (date: string) => {
+    if (showResult) return;
+    setPickedDates(prev => {
       if (prev.includes(date)) return prev.filter(d => d !== date);
-      if (prev.length >= MAX_CANDIDATES) return prev;
+      if (prev.length >= MAX_PICKS) return prev;
       return [...prev, date];
     });
   };
 
-  const clearCandidates = () => setCandidateDates([]);
+  const removePick = (date: string) => {
+    setPickedDates(prev => prev.filter(d => d !== date));
+    setAiAdvice(null);
+    setParsedAdvice(null);
+    setShowResult(false);
+  };
 
-  // 수동 AI 트리거 — 정상 캐시 X (사용자가 누른다 = 새 풀이). 실패 1분 차단만.
+  // ── AI 호출 ──
   const handleRequestAI = async () => {
-    if (!saju || !result || aiLoading || !taekilCacheKey) return;
+    if (!saju || !result || aiLoading || !taekilCacheKey || pickedDays.length === 0) return;
 
     const cached = useReportCacheStore.getState().getReport<string>('taekil', taekilCacheKey);
     if (cached?.error) {
       setAiError(cached.error);
       return;
     }
-    // 재진입 silent restore
     if (cached?.data) {
       setAiAdvice(cached.data);
+      setParsedAdvice(parseTaekilStructuredAdvice(cached.data));
+      setShowResult(true);
+      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
       return;
     }
 
-    // compare 모드는 사용자가 고른 후보만 result.days 로 보내 — Top 3 비교 풀이
-    const payload: TaekilResult = pickMode === 'compare' && candidateDays.length >= 2
-      ? {
-          ...result,
-          days: candidateDays,
-          bestDays: [...candidateDays].sort((a, b) => b.score - a.score),
-        }
-      : result;
+    const payload: TaekilResult = {
+      ...result,
+      days: pickedDays,
+      bestDays: [...pickedDays].sort((a, b) => b.score - a.score),
+    };
 
     setAiError(null);
     setAiLoading(true);
@@ -310,6 +299,7 @@ export default function TaekilPage() {
       }
       setAiAdvice(r.advice);
       setParsedAdvice(parseTaekilStructuredAdvice(r.advice));
+      setShowResult(true);
       const cache = useReportCacheStore.getState();
       cache.setReport('taekil', taekilCacheKey, r.advice);
       if (!cache.isCharged('taekil', taekilCacheKey)) {
@@ -318,6 +308,7 @@ export default function TaekilPage() {
           .chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.taekil)
           .catch(() => {});
       }
+      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '오류가 발생했어요.';
       setAiError(msg);
@@ -327,14 +318,13 @@ export default function TaekilPage() {
     }
   };
 
-  // 캘린더 그리드 데이터
+  // 캘린더 그리드
   const calendarCells = useMemo(() => {
     if (!result) return [];
     const firstDow = new Date(viewYear, viewMonth - 1, 1).getDay();
     const total = daysInMonth(viewYear, viewMonth);
     const dayMap = new Map<string, TaekilDay>();
     result.days.forEach(d => dayMap.set(d.date, d));
-
     const cells: Array<{ day: number; date: string; data: TaekilDay | null } | null> = [];
     for (let i = 0; i < firstDow; i++) cells.push(null);
     for (let d = 1; d <= total; d++) {
@@ -344,6 +334,12 @@ export default function TaekilPage() {
     return cells;
   }, [result, viewYear, viewMonth]);
 
+  const todayIso = useMemo(() => {
+    const t = new Date();
+    return t.toISOString().slice(0, 10);
+  }, []);
+
+  // ── 프로필 게이트 ──
   if (needsProfileSelect) {
     return (
       <QuickFortuneGate
@@ -355,7 +351,6 @@ export default function TaekilPage() {
     );
   }
 
-  // 로딩 / 프로필 없음
   if (!targetProfile) {
     const ready = hydrated && lastFetchedAt !== null && !profilesLoading;
     if (!ready) return <div className={styles.loading}>로딩 중...</div>;
@@ -382,7 +377,7 @@ export default function TaekilPage() {
 
   if (!saju) return <div className={styles.loading}>로딩 중...</div>;
 
-  const todayIso = toIso(today);
+  const catLabel = TAEKIL_CATEGORIES.find(c => c.id === category)?.label ?? '';
 
   return (
     <div className={styles.container}>
@@ -400,14 +395,21 @@ export default function TaekilPage() {
       <div className={styles.content}>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
 
-          {/* 카테고리 선택 */}
+          {/* ═══ STEP 1: 행사 카테고리 선택 ═══ */}
           <div className={styles.section}>
-            <h2>행사 카테고리</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 24, height: 24, borderRadius: '50%',
+                background: category ? 'var(--cta-primary)' : 'rgba(124,92,252,0.2)',
+                fontSize: 12, fontWeight: 800, color: 'white',
+              }}>1</span>
+              <h2 style={{ margin: 0, fontSize: 16 }}>어떤 목적의 택일인가요?</h2>
+            </div>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(2, 1fr)',
               gap: '8px',
-              marginTop: '10px',
             }}>
               {TAEKIL_CATEGORIES.map(cat => (
                 <button
@@ -442,770 +444,608 @@ export default function TaekilPage() {
             </div>
           </div>
 
-          {/* 보기 모드 — 단일 상세 vs 후보 비교 (직원 피드백: 다중 추천) */}
-          <div className={styles.section} style={{ paddingTop: 14, paddingBottom: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 15 }}>날짜 선택 방식</h2>
-                <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>
-                  {pickMode === 'single'
-                    ? '날짜 하나를 골라 상세 풀이를 봐요'
-                    : `여러 날짜를 골라 점수·근거를 비교해요 (최대 ${MAX_CANDIDATES}개)`}
-                </p>
-              </div>
-              <div style={{ display: 'flex', gap: 4, background: 'var(--space-elevated)', padding: 3, borderRadius: 10, border: '1px solid var(--border-subtle)' }}>
-                {(['single', 'compare'] as const).map(mode => (
-                  <button
-                    key={mode}
-                    onClick={() => {
-                      setPickMode(mode);
-                      setSelectedDay(null);
-                      setCandidateDates([]);
-                      setAiAdvice(null);
-                    }}
-                    style={{
-                      padding: '7px 14px',
-                      borderRadius: 8,
-                      border: 'none',
-                      background: pickMode === mode ? 'var(--cta-primary)' : 'transparent',
-                      color: pickMode === mode ? 'white' : 'var(--text-secondary)',
-                      fontSize: 12,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {mode === 'single' ? '단일' : '후보 비교'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {pickMode === 'compare' && candidateDates.length > 0 && (
-              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                <span style={{ color: 'var(--text-secondary)' }}>
-                  선택됨: <strong style={{ color: 'var(--cta-primary)' }}>{candidateDates.length}</strong> / {MAX_CANDIDATES}
-                </span>
-                <button
-                  onClick={clearCandidates}
-                  style={{
-                    background: 'none', border: 'none',
-                    color: 'var(--text-tertiary)', textDecoration: 'underline',
-                    cursor: 'pointer', fontSize: 12,
-                  }}
-                >
-                  전체 해제
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* 캘린더 */}
-          <div className={styles.section}>
-            {/* 연도 네비게이션 (오늘 ~ +5년 범위) */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <button
-                onClick={prevYear}
-                disabled={viewYear <= MIN_YEAR}
-                style={{
-                  background: 'var(--space-elevated)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: '8px', padding: '8px 16px',
-                  color: viewYear <= MIN_YEAR ? 'var(--text-tertiary)' : 'var(--text-primary)',
-                  cursor: viewYear <= MIN_YEAR ? 'not-allowed' : 'pointer',
-                  fontSize: '16px', fontWeight: 700,
-                  opacity: viewYear <= MIN_YEAR ? 0.4 : 1,
-                }}
+          {/* ═══ STEP 2: 캘린더에서 날짜 선택 (카테고리 선택 후 노출) ═══ */}
+          <AnimatePresence>
+            {category && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                style={{ overflow: 'hidden' }}
               >
-                ◀
-              </button>
-              <h2 style={{ margin: 0, fontSize: 20, fontFamily: 'var(--font-serif)' }}>
-                {viewYear}년
-              </h2>
-              <button
-                onClick={nextYear}
-                disabled={viewYear >= MAX_YEAR}
-                style={{
-                  background: 'var(--space-elevated)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: '8px', padding: '8px 16px',
-                  color: viewYear >= MAX_YEAR ? 'var(--text-tertiary)' : 'var(--text-primary)',
-                  cursor: viewYear >= MAX_YEAR ? 'not-allowed' : 'pointer',
-                  fontSize: '16px', fontWeight: 700,
-                  opacity: viewYear >= MAX_YEAR ? 0.4 : 1,
-                }}
-              >
-                ▶
-              </button>
-            </div>
-
-            {/* 월 선택 12개 버튼 */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(6, 1fr)',
-                gap: '4px',
-                marginBottom: '14px',
-              }}
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
-                const isCurrent = m === viewMonth;
-                const isPast = viewYear === todayYear && m < today.getMonth() + 1;
-                return (
-                  <button
-                    key={m}
-                    onClick={() => !isPast && setViewMonth(m)}
-                    disabled={isPast}
-                    style={{
-                      padding: '8px 4px',
-                      borderRadius: 8,
-                      border: isCurrent
-                        ? '1.5px solid var(--cta-primary)'
-                        : '1px solid var(--border-subtle)',
-                      background: isCurrent
-                        ? 'rgba(232,164,144,0.18)'
-                        : isPast
-                        ? 'rgba(20,12,38,0.3)'
-                        : 'var(--space-elevated)',
-                      color: isCurrent
-                        ? 'var(--cta-primary)'
-                        : isPast
-                        ? 'var(--text-tertiary)'
-                        : 'var(--text-primary)',
-                      fontSize: 13,
-                      fontWeight: isCurrent ? 700 : 500,
-                      cursor: isPast ? 'not-allowed' : 'pointer',
-                      opacity: isPast ? 0.4 : 1,
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {m}월
-                  </button>
-                );
-              })}
-            </div>
-
-            <p style={{
-              fontSize: 11,
-              color: 'var(--text-tertiary)',
-              textAlign: 'center',
-              marginBottom: 10,
-              opacity: 0.7,
-            }}>
-              오늘부터 최대 5년까지 조회 가능해요
-            </p>
-
-            {/* 요일 헤더 */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
-              gap: '2px', textAlign: 'center', marginBottom: '4px',
-            }}>
-              {WEEKDAYS.map((w, i) => (
-                <span key={w} style={{
-                  fontSize: '12px', fontWeight: 600, padding: '4px 0',
-                  color: i === 0 ? '#F87171' : i === 6 ? '#60A5FA' : 'var(--text-tertiary)',
-                }}>
-                  {w}
-                </span>
-              ))}
-            </div>
-
-            {/* 날짜 그리드 */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
-              gap: '2px',
-            }}>
-              {calendarCells.map((cell, i) => {
-                if (!cell) return <div key={`empty-${i}`} />;
-                const d = cell.data;
-                const isToday = cell.date === todayIso;
-                const isCompare = pickMode === 'compare';
-                const isSingleSel = !isCompare && selectedDay?.date === cell.date;
-                const isCandidate = isCompare && candidateDates.includes(cell.date);
-                const isSelected = isSingleSel || isCandidate;
-                const dow = new Date(cell.date).getDay();
-                return (
-                  <button
-                    key={cell.date}
-                    onClick={() => {
-                      if (!d) return;
-                      if (isCompare) {
-                        toggleCandidate(cell.date);
-                      } else {
-                        setSelectedDay(d);
-                      }
-                    }}
-                    style={{
-                      aspectRatio: '1',
-                      display: 'flex', flexDirection: 'column',
-                      alignItems: 'center', justifyContent: 'center',
-                      borderRadius: '10px',
-                      border: isSelected ? '2px solid var(--cta-primary)'
-                        : isToday ? '1px solid rgba(255,255,255,0.3)'
-                        : '1px solid transparent',
-                      background: isCandidate
-                        ? 'rgba(124,92,252,0.22)'
-                        : d ? GRADE_BG[d.grade] : 'transparent',
-                      cursor: d ? 'pointer' : 'default',
-                      transition: 'all 0.15s',
-                      padding: '2px',
-                      position: 'relative',
-                    }}
-                  >
-                    {isCandidate && (
-                      <span style={{
-                        position: 'absolute', top: 2, right: 3,
-                        fontSize: 10, fontWeight: 800, color: 'var(--cta-primary)',
-                      }}>✓</span>
-                    )}
+                <div className={styles.section}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                     <span style={{
-                      fontSize: '14px', fontWeight: isToday ? 800 : 600,
-                      color: dow === 0 ? '#F87171' : dow === 6 ? '#60A5FA' : 'var(--text-primary)',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      width: 24, height: 24, borderRadius: '50%',
+                      background: pickedDates.length > 0 ? 'var(--cta-primary)' : 'rgba(124,92,252,0.2)',
+                      fontSize: 12, fontWeight: 800, color: 'white',
+                    }}>2</span>
+                    <h2 style={{ margin: 0, fontSize: 16 }}>후보 날짜를 골라주세요</h2>
+                    <span style={{
+                      marginLeft: 'auto',
+                      fontSize: 13, fontWeight: 700,
+                      color: pickedDates.length >= MAX_PICKS ? '#34D399' : 'var(--text-tertiary)',
                     }}>
-                      {cell.day}
+                      {pickedDates.length} / {MAX_PICKS}
                     </span>
-                  </button>
-                );
-              })}
-            </div>
+                  </div>
 
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 10, opacity: 0.6 }}>
-              날짜를 눌러 상세 정보를 확인하세요
-            </p>
-          </div>
+                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 14, lineHeight: 1.5 }}>
+                    {catLabel}에 고려 중인 날짜를 최대 {MAX_PICKS}개 선택하면, 각 날짜의 길흉을 분석해드려요.
+                  </p>
 
-          {/* 선택된 날짜 상세 (단일 모드 전용) */}
-          {pickMode === 'single' && selectedDay && (
-            <motion.div
-              key={selectedDay.date}
-              className={styles.section}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                <h2 style={{ margin: 0 }}>{selectedDay.date}</h2>
-                <span style={{
-                  padding: '3px 10px', borderRadius: '99px',
-                  fontSize: '12px', fontWeight: 700,
-                  color: GRADE_COLOR[selectedDay.grade],
-                  border: `1px solid ${GRADE_COLOR[selectedDay.grade]}`,
-                  background: GRADE_BG[selectedDay.grade],
-                }}>
-                  {selectedDay.grade}
-                </span>
-                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  {selectedDay.score}점
-                </span>
-              </div>
+                  {/* 연도 네비 */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <button
+                      onClick={prevYear}
+                      disabled={viewYear <= MIN_YEAR}
+                      style={{
+                        background: 'var(--space-elevated)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px', padding: '8px 16px',
+                        color: viewYear <= MIN_YEAR ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                        cursor: viewYear <= MIN_YEAR ? 'not-allowed' : 'pointer',
+                        fontSize: '16px', fontWeight: 700,
+                        opacity: viewYear <= MIN_YEAR ? 0.4 : 1,
+                      }}
+                    >
+                      ◀
+                    </button>
+                    <h2 style={{ margin: 0, fontSize: 20, fontFamily: 'var(--font-serif)' }}>
+                      {viewYear}년
+                    </h2>
+                    <button
+                      onClick={nextYear}
+                      disabled={viewYear >= MAX_YEAR}
+                      style={{
+                        background: 'var(--space-elevated)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px', padding: '8px 16px',
+                        color: viewYear >= MAX_YEAR ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                        cursor: viewYear >= MAX_YEAR ? 'not-allowed' : 'pointer',
+                        fontSize: '16px', fontWeight: 700,
+                        opacity: viewYear >= MAX_YEAR ? 0.4 : 1,
+                      }}
+                    >
+                      ▶
+                    </button>
+                  </div>
 
-              <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>
-                {selectedDay.lunarLabel}
-              </div>
-
-              <div style={{
-                display: 'flex', gap: '8px', marginBottom: '12px',
-                fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-serif)',
-              }}>
-                <span style={{ color: GRADE_COLOR[selectedDay.grade] }}>
-                  {selectedDay.dayGan}{selectedDay.dayZhi}일
-                </span>
-              </div>
-
-              <ul style={{
-                listStyle: 'none', margin: 0, padding: 0,
-                display: 'flex', flexDirection: 'column', gap: '6px',
-              }}>
-                {selectedDay.reasons.map((r, i) => (
-                  <li key={i} style={{
-                    fontSize: '13px', color: 'var(--text-secondary)',
-                    paddingLeft: '12px', position: 'relative',
-                    lineHeight: 1.6,
-                  }}>
-                    <span style={{
-                      position: 'absolute', left: 0, top: '2px',
-                      color: 'var(--text-tertiary)', fontSize: '10px',
-                    }}>●</span>
-                    {r}
-                  </li>
-                ))}
-              </ul>
-
-              {selectedDay.luckyTime && (
-                <div style={{
-                  marginTop: '12px', padding: '10px 14px',
-                  background: 'rgba(52,211,153,0.1)', borderRadius: '10px',
-                  border: '1px solid rgba(52,211,153,0.25)',
-                  fontSize: '13px', color: '#34D399',
-                }}>
-                  추천 시간: {selectedDay.luckyTime}
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* 후보 비교 — Top 3 + 점수 그래프 + 명리 근거 표 (직원 피드백) */}
-          {pickMode === 'compare' && candidateDays.length > 0 && (
-            <div className={styles.section}>
-              <h2>후보 비교 분석</h2>
-              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                선택한 {candidateDays.length}개 날짜를 점수 순으로 정렬했어요. 상위 3개에 메달이 표시돼요.
-              </p>
-
-              {/* Top 3 메달 카드 */}
-              {candidateDays.length >= 1 && (
-                <div style={{
-                  marginTop: 14,
-                  display: 'grid',
-                  gridTemplateColumns: candidateDays.length === 1 ? '1fr' : candidateDays.length === 2 ? '1fr 1fr' : 'repeat(3, 1fr)',
-                  gap: 8,
-                }}>
-                  {candidateDays.slice(0, 3).map((d, idx) => {
-                    const medal = ['🥇', '🥈', '🥉'][idx];
-                    const dow = WEEKDAYS[new Date(d.date).getDay()];
-                    return (
-                      <div key={d.date} style={{
-                        padding: '12px 8px',
-                        background: idx === 0 ? 'rgba(232,164,144,0.18)' : 'var(--space-elevated)',
-                        border: idx === 0 ? '1.5px solid var(--cta-primary)' : '1px solid var(--border-subtle)',
-                        borderRadius: 12,
-                        textAlign: 'center',
-                      }}>
-                        <div style={{ fontSize: 22, lineHeight: 1 }}>{medal}</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, marginTop: 6, color: 'var(--text-primary)' }}>
-                          {d.date.slice(5).replace('-', '/')}
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>({dow})</div>
-                        <div style={{
-                          fontSize: 12, fontWeight: 800, marginTop: 4,
-                          color: GRADE_COLOR[d.grade],
-                        }}>
-                          {d.grade} · {d.score}점
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* 점수 그래프 (가로 바) */}
-              <div style={{ marginTop: 18 }}>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 700 }}>
-                  점수 그래프
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {candidateDays.map((d) => (
-                    <div key={d.date} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 11, width: 56, color: 'var(--text-secondary)', flexShrink: 0 }}>
-                        {d.date.slice(5).replace('-', '/')}
-                      </span>
-                      <div style={{
-                        flex: 1, height: 18, borderRadius: 6,
-                        background: 'rgba(255,255,255,0.05)',
-                        position: 'relative', overflow: 'hidden',
-                      }}>
-                        <div style={{
-                          width: `${d.score}%`, height: '100%',
-                          background: GRADE_COLOR[d.grade],
-                          opacity: 0.9, borderRadius: 6,
-                          transition: 'width 0.4s ease',
-                        }} />
-                        <span style={{
-                          position: 'absolute', right: 6, top: 1,
-                          fontSize: 10, fontWeight: 700,
-                          color: 'var(--text-primary)',
-                          textShadow: '0 0 4px rgba(0,0,0,0.6)',
-                        }}>
-                          {d.score}
-                        </span>
-                      </div>
-                      <span style={{
-                        fontSize: 10, fontWeight: 700, width: 32, textAlign: 'right',
-                        color: GRADE_COLOR[d.grade], flexShrink: 0,
-                      }}>
-                        {d.grade}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* 명리 근거 표 */}
-              <div style={{ marginTop: 18 }}>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 700 }}>
-                  명리 근거 비교
-                </div>
-                <div style={{
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 10, overflow: 'hidden',
-                }}>
-                  {candidateDays.map((d, idx) => (
-                    <div key={d.date} style={{
-                      padding: '10px 12px',
-                      borderTop: idx === 0 ? 'none' : '1px solid var(--border-subtle)',
-                      background: idx === 0 ? 'rgba(124,92,252,0.08)' : 'transparent',
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
-                        <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)' }}>
-                          {d.date}
-                        </span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: GRADE_COLOR[d.grade] }}>
-                          {d.dayGan}{d.dayZhi} · {d.grade}
-                        </span>
-                      </div>
-                      <ul style={{ margin: 0, paddingLeft: 14, listStyle: 'disc' }}>
-                        {d.reasons.slice(0, 3).map((r, i) => (
-                          <li key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                            {r}
-                          </li>
-                        ))}
-                      </ul>
-                      {d.luckyTime && (
-                        <div style={{
-                          marginTop: 6, fontSize: 11,
-                          color: '#34D399', fontWeight: 600,
-                        }}>
-                          길시: {d.luckyTime}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Top 3 포디움 (사주키드 스타일) */}
-          {pickMode === 'single' && result && result.bestDays.length > 0 && (
-            <div className={styles.section}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <span style={{ display: 'inline-block', width: 4, height: 20, borderRadius: 2, background: '#34D399' }} />
-                <h2 style={{ margin: 0, fontSize: 17, fontFamily: 'var(--font-serif)' }}>
-                  {viewMonth}월 추천 길일 Top 3
-                </h2>
-              </div>
-              <div style={{
-                display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-                gap: 8, padding: '0 8px',
-              }}>
-                {(() => {
-                  const top3 = result.bestDays.slice(0, 3);
-                  const podiumOrder = top3.length >= 3
-                    ? [{ d: top3[1], rank: 2, h: 120 }, { d: top3[0], rank: 1, h: 150 }, { d: top3[2], rank: 3, h: 100 }]
-                    : top3.length === 2
-                    ? [{ d: top3[0], rank: 1, h: 150 }, { d: top3[1], rank: 2, h: 120 }]
-                    : [{ d: top3[0], rank: 1, h: 150 }];
-                  const rankBadge = ['', '1st', '2nd', '3rd'];
-                  const rankColor = ['', '#FFD700', '#C0C0C0', '#CD7F32'];
-                  return podiumOrder.map(({ d, rank, h }) => {
-                    const dayNum = parseInt(d.date.split('-')[2]);
-                    const dow = WEEKDAYS[new Date(d.date).getDay()];
-                    return (
-                      <button
-                        key={d.date}
-                        onClick={() => setSelectedDay(d)}
-                        style={{
-                          flex: rank === 1 ? '1.2' : '1',
-                          minHeight: h,
-                          padding: '14px 6px 12px',
-                          background: rank === 1
-                            ? 'linear-gradient(180deg, rgba(255,215,0,0.15) 0%, rgba(124,92,252,0.12) 100%)'
-                            : 'var(--space-elevated)',
-                          border: selectedDay?.date === d.date
-                            ? '2px solid var(--cta-primary)'
-                            : rank === 1
-                            ? '1.5px solid rgba(255,215,0,0.4)'
-                            : '1px solid var(--border-subtle)',
-                          borderRadius: 16,
-                          textAlign: 'center',
-                          cursor: 'pointer',
-                          display: 'flex', flexDirection: 'column',
-                          alignItems: 'center', justifyContent: 'center',
-                          gap: 4,
-                          transition: 'all 0.2s',
-                        }}
-                      >
-                        <span style={{
-                          fontSize: rank === 1 ? 13 : 11,
-                          fontWeight: 800,
-                          color: rankColor[rank],
-                          letterSpacing: '0.05em',
-                        }}>
-                          {rankBadge[rank]}
-                        </span>
-                        <span style={{
-                          fontSize: rank === 1 ? 28 : 22,
-                          fontWeight: 900,
-                          color: 'var(--text-primary)',
-                          lineHeight: 1.1,
-                        }}>
-                          {dayNum}
-                        </span>
-                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                          {viewMonth}월 ({dow})
-                        </span>
-                        <span style={{
-                          marginTop: 4,
-                          padding: '3px 10px', borderRadius: 99,
-                          fontSize: 11, fontWeight: 700,
-                          color: GRADE_COLOR[d.grade],
-                          background: GRADE_BG[d.grade],
-                          border: `1px solid ${GRADE_COLOR[d.grade]}40`,
-                        }}>
-                          {d.grade} · {d.score}점
-                        </span>
-                        {d.dayGan && (
-                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                            {d.dayGan}{d.dayZhi}일
-                          </span>
-                        )}
-                      </button>
-                    );
-                  });
-                })()}
-              </div>
-              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 12, opacity: 0.7 }}>
-                날짜를 누르면 상세 정보를 볼 수 있어요
-              </p>
-            </div>
-          )}
-
-          {/* 길일 분석 — 수동 버튼 트리거 */}
-          <div className={styles.section} style={{ marginTop: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <span style={{ display: 'inline-block', width: 4, height: 20, borderRadius: 2, background: 'var(--cta-primary)' }} />
-              <h2 style={{ margin: 0, fontSize: 17, fontFamily: 'var(--font-serif)' }}>
-                {pickMode === 'compare' && candidateDays.length >= 2
-                  ? `후보 ${candidateDays.length}개 Top 3 풀이`
-                  : selectedDay
-                  ? `${selectedDay.date} 길흉 풀이`
-                  : '길일 종합 분석'}
-              </h2>
-            </div>
-
-            {!aiAdvice && !aiLoading && (
-              <>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 14 }}>
-                  {pickMode === 'compare' && candidateDays.length >= 2
-                    ? `선택한 ${candidateDays.length}개 후보 중 Top 3 를 명리 근거(십성·12운성·신살)와 함께 추천하고, 피해야 할 후보도 짚어드려요.`
-                    : pickMode === 'compare'
-                    ? '캘린더에서 비교할 후보 날짜를 2개 이상 선택해 주세요.'
-                    : selectedDay
-                    ? `${selectedDay.date}(${selectedDay.grade}) 에 ${TAEKIL_CATEGORIES.find(c => c.id === category)?.label} 행사가 적합한지, 주의할 점과 길시까지 풀어드려요.`
-                    : `${viewYear}년 ${viewMonth}월의 길일 Top 3와 피해야 할 날, 월별 기운 흐름을 종합 분석해드려요.`}
-                </p>
-                <button
-                  onClick={handleRequestAI}
-                  disabled={!result || (pickMode === 'compare' && candidateDays.length < 2)}
-                  style={{
-                    width: '100%',
-                    padding: '14px',
-                    borderRadius: 12,
-                    background: 'var(--cta-primary)',
-                    color: 'white',
-                    border: 'none',
-                    fontWeight: 700,
-                    fontSize: 15,
-                    cursor: (result && (pickMode === 'single' || candidateDays.length >= 2)) ? 'pointer' : 'not-allowed',
-                    opacity: (result && (pickMode === 'single' || candidateDays.length >= 2)) ? 1 : 0.5,
-                  }}
-                >
-                  {pickMode === 'compare'
-                    ? candidateDays.length >= 2
-                      ? `후보 ${candidateDays.length}개 비교 풀이받기`
-                      : '후보를 2개 이상 선택해 주세요'
-                    : selectedDay ? '이 날의 길흉 풀이받기' : '이 달의 길일 분석받기'}
-                </button>
-                {aiError && (
+                  {/* 월 선택 */}
                   <div style={{
-                    marginTop: 12,
-                    padding: 12,
-                    borderRadius: 10,
-                    background: 'rgba(248,113,113,0.1)',
-                    border: '1px solid rgba(248,113,113,0.35)',
+                    display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)',
+                    gap: '4px', marginBottom: '14px',
                   }}>
-                    <p style={{ fontSize: 13, color: '#F87171', margin: 0, marginBottom: 6 }}>
-                      {aiError}
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
+                      const isCurrent = m === viewMonth;
+                      const isPast = viewYear === todayYear && m < today.getMonth() + 1;
+                      return (
+                        <button
+                          key={m}
+                          onClick={() => !isPast && setViewMonth(m)}
+                          disabled={isPast}
+                          style={{
+                            padding: '8px 4px', borderRadius: 8,
+                            border: isCurrent ? '1.5px solid var(--cta-primary)' : '1px solid var(--border-subtle)',
+                            background: isCurrent ? 'rgba(232,164,144,0.18)' : isPast ? 'rgba(20,12,38,0.3)' : 'var(--space-elevated)',
+                            color: isCurrent ? 'var(--cta-primary)' : isPast ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                            fontSize: 13, fontWeight: isCurrent ? 700 : 500,
+                            cursor: isPast ? 'not-allowed' : 'pointer',
+                            opacity: isPast ? 0.4 : 1,
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          {m}월
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* 요일 헤더 */}
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+                    gap: '2px', textAlign: 'center', marginBottom: '4px',
+                  }}>
+                    {WEEKDAYS.map((w, i) => (
+                      <span key={w} style={{
+                        fontSize: '12px', fontWeight: 600, padding: '4px 0',
+                        color: i === 0 ? '#F87171' : i === 6 ? '#60A5FA' : 'var(--text-tertiary)',
+                      }}>
+                        {w}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* 날짜 그리드 */}
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+                    gap: '2px',
+                  }}>
+                    {calendarCells.map((cell, i) => {
+                      if (!cell) return <div key={`empty-${i}`} />;
+                      const d = cell.data;
+                      const isToday = cell.date === todayIso;
+                      const isPicked = pickedDates.includes(cell.date);
+                      const isFull = pickedDates.length >= MAX_PICKS && !isPicked;
+                      const dow = new Date(cell.date).getDay();
+                      return (
+                        <button
+                          key={cell.date}
+                          onClick={() => d && !showResult && togglePick(cell.date)}
+                          disabled={!d || (isFull && !showResult)}
+                          style={{
+                            aspectRatio: '1',
+                            display: 'flex', flexDirection: 'column',
+                            alignItems: 'center', justifyContent: 'center',
+                            borderRadius: '10px',
+                            border: isPicked ? '2px solid var(--cta-primary)'
+                              : isToday ? '1px solid rgba(255,255,255,0.3)'
+                              : '1px solid transparent',
+                            background: isPicked
+                              ? 'rgba(124,92,252,0.22)'
+                              : d ? GRADE_BG[d.grade] : 'transparent',
+                            cursor: (!d || showResult || isFull) ? 'default' : 'pointer',
+                            transition: 'all 0.15s',
+                            padding: '2px',
+                            position: 'relative',
+                            opacity: (isFull && !showResult) ? 0.4 : 1,
+                          }}
+                        >
+                          {isPicked && (
+                            <span style={{
+                              position: 'absolute', top: 1, right: 2,
+                              fontSize: 9, fontWeight: 800, color: 'var(--cta-primary)',
+                              background: 'rgba(124,92,252,0.15)',
+                              borderRadius: 4, padding: '0 3px',
+                            }}>
+                              {pickedDates.indexOf(cell.date) + 1}
+                            </span>
+                          )}
+                          <span style={{
+                            fontSize: '14px', fontWeight: isToday ? 800 : 600,
+                            color: dow === 0 ? '#F87171' : dow === 6 ? '#60A5FA' : 'var(--text-primary)',
+                          }}>
+                            {cell.day}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 10, opacity: 0.6 }}>
+                    날짜를 탭하면 후보에 추가돼요 (다시 탭하면 해제)
+                  </p>
+                </div>
+
+                {/* 선택된 날짜 칩 */}
+                {pickedDates.length > 0 && (
+                  <div className={styles.section} style={{ paddingTop: 12, paddingBottom: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 8 }}>
+                      선택한 후보 날짜
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {pickedDates.map((date) => {
+                        const d = result?.days.find(dy => dy.date === date);
+                        const dayNum = parseInt(date.split('-')[2]);
+                        const mon = parseInt(date.split('-')[1]);
+                        const dow = WEEKDAYS[new Date(date).getDay()];
+                        return (
+                          <div key={date} style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '6px 10px',
+                            background: 'rgba(124,92,252,0.12)',
+                            border: '1px solid rgba(124,92,252,0.3)',
+                            borderRadius: 10,
+                          }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                              {mon}/{dayNum}({dow})
+                            </span>
+                            {d && (
+                              <span style={{
+                                fontSize: 10, fontWeight: 700,
+                                color: GRADE_COLOR[d.grade],
+                              }}>
+                                {d.grade}
+                              </span>
+                            )}
+                            {!showResult && (
+                              <button
+                                onClick={() => removePick(date)}
+                                style={{
+                                  background: 'none', border: 'none',
+                                  color: 'var(--text-tertiary)', cursor: 'pointer',
+                                  fontSize: 14, lineHeight: 1, padding: 0,
+                                }}
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ═══ STEP 3: 풀이 요청 버튼 ═══ */}
+                {pickedDates.length > 0 && !showResult && !aiLoading && (
+                  <div className={styles.section} style={{ paddingTop: 12, paddingBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 24, height: 24, borderRadius: '50%',
+                        background: 'rgba(124,92,252,0.2)',
+                        fontSize: 12, fontWeight: 800, color: 'white',
+                      }}>3</span>
+                      <h2 style={{ margin: 0, fontSize: 16 }}>택일 풀이 받기</h2>
+                    </div>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 14 }}>
+                      선택한 {pickedDates.length}개 날짜를 {catLabel} 관점에서 분석하고, 최적의 날짜를 추천해드려요.
                     </p>
                     <button
                       onClick={handleRequestAI}
                       style={{
-                        background: 'none',
+                        width: '100%',
+                        padding: '16px',
+                        borderRadius: 14,
+                        background: 'var(--cta-primary)',
+                        color: 'white',
                         border: 'none',
-                        fontSize: 13,
-                        color: 'var(--cta-primary)',
-                        fontWeight: 600,
-                        textDecoration: 'underline',
+                        fontWeight: 700,
+                        fontSize: 16,
                         cursor: 'pointer',
-                        padding: 0,
                       }}
                     >
-                      다시 시도
+                      택일 운세 풀이보기
                     </button>
-                  </div>
-                )}
-              </>
-            )}
-
-            {aiLoading && (
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                padding: '24px 16px',
-                gap: 10,
-              }}>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cta-primary)' }} className="animate-pulse" />
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cta-primary)', animationDelay: '0.2s' }} className="animate-pulse" />
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cta-primary)', animationDelay: '0.4s' }} className="animate-pulse" />
-                </div>
-                <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
-                  명리 분석 중입니다... (최대 1분)
-                </p>
-              </div>
-            )}
-
-            {aiAdvice && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {parsedAdvice && parsedAdvice.dates.length > 0 ? (
-                  <>
-                    {parsedAdvice.dates.map((adv, idx) => {
-                      const topDay = result?.bestDays[idx];
-                      const rankLabel = [`1위`, `2위`, `3위`][idx] ?? `${idx + 1}위`;
-                      const rankColor = ['#FFD700', '#C0C0C0', '#CD7F32'][idx] ?? 'var(--text-secondary)';
-                      return (
-                        <div
-                          key={idx}
+                    {aiError && (
+                      <div style={{
+                        marginTop: 12, padding: 12, borderRadius: 10,
+                        background: 'rgba(248,113,113,0.1)',
+                        border: '1px solid rgba(248,113,113,0.35)',
+                      }}>
+                        <p style={{ fontSize: 13, color: '#F87171', margin: 0, marginBottom: 6 }}>
+                          {aiError}
+                        </p>
+                        <button
+                          onClick={handleRequestAI}
                           style={{
-                            padding: 16,
-                            background: idx === 0
-                              ? 'linear-gradient(135deg, rgba(255,215,0,0.08) 0%, rgba(20,12,38,0.55) 40%)'
-                              : 'rgba(20,12,38,0.55)',
-                            borderRadius: 14,
-                            border: idx === 0
-                              ? '1px solid rgba(255,215,0,0.25)'
-                              : '1px solid var(--border-subtle)',
+                            background: 'none', border: 'none', fontSize: 13,
+                            color: 'var(--cta-primary)', fontWeight: 600,
+                            textDecoration: 'underline', cursor: 'pointer', padding: 0,
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                            <span style={{
-                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                              width: 28, height: 28, borderRadius: '50%',
-                              background: `${rankColor}22`,
-                              border: `1.5px solid ${rankColor}`,
-                              fontSize: 11, fontWeight: 800, color: rankColor,
-                            }}>
-                              {rankLabel}
-                            </span>
-                            {topDay && (
-                              <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>
-                                {topDay.date} ({WEEKDAYS[new Date(topDay.date).getDay()]})
-                              </span>
-                            )}
-                            {topDay && (
-                              <span style={{
-                                padding: '2px 8px', borderRadius: 99,
-                                fontSize: 11, fontWeight: 700,
-                                color: GRADE_COLOR[topDay.grade],
-                                background: GRADE_BG[topDay.grade],
-                              }}>
-                                {topDay.grade}
-                              </span>
-                            )}
-                          </div>
-
-                          {adv.analysis && (
-                            <div style={{ marginBottom: 12 }}>
-                              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 4 }}>분석</div>
-                              <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.75, margin: 0 }}>
-                                {adv.analysis}
-                              </p>
-                            </div>
-                          )}
-
-                          {adv.times && (
-                            <div style={{
-                              marginBottom: 12, padding: '10px 12px',
-                              background: 'rgba(52,211,153,0.08)', borderRadius: 10,
-                              border: '1px solid rgba(52,211,153,0.2)',
-                            }}>
-                              <div style={{ fontSize: 12, fontWeight: 700, color: '#34D399', marginBottom: 4 }}>추천 시간대</div>
-                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-line' }}>
-                                {adv.times}
-                              </p>
-                            </div>
-                          )}
-
-                          {adv.luck && (
-                            <div style={{
-                              marginBottom: 12, padding: '10px 12px',
-                              background: 'rgba(124,92,252,0.08)', borderRadius: 10,
-                              border: '1px solid rgba(124,92,252,0.2)',
-                            }}>
-                              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--cta-primary)', marginBottom: 4 }}>개운법</div>
-                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
-                                {adv.luck}
-                              </p>
-                            </div>
-                          )}
-
-                          {adv.caution && (
-                            <div style={{
-                              padding: '10px 12px',
-                              background: 'rgba(248,113,113,0.08)', borderRadius: 10,
-                              border: '1px solid rgba(248,113,113,0.2)',
-                            }}>
-                              <div style={{ fontSize: 12, fontWeight: 700, color: '#F87171', marginBottom: 4 }}>주의</div>
-                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
-                                {adv.caution}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {parsedAdvice.avoid && (
-                      <div style={{
-                        padding: 14,
-                        background: 'rgba(248,113,113,0.06)',
-                        borderRadius: 14,
-                        border: '1px solid rgba(248,113,113,0.25)',
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            width: 22, height: 22, borderRadius: '50%',
-                            background: 'rgba(248,113,113,0.15)',
-                            fontSize: 11, fontWeight: 800, color: '#F87171',
-                          }}>!</span>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: '#F87171' }}>피해야 할 날</span>
-                        </div>
-                        <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-line' }}>
-                          {parsedAdvice.avoid}
-                        </p>
+                          다시 시도
+                        </button>
                       </div>
                     )}
-                  </>
-                ) : (
-                  <div style={{
-                    padding: 16,
-                    background: 'rgba(20,12,38,0.55)',
-                    borderRadius: 14,
-                    border: '1px solid var(--border-subtle)',
-                    fontSize: 15,
-                    color: 'var(--text-secondary)',
-                    lineHeight: 1.85,
-                    letterSpacing: '-0.005em',
-                    whiteSpace: 'pre-line',
-                  }}>
-                    {aiAdvice
-                      .replace(/^\s*\[(?:top\d|avoid)\].*$/gm, '')
-                      .trim()}
                   </div>
                 )}
-              </div>
+
+                {/* 로딩 */}
+                {aiLoading && (
+                  <div className={styles.section}>
+                    <div style={{
+                      display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', padding: '32px 16px', gap: 12,
+                    }}>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cta-primary)' }} className="animate-pulse" />
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cta-primary)', animationDelay: '0.2s' }} className="animate-pulse" />
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cta-primary)', animationDelay: '0.4s' }} className="animate-pulse" />
+                      </div>
+                      <p style={{ fontSize: 14, color: 'var(--text-tertiary)', margin: 0, fontWeight: 600 }}>
+                        {pickedDates.length}개 날짜 분석 중...
+                      </p>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0, opacity: 0.6 }}>
+                        약 30초~1분 정도 소요돼요
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* ═══ RESULT: 포디움 + 상세 카드 ═══ */}
+                {showResult && aiAdvice && (
+                  <div ref={resultRef}>
+                    {/* 포디움 — 점수순 Top 3 */}
+                    {pickedDays.length > 0 && (
+                      <div className={styles.section}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                          <span style={{ display: 'inline-block', width: 4, height: 20, borderRadius: 2, background: '#34D399' }} />
+                          <h2 style={{ margin: 0, fontSize: 17, fontFamily: 'var(--font-serif)' }}>
+                            {catLabel} 추천 순위
+                          </h2>
+                        </div>
+
+                        <div style={{
+                          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                          gap: 8, padding: '0 4px',
+                        }}>
+                          {(() => {
+                            const top = pickedDays.slice(0, 3);
+                            const podiumOrder = top.length >= 3
+                              ? [{ d: top[1], rank: 2, h: 120 }, { d: top[0], rank: 1, h: 155 }, { d: top[2], rank: 3, h: 100 }]
+                              : top.length === 2
+                              ? [{ d: top[0], rank: 1, h: 155 }, { d: top[1], rank: 2, h: 120 }]
+                              : [{ d: top[0], rank: 1, h: 155 }];
+                            const rankBadge = ['', '1st', '2nd', '3rd'];
+                            const rankColor = ['', '#FFD700', '#C0C0C0', '#CD7F32'];
+                            return podiumOrder.map(({ d, rank, h }) => {
+                              const dayNum = parseInt(d.date.split('-')[2]);
+                              const mon = parseInt(d.date.split('-')[1]);
+                              const dow = WEEKDAYS[new Date(d.date).getDay()];
+                              return (
+                                <div
+                                  key={d.date}
+                                  style={{
+                                    flex: rank === 1 ? '1.2' : '1',
+                                    minHeight: h,
+                                    padding: '14px 6px 12px',
+                                    background: rank === 1
+                                      ? 'linear-gradient(180deg, rgba(255,215,0,0.15) 0%, rgba(124,92,252,0.12) 100%)'
+                                      : 'var(--space-elevated)',
+                                    border: rank === 1
+                                      ? '1.5px solid rgba(255,215,0,0.4)'
+                                      : '1px solid var(--border-subtle)',
+                                    borderRadius: 16,
+                                    textAlign: 'center',
+                                    display: 'flex', flexDirection: 'column',
+                                    alignItems: 'center', justifyContent: 'center',
+                                    gap: 4,
+                                  }}
+                                >
+                                  <span style={{
+                                    fontSize: rank === 1 ? 13 : 11,
+                                    fontWeight: 800, color: rankColor[rank],
+                                    letterSpacing: '0.05em',
+                                  }}>
+                                    {rankBadge[rank]}
+                                  </span>
+                                  <span style={{
+                                    fontSize: rank === 1 ? 28 : 22,
+                                    fontWeight: 900, color: 'var(--text-primary)',
+                                    lineHeight: 1.1,
+                                  }}>
+                                    {dayNum}
+                                  </span>
+                                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                                    {mon}월 ({dow})
+                                  </span>
+                                  <span style={{
+                                    marginTop: 4,
+                                    padding: '3px 10px', borderRadius: 99,
+                                    fontSize: 11, fontWeight: 700,
+                                    color: GRADE_COLOR[d.grade],
+                                    background: GRADE_BG[d.grade],
+                                    border: `1px solid ${GRADE_COLOR[d.grade]}40`,
+                                  }}>
+                                    {d.grade} · {d.score}점
+                                  </span>
+                                </div>
+                              );
+                            });
+                          })()}
+                        </div>
+
+                        {/* 점수 바 그래프 — 전체 선택 날짜 */}
+                        {pickedDays.length > 1 && (
+                          <div style={{ marginTop: 18 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                              {pickedDays.map((d) => (
+                                <div key={d.date} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontSize: 11, width: 50, color: 'var(--text-secondary)', flexShrink: 0 }}>
+                                    {d.date.slice(5).replace('-', '/')}
+                                  </span>
+                                  <div style={{
+                                    flex: 1, height: 16, borderRadius: 6,
+                                    background: 'rgba(255,255,255,0.05)',
+                                    position: 'relative', overflow: 'hidden',
+                                  }}>
+                                    <div style={{
+                                      width: `${d.score}%`, height: '100%',
+                                      background: GRADE_COLOR[d.grade],
+                                      opacity: 0.85, borderRadius: 6,
+                                      transition: 'width 0.4s ease',
+                                    }} />
+                                    <span style={{
+                                      position: 'absolute', right: 6, top: 0,
+                                      fontSize: 10, fontWeight: 700,
+                                      color: 'var(--text-primary)',
+                                      textShadow: '0 0 4px rgba(0,0,0,0.6)',
+                                    }}>
+                                      {d.score}
+                                    </span>
+                                  </div>
+                                  <span style={{
+                                    fontSize: 10, fontWeight: 700, width: 28, textAlign: 'right',
+                                    color: GRADE_COLOR[d.grade], flexShrink: 0,
+                                  }}>
+                                    {d.grade}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* AI 상세 카드 */}
+                    <div className={styles.section}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                        <span style={{ display: 'inline-block', width: 4, height: 20, borderRadius: 2, background: 'var(--cta-primary)' }} />
+                        <h2 style={{ margin: 0, fontSize: 17, fontFamily: 'var(--font-serif)' }}>
+                          날짜별 상세 풀이
+                        </h2>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {parsedAdvice && parsedAdvice.dates.length > 0 ? (
+                          <>
+                            {parsedAdvice.dates.map((adv, idx) => {
+                              const topDay = pickedDays[idx];
+                              const rankLabel = [`1위`, `2위`, `3위`][idx] ?? `${idx + 1}위`;
+                              const rankColor = ['#FFD700', '#C0C0C0', '#CD7F32'][idx] ?? 'var(--text-secondary)';
+                              return (
+                                <div
+                                  key={idx}
+                                  style={{
+                                    padding: 16,
+                                    background: idx === 0
+                                      ? 'linear-gradient(135deg, rgba(255,215,0,0.08) 0%, rgba(20,12,38,0.55) 40%)'
+                                      : 'rgba(20,12,38,0.55)',
+                                    borderRadius: 14,
+                                    border: idx === 0
+                                      ? '1px solid rgba(255,215,0,0.25)'
+                                      : '1px solid var(--border-subtle)',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                                    <span style={{
+                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                      width: 28, height: 28, borderRadius: '50%',
+                                      background: `${rankColor}22`,
+                                      border: `1.5px solid ${rankColor}`,
+                                      fontSize: 11, fontWeight: 800, color: rankColor,
+                                    }}>
+                                      {rankLabel}
+                                    </span>
+                                    {topDay && (
+                                      <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>
+                                        {topDay.date} ({WEEKDAYS[new Date(topDay.date).getDay()]})
+                                      </span>
+                                    )}
+                                    {topDay && (
+                                      <span style={{
+                                        padding: '2px 8px', borderRadius: 99,
+                                        fontSize: 11, fontWeight: 700,
+                                        color: GRADE_COLOR[topDay.grade],
+                                        background: GRADE_BG[topDay.grade],
+                                      }}>
+                                        {topDay.grade}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {adv.analysis && (
+                                    <div style={{ marginBottom: 12 }}>
+                                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 4 }}>분석</div>
+                                      <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.75, margin: 0 }}>
+                                        {adv.analysis}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {adv.times && (
+                                    <div style={{
+                                      marginBottom: 12, padding: '10px 12px',
+                                      background: 'rgba(52,211,153,0.08)', borderRadius: 10,
+                                      border: '1px solid rgba(52,211,153,0.2)',
+                                    }}>
+                                      <div style={{ fontSize: 12, fontWeight: 700, color: '#34D399', marginBottom: 4 }}>추천 시간대</div>
+                                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-line' }}>
+                                        {adv.times}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {adv.luck && (
+                                    <div style={{
+                                      marginBottom: 12, padding: '10px 12px',
+                                      background: 'rgba(124,92,252,0.08)', borderRadius: 10,
+                                      border: '1px solid rgba(124,92,252,0.2)',
+                                    }}>
+                                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--cta-primary)', marginBottom: 4 }}>개운법</div>
+                                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
+                                        {adv.luck}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {adv.caution && (
+                                    <div style={{
+                                      padding: '10px 12px',
+                                      background: 'rgba(248,113,113,0.08)', borderRadius: 10,
+                                      border: '1px solid rgba(248,113,113,0.2)',
+                                    }}>
+                                      <div style={{ fontSize: 12, fontWeight: 700, color: '#F87171', marginBottom: 4 }}>주의</div>
+                                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
+                                        {adv.caution}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+
+                            {parsedAdvice.avoid && (
+                              <div style={{
+                                padding: 14,
+                                background: 'rgba(248,113,113,0.06)',
+                                borderRadius: 14,
+                                border: '1px solid rgba(248,113,113,0.25)',
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                                  <span style={{
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    width: 22, height: 22, borderRadius: '50%',
+                                    background: 'rgba(248,113,113,0.15)',
+                                    fontSize: 11, fontWeight: 800, color: '#F87171',
+                                  }}>!</span>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: '#F87171' }}>피해야 할 날</span>
+                                </div>
+                                <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-line' }}>
+                                  {parsedAdvice.avoid}
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div style={{
+                            padding: 16,
+                            background: 'rgba(20,12,38,0.55)',
+                            borderRadius: 14,
+                            border: '1px solid var(--border-subtle)',
+                            fontSize: 15,
+                            color: 'var(--text-secondary)',
+                            lineHeight: 1.85,
+                            whiteSpace: 'pre-line',
+                          }}>
+                            {aiAdvice
+                              .replace(/^\s*\[(?:top\d|avoid)\].*$/gm, '')
+                              .trim()}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 다시하기 */}
+                      <button
+                        onClick={() => {
+                          setPickedDates([]);
+                          setAiAdvice(null);
+                          setParsedAdvice(null);
+                          setAiError(null);
+                          setShowResult(false);
+                        }}
+                        style={{
+                          width: '100%', marginTop: 16,
+                          padding: '14px', borderRadius: 12,
+                          background: 'transparent',
+                          border: '1px solid var(--border-subtle)',
+                          color: 'var(--text-secondary)',
+                          fontWeight: 600, fontSize: 14,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        다른 날짜로 다시 풀이받기
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
 
         </motion.div>
       </div>
