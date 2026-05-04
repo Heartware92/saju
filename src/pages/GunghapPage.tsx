@@ -467,7 +467,7 @@ export default function GunghapPage() {
     }
   }, [category]);
 
-  // ── 보관함 재생 모드 — activeRecordId 가 있으면 DB 에서 풀이 텍스트 + 메타 복원 ──
+  // ── 보관함 재생 모드 — activeRecordId 가 있으면 DB 에서 풀이 텍스트 + 메타 + 사주 복원 ──
   useEffect(() => {
     if (!activeRecordId) return;
     const recordId = activeRecordId;
@@ -494,6 +494,36 @@ export default function GunghapPage() {
             myRole: (eng?.myRole as string) ?? '',
             otherRole: (eng?.otherRole as string) ?? '',
           });
+
+          // 사주 데이터 복원 — 나와 상대 사주표를 보여주기 위해 재계산
+          if (cat !== 'pet') {
+            try {
+              const myBirth: BirthProfile = {
+                id: 'archive_me', user_id: '', name: record.profile_name ?? '나',
+                birth_date: record.birth_date, birth_time: record.birth_time ?? undefined,
+                birth_place: record.birth_place ?? 'seoul',
+                gender: record.gender, calendar_type: record.calendar_type,
+                is_primary: false, created_at: '', updated_at: '',
+              };
+              const myCalc = computeSajuFromProfile(myBirth);
+              if (myCalc) setMySajuResult(myCalc);
+
+              if (record.partner_birth_date) {
+                const partnerGender = (eng?.partnerGender as string) || (record.gender === 'male' ? 'female' : 'male');
+                const otherBirth: BirthProfile = {
+                  id: 'archive_other', user_id: '', name: record.partner_name ?? '상대',
+                  birth_date: record.partner_birth_date,
+                  birth_time: (eng?.partnerBirthTime as string) ?? undefined,
+                  birth_place: 'seoul',
+                  gender: partnerGender as 'male' | 'female',
+                  calendar_type: (eng?.partnerCalendarType as 'solar' | 'lunar') ?? 'solar',
+                  is_primary: false, created_at: '', updated_at: '',
+                };
+                const otherCalc = computeSajuFromProfile(otherBirth);
+                if (otherCalc) setOtherSajuResult(otherCalc);
+              }
+            } catch { /* 사주 복원 실패 시 표 없이 본문만 표시 */ }
+          }
         } else {
           setError('보관된 풀이 본문이 없어요.');
         }
@@ -775,8 +805,11 @@ export default function GunghapPage() {
           customLabel: category === 'custom' ? customLabel.trim() : undefined,
           myRole: myRole.trim(),
           otherRole: otherRole.trim(),
+          partnerBirthTime: otherBase.birth_time ?? undefined,
+          partnerCalendarType: otherBase.calendar_type ?? 'solar',
+          partnerGender: otherBase.gender ?? 'female',
         } as unknown as Record<string, unknown>,
-        interpretation: cleaned,
+        interpretation: tagCleaned,
         partner: {
           name: otherName,
           birth_date: otherBase.birth_date,
@@ -1387,11 +1420,11 @@ export default function GunghapPage() {
             </div>
 
             {/* 두 사람 사주명식 표 — 만세력 스타일 */}
-            {!isPetCategory && !archiveMeta && mySajuResult && otherSajuResult && (
+            {!isPetCategory && mySajuResult && otherSajuResult && (
               <div className="space-y-4 mb-4">
                 {[
-                  { label: selectedProfile?.name ?? '나', result: mySajuResult },
-                  { label: otherDisplayName, result: otherSajuResult },
+                  { label: archiveMeta?.profileName ?? selectedProfile?.name ?? '나', result: mySajuResult },
+                  { label: archiveMeta?.partnerName ?? otherDisplayName, result: otherSajuResult },
                 ].map((person, pi) => {
                   const p = person.result.pillars;
                   const hu = person.result.hourUnknown;
