@@ -843,14 +843,16 @@ export default function GunghapPage() {
    * 단계 흐름이 있는 페이지라 명시적 분기.
    */
   const handleGunghapBack = () => {
-    if (step === 'result' && isArchiveMode) {
+    if (step === 'result' && urlRecordId) {
+      // 외부 진입 (보관함 등) → 브라우저 히스토리 back
+      router.back();
+      return;
+    } else if (step === 'result' && isArchiveMode) {
+      // 내부 랜딩에서 기존 결과 클릭 → 랜딩으로
       setActiveRecordId(null);
       setArchiveMeta(null);
       setResult('');
       setStep('landing');
-      if (urlRecordId) {
-        router.replace('/saju/gunghap');
-      }
       return;
     } else if (step === 'result') {
       setStep('input');
