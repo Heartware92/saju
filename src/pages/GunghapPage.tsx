@@ -477,13 +477,15 @@ export default function GunghapPage() {
     return () => { cancelled = true; };
   }, [recordId]);
 
-  // ── 궁합 기존 결과 목록 로딩 ──
+  // ── 궁합 기존 결과 목록 로딩 — 없으면 바로 카테고리 선택으로 ──
   useEffect(() => {
     if (isArchiveMode) { setArchiveLoading(false); return; }
     let cancelled = false;
     setArchiveLoading(true);
     findGunghapArchives(20).then(list => {
-      if (!cancelled) setArchiveList(list);
+      if (cancelled) return;
+      setArchiveList(list);
+      if (list.length === 0 && step === 'landing') setStep('category');
     }).catch(() => {}).finally(() => {
       if (!cancelled) setArchiveLoading(false);
     });
@@ -817,7 +819,9 @@ export default function GunghapPage() {
    * 단계 흐름이 있는 페이지라 명시적 분기.
    */
   const handleGunghapBack = () => {
-    if (step === 'result') {
+    if (step === 'result' && isArchiveMode) {
+      router.push('/saju/gunghap');
+    } else if (step === 'result') {
       setStep('input');
     } else if (step === 'input') {
       setStep('category');
@@ -830,7 +834,7 @@ export default function GunghapPage() {
 
   const flowSteps: Step[] = ['category', 'input', 'result'];
   const flowIdx = flowSteps.indexOf(step);
-  const showStepper = step !== 'landing';
+  const showStepper = step !== 'landing' && !isArchiveMode;
 
   return (
     <div className="min-h-screen pb-24">
@@ -1394,13 +1398,16 @@ export default function GunghapPage() {
             {/* 액션 버튼 */}
             <div className="flex gap-2 mt-5">
               <button
-                onClick={reset}
+                onClick={() => isArchiveMode ? router.push('/saju/gunghap') : reset()}
                 className="flex-1 py-3.5 rounded-2xl border border-white/15 text-text-secondary font-medium text-[16px] active:scale-[0.98] transition-all"
               >
-                처음으로
+                {isArchiveMode ? '목록으로' : '처음으로'}
               </button>
               <button
-                onClick={() => { setStep('input'); setResult(''); setError(''); }}
+                onClick={() => {
+                  if (isArchiveMode) { router.push('/saju/gunghap'); return; }
+                  setStep('input'); setResult(''); setError('');
+                }}
                 className="flex-1 py-3.5 rounded-2xl bg-cta/20 border border-cta/40 text-cta font-bold text-[16px] active:scale-[0.98] transition-all"
               >
                 다른 상대 분석
