@@ -489,7 +489,7 @@ export default function MoreFortunePage({ category }: Props) {
             <p className="text-base text-text-tertiary mt-1">
               보관함 · {new Date(archivedAt).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })}
             </p>
-          ) : targetProfile ? (
+          ) : category !== 'name' && targetProfile ? (
             <p className="text-base text-text-tertiary mt-1">{targetProfile.name} · {targetProfile.birth_date}</p>
           ) : null}
         </div>
