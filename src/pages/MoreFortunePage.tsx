@@ -762,7 +762,7 @@ function NameInputPanel({
             type="text"
             value={koreanName}
             onChange={(e) => onKoreanNameChange(e.target.value)}
-            placeholder="예: 허진우"
+            placeholder="예: 홍길동"
             maxLength={6}
             readOnly={readOnly}
             style={inputBase}
@@ -799,7 +799,9 @@ function NameInputPanel({
                     type="text"
                     value={charMeanings[i] ?? ''}
                     onChange={(e) => updateMeaning(i, e.target.value)}
-                    placeholder={i === 0 ? '예: 허락할' : i === 1 ? '예: 보배' : '예: 집'}
+                    placeholder={
+                      i === 0 ? '예: 넓을' : i === 1 ? '예: 길할' : i === 2 ? '예: 아이' : '뜻을 적어주세요'
+                    }
                     maxLength={12}
                     readOnly={readOnly}
                     style={{ ...inputBase, flex: 1 }}
