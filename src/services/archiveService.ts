@@ -260,6 +260,43 @@ export async function findArchiveList(params: {
   }
 }
 
+export interface GunghapArchiveItem {
+  id: string;
+  created_at: string;
+  profile_name: string;
+  partner_name: string;
+  gunghap_category: string;
+  custom_label?: string;
+}
+
+export async function findGunghapArchives(limit = 20): Promise<GunghapArchiveItem[]> {
+  try {
+    const user = await auth.getCurrentUser();
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from('saju_records')
+      .select('id, created_at, profile_name, partner_name, engine_result')
+      .eq('user_id', user.id)
+      .eq('category', 'gunghap')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error || !data) return [];
+    return (data as { id: string; created_at: string; profile_name?: string; partner_name?: string; engine_result?: Record<string, unknown> }[])
+      .filter(row => row.partner_name)
+      .map(row => ({
+        id: row.id,
+        created_at: row.created_at,
+        profile_name: row.profile_name ?? '나',
+        partner_name: row.partner_name ?? '',
+        gunghap_category: (row.engine_result?.gunghapCategory as string) ?? '',
+        custom_label: (row.engine_result?.customLabel as string) ?? undefined,
+      }));
+  } catch (err) {
+    console.error('[archive] findGunghapArchives failed', err);
+    return [];
+  }
+}
+
 export async function findRecentArchivesBatch(params: {
   category: ArchiveCategory;
   profileIds: string[];

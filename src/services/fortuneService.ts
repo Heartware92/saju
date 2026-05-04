@@ -24,7 +24,10 @@ import {
   generateNameFortunePrompt,
   type NameAnalysisInput,
   generateDreamInterpretationPrompt,
-  generateTojeongPrompt,
+  generateTojeongPass1Prompt,
+  generateTojeongPass2Prompt,
+  type TojeongSectionKey,
+  TOJEONG_SECTION_KEYS,
   generateZamidusuPrompt,
   ZAMIDUSU_SECTION_KEYS,
   ZAMIDUSU_SECTION_LABELS,
@@ -359,7 +362,55 @@ export const getTarotReading = async (
 };
 
 /**
- * 토정비결 (전체 무료)
+ * 토정비결 AI 결과 (2-pass, 섹션 파싱 + 도메인 점수)
+ */
+export interface TojeongAIResult {
+  success: boolean;
+  /** 원본 AI 전문 (fallback 또는 디버깅) */
+  content?: string;
+  /** 섹션별 본문 — key는 TojeongSectionKey */
+  sections?: Partial<Record<TojeongSectionKey, string>>;
+  /** 도메인별 0~100 점수 (시각화용) */
+  domainScores?: { wealth: number; love: number; health: number; career: number };
+  error?: string;
+}
+
+/** [tojeong_scores] 재물:72 | 애정:65 | 건강:58 | 직장:80 [/tojeong_scores] 파싱 */
+function parseTojeongScores(raw: string): { wealth: number; love: number; health: number; career: number } | null {
+  const m = raw.match(/\[tojeong_scores\]\s*(.+?)\s*\[\/tojeong_scores\]/);
+  if (!m) return null;
+  const inner = m[1];
+  const extract = (label: string): number => {
+    const r = new RegExp(`${label}\\s*:\\s*(\\d+)`);
+    const found = inner.match(r);
+    return found ? Math.min(100, Math.max(0, Number(found[1]))) : 50;
+  };
+  return {
+    wealth: extract('재물'),
+    love: extract('애정'),
+    health: extract('건강'),
+    career: extract('직장'),
+  };
+}
+
+/** [key] 델리미터로 토정비결 섹션 파싱 */
+function parseTojeongSections(raw: string): Partial<Record<TojeongSectionKey, string>> {
+  const out: Partial<Record<TojeongSectionKey, string>> = {};
+  const re = /^\s*\[(chongun|gwae|monthly|wealth|love|health|career|advice)\]\s*$/m;
+  const parts = raw.split(re);
+  // parts: ['', 'chongun', '본문...', 'gwae', '본문...', ...]
+  for (let i = 1; i < parts.length; i += 2) {
+    const key = parts[i] as TojeongSectionKey;
+    const body = (parts[i + 1] ?? '').trim();
+    if (TOJEONG_SECTION_KEYS.includes(key) && body) {
+      out[key] = body;
+    }
+  }
+  return out;
+}
+
+/**
+ * 토정비결 (전체 무료) — 2-pass AI 호출
  *
  * @param sourceBirth (선택) 풀이 주체 birth 정보. 호출자가 넘기면 archiveSaju 가
  *                    같은 birth_date+gender 의 birth_profiles 행을 매칭해
@@ -369,13 +420,30 @@ export const getTojeongReading = async (
   tj: TojeongResult,
   sourceBirth?: { birth_date: string; gender: 'male' | 'female'; calendar_type?: 'solar' | 'lunar' },
   profileId?: string,
-): Promise<FortuneResponse> => {
+): Promise<TojeongAIResult> => {
   try {
-    const prompt = generateTojeongPrompt(tj);
-    // 프롬프트 명세: 총 2,900~3,500자 (8섹션 — 분야별 4개로 세분화). 한국어 토큰 비율 고려해 7,500.
-    const content = await callGPT(prompt, 7500);
+    // ── Pass 1: 점수 + 총운 + 괘의미 + 월별운세 ──
+    const pass1Prompt = generateTojeongPass1Prompt(tj);
+    const pass1Content = await callGPT(pass1Prompt, 6000);
+    const pass1Sections = parseTojeongSections(pass1Content);
+    const domainScores = parseTojeongScores(pass1Content) ?? undefined;
+
+    // ── Pass 2: 재물 + 애정 + 건강 + 직장 + 개운 ──
+    const pass2Prompt = generateTojeongPass2Prompt(tj, pass1Content);
+    const pass2Content = await callGPT(pass2Prompt, 4500);
+    const pass2Sections = parseTojeongSections(pass2Content);
+
+    // ── 병합 ──
+    const sections: Partial<Record<TojeongSectionKey, string>> = { ...pass1Sections, ...pass2Sections };
+    const content = `${pass1Content}\n\n${pass2Content}`;
+
     archiveSaju({ profileId, sourceBirth, category: 'tojeong', engineResult: tj as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
-    return { success: true, content };
+
+    if (Object.keys(sections).length === 0) {
+      // 파싱 실패 시 전체 원문 fallback
+      return { success: true, content, domainScores };
+    }
+    return { success: true, content, sections, domainScores };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -419,10 +487,26 @@ export const getZamidusuReading = async (
 ): Promise<ZamidusuAIResult> => {
   try {
     const prompt = generateZamidusuPrompt(z);
-    // 프롬프트 명세: 총 3,300~4,000자 (8섹션 — 직원 피드백 반영 깊이 강화). 한국어 토큰 비율 고려해 9,000.
-    const content = await callGPT(prompt, 9000);
-    const sections = parseZamidusuSections(content);
+
+    // 2-pass 분할: 1차(overview·core·relations·wealth) + 2차(body_mind·mutagen·daehan·advice)
+    const pass1Prompt = prompt + '\n\n★ 이번 응답에서는 [overview] [core] [relations] [wealth] 4개 섹션만 출력하세요. 나머지 4개는 다음 호출에서 작성합니다. 각 섹션의 분량 지침을 충실히 따라 깊이 있게 작성하세요.';
+    const pass1Content = await callGPT(pass1Prompt, 7000);
+    const pass1Sections = parseZamidusuSections(pass1Content);
+
+    const pass2Prompt = prompt
+      + '\n\n★ 이번 응답에서는 [body_mind] [mutagen] [daehan] [advice] 4개 섹션만 출력하세요. [overview] [core] [relations] [wealth]는 이미 완료되었습니다. 각 섹션의 분량 지침을 충실히 따라 깊이 있게 작성하세요.'
+      + `\n\n[이미 작성된 1차 내용 — 참고만, 출력하지 말 것]\n${pass1Content}`;
+    const pass2Content = await callGPT(pass2Prompt, 6000);
+    const pass2Sections = parseZamidusuSections(pass2Content);
+
+    const sections: Partial<Record<ZamidusuSectionKey, string>> = { ...pass1Sections, ...pass2Sections };
+    const content = `${pass1Content}\n\n${pass2Content}`;
+
     archiveSaju({ profileId, sourceBirth, category: 'zamidusu', engineResult: z as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
+
+    if (Object.keys(sections).length === 0) {
+      return { success: true, content, sections: undefined };
+    }
     return { success: true, content, sections };
   } catch (error: any) {
     return { success: false, error: error.message };

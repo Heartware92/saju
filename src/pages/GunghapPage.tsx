@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
-import { useReportCacheStore, sajuKey, type ReportKind } from '../store/useReportCacheStore';
+import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
 import { sajuDB } from '../services/supabase';
 import { BackButton } from '../components/ui/BackButton';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
@@ -36,8 +36,7 @@ import {
   type GunghapCategory,
 } from '../constants/prompts';
 import { sanitizeAIOutput } from '../services/fortuneService';
-import { archiveSaju, findRecentArchive } from '../services/archiveService';
-import { RestoreReportModal } from '../components/RestoreReportModal';
+import { archiveSaju, findGunghapArchives, type GunghapArchiveItem } from '../services/archiveService';
 import Link from 'next/link';
 import { AILoadingBar } from '../components/AILoadingBar';
 import { useLoadingGuard } from '../hooks/useLoadingGuard';
@@ -200,12 +199,32 @@ const defaultPet: PetInput = {
   adoptionDate: '',
 };
 
-type Step = 'category' | 'input' | 'result';
+type Step = 'landing' | 'category' | 'input' | 'result';
 
-const STEP_LABELS: Record<Step, string> = {
+const STEP_LABELS: Record<string, string> = {
   category: '관계 선택',
   input: '상대 정보',
   result: '결과',
+};
+
+const CATEGORY_LABEL_MAP: Record<string, string> = {
+  secret_crush: '짝사랑',
+  som: '썸남·썸녀',
+  lover: '연인',
+  spouse: '배우자',
+  ex_lover: 'X여친·X남친',
+  ex_spouse: 'X남편·X아내',
+  soulmate: '소울메이트',
+  rival: '라이벌',
+  mentor: '멘토·멘티',
+  friend: '친구',
+  parent_child: '부모와 자녀',
+  sibling: '형제·자매',
+  work: '직장 동료',
+  business: '사업 파트너',
+  idol_fan: '아이돌과 팬',
+  pet: '반려동물',
+  custom: '직접 입력',
 };
 
 const AUTO_ROLES: Record<string, [string, string]> = {
@@ -358,7 +377,7 @@ export default function GunghapPage() {
   const { user } = useUserStore();
   const { profiles } = useProfileStore();
 
-  const [step, setStep] = useState<Step>('category');
+  const [step, setStep] = useState<Step>('landing');
   const [category, setCategory] = useState<GunghapCategory>('lover');
   const [customLabel, setCustomLabel] = useState('');
   const [myRole, setMyRole] = useState('');
@@ -366,7 +385,6 @@ export default function GunghapPage() {
   const [myProfileId, setMyProfileId] = useState<string>('');
   const [other, setOther] = useState<OtherInput>(defaultOther);
   const [pet, setPet] = useState<PetInput>(defaultPet);
-  // 상대방 입력 방식 — 'profile'은 내 등록 프로필에서 선택, 'manual'은 직접 입력
   const [otherMode, setOtherMode] = useState<'profile' | 'manual'>('manual');
   const [otherProfileId, setOtherProfileId] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -379,6 +397,10 @@ export default function GunghapPage() {
   const [gunghapDomainScores, setGunghapDomainScores] = useState<GunghapDomainScores>({});
   const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
 
+  // 기존 궁합 결과 목록
+  const [archiveList, setArchiveList] = useState<GunghapArchiveItem[]>([]);
+  const [archiveLoading, setArchiveLoading] = useState(true);
+
   // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
   const [loadingTimedOut] = useLoadingGuard(loading, 70_000);
   useEffect(() => {
@@ -387,10 +409,6 @@ export default function GunghapPage() {
       if (!result) setError('AI 응답이 너무 오래 걸려요. 새로고침 후 다시 시도해주세요.');
     }
   }, [loadingTimedOut, result]);
-
-  const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
-  const handleUseCached = () => { cacheGate?.restore(); setCacheGate(null); };
-  const handleRefetch = () => { setCacheGate(null); };
 
   const primaryProfile = useMemo(() => profiles.find(p => p.is_primary) ?? profiles[0] ?? null, [profiles]);
   const selectedProfile = useMemo(
@@ -459,30 +477,18 @@ export default function GunghapPage() {
     return () => { cancelled = true; };
   }, [recordId]);
 
-  // ── 보관함 DB 확인 — 이전에 본 풀이가 있으면 모달 표시 ──
+  // ── 궁합 기존 결과 목록 로딩 ──
   useEffect(() => {
-    if (isArchiveMode || !primaryProfile) return;
-    if (searchParams?.get('fresh') === '1') return;
+    if (isArchiveMode) { setArchiveLoading(false); return; }
     let cancelled = false;
-    findRecentArchive({
-      category: 'gunghap',
-      birth_date: primaryProfile.birth_date,
-      gender: primaryProfile.gender,
-    }).then(found => {
-      if (cancelled || !found) return;
-      setSavedRecordId(found.id);
-      setCacheGate({
-        kind: 'gunghap',
-        key: '',
-        restore: () => {
-          const params = new URLSearchParams(window.location.search);
-          params.set('recordId', found.id);
-          router.replace(`${window.location.pathname}?${params.toString()}`);
-        },
-      });
-    }).catch(() => {});
+    setArchiveLoading(true);
+    findGunghapArchives(20).then(list => {
+      if (!cancelled) setArchiveList(list);
+    }).catch(() => {}).finally(() => {
+      if (!cancelled) setArchiveLoading(false);
+    });
     return () => { cancelled = true; };
-  }, [primaryProfile, isArchiveMode]);
+  }, [isArchiveMode]);
 
   const otherDisplayName = isPetCategory
     ? pet.name.trim()
@@ -752,13 +758,12 @@ export default function GunghapPage() {
   };
 
   const reset = () => {
-    setStep('category');
+    setStep('landing');
     setResult('');
     setError('');
     setOther(defaultOther);
     setPet(defaultPet);
     setOtherProfileId('');
-    // 다시 다음 진입 시 useEffect가 상황에 맞게 모드 결정하도록 manual로 리셋
     setOtherMode('manual');
     setMyRole('');
     setOtherRole('');
@@ -807,9 +812,6 @@ export default function GunghapPage() {
     );
   }
 
-  const stepOrder: Step[] = ['category', 'input', 'result'];
-  const stepIdx = stepOrder.indexOf(step);
-
   /**
    * 뒤로가기: step 별 이전 단계로 → 첫 단계(category)에선 홈으로.
    * 단계 흐름이 있는 페이지라 명시적 분기.
@@ -819,14 +821,20 @@ export default function GunghapPage() {
       setStep('input');
     } else if (step === 'input') {
       setStep('category');
+    } else if (step === 'category') {
+      setStep('landing');
     } else if (typeof window !== 'undefined') {
       window.history.length > 1 ? window.history.back() : window.location.assign('/');
     }
   };
 
+  const flowSteps: Step[] = ['category', 'input', 'result'];
+  const flowIdx = flowSteps.indexOf(step);
+  const showStepper = step !== 'landing';
+
   return (
     <div className="min-h-screen pb-24">
-      {/* 헤더 — 뒤로가기 좌측 + 중앙 정렬 타이틀 */}
+      {/* 헤더 */}
       <div className="px-5 pt-4 pb-4">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center relative">
           <BackButton onClick={handleGunghapBack} label="이전 단계" className="absolute left-0" />
@@ -839,30 +847,102 @@ export default function GunghapPage() {
         </motion.div>
       </div>
 
-      {/* 스텝 인디케이터 */}
-      <div className="px-5 mb-6">
-        <div className="flex items-center gap-1.5">
-          {stepOrder.map((s, i) => (
-            <div key={s} className="flex items-center gap-1.5 flex-1">
-              <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[12px] font-bold transition-all
-                  ${step === s ? 'bg-cta text-white scale-110' : i < stepIdx ? 'bg-cta/50 text-white' : 'bg-white/10 text-text-tertiary'}`}>
-                  {i + 1}
+      {/* 스텝 인디케이터 — landing에서는 숨김 */}
+      {showStepper && (
+        <div className="px-5 mb-6">
+          <div className="flex items-center gap-0">
+            {flowSteps.map((s, i) => (
+              <div key={s} className="flex items-center flex-1">
+                {i > 0 && (
+                  <div className={`flex-1 h-px transition-colors ${i <= flowIdx ? 'bg-cta/40' : 'bg-white/10'}`} />
+                )}
+                <div className="flex flex-col items-center gap-0.5 px-1">
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[12px] font-bold transition-all
+                    ${step === s ? 'bg-cta text-white scale-110' : i < flowIdx ? 'bg-cta/50 text-white' : 'bg-white/10 text-text-tertiary'}`}>
+                    {i + 1}
+                  </div>
+                  <span className={`text-[11px] font-medium whitespace-nowrap transition-colors
+                    ${step === s ? 'text-cta' : i < flowIdx ? 'text-text-secondary' : 'text-text-tertiary'}`}>
+                    {STEP_LABELS[s]}
+                  </span>
                 </div>
-                <span className={`text-[11px] font-medium whitespace-nowrap transition-colors
-                  ${step === s ? 'text-cta' : i < stepIdx ? 'text-text-secondary' : 'text-text-tertiary'}`}>
-                  {STEP_LABELS[s]}
-                </span>
+                {i < flowSteps.length - 1 && (
+                  <div className={`flex-1 h-px transition-colors ${i < flowIdx ? 'bg-cta/40' : 'bg-white/10'}`} />
+                )}
               </div>
-              {i < stepOrder.length - 1 && (
-                <div className={`flex-1 h-px transition-colors ${i < stepIdx ? 'bg-cta/40' : 'bg-white/10'}`} />
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <AnimatePresence mode="wait">
+
+        {/* ── LANDING: 기존 결과 + 새로 풀이 ── */}
+        {step === 'landing' && (
+          <motion.div key="landing" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="px-5 space-y-5">
+
+            {/* 기존 궁합 결과 */}
+            {archiveLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-8 h-8 border-3 border-cta border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : archiveList.length > 0 ? (
+              <div>
+                <p className="text-[13px] font-bold text-text-secondary uppercase tracking-wider mb-3">이전 궁합 결과</p>
+                <div className="space-y-2">
+                  {archiveList.map((item, idx) => {
+                    const catLabel = item.custom_label || CATEGORY_LABEL_MAP[item.gunghap_category] || item.gunghap_category;
+                    const dateStr = new Date(item.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+                    return (
+                      <motion.button
+                        key={item.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.03 }}
+                        onClick={() => {
+                          router.push(`/saju/gunghap?recordId=${item.id}`);
+                        }}
+                        className="w-full text-left rounded-2xl bg-space-surface/60 border border-[var(--border-subtle)] p-4 hover:border-cta/50 transition-all active:scale-[0.98]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[15px] font-bold text-text-primary">{item.profile_name}</span>
+                              <span className="text-text-tertiary text-[13px]">↔</span>
+                              <span className="text-[15px] font-bold text-text-primary">{item.partner_name}</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[12px] px-2 py-0.5 rounded-full bg-cta/15 text-cta font-medium">
+                                {catLabel}
+                              </span>
+                              <span className="text-[12px] text-text-tertiary">{dateStr}</span>
+                            </div>
+                          </div>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round">
+                            <path d="M9 18l6-6-6-6" />
+                          </svg>
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-text-tertiary text-[15px]">아직 궁합 결과가 없어요</p>
+                <p className="text-text-tertiary text-[13px] mt-1">아래 버튼으로 첫 궁합을 분석해보세요</p>
+              </div>
+            )}
+
+            {/* 새로 풀이 받기 버튼 */}
+            <button
+              onClick={() => setStep('category')}
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-cta to-cta-active text-white font-bold text-[17px] active:scale-[0.98] transition-all"
+            >
+              새로 궁합 보기
+            </button>
+          </motion.div>
+        )}
 
         {/* ── STEP 1: 관계 유형 선택 ── */}
         {step === 'category' && (
@@ -1337,14 +1417,6 @@ export default function GunghapPage() {
         )}
 
       </AnimatePresence>
-
-      <RestoreReportModal
-        open={!!cacheGate}
-        title="궁합 분석"
-        onUseCached={handleUseCached}
-        onRefresh={handleRefetch}
-        onClose={() => setCacheGate(null)}
-      />
     </div>
   );
 }

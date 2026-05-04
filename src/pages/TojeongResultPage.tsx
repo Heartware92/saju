@@ -16,7 +16,7 @@ import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, type ReportKind } from '../store/useReportCacheStore';
 import { RestoreReportModal } from '../components/RestoreReportModal';
 import { QuickFortuneGate } from '../components/QuickFortuneGate';
-import { getTojeongReading } from '../services/fortuneService';
+import { getTojeongReading, type TojeongAIResult } from '../services/fortuneService';
 import { sajuDB } from '../services/supabase';
 import { findRecentArchive } from '../services/archiveService';
 import { AILoadingBar } from '../components/AILoadingBar';
@@ -24,6 +24,9 @@ import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { BackButton } from '../components/ui/BackButton';
 import { useLoadingGuard } from '../hooks/useLoadingGuard';
 import { ShareBar } from '@/components/share/ShareBar';
+import { RadarChart } from '../components/charts/RadarChart';
+import { TOJEONG_SECTION_KEYS, TOJEONG_SECTION_LABELS, type TojeongSectionKey } from '../constants/prompts';
+import type { FortuneGrade } from '../engine/periodFortune';
 
 const TOJEONG_MESSAGES = [
   '괘의 상징을 풀어 쓰는 중입니다',
@@ -40,6 +43,85 @@ const GRADE_COLOR: Record<GwaeGrade, string> = {
   '흉': '#F87171',
   '대흉': '#EF4444',
 };
+
+const FORTUNE_GRADE_COLOR: Record<FortuneGrade, string> = {
+  '대길': '#34D399',
+  '길': '#86EFAC',
+  '중길': '#FBBF24',
+  '평': '#CBD5E1',
+  '중흉': '#FB923C',
+  '흉': '#F87171',
+};
+
+function scoreToGrade(s: number): FortuneGrade {
+  if (s >= 90) return '대길';
+  if (s >= 75) return '길';
+  if (s >= 60) return '중길';
+  if (s >= 45) return '평';
+  if (s >= 30) return '중흉';
+  return '흉';
+}
+
+function ScoreRing({ score, grade, size = 120 }: { score: number; grade: FortuneGrade; size?: number }) {
+  const c = FORTUNE_GRADE_COLOR[grade];
+  const r = size * 0.4;
+  const C = 2 * Math.PI * r;
+  const offset = C * (1 - score / 100);
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={size * 0.083} />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke={c} strokeWidth={size * 0.083} strokeLinecap="round"
+        strokeDasharray={C}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        style={{ transition: 'stroke-dashoffset 0.8s ease-out' }}
+      />
+      <text x={size / 2} y={size / 2} textAnchor="middle" dominantBaseline="middle"
+            fontSize={size * 0.23} fontWeight="bold" fill="white">{score}</text>
+      <text x={size / 2} y={size / 2 + size * 0.18} textAnchor="middle" dominantBaseline="middle"
+            fontSize={size * 0.09} fill="rgba(255,255,255,0.6)">점 · {grade}</text>
+    </svg>
+  );
+}
+
+function DomainBar({ label, score, grade }: { label: string; score: number; grade: FortuneGrade }) {
+  const c = FORTUNE_GRADE_COLOR[grade];
+  return (
+    <div className="flex items-center gap-2">
+      <div className="w-20 shrink-0 text-[14px] font-semibold text-text-secondary whitespace-nowrap">{label}</div>
+      <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+        <motion.div
+          className="h-full rounded-full"
+          style={{ backgroundColor: c }}
+          initial={{ width: 0 }}
+          animate={{ width: `${score}%` }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+        />
+      </div>
+      <div className="w-8 text-right text-[14px] font-bold" style={{ color: c }}>{score}</div>
+    </div>
+  );
+}
+
+const SECTION_ICON: Record<TojeongSectionKey, string> = {
+  chongun: '🌐',
+  gwae: '☰',
+  monthly: '📅',
+  wealth: '💰',
+  love: '💕',
+  health: '🏥',
+  career: '💼',
+  advice: '🔮',
+};
+
+const DOMAIN_DEFS: { key: 'wealth' | 'love' | 'health' | 'career'; label: string }[] = [
+  { key: 'wealth', label: '재물운' },
+  { key: 'love', label: '애정·가정' },
+  { key: 'health', label: '건강운' },
+  { key: 'career', label: '직장·학업' },
+];
 
 export default function TojeongResultPage() {
   const searchParams = useSearchParams();
@@ -58,11 +140,13 @@ export default function TojeongResultPage() {
 
   // AI 내러티브 — 진입 즉시 자동 호출
   const [aiContent, setAiContent] = useState<string | null>(null);
+  const [aiSections, setAiSections] = useState<Partial<Record<TojeongSectionKey, string>> | null>(null);
+  const [aiDomainScores, setAiDomainScores] = useState<{ wealth: number; love: number; health: number; career: number } | null>(null);
   const [aiLoading, setAiLoading] = useState(!isArchiveMode && !needsProfileSelect);
   const [aiError, setAiError] = useState<string | null>(null);
 
   // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
-  const [aiTimedOut] = useLoadingGuard(aiLoading, 70_000);
+  const [aiTimedOut] = useLoadingGuard(aiLoading, 120_000);
   useEffect(() => {
     if (aiTimedOut) {
       setAiLoading(false);
@@ -218,10 +302,10 @@ export default function TojeongResultPage() {
         setAiError(timeoutMsg);
         setAiLoading(false);
         useReportCacheStore.getState().setError('tojeong', cacheKey, timeoutMsg);
-      }, 45_000);
+      }, 90_000);
 
       getTojeongReading(tojeong, sourceBirth, targetProfile?.id)
-        .then(r => {
+        .then((r: TojeongAIResult) => {
           if (cancelled) return;
           clearTimeout(timeoutId);
           const cache = useReportCacheStore.getState();
@@ -231,6 +315,8 @@ export default function TojeongResultPage() {
             cache.setError('tojeong', cacheKey, msg);
           } else {
             setAiContent(r.content);
+            if (r.sections) setAiSections(r.sections);
+            if (r.domainScores) setAiDomainScores(r.domainScores);
             cache.setReport('tojeong', cacheKey, r.content);
             if (!cache.isCharged('tojeong', cacheKey)) {
               cache.markCharged('tojeong', cacheKey);
@@ -259,14 +345,15 @@ export default function TojeongResultPage() {
 
   const retryAI = () => {
     if (!tojeong || !cacheKey) return;
-    // 재시도는 사용자 명시적 동작 — negative cache 도 함께 무효화
     useReportCacheStore.getState().invalidate('tojeong', cacheKey);
     aiStartedRef.current = true;
     setAiContent(null);
+    setAiSections(null);
+    setAiDomainScores(null);
     setAiError(null);
     setAiLoading(true);
     getTojeongReading(tojeong, sourceBirth, targetProfile?.id)
-      .then(r => {
+      .then((r: TojeongAIResult) => {
         const cache = useReportCacheStore.getState();
         if (!r.success || !r.content) {
           const msg = r.error || '심층 풀이를 가져오지 못했어요.';
@@ -274,6 +361,8 @@ export default function TojeongResultPage() {
           cache.setError('tojeong', cacheKey, msg);
         } else {
           setAiContent(r.content);
+          if (r.sections) setAiSections(r.sections);
+          if (r.domainScores) setAiDomainScores(r.domainScores);
           cache.setReport('tojeong', cacheKey, r.content);
           if (!cache.isCharged('tojeong', cacheKey)) {
             cache.markCharged('tojeong', cacheKey);
@@ -336,10 +425,10 @@ export default function TojeongResultPage() {
   if (aiLoading) {
     return (
       <AILoadingBar
-        label="토정비결 풀이중"
-        minLabel="10초"
-        maxLabel="40초"
-        estimatedSeconds={20}
+        label="토정비결 심층 풀이중"
+        minLabel="20초"
+        maxLabel="60초"
+        estimatedSeconds={35}
         messages={TOJEONG_MESSAGES}
         topContent={
           <motion.div
@@ -523,39 +612,116 @@ export default function TojeongResultPage() {
         </section>
       </div>
 
-      {/* 심층 풀이 — 자동 호출 결과 표시 */}
-      {/* 심층 풀이 — 자동 호출 결과 표시 */}
-      {/* (intro card 는 위에서 렌더, 심층 풀이는 아래) */}
+      {/* 심층 풀이 — 섹션별 카드 렌더링 */}
 
-      {(aiContent || aiError) && (
+      {aiError && !aiContent && (
         <section className="mt-3 rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="inline-block w-1 h-5 rounded-full bg-cta" />
-            <div
-              className="text-[17px] font-bold text-text-primary tracking-tight"
-              style={{ fontFamily: 'var(--font-serif)' }}
+          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30">
+            <p className="text-[14px] text-red-400 mb-2">{aiError}</p>
+            <button
+              onClick={retryAI}
+              className="text-[14px] text-cta font-semibold underline"
             >
-              심층 풀이 (총운 · 괘 의미 · 12개월 흐름 · 재물 · 애정·가정 · 건강 · 직장·학업 · 개운 조언)
+              다시 시도
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* 영역별 점수 시각화 */}
+      {aiDomainScores && (
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mt-3 rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <span className="inline-block w-1 h-5 rounded-full bg-cta" />
+            <div className="text-[17px] font-bold text-text-primary tracking-tight" style={{ fontFamily: 'var(--font-serif)' }}>
+              영역별 운세 점수
             </div>
           </div>
 
-          {aiError && !aiContent && (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30">
-              <p className="text-[14px] text-red-400 mb-2">{aiError}</p>
-              <button
-                onClick={retryAI}
-                className="text-[14px] text-cta font-semibold underline"
-              >
-                다시 시도
-              </button>
-            </div>
-          )}
+          {/* 종합 점수 링 */}
+          {(() => {
+            const avg = Math.round((aiDomainScores.wealth + aiDomainScores.love + aiDomainScores.health + aiDomainScores.career) / 4);
+            return (
+              <div className="flex justify-center mb-4">
+                <ScoreRing score={avg} grade={scoreToGrade(avg)} size={130} />
+              </div>
+            );
+          })()}
 
-          {aiContent && (
-            <p className="text-[15px] text-text-secondary leading-[1.85] whitespace-pre-line tracking-[-0.005em]">
-              {aiContent}
-            </p>
-          )}
+          {/* 레이더 차트 */}
+          <RadarChart
+            domains={DOMAIN_DEFS.map(d => ({
+              label: d.label,
+              score: aiDomainScores[d.key],
+              color: FORTUNE_GRADE_COLOR[scoreToGrade(aiDomainScores[d.key])],
+            }))}
+            size={240}
+            className="mb-4"
+          />
+
+          {/* 도메인 바 */}
+          <div className="space-y-2.5">
+            {DOMAIN_DEFS.map(d => (
+              <DomainBar key={d.key} label={d.label} score={aiDomainScores[d.key]} grade={scoreToGrade(aiDomainScores[d.key])} />
+            ))}
+          </div>
+        </motion.section>
+      )}
+
+      {/* 섹션별 카드 */}
+      {aiSections && Object.keys(aiSections).length > 0 && (
+        <div className="mt-3 space-y-3">
+          {TOJEONG_SECTION_KEYS.map((key, idx) => {
+            const body = aiSections[key];
+            if (!body) return null;
+            const lines = body.split('\n').filter(l => l.trim());
+            const metaphor = lines.length > 0 && lines[0].length < 40 ? lines[0] : null;
+            const bodyLines = metaphor ? lines.slice(1) : lines;
+            return (
+              <motion.section
+                key={key}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 + idx * 0.05 }}
+                className="rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[16px]">{SECTION_ICON[key]}</span>
+                  <div className="text-[16px] font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+                    {TOJEONG_SECTION_LABELS[key]}
+                  </div>
+                </div>
+                {metaphor && (
+                  <div className="text-[14px] text-cta/80 font-semibold mb-2 italic" style={{ fontFamily: 'var(--font-serif)' }}>
+                    {metaphor}
+                  </div>
+                )}
+                <div className="text-[15px] text-text-secondary leading-[1.85] whitespace-pre-line tracking-[-0.005em]">
+                  {bodyLines.join('\n')}
+                </div>
+              </motion.section>
+            );
+          })}
+        </div>
+      )}
+
+      {/* fallback: 섹션 파싱 실패 시 원문 전체 표시 */}
+      {aiContent && (!aiSections || Object.keys(aiSections).length === 0) && (
+        <section className="mt-3 rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="inline-block w-1 h-5 rounded-full bg-cta" />
+            <div className="text-[17px] font-bold text-text-primary tracking-tight" style={{ fontFamily: 'var(--font-serif)' }}>
+              심층 풀이
+            </div>
+          </div>
+          <p className="text-[15px] text-text-secondary leading-[1.85] whitespace-pre-line tracking-[-0.005em]">
+            {aiContent}
+          </p>
         </section>
       )}
 

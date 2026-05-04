@@ -1902,7 +1902,7 @@ ${METAPHOR_SHORT_GUIDE}
 
 (직원 피드백: 자미두수 풀이 깊이 부족 → 각 섹션 분량 확장 + 명리 근거 구체화 + 일상 장면 강화)
 
-[overview] — 명반 첫 인상 (360~460자)
+[overview] — 명반 첫 인상 (450~580자)
 첫 줄: 은유 제목 (예: "${z.soul}과 ${z.body}가 만난 밤하늘, 그리고 ${z.fiveElementsClass}으로 흐르는 강물" 같은 느낌)
 본문: 명주(${z.soul})·신주(${z.body})·오행국(${z.fiveElementsClass})을 풀이. 명주는 인생의 주제곡, 신주는 숨은 페르소나, 오행국은 별들이 배치된 무대.
 다음을 모두 포함:
@@ -1912,7 +1912,7 @@ ${METAPHOR_SHORT_GUIDE}
 - 세 요소가 충돌하는지 조화하는지 분명히 선언
 - 마지막 문장에서 제목 은유 회수
 
-[core] — 명궁·신궁 핵심 (480~600자)
+[core] — 명궁·신궁 핵심 (600~780자)
 첫 줄: 은유 제목 (명궁에 좌한 주성의 성격을 대비 이미지로. 예: "왕좌에 앉은 별, 홀로 빛나는 고독")
 본문: 명궁에 좌한 주성들(이름·한자 병기)과 보좌성의 조합이 만드는 기본 성향을 풀이.
 다음을 모두 포함:
@@ -1923,7 +1923,7 @@ ${METAPHOR_SHORT_GUIDE}
 - 명궁 좌한 주성의 강점 1개와 함정 1개를 명시
 - 마지막 문장에 제목 은유 회수
 
-[relations] — 관계 영역 (450~560자)
+[relations] — 관계 영역 (560~720자)
 첫 줄: 은유 제목 (관계의 깊이·갈등 양상을 자연 이미지 대비로)
 본문: 부처궁(배우자)·자녀궁·형제궁·노복궁·부모궁 다섯 개 방을 순서대로 풀이.
 각 궁마다 다음을 한 문장씩 포함 (총 5개 미니 단락):
@@ -1934,7 +1934,7 @@ ${METAPHOR_SHORT_GUIDE}
 - 부모궁: 부모와의 인연 깊이, 효도·갈등 분기점
 마지막에 갈등 가능 포인트 1개와 관계 복의 유형 1개를 종합 한 문장으로 정리.
 
-[wealth] — 재물·일의 하늘 (420~520자)
+[wealth] — 재물·일의 하늘 (520~680자)
 첫 줄: 은유 제목 (재물이 흐르는 방식·커리어의 모양을 자연 이미지 대비로)
 본문: 재백궁(돈 흐름)·관록궁(직업)·전택궁(부동산) 세 개 방을 순서대로 풀이.
 다음을 모두 포함:
@@ -1944,7 +1944,7 @@ ${METAPHOR_SHORT_GUIDE}
 - 주의할 재물 함정 1개 (별·사화 근거 명시)
 - 권할 재물 행동 1개 (저축·투자·분산 중 1)
 
-[body_mind] — 몸·마음·이동 (380~480자)
+[body_mind] — 몸·마음·이동 (480~620자)
 첫 줄: 은유 제목 (약한 곳·회복 방식을 자연 이미지 대비로)
 본문: 질액궁(건강)·복덕궁(정신·취미)·천이궁(이동·해외)을 묶어 풀이.
 다음을 모두 포함:
@@ -1954,7 +1954,7 @@ ${METAPHOR_SHORT_GUIDE}
 - 정신 건강 신호 1개와 대응법 1개
 - 마음에 쉼이 필요한 순간 묘사 1문장
 
-[mutagen] — 사화의 변주 (340~440자)
+[mutagen] — 사화의 변주 (440~560자)
 첫 줄: 은유 제목 (별이 다른 노래를 부르는 이미지)
 본문: 화록·화권·화과·화기 각각이 어느 궁에서 작동하는지, 인생에서 어떻게 드러나는지.
 다음을 모두 포함:
@@ -1965,7 +1965,7 @@ ${METAPHOR_SHORT_GUIDE}
 - 4개 사화의 균형이 인생에 어떤 톤을 주는지 마지막 1문장
 - 마지막 문장 은유 회수
 
-[daehan] — 대한 10년 리듬 (320~420자)
+[daehan] — 대한 10년 리듬 (420~540자)
 첫 줄: 은유 제목 (무대 조명이 바뀌는 이미지)
 본문: 10년 단위로 주인공 궁이 바뀌는 흐름.
 다음을 모두 포함:
@@ -1974,7 +1974,7 @@ ${METAPHOR_SHORT_GUIDE}
 - 현재 대한의 주제 1문장
 - 가장 빛날 대한 1개와 가장 신중해야 할 대한 1개를 짚어 마무리
 
-[advice] — 별이 건네는 조언 (280~360자)
+[advice] — 별이 건네는 조언 (360~460자)
 첫 줄: 은유 제목 (나아갈 방향을 자연 이미지로)
 본문 3문장으로 핵심 메시지 — 이 명반의 사람은 어떻게 살면 빛나고 어떤 함정을 조심해야 하는지.
 마지막에 "- " 불릿 4줄로 실천 조언 4가지:
@@ -1986,7 +1986,7 @@ ${METAPHOR_SHORT_GUIDE}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 출력은 [overview] 마커부터 시작. 마커 이전에 어떤 텍스트도 없어야 함.
-총 8개 섹션, 약 3300~4000자. (직원 피드백 반영 — 깊이 강화)`;
+총 8개 섹션, 약 4800~6200자. (직원 피드백 반영 — 깊이 강화, 2-pass 분할 출력)`;
 };
 
 /**
@@ -2021,6 +2021,7 @@ function getZhiRelation(zhi1: string, zhi2: string): string {
   return `평(平) — 생년 지지(${zhi1})와 세운 지지(${zhi2}) 사이 특별한 충·합 없음`;
 }
 
+/** @deprecated 레거시 단일호출 프롬프트 — 캐시 호환용으로 보존. 새 호출은 pass1/pass2 사용. */
 export const generateTojeongPrompt = (tj: TojeongResult): string => {
   const { targetYear, age, upperGwae, middleGwae, lowerGwae, gwaeNumber, formula } = tj;
   const entry = getGwaeEntry(tj.upper, tj.middle, tj.lower);
@@ -2150,6 +2151,210 @@ ${METAPHOR_SHORT_GUIDE}
 
 섹션 제목은 위 번호(1. 2. 3. 4. 5. 6. 7. 8.) 형식 그대로 유지하고, 월별 소섹션은 12개를 모두 작성하세요. Markdown # 헤더는 절대 사용하지 마세요.`;
 };
+
+// ─────────────────────────────────────────────
+// 토정비결 2-pass 프롬프트 (v2 — 섹션 깊이 확장 + 도메인 점수)
+// ─────────────────────────────────────────────
+
+export type TojeongSectionKey = 'chongun' | 'gwae' | 'monthly' | 'wealth' | 'love' | 'health' | 'career' | 'advice';
+
+export const TOJEONG_SECTION_KEYS: TojeongSectionKey[] = ['chongun', 'gwae', 'monthly', 'wealth', 'love', 'health', 'career', 'advice'];
+
+export const TOJEONG_SECTION_LABELS: Record<TojeongSectionKey, string> = {
+  chongun: '올해의 총운',
+  gwae: '괘의 의미',
+  monthly: '월별 운세',
+  wealth: '재물운',
+  love: '애정·가정운',
+  health: '건강운',
+  career: '직장·학업운',
+  advice: '개운 조언',
+};
+
+/** 토정비결 공통 데이터 블록 (괘 정보 + 확정된 길흉 + 작성 규칙 + 은유) */
+function buildTojeongBaseBlock(tj: TojeongResult): string {
+  const { targetYear, age, upperGwae, middleGwae, lowerGwae, gwaeNumber, formula } = tj;
+  const entry = getGwaeEntry(tj.upper, tj.middle, tj.lower);
+  const monthlyList = entry.monthlyHints
+    .map((kw, i) => `  · ${i + 1}월: ${kw}`)
+    .join('\n');
+
+  const yearGanZhi = tj.yearGanZhi.ganZhi;
+  const yearGan = yearGanZhi[0] ?? '';
+  const yearZhi = yearGanZhi[1] ?? '';
+  const seunGanElement = GAN_ELEMENT_MAP[yearGan] ?? '목';
+  const seunZhiElement = ZHI_ELEMENT_MAP[yearZhi] ?? '토';
+
+  const birthZhi = getBirthZhi(tj.birthSolar.year);
+  const birthZhiIdx = ZHI_KO.indexOf(birthZhi);
+  const birthAnimal = birthZhiIdx >= 0 ? ZHI_ANIMAL[birthZhiIdx] : '';
+  const zhiRelation = getZhiRelation(birthZhi, yearZhi);
+
+  const hanjaSaBlock = entry.hanjaSa
+    ? `▣ 원문 괘사 (卦辭)
+  표제: ${entry.hanjaSa.title}
+  ${entry.hanjaSa.lines.join(' / ')}
+  뜻: ${entry.hanjaSa.translation}`
+    : '';
+
+  return `토정비결 풀이 요청
+대상 해: ${targetYear}년 (${yearGanZhi}년)
+세는 나이: ${age}세
+음력 생년월일: ${tj.birthLunar.year}년 ${tj.birthLunar.month}월 ${tj.birthLunar.day}일${tj.birthLunar.isLeap ? ' (윤달)' : ''}
+생년 지지(띠): ${birthZhi}(${birthAnimal})
+올해 세운 오행: 천간 ${yearGan}(${seunGanElement}) · 지지 ${yearZhi}(${seunZhiElement})
+생년 띠 × 세운 지지 관계: ${zhiRelation}
+
+계산된 괘: ${gwaeNumber} (상괘 ${tj.upper} · 중괘 ${tj.middle} · 하괘 ${tj.lower})
+
+상괘 ${upperGwae.num} ${upperGwae.name}(${upperGwae.hanja}) ${upperGwae.symbol}
+  · 상징: ${upperGwae.meaning}
+  · 오행: ${upperGwae.element}
+  · ${formula.upper}
+
+중괘 ${middleGwae.num} ${middleGwae.position}
+  · 의미: ${middleGwae.meaning}
+  · ${formula.middle}
+
+하괘 ${lowerGwae.num} ${lowerGwae.name}
+  · 의미: ${lowerGwae.meaning}
+  · ${formula.lower}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[확정된 길흉 — 반드시 아래 등급·키워드·총평의 범위 안에서 풀이]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+▣ 괘 등급: ${entry.grade}
+▣ 한줄 표제: ${entry.headline}
+▣ 핵심 키워드: ${entry.keywords.join(', ')}
+▣ 고정 총평(한 해의 틀):
+${entry.summary}
+${hanjaSaBlock ? `\n${hanjaSaBlock}` : ''}
+▣ 12개월 기운 흐름 (월별 키워드 — 이 틀 안에서 확장)
+${monthlyList}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[작성 규칙]
+1) 위에 확정된 등급(${entry.grade})과 총평의 방향성을 반드시 유지. 길흉을 임의로 바꾸지 말 것.
+2) 월별 운은 위 12개 월별 키워드를 기반으로만 확장할 것. 해당 월의 톤을 뒤집지 말 것.
+3) 제공된 상괘·중괘·하괘 의미에서 벗어난 상징을 새로 만들지 말 것.
+4) 전통 토정 어법의 시(詩)적 개운 문구 1~2줄은 허용하나, 실제 길흉 판단은 위 등급을 벗어나지 말 것.
+5) 원문 괘사(표제·한문 구절)의 상징과 뜻을 풀이 서두에 자연스럽게 녹여낼 것.
+6) 생년 띠(${birthZhi})와 올해 세운(${yearGanZhi}) 지지 관계(${zhiRelation})를 총운·분야별 운세에 반드시 1회 이상 언급할 것.
+7) 올해 세운 오행(천간 ${seunGanElement}·지지 ${seunZhiElement})이 개인 운세에 미치는 영향을 구체적으로 서술할 것.
+
+${METAPHOR_SHORT_GUIDE}
+
+반드시 전통 토정비결 어법(예: "용이 여의주를 얻은 격", "나무에 꽃이 피는 상")으로 시(詩)적인 개운 문구 1~2줄을 먼저 제시한 뒤, 현대인도 이해하기 쉽게 풀어 설명하세요.
+Markdown # 헤더는 절대 사용하지 마세요.`;
+}
+
+/**
+ * 토정비결 Pass 1 프롬프트 — 점수 + 총운 + 괘의미 + 월별운세
+ * maxTokens: 6000
+ */
+export function generateTojeongPass1Prompt(tj: TojeongResult): string {
+  const entry = getGwaeEntry(tj.upper, tj.middle, tj.lower);
+  const { upperGwae, middleGwae, lowerGwae, targetYear } = tj;
+  const base = buildTojeongBaseBlock(tj);
+
+  return `${base}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[출력 지시 — 1차 응답: 점수 + 총운 + 괘의미 + 월별운세]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+응답의 가장 첫 줄에 아래 형식을 정확히 지켜 한 줄로 출력하세요:
+[tojeong_scores] 재물:점수 | 애정:점수 | 건강:점수 | 직장:점수 [/tojeong_scores]
+점수는 각 0~100 정수. 괘 등급(${entry.grade})과 핵심 키워드를 근거로 산출.
+대길이면 75~95, 중길이면 60~80, 평이면 40~60, 중흉이면 25~45, 대흉이면 10~30 범위에서 영역별 차등을 두세요.
+
+그 다음 줄부터 아래 3개 섹션을 [key] 태그로 구분하여 작성:
+
+[chongun]
+올해의 총운 (300~400자)
+- 상중하괘 조합의 상징을 엮어 한 해의 큰 흐름 (등급: ${entry.grade})
+- 핵심 메시지와 경계할 점, 이 한 해의 결이 어떤 감각인지
+- 괘사의 상징을 서두에 자연스럽게 녹일 것
+
+[gwae]
+괘의 의미 (250~320자)
+- 왜 이 괘가 나왔는지 상징 해석
+- 상괘(${upperGwae.name})·중괘(${middleGwae.position})·하괘(${lowerGwae.name})의 조화와 긴장
+- 세 괘의 오행·상징이 어떻게 맞물려 올해 운세의 뼈대를 이루는지
+
+[monthly]
+월별 운세 — ${targetYear}년 1월~12월 (각 월 4~5문장, 120~160자)
+- 각 월의 키워드(위 월별 키워드 고정)를 근거로 풀이
+- 그 달에 해야 할 일 1가지 + 조심할 일 1가지를 반드시 포함
+- 포맷: "N월 — [월별 키워드]" 이어서 본문 (예: "1월 — 준비")
+- 정월부터 12월까지 빠짐없이 12개 소섹션으로 작성
+
+[chongun], [gwae], [monthly] 태그를 반드시 각 섹션 시작에 한 줄로 적어주세요. 이 3개 섹션만 작성하고, 재물·애정·건강·직장·개운은 다음 호출에서 작성합니다.`;
+}
+
+/**
+ * 토정비결 Pass 2 프롬프트 — 재물 + 애정 + 건강 + 직장 + 개운
+ * maxTokens: 4500
+ */
+export function generateTojeongPass2Prompt(tj: TojeongResult, pass1Content: string): string {
+  const entry = getGwaeEntry(tj.upper, tj.middle, tj.lower);
+  const { targetYear } = tj;
+  const base = buildTojeongBaseBlock(tj);
+
+  return `${base}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[출력 지시 — 2차 응답: 재물 + 애정 + 건강 + 직장 + 개운]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+아래 5개 섹션을 [key] 태그로 구분하여 작성하세요. 1차에서 이미 작성된 총운·괘의미·월별운세의 톤과 어조를 이어가세요.
+
+[wealth]
+재물운 (250~320자)
+- 들어오는 시기·새는 시기를 분기로 구분 (상반기/하반기 또는 봄·여름·가을·겨울)
+- 본업 수입 vs 부수입의 흐름
+- 재테크 방향 1개 (저축 강화·분산투자·신중 보류 등)
+- 큰 지출 시 주의해야 할 달 1개 명시
+- 괘 등급(${entry.grade}) 기준으로 재물의 전반적 흐름 판단
+
+[love]
+애정·가정운 (250~320자)
+- 미혼: 인연 들어오는 흐름과 이상형 단서
+- 기혼: 부부·자녀·부모 중 올해 테마와 주의 장면
+- 관계 회복·갈등 분기점 시기 1개
+- 가정 안에서 권할 행동 1가지
+- 올해 인연 전반의 기운과 소통 포인트
+
+[health]
+건강운 (220~280자)
+- 취약 장부 또는 신체 부위 (오장육부·오행 기준)
+- 유의할 계절·환절기와 그 이유
+- 권장 운동·식습관 1가지
+- 정신 건강·스트레스 관리 한마디
+- 예방적 건강 관리 행동 1가지
+
+[career]
+직장·학업운 (250~320자)
+- 직장: 승진·이직·평가·인간관계 중 유리한 흐름 1개와 시기
+- 학업·시험: 합격운·집중력·자격증 운
+- 조심할 덫 1개 (구설·실수·과로 등)
+- 협력자 또는 조력자가 누구인지 (선배·후배·이성·동료 등)
+- 올해 커리어 전략의 핵심 방향
+
+[advice]
+개운 조언 (220~300자) — 불릿 5개 이상
+- 올해의 길한 방향 1개
+- 길한 색 2개
+- 행운 숫자·요일 각 1개
+- 이달 안에 실천할 개운 행동 2개
+- ${targetYear}년을 마무리하는 자세에 대한 조언 1가지
+
+[wealth], [love], [health], [career], [advice] 태그를 반드시 각 섹션 시작에 한 줄로 적어주세요. 총운·괘의미·월별운세는 이미 완료 — 출력하지 마세요.
+
+[이미 작성된 1차 내용 — 참고만, 출력하지 말 것]
+${pass1Content}`;
+}
 
 /**
  * 타로 단독 해석 (질문 타로, 1엽전)
