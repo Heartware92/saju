@@ -2770,94 +2770,80 @@ export const generateTaekilAdvicePrompt = (
   taekil: TaekilResult,
 ): string => {
   const isBirth = taekil.category === 'birth';
-  // 후보 비교 모드 감지: 한 달치(28~31일) 가 아닌 소량(2~7개) 의 days 가 들어오면 후보 비교 모드
   const isCompareMode = taekil.days.length >= 2 && taekil.days.length <= 7;
-  const bestDays = isCompareMode
-    ? [...taekil.days].sort((a, b) => b.score - a.score)
-    : taekil.bestDays.slice(0, isBirth ? 3 : 5);
+  const topDays = isCompareMode
+    ? [...taekil.days].sort((a, b) => b.score - a.score).slice(0, 3)
+    : taekil.bestDays.slice(0, 3);
   const worstDays = isCompareMode
-    ? [...taekil.days].sort((a, b) => a.score - b.score).slice(0, Math.min(2, taekil.days.length - 1))
+    ? [...taekil.days].sort((a, b) => a.score - b.score).slice(0, 1)
     : taekil.days
         .filter(d => d.grade === '흉')
         .sort((a, b) => a.score - b.score)
-        .slice(0, 3);
+        .slice(0, 2);
 
   const formatDay = (d: TaekilDay) =>
-    `${d.date}(${d.lunarLabel.split(' ')[2] ?? d.lunarLabel}) ${d.dayGan}${d.dayZhi} ${d.grade}(${d.score}점) — ${d.reasons.slice(0, 2).join(', ')}${d.luckyTime ? ` / 길시: ${d.luckyTime}` : ''}`;
+    `${d.date}(${d.lunarLabel.split(' ')[2] ?? d.lunarLabel}) ${d.dayGan}${d.dayZhi} ${d.grade}(${d.score}점) — ${d.reasons.slice(0, 3).join(', ')}${d.luckyTime ? ` / 길시: ${d.luckyTime}` : ''}`;
 
-  const bestList = bestDays.length > 0
-    ? bestDays.map(formatDay).join('\n')
-    : '없음';
-  const worstList = worstDays.length > 0
-    ? worstDays.map(formatDay).join('\n')
-    : '없음';
+  const topList = topDays.map((d, i) => `${i + 1}위: ${formatDay(d)}`).join('\n');
+  const worstList = worstDays.length > 0 ? worstDays.map(formatDay).join('\n') : '없음';
 
   const elPct = saju.elementPercent;
   const gyeokguk = determineGyeokguk(saju);
+  const topCount = topDays.length;
 
-  // 출산 택일 전용 인풋 블록
   const birthBlock = isBirth ? `
 [출산 택일 명리 분석 인풋]
 산모 일주: ${saju.pillars.day.gan}${saju.pillars.day.zhi} / 일간 오행: ${saju.dayMasterElement}
 격국: ${gyeokguk.name}(${gyeokguk.traits?.slice(0, 3).join('·') || ''})
 신강신약: ${saju.strengthStatus} / 용신: ${saju.yongSinElement}(${saju.yongSin}) / 기신: ${saju.giSin}
 식신 강도: ${computeSipseongCounts(saju)['식신']?.toFixed(1) || '0'} (자녀·출산 에너지)
-편인 강도: ${computeSipseongCounts(saju)['편인']?.toFixed(1) || '0'} (식신 극하는 기운 — 높을수록 출산일 신중 선택)
+편인 강도: ${computeSipseongCounts(saju)['편인']?.toFixed(1) || '0'} (식신 극하는 기운)
 일지 지지: ${saju.pillars.day.zhi} / 오행: ${saju.pillars.day.zhiElement}
 ` : '';
 
   const birthRules = isBirth ? `
 [출산 택일 전용 규칙]
-- 산모 일간 기준 식신(食神)이 강한 날 = 아이 에너지가 살아있는 날. 우선 추천.
-- 편인(偏印)이 식신을 克하는 날 = 모자(母子) 에너지 충돌. 반드시 피할 날로 언급.
-- 12운성 사(死)·절(絶)일 = 생명 기운 약함. 강력 기피.
-- 12운성 장생(長生)·제왕(帝旺)·건록(建祿)일 = 생명력이 넘치는 날. 적극 추천.
-- 편관(七殺)일 = 산모·태아 모두 부담. 반드시 경고.
+- 식신(食神) 강한 날 = 아이 에너지 살아있음. 우선 추천.
+- 편인(偏印)이 식신 克하는 날 = 모자 에너지 충돌. 반드시 피할 날.
+- 12운성 사(死)·절(絶) = 생명 기운 약함. 강력 기피.
+- 12운성 장생·제왕·건록 = 생명력 넘침. 적극 추천.
+- 편관(七殺)일 = 산모·태아 부담. 반드시 경고.
 - 공망일 = 허한 날. 출산 기피.
-- 추천 날짜는 반드시 위 엔진 계산 길일 목록에서만 선택. 임의 추천 금지.
-- 마지막에 면책 문구 1문장 필수: "이 분석은 명리학적 참고 자료이며, 최종 출산 날짜는 담당 의사와 상의해 결정해 주세요."
+- 면책 문구 필수: "이 분석은 명리학적 참고 자료이며, 최종 출산 날짜는 담당 의사와 상의해 결정해 주세요."
 ` : '';
 
-  return `[사주 원국 — 산모]
+  return `[사주 원국${isBirth ? ' — 산모' : ''}]
 일간: ${saju.dayMaster}(${saju.dayMasterElement}) / 일주: ${saju.pillars.day.gan}${saju.pillars.day.zhi}
 오행: 목${elPct.목}% 화${elPct.화}% 토${elPct.토}% 금${elPct.금}% 수${elPct.수}%
 신강신약: ${saju.strengthStatus} / 용신: ${saju.yongSinElement} / 기신: ${saju.giSin}
 ${birthBlock}
-[택일 검색 정보]
+[택일 정보]
 카테고리: ${taekil.categoryLabel}
 기간: ${taekil.startDate} ~ ${taekil.endDate}
 
-[엔진 계산 — ${isCompareMode ? '사용자가 직접 고른 후보' : '길일 상위'}]
-${bestList}
+[엔진 계산 — Top ${topCount}]
+${topList}
 
-[엔진 계산 — ${isCompareMode ? '후보 중 하위' : '흉일'}]
+[엔진 계산 — 흉일]
 ${worstList}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [작성 규칙]
-1) Markdown 절대 금지. 이모지 금지.
-2) 총 ${isCompareMode ? '450~600' : isBirth ? '500~650' : '350~450'}자. 짧고 실용적으로.
-3) 추천일은 위 엔진 계산 결과(${isCompareMode ? '사용자 후보 셋' : '길일'})에서만 고를 것. 임의로 다른 날 추천 금지.
-4) 명리 이유(십성·12운성·신살·합충형 중 1~2개)를 근거로 왜 좋은지 설명.
-5) ${isCompareMode ? '피해야 할 후보(점수 낮은 후보) 1개를 반드시 짚고, 다른 후보 대비 어떤 점이 약한지 비교 서술' : '피해야 할 날도 반드시 언급'}.
-6) 출력은 [taekil_advice] 마커부터 시작. 마커 이전 텍스트 없어야 함.
+1) Markdown 절대 금지 (**볼드**, ## 헤딩, - 불릿 모두 금지). 이모지 금지.
+2) [top1] [top2] [top3] 마커로 각 날짜별 섹션을 구분하여 출력.
+3) 각 [topN] 섹션 내부 구조 (항목 라벨 후 콜론으로 시작, 줄바꿈 구분):
+   분석: 이 날이 ${taekil.categoryLabel}에 좋은 이유. 명리 근거(십성·12운성·신살·합충형) 포함. 2~3문장(80~120자).
+   시간대: 추천 시간(지지) 1~2개. "지지(漢字) HH시 MM분 ~ HH시 MM분 — 이유 한 문장" 형식으로 각 줄에 하나씩.
+   개운법: 색·행동·음식·아이템·방위 등 구체적 개운 조언 1~2문장(40~60자).
+   주의: 이 날의 약점이나 ${taekil.categoryLabel} 시 주의할 점 1문장(30~50자).
+4) 총 ${isBirth ? '800~1100' : '700~1000'}자.
+5) 추천일은 위 엔진 계산 결과에서만 고를 것. 임의 다른 날 추천 금지.
+6) 피해야 할 날이 있으면 [avoid] 마커 뒤에 날짜 + 이유 1문장 추가.
 ${birthRules}
 ${METAPHOR_SHORT_GUIDE}
 
 [taekil_advice]
-${isCompareMode
-  ? `사용자가 직접 고른 ${taekil.days.length}개 후보 중 ${taekil.categoryLabel} 에 가장 적합한 날을 비교 추천하세요. 구조:
-- 1순위 후보 1개: 날짜 + 명리 근거 2문장 (왜 가장 좋은지, 어떤 십성/12운성이 작용하는지) + 길시 1문장
-- 2순위 후보 1개: 날짜 + 1순위 대비 강점·약점 비교 1~2문장
-- 3순위 후보 1개 (후보 3개 이상일 때만): 날짜 + 한 문장
-- 피해야 할 후보 1개: 날짜 + 어떤 충·형·기신 때문에 약한지 한 문장
-- ${taekil.categoryLabel} 행사 주의사항 1문장${isBirth ? '\n- 면책 문구 (마지막 줄): 명리학적 참고 자료이며, 최종 날짜는 담당 의사와 상의해 결정해 주세요.' : ''}`
-  : `${taekil.categoryLabel} 택일 추천을 아래 구조로 작성하세요:
-- 최고 추천일 1~2개: 날짜 + 명리 이유 1~2문장
-- 차선 추천일 1개 (있으면): 날짜 + 한 문장
-- 피해야 할 날 1개: 날짜 + 이유 한 문장
-- 길시 안내: 추천일 중 길시가 있으면 1문장으로 안내
-- 주의사항 1문장: ${taekil.categoryLabel}에 특화된 명리 조언${isBirth ? '\n- 면책 문구 (반드시 마지막 줄에): 명리학적 참고 자료이며, 최종 날짜는 담당 의사와 상의해 결정해 주세요.' : ''}`}`;
+Top ${topCount} 길일을 각각 [top1]${topCount >= 2 ? ' [top2]' : ''}${topCount >= 3 ? ' [top3]' : ''} 마커 안에 분석하세요.${worstDays.length > 0 ? ' 흉일은 [avoid] 마커로 경고하세요.' : ''}${isBirth ? ' 마지막 줄에 면책 문구 필수.' : ''}`;
 };
 
 // ============================================================

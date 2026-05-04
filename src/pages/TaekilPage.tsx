@@ -50,6 +50,39 @@ const GRADE_BG: Record<TaekilGrade, string> = {
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
+interface TaekilDateAdvice {
+  rank: number;
+  analysis: string;
+  times: string;
+  luck: string;
+  caution: string;
+}
+
+function parseTaekilStructuredAdvice(raw: string): { dates: TaekilDateAdvice[]; avoid: string } {
+  const dates: TaekilDateAdvice[] = [];
+  const topRe = /\[top(\d)\]/g;
+  const parts = raw.split(topRe);
+  for (let i = 1; i < parts.length; i += 2) {
+    const rank = parseInt(parts[i], 10);
+    const content = (parts[i + 1] ?? '').split(/\[(?:top\d|avoid)\]/)[0].trim();
+    const extract = (label: string): string => {
+      const re = new RegExp(`${label}[:：]\\s*([\\s\\S]*?)(?=\\n(?:분석|시간대|개운법|주의)[:：]|$)`);
+      const m = content.match(re);
+      return m ? m[1].trim() : '';
+    };
+    dates.push({
+      rank,
+      analysis: extract('분석'),
+      times: extract('시간대'),
+      luck: extract('개운법'),
+      caution: extract('주의'),
+    });
+  }
+  const avoidMatch = raw.match(/\[avoid\]\s*([\s\S]*?)$/);
+  const avoid = avoidMatch ? avoidMatch[1].trim() : '';
+  return { dates, avoid };
+}
+
 function toIso(d: Date) {
   return d.toISOString().slice(0, 10);
 }
@@ -108,6 +141,7 @@ export default function TaekilPage() {
 
   // AI 추천 — 자동 호출 X, 날짜 선택 후 수동 버튼 트리거
   const [aiAdvice, setAiAdvice] = useState<string | null>(null);
+  const [parsedAdvice, setParsedAdvice] = useState<{ dates: TaekilDateAdvice[]; avoid: string } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
@@ -159,10 +193,12 @@ export default function TaekilPage() {
       const cached = useReportCacheStore.getState().getReport<string>('taekil', k);
       if (cached?.data) {
         setAiAdvice(cached.data);
+        setParsedAdvice(parseTaekilStructuredAdvice(cached.data));
         return;
       }
     }
     setAiAdvice(null);
+    setParsedAdvice(null);
   }, [saju, viewYear, viewMonth, category, pickMode, candidateDates]);
 
   useEffect(() => {
@@ -177,7 +213,10 @@ export default function TaekilPage() {
       .then((record) => {
         if (cancelled || !record) return;
         const content = record.interpretation_detailed ?? record.interpretation_basic ?? '';
-        if (content) setAiAdvice(content);
+        if (content) {
+          setAiAdvice(content);
+          setParsedAdvice(parseTaekilStructuredAdvice(content));
+        }
       })
       .catch((e) => console.error('[archive replay] taekil load failed', e));
     return () => { cancelled = true; };
@@ -270,6 +309,7 @@ export default function TaekilPage() {
         throw new Error(r.error || '길일 분석을 가져오지 못했어요.');
       }
       setAiAdvice(r.advice);
+      setParsedAdvice(parseTaekilStructuredAdvice(r.advice));
       const cache = useReportCacheStore.getState();
       cache.setReport('taekil', taekilCacheKey, r.advice);
       if (!cache.isCharged('taekil', taekilCacheKey)) {
@@ -618,40 +658,19 @@ export default function TaekilPage() {
                       }}>✓</span>
                     )}
                     <span style={{
-                      fontSize: '13px', fontWeight: isToday ? 800 : 600,
+                      fontSize: '14px', fontWeight: isToday ? 800 : 600,
                       color: dow === 0 ? '#F87171' : dow === 6 ? '#60A5FA' : 'var(--text-primary)',
                     }}>
                       {cell.day}
                     </span>
-                    {d && (
-                      <span style={{
-                        fontSize: '9px', fontWeight: 700,
-                        color: GRADE_COLOR[d.grade],
-                        marginTop: '1px',
-                      }}>
-                        {d.grade}
-                      </span>
-                    )}
                   </button>
                 );
               })}
             </div>
 
-            {/* 범례 */}
-            <div style={{
-              display: 'flex', justifyContent: 'center', gap: '16px',
-              marginTop: '12px', fontSize: '11px', color: 'var(--text-tertiary)',
-            }}>
-              {(['대길', '길', '평', '흉'] as TaekilGrade[]).map(g => (
-                <span key={g} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{
-                    width: '8px', height: '8px', borderRadius: '50%',
-                    background: GRADE_COLOR[g], display: 'inline-block',
-                  }} />
-                  {g}
-                </span>
-              ))}
-            </div>
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 10, opacity: 0.6 }}>
+              날짜를 눌러 상세 정보를 확인하세요
+            </p>
           </div>
 
           {/* 선택된 날짜 상세 (단일 모드 전용) */}
@@ -854,48 +873,98 @@ export default function TaekilPage() {
             </div>
           )}
 
-          {/* 추천 길일 목록 (단일 모드 전용) */}
+          {/* Top 3 포디움 (사주키드 스타일) */}
           {pickMode === 'single' && result && result.bestDays.length > 0 && (
             <div className={styles.section}>
-              <h2>이달의 추천 길일</h2>
-              <div style={{
-                display: 'flex', gap: '8px', overflowX: 'auto',
-                paddingBottom: '8px', WebkitOverflowScrolling: 'touch',
-              }}>
-                {result.bestDays.slice(0, 8).map(d => {
-                  const dayNum = parseInt(d.date.split('-')[2]);
-                  const dow = WEEKDAYS[new Date(d.date).getDay()];
-                  return (
-                    <button
-                      key={d.date}
-                      onClick={() => setSelectedDay(d)}
-                      style={{
-                        minWidth: '72px', padding: '10px 8px',
-                        background: selectedDay?.date === d.date
-                          ? 'rgba(124,92,252,0.18)' : 'var(--space-elevated)',
-                        border: selectedDay?.date === d.date
-                          ? '1px solid var(--cta-primary)' : '1px solid var(--border-subtle)',
-                        borderRadius: '12px', textAlign: 'center',
-                        cursor: 'pointer', flexShrink: 0,
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        {dayNum}일
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>
-                        ({dow})
-                      </div>
-                      <div style={{
-                        fontSize: '11px', fontWeight: 700,
-                        color: GRADE_COLOR[d.grade],
-                      }}>
-                        {d.grade} · {d.score}점
-                      </div>
-                    </button>
-                  );
-                })}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <span style={{ display: 'inline-block', width: 4, height: 20, borderRadius: 2, background: '#34D399' }} />
+                <h2 style={{ margin: 0, fontSize: 17, fontFamily: 'var(--font-serif)' }}>
+                  {viewMonth}월 추천 길일 Top 3
+                </h2>
               </div>
+              <div style={{
+                display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                gap: 8, padding: '0 8px',
+              }}>
+                {(() => {
+                  const top3 = result.bestDays.slice(0, 3);
+                  const podiumOrder = top3.length >= 3
+                    ? [{ d: top3[1], rank: 2, h: 120 }, { d: top3[0], rank: 1, h: 150 }, { d: top3[2], rank: 3, h: 100 }]
+                    : top3.length === 2
+                    ? [{ d: top3[0], rank: 1, h: 150 }, { d: top3[1], rank: 2, h: 120 }]
+                    : [{ d: top3[0], rank: 1, h: 150 }];
+                  const rankBadge = ['', '1st', '2nd', '3rd'];
+                  const rankColor = ['', '#FFD700', '#C0C0C0', '#CD7F32'];
+                  return podiumOrder.map(({ d, rank, h }) => {
+                    const dayNum = parseInt(d.date.split('-')[2]);
+                    const dow = WEEKDAYS[new Date(d.date).getDay()];
+                    return (
+                      <button
+                        key={d.date}
+                        onClick={() => setSelectedDay(d)}
+                        style={{
+                          flex: rank === 1 ? '1.2' : '1',
+                          minHeight: h,
+                          padding: '14px 6px 12px',
+                          background: rank === 1
+                            ? 'linear-gradient(180deg, rgba(255,215,0,0.15) 0%, rgba(124,92,252,0.12) 100%)'
+                            : 'var(--space-elevated)',
+                          border: selectedDay?.date === d.date
+                            ? '2px solid var(--cta-primary)'
+                            : rank === 1
+                            ? '1.5px solid rgba(255,215,0,0.4)'
+                            : '1px solid var(--border-subtle)',
+                          borderRadius: 16,
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          display: 'flex', flexDirection: 'column',
+                          alignItems: 'center', justifyContent: 'center',
+                          gap: 4,
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        <span style={{
+                          fontSize: rank === 1 ? 13 : 11,
+                          fontWeight: 800,
+                          color: rankColor[rank],
+                          letterSpacing: '0.05em',
+                        }}>
+                          {rankBadge[rank]}
+                        </span>
+                        <span style={{
+                          fontSize: rank === 1 ? 28 : 22,
+                          fontWeight: 900,
+                          color: 'var(--text-primary)',
+                          lineHeight: 1.1,
+                        }}>
+                          {dayNum}
+                        </span>
+                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                          {viewMonth}월 ({dow})
+                        </span>
+                        <span style={{
+                          marginTop: 4,
+                          padding: '3px 10px', borderRadius: 99,
+                          fontSize: 11, fontWeight: 700,
+                          color: GRADE_COLOR[d.grade],
+                          background: GRADE_BG[d.grade],
+                          border: `1px solid ${GRADE_COLOR[d.grade]}40`,
+                        }}>
+                          {d.grade} · {d.score}점
+                        </span>
+                        {d.dayGan && (
+                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                            {d.dayGan}{d.dayZhi}일
+                          </span>
+                        )}
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 12, opacity: 0.7 }}>
+                날짜를 누르면 상세 정보를 볼 수 있어요
+              </p>
             </div>
           )}
 
@@ -996,18 +1065,144 @@ export default function TaekilPage() {
             )}
 
             {aiAdvice && (
-              <div style={{
-                padding: 16,
-                background: 'rgba(20,12,38,0.55)',
-                borderRadius: 14,
-                border: '1px solid var(--border-subtle)',
-                fontSize: 15,
-                color: 'var(--text-secondary)',
-                lineHeight: 1.85,
-                letterSpacing: '-0.005em',
-                whiteSpace: 'pre-line',
-              }}>
-                {aiAdvice}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {parsedAdvice && parsedAdvice.dates.length > 0 ? (
+                  <>
+                    {parsedAdvice.dates.map((adv, idx) => {
+                      const topDay = result?.bestDays[idx];
+                      const rankLabel = [`1위`, `2위`, `3위`][idx] ?? `${idx + 1}위`;
+                      const rankColor = ['#FFD700', '#C0C0C0', '#CD7F32'][idx] ?? 'var(--text-secondary)';
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            padding: 16,
+                            background: idx === 0
+                              ? 'linear-gradient(135deg, rgba(255,215,0,0.08) 0%, rgba(20,12,38,0.55) 40%)'
+                              : 'rgba(20,12,38,0.55)',
+                            borderRadius: 14,
+                            border: idx === 0
+                              ? '1px solid rgba(255,215,0,0.25)'
+                              : '1px solid var(--border-subtle)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              width: 28, height: 28, borderRadius: '50%',
+                              background: `${rankColor}22`,
+                              border: `1.5px solid ${rankColor}`,
+                              fontSize: 11, fontWeight: 800, color: rankColor,
+                            }}>
+                              {rankLabel}
+                            </span>
+                            {topDay && (
+                              <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>
+                                {topDay.date} ({WEEKDAYS[new Date(topDay.date).getDay()]})
+                              </span>
+                            )}
+                            {topDay && (
+                              <span style={{
+                                padding: '2px 8px', borderRadius: 99,
+                                fontSize: 11, fontWeight: 700,
+                                color: GRADE_COLOR[topDay.grade],
+                                background: GRADE_BG[topDay.grade],
+                              }}>
+                                {topDay.grade}
+                              </span>
+                            )}
+                          </div>
+
+                          {adv.analysis && (
+                            <div style={{ marginBottom: 12 }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 4 }}>분석</div>
+                              <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.75, margin: 0 }}>
+                                {adv.analysis}
+                              </p>
+                            </div>
+                          )}
+
+                          {adv.times && (
+                            <div style={{
+                              marginBottom: 12, padding: '10px 12px',
+                              background: 'rgba(52,211,153,0.08)', borderRadius: 10,
+                              border: '1px solid rgba(52,211,153,0.2)',
+                            }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: '#34D399', marginBottom: 4 }}>추천 시간대</div>
+                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-line' }}>
+                                {adv.times}
+                              </p>
+                            </div>
+                          )}
+
+                          {adv.luck && (
+                            <div style={{
+                              marginBottom: 12, padding: '10px 12px',
+                              background: 'rgba(124,92,252,0.08)', borderRadius: 10,
+                              border: '1px solid rgba(124,92,252,0.2)',
+                            }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--cta-primary)', marginBottom: 4 }}>개운법</div>
+                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
+                                {adv.luck}
+                              </p>
+                            </div>
+                          )}
+
+                          {adv.caution && (
+                            <div style={{
+                              padding: '10px 12px',
+                              background: 'rgba(248,113,113,0.08)', borderRadius: 10,
+                              border: '1px solid rgba(248,113,113,0.2)',
+                            }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: '#F87171', marginBottom: 4 }}>주의</div>
+                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
+                                {adv.caution}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {parsedAdvice.avoid && (
+                      <div style={{
+                        padding: 14,
+                        background: 'rgba(248,113,113,0.06)',
+                        borderRadius: 14,
+                        border: '1px solid rgba(248,113,113,0.25)',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: 22, height: 22, borderRadius: '50%',
+                            background: 'rgba(248,113,113,0.15)',
+                            fontSize: 11, fontWeight: 800, color: '#F87171',
+                          }}>!</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#F87171' }}>피해야 할 날</span>
+                        </div>
+                        <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-line' }}>
+                          {parsedAdvice.avoid}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{
+                    padding: 16,
+                    background: 'rgba(20,12,38,0.55)',
+                    borderRadius: 14,
+                    border: '1px solid var(--border-subtle)',
+                    fontSize: 15,
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.85,
+                    letterSpacing: '-0.005em',
+                    whiteSpace: 'pre-line',
+                  }}>
+                    {aiAdvice
+                      .replace(/^\s*\[(?:top\d|avoid)\].*$/gm, '')
+                      .trim()}
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -255,17 +255,21 @@ export default function ZamidusuResultPage() {
         if (cancelled) return;
       }
 
-      const cached = useReportCacheStore.getState().getReport<ZamidusuAIResult>('zamidusu', cacheKey);
-      if (cached?.error) {
-        setAiResult({ success: false, error: cached.error });
-        setAiLoading(false);
-        return;
-      }
-      if (cached?.data) {
-        setAiResult(cached.data);
-        setAiLoading(false);
-        aiStartedRef.current = true;
-        return;
+      if (!isFresh) {
+        const cached = useReportCacheStore.getState().getReport<ZamidusuAIResult>('zamidusu', cacheKey);
+        if (cached?.error) {
+          setAiResult({ success: false, error: cached.error });
+          setAiLoading(false);
+          return;
+        }
+        if (cached?.data) {
+          setAiResult(cached.data);
+          setAiLoading(false);
+          aiStartedRef.current = true;
+          return;
+        }
+      } else {
+        useReportCacheStore.getState().invalidate('zamidusu', cacheKey);
       }
 
       if (aiStartedRef.current) return;

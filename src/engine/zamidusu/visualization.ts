@@ -267,7 +267,7 @@ export function calcDaehanTimeline(chart: ZamidusuResult, currentAge: number): D
   });
 
   segments.sort((a, b) => a.startAge - b.startAge);
-  return segments.slice(0, 10);
+  return segments.slice(0, 8);
 }
 
 // ============================================

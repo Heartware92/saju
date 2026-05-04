@@ -48,16 +48,16 @@ export function CorePalaceScores({ cores, overall }: CorePalaceScoresProps) {
 
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(220px, 1fr) minmax(200px, 1fr)',
+          display: 'flex',
+          flexDirection: 'column',
           gap: 14,
-          alignItems: 'center',
+          alignItems: 'stretch',
         }}
       >
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative', alignSelf: 'center', width: '100%', maxWidth: 280 }}>
           <RadarChart
             domains={domains}
-            size={260}
+            size={240}
             fillColor="rgba(167,139,250,0.22)"
             strokeColor="rgba(167,139,250,0.85)"
           />
