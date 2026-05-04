@@ -1386,55 +1386,70 @@ export default function GunghapPage() {
               </div>
             </div>
 
-            {/* 두 사람 사주명식 표 — 홈화면 스타일 컬럼 카드 */}
+            {/* 두 사람 사주명식 표 — 만세력 스타일 */}
             {!isPetCategory && !archiveMeta && mySajuResult && otherSajuResult && (
-              <div className="space-y-3 mb-4">
+              <div className="space-y-4 mb-4">
                 {[
                   { label: selectedProfile?.name ?? '나', result: mySajuResult },
                   { label: otherDisplayName, result: otherSajuResult },
-                ].map((person, pi) => (
-                  <div key={pi} className="rounded-2xl p-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-                    <div className="text-[13px] font-bold text-cta mb-2 px-1">{person.label}</div>
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {(['hour', 'day', 'month', 'year'] as const).map(p => {
-                        const gan = person.result.pillars[p]?.gan;
-                        const zhi = person.result.pillars[p]?.zhi;
-                        const ganEl = gan ? (STEM_TO_ELEMENT[gan] as Element) : undefined;
-                        const zhiEl = (person.result.pillars[p]?.zhiElement as Element | undefined)
-                          ?? (zhi ? (STEM_TO_ELEMENT[zhi] as Element | undefined) : undefined);
-                        const ganColors = ganEl ? ELEMENT_CELL_COLORS[ganEl] : undefined;
-                        const zhiColors = zhiEl ? ELEMENT_CELL_COLORS[zhiEl] : undefined;
-                        const isUnknown = p === 'hour' && person.result.hourUnknown;
-                        const colLabel = p === 'hour' ? '시' : p === 'day' ? '일' : p === 'month' ? '월' : '년';
-                        return (
-                          <div key={`col-${pi}-${p}`} className="rounded-xl overflow-hidden border border-[var(--border-subtle)]">
-                            <div className="text-[11px] font-bold text-text-tertiary text-center py-1 bg-white/[0.03]">
-                              {colLabel}
-                            </div>
-                            <div
-                              className="py-2 flex flex-col items-center justify-center"
-                              style={ganColors && !isUnknown ? { backgroundColor: ganColors.bg, color: ganColors.fg } : { backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-tertiary)' }}
-                            >
-                              <span className="text-[20px] font-bold leading-tight" style={{ fontFamily: 'var(--font-serif)' }}>
-                                {isUnknown ? '?' : (gan ? STEM_TO_HANJA[gan] ?? gan : '?')}
+                ].map((person, pi) => {
+                  const p = person.result.pillars;
+                  const hu = person.result.hourUnknown;
+                  const ELEM_COLOR: Record<string, string> = {
+                    '목': '#34D399', '화': '#F43F5E', '토': '#F59E0B', '금': '#CBD5E1', '수': '#3B82F6',
+                  };
+                  return (
+                    <div key={pi} className="rounded-2xl overflow-hidden bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
+                      <div className="text-[13px] font-bold text-cta py-2 px-3">{person.label}</div>
+                      {/* 헤더 */}
+                      <div className="grid text-center text-[13px] font-bold text-cta/80 py-2 px-1 bg-[rgba(124,92,252,0.08)] rounded-lg mx-2 mb-1"
+                           style={{ gridTemplateColumns: '44px repeat(4, 1fr)' }}>
+                        <span />
+                        <span>시주</span><span>일주</span><span>월주</span><span>연주</span>
+                      </div>
+                      {/* 천간 */}
+                      <div className="grid items-center text-center py-5 px-1 border-b border-[var(--border-subtle)]"
+                           style={{ gridTemplateColumns: '44px repeat(4, 1fr)' }}>
+                        <span className="text-[12px] font-semibold text-text-secondary text-left pl-2">천간</span>
+                        {(['hour', 'day', 'month', 'year'] as const).map(col => {
+                          const gan = p[col]?.gan;
+                          const isUnknown = col === 'hour' && hu;
+                          const color = !isUnknown && gan ? ELEM_COLOR[p[col].ganElement] : undefined;
+                          return (
+                            <div key={`g-${pi}-${col}`} className="flex flex-col items-center" style={{ color }}>
+                              <span className="text-[11px] opacity-60 mb-1" style={{ fontFamily: 'var(--font-sans)' }}>
+                                {isUnknown ? '' : (gan ?? '')}
                               </span>
-                              <span className="text-[10px] opacity-70">{isUnknown ? '' : (gan ?? '')}</span>
-                            </div>
-                            <div
-                              className="py-2 flex flex-col items-center justify-center"
-                              style={zhiColors && !isUnknown ? { backgroundColor: zhiColors.bg, color: zhiColors.fg } : { backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-tertiary)' }}
-                            >
-                              <span className="text-[20px] font-bold leading-tight" style={{ fontFamily: 'var(--font-serif)' }}>
-                                {isUnknown ? '?' : (zhi ? ZHI_TO_HANJA[zhi] ?? zhi : '?')}
+                              <span className="text-[28px] font-bold leading-none" style={{ fontFamily: 'var(--font-serif)' }}>
+                                {isUnknown ? '?' : (gan ? (STEM_TO_HANJA[gan] ?? gan) : '?')}
                               </span>
-                              <span className="text-[10px] opacity-70">{isUnknown ? '' : (zhi ?? '')}</span>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
+                      {/* 지지 */}
+                      <div className="grid items-center text-center py-5 px-1"
+                           style={{ gridTemplateColumns: '44px repeat(4, 1fr)' }}>
+                        <span className="text-[12px] font-semibold text-text-secondary text-left pl-2">지지</span>
+                        {(['hour', 'day', 'month', 'year'] as const).map(col => {
+                          const zhi = p[col]?.zhi;
+                          const isUnknown = col === 'hour' && hu;
+                          const color = !isUnknown && zhi ? ELEM_COLOR[p[col].zhiElement] : undefined;
+                          return (
+                            <div key={`z-${pi}-${col}`} className="flex flex-col items-center" style={{ color }}>
+                              <span className="text-[28px] font-bold leading-none" style={{ fontFamily: 'var(--font-serif)' }}>
+                                {isUnknown ? '?' : (zhi ? (ZHI_TO_HANJA[zhi] ?? zhi) : '?')}
+                              </span>
+                              <span className="text-[11px] opacity-60 mt-1" style={{ fontFamily: 'var(--font-sans)' }}>
+                                {isUnknown ? '' : (zhi ?? '')}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -1445,34 +1460,69 @@ export default function GunghapPage() {
               </div>
             )}
 
-            {/* 결과 본문 — ▶ 섹션별 카드 분리 렌더링 */}
+            {/* 결과 본문 — 섹션별 카드 분리 렌더링 */}
             {(() => {
               const cleanedText = result.replace(/\[\/?\s*gunghap[_\s]?(?:header|scores)\s*\][^\n]*/gi, '').trim();
-              const sectionRegex = /▶\s*(.+)/g;
+
+              // Known section titles from gunghap prompts
+              const SECTION_TITLES = [
+                '핵심 요약', '공명과 끌림', '오행 상보 관계', '갈등·마찰 포인트',
+                '연애 방식과 역학', '서로의 속마음', '개운법·처방',
+                '이 우정의 에너지 구조', '서로에게 어떤 친구인가', '갈등과 마찰 포인트',
+                '함께 성장하는 방법', '오래가는 우정을 위한 처방',
+                '이 가족 관계의 명리 구조', '각자의 역할과 에너지', '갈등과 오해 패턴',
+                '서로에게 주는 선물', '관계를 더 깊게 하는 처방',
+                '업무 에너지 구조', '각자의 업무 스타일과 시너지', '협업 극대화 전략', '직장 관계 처방',
+                '이 관계의 에너지 구조', '서로가 주고받는 것', '마찰과 주의 포인트',
+                '이 관계를 더 좋게 만드는 처방',
+                '이 설렘의 정체', '상대방이 나를 보는 시선', '연애로 발전할 가능성',
+                '썸 단계의 주의사항', '고백 타이밍과 개운법',
+                '공명과 유대', '가정 역할과 생활 방식', '경제·자산 궁합',
+                '자녀와 가족 관계', '부부 개운법·처방',
+                '이별의 명리적 구조', '아직 남아있는 에너지', '재회 가능성 진단',
+                '상처와 회복의 방향', '앞으로의 처방',
+                '공동 비전과 시너지', '역할 분담과 의사결정', '금전 궁합과 리스크',
+                '위기 관리와 갈등 해소', '파트너십 처방',
+                '마음의 진짜 방향', '상대의 마음 읽기', '고백 전략과 타이밍',
+                '포기해야 할 신호', '짝사랑 처방',
+                '영혼의 공명 구조', '보이지 않는 연결', '함께 있을 때 일어나는 변화',
+                '이 관계의 어두운 면', '소울메이트 처방',
+                '경쟁의 에너지 구조', '서로의 강점과 약점', '이기는 전략 vs 성장 전략',
+                '감정적 마찰과 자존심', '라이벌 처방',
+                '이 성장 관계의 명리 구조', '가르침과 배움의 방향', '성장 시너지와 갈등',
+                '역할 전환의 가능성', '멘토·멘티 처방',
+                '상생과 끌림', '서로 채워주는 것', '갈등 포인트',
+              ];
+
+              // Build regex: match lines that start with ▶ or match known section titles
+              const titlePattern = SECTION_TITLES.map(t => t.replace(/[·()]/g, s => `\\${s}`)).join('|');
+              const sectionRegex = new RegExp(`^\\s*(?:▶\\s*)?(?:${titlePattern})(?:\\s*\\(.+?\\))?\\s*$`, 'gm');
+
               const parts: { title: string; body: string }[] = [];
-              let lastIdx = 0;
               let preamble = '';
-              let match: RegExpExecArray | null;
-
-              while ((match = sectionRegex.exec(cleanedText)) !== null) {
-                if (parts.length === 0 && match.index > 0) {
-                  preamble = cleanedText.slice(0, match.index).trim();
-                } else if (parts.length > 0) {
-                  parts[parts.length - 1].body = cleanedText.slice(lastIdx, match.index).trim();
-                }
-                parts.push({ title: match[1].replace(/\(.+?\)\s*$/, '').trim(), body: '' });
-                lastIdx = match.index + match[0].length;
-              }
-              if (parts.length > 0) {
-                parts[parts.length - 1].body = cleanedText.slice(lastIdx).trim();
+              const matches: { title: string; index: number; end: number }[] = [];
+              let m: RegExpExecArray | null;
+              while ((m = sectionRegex.exec(cleanedText)) !== null) {
+                matches.push({
+                  title: m[0].replace(/^[\s▶]+/, '').replace(/\s*\(.+?\)\s*$/, '').trim(),
+                  index: m.index,
+                  end: m.index + m[0].length,
+                });
               }
 
-              if (parts.length === 0) {
+              if (matches.length === 0) {
                 return (
                   <div className="p-5 rounded-2xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
                     <p className="text-[15px] text-text-secondary leading-[1.85] whitespace-pre-line">{cleanedText}</p>
                   </div>
                 );
+              }
+
+              preamble = cleanedText.slice(0, matches[0].index).trim();
+              for (let i = 0; i < matches.length; i++) {
+                const bodyStart = matches[i].end;
+                const bodyEnd = i + 1 < matches.length ? matches[i + 1].index : cleanedText.length;
+                parts.push({ title: matches[i].title, body: cleanedText.slice(bodyStart, bodyEnd).trim() });
               }
 
               return (
@@ -1491,7 +1541,8 @@ export default function GunghapPage() {
                       && !firstLine.startsWith('-')
                       && !firstLine.endsWith('.')
                       && !firstLine.startsWith('두 ')
-                      && !firstLine.includes('%');
+                      && !firstLine.includes('%')
+                      && !/^\d/.test(firstLine);
                     const metaphorTitle = hasMetaphor ? firstLine : '';
                     const bodyText = hasMetaphor ? bodyLines.slice(1).join('\n').trim() : sec.body;
 
