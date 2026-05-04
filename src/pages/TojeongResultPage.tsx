@@ -574,9 +574,9 @@ export default function TojeongResultPage() {
         <div className="space-y-1.5">
           {reading.monthly.map(m => (
             <div key={m.month} className="rounded-lg p-2.5 bg-white/5 flex gap-3">
-              <div className="w-10 shrink-0 text-center">
+              <div className="shrink-0 text-center" style={{ minWidth: 52 }}>
                 <div className="text-[15px] font-bold text-text-primary">{m.month}월</div>
-                <div className="text-[12px] text-text-tertiary mt-0.5">{m.keyword.split('·')[0]}</div>
+                <div className="text-[12px] text-text-tertiary mt-0.5 whitespace-nowrap">{m.keyword.split('·')[0]}</div>
               </div>
               <div className="flex-1 text-[14px] text-text-secondary leading-relaxed">
                 {m.text}
