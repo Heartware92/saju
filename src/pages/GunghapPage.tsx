@@ -918,6 +918,14 @@ export default function GunghapPage() {
         {step === 'landing' && (
           <motion.div key="landing" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="px-5 space-y-5">
 
+            {/* 새로 궁합 보기 버튼 — 최상단 */}
+            <button
+              onClick={() => setStep('category')}
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-cta to-cta-active text-white font-bold text-[17px] active:scale-[0.98] transition-all"
+            >
+              새로 궁합 보기
+            </button>
+
             {/* 기존 궁합 결과 */}
             {archiveLoading ? (
               <div className="flex items-center justify-center py-8">
@@ -965,19 +973,11 @@ export default function GunghapPage() {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-8">
+              <div className="text-center py-6">
                 <p className="text-text-tertiary text-[15px]">아직 궁합 결과가 없어요</p>
-                <p className="text-text-tertiary text-[13px] mt-1">아래 버튼으로 첫 궁합을 분석해보세요</p>
               </div>
             )}
 
-            {/* 새로 풀이 받기 버튼 */}
-            <button
-              onClick={() => setStep('category')}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-cta to-cta-active text-white font-bold text-[17px] active:scale-[0.98] transition-all"
-            >
-              새로 궁합 보기
-            </button>
           </motion.div>
         )}
 
