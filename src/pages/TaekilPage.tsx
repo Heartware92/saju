@@ -27,6 +27,7 @@ import {
   type TaekilGrade,
   type TaekilDay,
   type TaekilResult,
+  type TimeSlotEnergy,
 } from '../engine/taekil';
 import { getTaekilAdvice } from '../services/fortuneService';
 import { useLoadingGuard } from '../hooks/useLoadingGuard';
@@ -52,10 +53,8 @@ const MAX_PICKS = 5;
 
 interface TaekilDateAdvice {
   rank: number;
-  analysis: string;
-  times: string;
-  luck: string;
-  caution: string;
+  summary: string;
+  keywords: string[];
 }
 
 function parseTaekilStructuredAdvice(raw: string): { dates: TaekilDateAdvice[]; avoid: string } {
@@ -65,18 +64,33 @@ function parseTaekilStructuredAdvice(raw: string): { dates: TaekilDateAdvice[]; 
   for (let i = 1; i < parts.length; i += 2) {
     const rank = parseInt(parts[i], 10);
     const content = (parts[i + 1] ?? '').split(/\[(?:top\d|avoid)\]/)[0].trim();
-    const extract = (label: string): string => {
-      const re = new RegExp(`${label}[:：]\\s*([\\s\\S]*?)(?=\\n(?:분석|시간대|개운법|주의)[:：]|$)`);
-      const m = content.match(re);
-      return m ? m[1].trim() : '';
-    };
-    dates.push({
-      rank,
-      analysis: extract('분석'),
-      times: extract('시간대'),
-      luck: extract('개운법'),
-      caution: extract('주의'),
-    });
+
+    // New format: 종합 + 키워드
+    const summaryMatch = content.match(/종합[:：]\s*([\s\S]*?)(?=\n키워드[:：]|$)/);
+    const keywordMatch = content.match(/키워드[:：]\s*(.+)/);
+
+    if (summaryMatch) {
+      dates.push({
+        rank,
+        summary: summaryMatch[1].trim(),
+        keywords: keywordMatch
+          ? keywordMatch[1].split(/[,，]/).map(k => k.trim()).filter(Boolean)
+          : [],
+      });
+    } else {
+      // Legacy format fallback: 분석 + 시간대 + 개운법 + 주의 → merge into summary
+      const extract = (label: string): string => {
+        const re = new RegExp(`${label}[:：]\\s*([\\s\\S]*?)(?=\\n(?:분석|시간대|개운법|주의|종합|키워드)[:：]|$)`);
+        const m = content.match(re);
+        return m ? m[1].trim() : '';
+      };
+      const analysis = extract('분석');
+      const times = extract('시간대');
+      const luck = extract('개운법');
+      const caution = extract('주의');
+      const merged = [analysis, times && `추천 시간대: ${times}`, luck && `개운법: ${luck}`, caution && `주의: ${caution}`].filter(Boolean).join('\n');
+      dates.push({ rank, summary: merged || content, keywords: [] });
+    }
   }
   const avoidMatch = raw.match(/\[avoid\]\s*([\s\S]*?)$/);
   const avoid = avoidMatch ? avoidMatch[1].trim() : '';
@@ -871,7 +885,7 @@ export default function TaekilPage() {
                       </div>
                     )}
 
-                    {/* AI 상세 카드 */}
+                    {/* AI 상세 카드 — 오행 에너지 + 시간 에너지 + 종합 풀이 */}
                     <div className={styles.section}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                         <span style={{ display: 'inline-block', width: 4, height: 20, borderRadius: 2, background: 'var(--cta-primary)' }} />
@@ -880,13 +894,21 @@ export default function TaekilPage() {
                         </h2>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         {parsedAdvice && parsedAdvice.dates.length > 0 ? (
                           <>
                             {parsedAdvice.dates.map((adv, idx) => {
                               const topDay = pickedDays[idx];
                               const rankLabel = [`1위`, `2위`, `3위`][idx] ?? `${idx + 1}위`;
                               const rankColor = ['#FFD700', '#C0C0C0', '#CD7F32'][idx] ?? 'var(--text-secondary)';
+                              const ELEMENT_COLORS: Record<string, string> = {
+                                '목': '#2D8659', '화': '#E63946', '토': '#F4A261', '금': '#94A3B8', '수': '#3B82F6',
+                              };
+                              const elEnergy = topDay?.elementEnergy;
+                              const timeSlots = topDay?.timeSlots;
+                              const peakSlots = timeSlots?.filter(t => t.energy >= 7) ?? [];
+                              const maxTimeEnergy = timeSlots ? Math.max(...timeSlots.map(t => t.energy)) : 10;
+
                               return (
                                 <div
                                   key={idx}
@@ -901,7 +923,8 @@ export default function TaekilPage() {
                                       : '1px solid var(--border-subtle)',
                                   }}
                                 >
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                                  {/* Header */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                                     <span style={{
                                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                       width: 28, height: 28, borderRadius: '50%',
@@ -928,51 +951,126 @@ export default function TaekilPage() {
                                     )}
                                   </div>
 
-                                  {adv.analysis && (
-                                    <div style={{ marginBottom: 12 }}>
-                                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 4 }}>분석</div>
-                                      <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.75, margin: 0 }}>
-                                        {adv.analysis}
+                                  {/* 키워드 태그 */}
+                                  {adv.keywords.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+                                      {adv.keywords.map((kw, ki) => (
+                                        <span key={ki} style={{
+                                          padding: '4px 10px', borderRadius: 99,
+                                          fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
+                                          color: 'var(--cta-primary)',
+                                          background: 'rgba(124,92,252,0.12)',
+                                          border: '1px solid rgba(124,92,252,0.25)',
+                                        }}>
+                                          {kw}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* 오행 에너지 바 */}
+                                  {elEnergy && (
+                                    <div style={{
+                                      marginBottom: 14, padding: '12px 14px',
+                                      background: 'rgba(255,255,255,0.03)', borderRadius: 12,
+                                      border: '1px solid rgba(255,255,255,0.06)',
+                                    }}>
+                                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 10 }}>
+                                        오행 에너지
+                                      </div>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                        {(['목', '화', '토', '금', '수'] as const).map((el) => (
+                                          <div key={el} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{
+                                              width: 16, fontSize: 12, fontWeight: 800,
+                                              color: ELEMENT_COLORS[el], textAlign: 'center',
+                                            }}>{el}</span>
+                                            <div style={{
+                                              flex: 1, height: 10, borderRadius: 5,
+                                              background: 'rgba(255,255,255,0.05)',
+                                              overflow: 'hidden',
+                                            }}>
+                                              <div style={{
+                                                width: `${(elEnergy[el] ?? 1) * 10}%`, height: '100%',
+                                                borderRadius: 5,
+                                                background: `linear-gradient(90deg, ${ELEMENT_COLORS[el]}88, ${ELEMENT_COLORS[el]})`,
+                                                transition: 'width 0.5s ease',
+                                              }} />
+                                            </div>
+                                            <span style={{
+                                              width: 16, fontSize: 10, fontWeight: 700,
+                                              color: 'var(--text-tertiary)', textAlign: 'right',
+                                            }}>{elEnergy[el]}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* 종합 분석 */}
+                                  {adv.summary && (
+                                    <div style={{ marginBottom: 14 }}>
+                                      <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.85, margin: 0, whiteSpace: 'pre-line' }}>
+                                        {adv.summary}
                                       </p>
                                     </div>
                                   )}
 
-                                  {adv.times && (
+                                  {/* 시간 에너지 맵 */}
+                                  {timeSlots && timeSlots.length > 0 && (
                                     <div style={{
-                                      marginBottom: 12, padding: '10px 12px',
-                                      background: 'rgba(52,211,153,0.08)', borderRadius: 10,
-                                      border: '1px solid rgba(52,211,153,0.2)',
+                                      padding: '12px 10px',
+                                      background: 'rgba(255,255,255,0.03)', borderRadius: 12,
+                                      border: '1px solid rgba(255,255,255,0.06)',
                                     }}>
-                                      <div style={{ fontSize: 12, fontWeight: 700, color: '#34D399', marginBottom: 4 }}>추천 시간대</div>
-                                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-line' }}>
-                                        {adv.times}
-                                      </p>
-                                    </div>
-                                  )}
-
-                                  {adv.luck && (
-                                    <div style={{
-                                      marginBottom: 12, padding: '10px 12px',
-                                      background: 'rgba(124,92,252,0.08)', borderRadius: 10,
-                                      border: '1px solid rgba(124,92,252,0.2)',
-                                    }}>
-                                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--cta-primary)', marginBottom: 4 }}>개운법</div>
-                                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
-                                        {adv.luck}
-                                      </p>
-                                    </div>
-                                  )}
-
-                                  {adv.caution && (
-                                    <div style={{
-                                      padding: '10px 12px',
-                                      background: 'rgba(248,113,113,0.08)', borderRadius: 10,
-                                      border: '1px solid rgba(248,113,113,0.2)',
-                                    }}>
-                                      <div style={{ fontSize: 12, fontWeight: 700, color: '#F87171', marginBottom: 4 }}>주의</div>
-                                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
-                                        {adv.caution}
-                                      </p>
+                                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 10 }}>
+                                        시간 에너지 흐름
+                                      </div>
+                                      <div style={{
+                                        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
+                                        gap: 2, height: 48, padding: '0 2px',
+                                      }}>
+                                        {timeSlots.map((slot) => {
+                                          const isPeak = slot.energy >= 7;
+                                          const barH = Math.max(6, (slot.energy / maxTimeEnergy) * 48);
+                                          return (
+                                            <div key={slot.zhi} style={{
+                                              display: 'flex', flexDirection: 'column', alignItems: 'center',
+                                              flex: 1, gap: 3,
+                                            }}>
+                                              <div style={{
+                                                width: '100%', maxWidth: 18,
+                                                height: barH, borderRadius: 3,
+                                                background: isPeak
+                                                  ? 'linear-gradient(180deg, #34D399, rgba(52,211,153,0.4))'
+                                                  : slot.energy <= 3
+                                                    ? 'rgba(248,113,113,0.3)'
+                                                    : 'rgba(148,163,184,0.2)',
+                                                transition: 'height 0.4s ease',
+                                              }} />
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                      <div style={{
+                                        display: 'flex', justifyContent: 'space-between',
+                                        marginTop: 4, padding: '0 2px',
+                                      }}>
+                                        {timeSlots.map((slot) => (
+                                          <span key={slot.zhi} style={{
+                                            flex: 1, textAlign: 'center',
+                                            fontSize: 9, fontWeight: slot.energy >= 7 ? 800 : 500,
+                                            color: slot.energy >= 7 ? '#34D399' : 'var(--text-tertiary)',
+                                          }}>
+                                            {slot.zhi}
+                                          </span>
+                                        ))}
+                                      </div>
+                                      {peakSlots.length > 0 && (
+                                        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                                          {peakSlots.map(s => `${s.name}(${s.hours})`).join(', ')} 에너지 집중 구간
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>

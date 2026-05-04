@@ -2766,6 +2766,86 @@ export const generateWealthFortunePrompt = (result: SajuResult): string => {
  * - 후보 비교 모드: days.length <= 7 이면 사용자가 직접 고른 후보 셋으로 간주, Top 3 비교 풀이로 분기
  *   (직원 피드백: 다중 날짜 입력 → 점수 기반 Top 3 + 명리 근거)
  */
+// 카테고리별 명리 지식베이스 — 택일 전용
+const TAEKIL_KNOWLEDGE: Record<string, string> = {
+  marriage: `[결혼·혼례 택일 명리 지식]
+정재(남)/정관(여) 강한 날 = 배우자 에너지 왕성, 결혼 최적.
+식신 = 자녀복·가정 풍요, 결혼 후 안정적 가정 생활.
+천덕귀인·월덕귀인 = 재앙 소멸, 혼례에 대길.
+육합(원국 지지 + 일진 지지) = 부부 화합, 조화로운 결합.
+상관 = 정관을 극함, 배우자와 갈등 에너지, 혼례에 매우 불리.
+겁재 = 재성 극탈, 경제적 불안정, 신혼 재정 주의.
+도화살(자오묘유) 있는 일진 = 매력 상승이나 외도 에너지 동반.
+공망일 = 빈 혼사, 약속이 허해짐, 강하게 기피.
+삼합 완성 = 주변 축복 에너지 결집, 하객 운이 좋음.`,
+
+  moving: `[이사·입택 택일 명리 지식]
+정인 = 집·터전·뿌리 에너지, 이사 최적의 십성.
+식신 = 생활의 안정과 풍요, 새 집에서의 풍족한 살림.
+편재 = 유동 재산 활성화, 이사 비용 무리 없음.
+편관(칠살) = 불안·압박 에너지, 새 집 적응 어려움.
+상관 = 이웃과 시비, 입주 후 소음·갈등 가능성.
+천덕귀인 = 터전의 재앙 소멸, 집의 기운이 안정됨.
+육충(특히 일지 충) = 이사 후 뿌리가 흔들림, 정착 어려움.
+삼합 수국(신자진) 완성 = 재물 흐름 원활, 이사 후 경제 안정.
+12운성 건록·관대 = 생활 기반이 튼튼해지는 날.`,
+
+  business: `[개업·창업 택일 명리 지식]
+편재 = 사업 수완·유동 자산, 개업 최적의 십성.
+정재 = 안정적 수입원 확보, 꾸준한 매출 기대.
+식신 = 생산력·창의성, 아이디어 사업에 특히 유리.
+상관 = 파격적 혁신 에너지이나 관(규제)과 충돌 가능.
+겁재 = 경쟁자 출현·재물 분산, 개업에 가장 불리.
+편관 = 외부 압력·규제·검열 에너지, 인허가 지연 가능.
+천덕귀인 = 사업 초기의 위험 요소 해소.
+12운성 건록·제왕 = 사업 에너지 최고조, 강한 추진력.
+공망일 = 시작이 허함, 오픈해도 손님이 안 옴.`,
+
+  contract: `[계약·거래 택일 명리 지식]
+정재 = 안정적 거래·확실한 수익, 계약 최적.
+정관 = 법적 보호·계약서 효력 강함, 공정한 거래.
+정인 = 문서운 양호, 서류 하자 없음.
+편관 = 불리한 조건·숨은 함정 가능성.
+겁재 = 상대방에게 재물을 빼앗김, 불리한 협상.
+상관 = 계약 파기·분쟁 에너지.
+육합 = 거래 상대방과 원만한 합의.
+육충 = 의견 충돌·협상 결렬 가능성.
+공망일 = 계약이 공허, 이행되지 않을 위험.`,
+
+  travel: `[여행·출행 택일 명리 지식]
+식신 = 먹을복·유흥운, 여행의 즐거움 극대화.
+정인 = 학습·문화 여행에 최적, 안전한 이동.
+편재 = 여행지에서 뜻밖의 소비·쇼핑운.
+편관 = 사고·도난·지연 에너지, 출행에 가장 위험.
+겁재 = 동행자와 갈등·금전 분쟁.
+역마살(인신사해) = 이동 에너지 폭발, 여행 자체는 순조로움.
+육충(특히 역마 충) = 교통사고·일정 차질 위험.
+삼합 화국(인오술) = 열정적 여행, 추억 에너지 충만.`,
+
+  surgery: `[수술 택일 명리 지식]
+정인 = 보호·회복 에너지, 수술 경과 양호.
+식신 = 체력 회복력 우수, 수술 후 경과 좋음.
+편인 = 식신을 극함, 회복력 저하, 수술 부작용 주의.
+편관 = 칼(수술도구) 에너지이나 과도하면 합병증 위험.
+상관 = 의료진과 소통 문제, 수술 과정 불안.
+천덕귀인 = 의료 사고 방지, 명의를 만남.
+12운성 장생·관대 = 생명력 회복 빠름.
+12운성 사·절 = 생명 기운 쇠약, 수술 기피일.
+공망일 = 수술 효과가 허함, 재수술 가능성.`,
+
+  birth: `[출산 택일 명리 지식]
+식신(食神) = 자녀 에너지의 핵심, 아이의 생명력이 가장 강한 날.
+정인 = 어머니의 보호·양육 에너지, 순산 가능성 높음.
+편인(偏印) = 식신을 극함(倒食), 모자 에너지 심각 충돌, 절대 기피.
+편관(七殺) = 산모·태아에 과도한 압박, 난산 위험.
+12운성 장생 = 새 생명의 시작점, 출산 최길.
+12운성 제왕·건록 = 생명력 최강, 건강한 아이.
+12운성 사(死)·절(絶) = 생명 에너지 최약, 출산 강력 기피.
+삼합 완성 = 가족 전체의 기운이 결집, 가정에 복이 들어옴.
+공망일 = 허한 출생, 아이의 기반이 불안정.
+면책 문구 필수: "이 분석은 명리학적 참고 자료이며, 최종 출산 날짜는 담당 의사와 상의해 결정해 주세요."`,
+};
+
 export const generateTaekilAdvicePrompt = (
   saju: SajuResult,
   taekil: TaekilResult,
@@ -2782,8 +2862,16 @@ export const generateTaekilAdvicePrompt = (
         .sort((a, b) => a.score - b.score)
         .slice(0, 2);
 
-  const formatDay = (d: TaekilDay) =>
-    `${d.date}(${d.lunarLabel.split(' ')[2] ?? d.lunarLabel}) ${d.dayGan}${d.dayZhi} ${d.grade}(${d.score}점) — ${d.reasons.slice(0, 3).join(', ')}${d.luckyTime ? ` / 길시: ${d.luckyTime}` : ''}`;
+  const formatDay = (d: TaekilDay) => {
+    const elEnergy = d.elementEnergy
+      ? ` / 오행에너지(목${d.elementEnergy['목']} 화${d.elementEnergy['화']} 토${d.elementEnergy['토']} 금${d.elementEnergy['금']} 수${d.elementEnergy['수']})`
+      : '';
+    const peakSlots = d.timeSlots
+      ? d.timeSlots.filter(t => t.energy >= 7).map(t => `${t.name}(${t.energy})`).join(',')
+      : '';
+    const peakInfo = peakSlots ? ` / 고에너지시간: ${peakSlots}` : '';
+    return `${d.date}(${d.lunarLabel.split(' ')[2] ?? d.lunarLabel}) ${d.dayGan}${d.dayZhi} ${d.grade}(${d.score}점) — ${d.reasons.slice(0, 4).join(', ')}${d.luckyTime ? ` / 길시: ${d.luckyTime}` : ''}${elEnergy}${peakInfo}`;
+  };
 
   const topList = topDays.map((d, i) => `${i + 1}위: ${formatDay(d)}`).join('\n');
   const worstList = worstDays.length > 0 ? worstDays.map(formatDay).join('\n') : '없음';
@@ -2791,6 +2879,8 @@ export const generateTaekilAdvicePrompt = (
   const elPct = saju.elementPercent;
   const gyeokguk = determineGyeokguk(saju);
   const topCount = topDays.length;
+
+  const categoryKB = TAEKIL_KNOWLEDGE[taekil.category] || '';
 
   const birthBlock = isBirth ? `
 [출산 택일 명리 분석 인풋]
@@ -2802,21 +2892,12 @@ export const generateTaekilAdvicePrompt = (
 일지 지지: ${saju.pillars.day.zhi} / 오행: ${saju.pillars.day.zhiElement}
 ` : '';
 
-  const birthRules = isBirth ? `
-[출산 택일 전용 규칙]
-- 식신(食神) 강한 날 = 아이 에너지 살아있음. 우선 추천.
-- 편인(偏印)이 식신 克하는 날 = 모자 에너지 충돌. 반드시 피할 날.
-- 12운성 사(死)·절(絶) = 생명 기운 약함. 강력 기피.
-- 12운성 장생·제왕·건록 = 생명력 넘침. 적극 추천.
-- 편관(七殺)일 = 산모·태아 부담. 반드시 경고.
-- 공망일 = 허한 날. 출산 기피.
-- 면책 문구 필수: "이 분석은 명리학적 참고 자료이며, 최종 출산 날짜는 담당 의사와 상의해 결정해 주세요."
-` : '';
-
   return `[사주 원국${isBirth ? ' — 산모' : ''}]
 일간: ${saju.dayMaster}(${saju.dayMasterElement}) / 일주: ${saju.pillars.day.gan}${saju.pillars.day.zhi}
+사주: ${saju.pillars.year.gan}${saju.pillars.year.zhi} ${saju.pillars.month.gan}${saju.pillars.month.zhi} ${saju.pillars.day.gan}${saju.pillars.day.zhi} ${saju.hourUnknown ? '시주미상' : saju.pillars.hour.gan + saju.pillars.hour.zhi}
 오행: 목${elPct.목}% 화${elPct.화}% 토${elPct.토}% 금${elPct.금}% 수${elPct.수}%
 신강신약: ${saju.strengthStatus} / 용신: ${saju.yongSinElement} / 기신: ${saju.giSin}
+격국: ${gyeokguk.name}
 ${birthBlock}
 [택일 정보]
 카테고리: ${taekil.categoryLabel}
@@ -2828,23 +2909,33 @@ ${topList}
 [엔진 계산 — 흉일]
 ${worstList}
 
+${categoryKB}
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[작성 규칙]
+[작성 규칙 — 반드시 준수]
 1) Markdown 절대 금지 (**볼드**, ## 헤딩, - 불릿 모두 금지). 이모지 금지.
 2) [top1] [top2] [top3] 마커로 각 날짜별 섹션을 구분하여 출력.
-3) 각 [topN] 섹션 내부 구조 (항목 라벨 후 콜론으로 시작, 줄바꿈 구분):
-   분석: 이 날이 ${taekil.categoryLabel}에 좋은 이유. 명리 근거(십성·12운성·신살·합충형) 포함. 2~3문장(80~120자).
-   시간대: 추천 시간(지지) 1~2개. "지지(漢字) HH시 MM분 ~ HH시 MM분 — 이유 한 문장" 형식으로 각 줄에 하나씩.
-   개운법: 색·행동·음식·아이템·방위 등 구체적 개운 조언 1~2문장(40~60자).
-   주의: 이 날의 약점이나 ${taekil.categoryLabel} 시 주의할 점 1문장(30~50자).
-4) 총 ${isBirth ? '800~1100' : '700~1000'}자.
+3) 각 [topN] 섹션 내부 구조:
+   종합: 이 날이 ${taekil.categoryLabel}에 적합한 이유를 명리학적 근거와 함께 풍부하게 서술합니다.
+   반드시 포함할 내용:
+   가) 일진의 천간·지지 오행 특성과 원국과의 관계 (생극 관계, 합충형 유무)
+   나) 핵심 십성이 ${taekil.categoryLabel}에 미치는 구체적 영향 (위 지식베이스 참고)
+   다) 12운성 상태가 행사 에너지에 주는 의미
+   라) 이 날 특별히 유리하거나 주의할 구체적 행동 지침 (시간대·방위·색상·행동 등)
+   마) 이 날의 약점이나 주의사항도 자연스럽게 문장 안에 포함
+   5~7문장(250~350자). 추상적 격언 금지, 일상 행동으로 내려앉히세요.
+   키워드: 이 날의 핵심 특성 3개. 쉼표 구분. 4글자 이내의 함축적 표현.
+   (예: "정인안정, 천덕길일, 수기조화" / "편재활성, 식신풍요, 삼합결집")
+4) 총 ${isBirth ? '1200~1600' : '1100~1500'}자.
 5) 추천일은 위 엔진 계산 결과에서만 고를 것. 임의 다른 날 추천 금지.
-6) 피해야 할 날이 있으면 [avoid] 마커 뒤에 날짜 + 이유 1문장 추가.
-${birthRules}
+6) 피해야 할 날이 있으면 [avoid] 마커 뒤에 날짜 + 이유 2~3문장 추가.
+7) 용신·기신 언급 시 반드시 "오행(천간) — 십성" 형태로 쓸 것.
+   (예: "용신인 화(병화·정화), 즉 편재가…")
+8) 같은 표현 반복 금지. 각 날짜마다 다른 관점·어휘로 서술.
 ${METAPHOR_SHORT_GUIDE}
 
 [taekil_advice]
-Top ${topCount} 길일을 각각 [top1]${topCount >= 2 ? ' [top2]' : ''}${topCount >= 3 ? ' [top3]' : ''} 마커 안에 분석하세요.${worstDays.length > 0 ? ' 흉일은 [avoid] 마커로 경고하세요.' : ''}${isBirth ? ' 마지막 줄에 면책 문구 필수.' : ''}`;
+Top ${topCount} 길일을 각각 [top1]${topCount >= 2 ? ' [top2]' : ''}${topCount >= 3 ? ' [top3]' : ''} 마커 안에 분석하세요. 각 마커 안에는 "종합:" 과 "키워드:" 라벨만 사용합니다.${worstDays.length > 0 ? ' 흉일은 [avoid] 마커로 경고하세요.' : ''}${isBirth ? ' 마지막 줄에 면책 문구 필수.' : ''}`;
 };
 
 // ============================================================

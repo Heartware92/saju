@@ -1003,8 +1003,7 @@ export const getTaekilAdvice = async (
 ): Promise<TaekilAdviceResult> => {
   try {
     const prompt = generateTaekilAdvicePrompt(saju, taekil);
-    // 날짜별 구조화 출력 — 700~1100자 × 토큰 비율 → 안전치 3,500
-    const raw = await callGPT(prompt, 3500);
+    const raw = await callGPT(prompt, 5000);
     // [taekil_advice] 마커 제거하고 본문만 추출
     const match = raw.match(/\[taekil_advice\]\s*([\s\S]+)/);
     const advice = match ? match[1].trim() : raw.trim();
