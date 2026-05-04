@@ -24,6 +24,7 @@ import {
   generateNameFortunePrompt,
   type NameAnalysisInput,
   generateDreamInterpretationPrompt,
+  generateTojeongPrompt,
   generateTojeongPass1Prompt,
   generateTojeongPass2Prompt,
   type TojeongSectionKey,
@@ -423,44 +424,63 @@ export const getTojeongReading = async (
   sourceBirth?: { birth_date: string; gender: 'male' | 'female'; calendar_type?: 'solar' | 'lunar' },
   profileId?: string,
 ): Promise<TojeongAIResult> => {
-  let pass1Content = '';
-  let pass1Sections: Partial<Record<TojeongSectionKey, string>> = {};
-  let domainScores: TojeongAIResult['domainScores'];
+  const archive = (content: string) => {
+    archiveSaju({ profileId, sourceBirth, category: 'tojeong', engineResult: tj as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
+  };
 
+  // ── 시도 1: 2-pass (풍부한 결과) ──
   try {
-    // ── Pass 1: 점수 + 총운 + 괘의미 + 월별운세 ──
-    const pass1Prompt = generateTojeongPass1Prompt(tj);
-    pass1Content = await callGPT(pass1Prompt, 6000, undefined, { allowTruncated: true });
-    pass1Sections = parseTojeongSections(pass1Content);
-    domainScores = parseTojeongScores(pass1Content) ?? undefined;
+    const result = await tojeong2Pass(tj);
+    archive(result.content ?? '');
+    return result;
+  } catch (e: any) {
+    console.warn('[tojeong] 2-pass failed, trying single-pass fallback:', e.message);
+  }
+
+  // ── 시도 2: 레거시 단일 호출 (빠르고 안정적) ──
+  try {
+    const content = await callGPT(generateTojeongPrompt(tj), 4000, undefined, { allowTruncated: true });
+    archive(content);
+    return { success: true, content };
+  } catch (e: any) {
+    console.warn('[tojeong] single-pass also failed, retrying once:', e.message);
+  }
+
+  // ── 시도 3: 단일 호출 1회 재시도 ──
+  try {
+    const content = await callGPT(generateTojeongPrompt(tj), 3500, undefined, { allowTruncated: true });
+    archive(content);
+    return { success: true, content };
   } catch (error: any) {
-    console.error('[tojeong] pass1 failed:', error.message);
+    console.error('[tojeong] all attempts failed:', error.message);
     return { success: false, error: error.message };
   }
+};
+
+async function tojeong2Pass(tj: TojeongResult): Promise<TojeongAIResult> {
+  const pass1Prompt = generateTojeongPass1Prompt(tj);
+  const pass1Content = await callGPT(pass1Prompt, 6000, undefined, { allowTruncated: true });
+  const pass1Sections = parseTojeongSections(pass1Content);
+  const domainScores = parseTojeongScores(pass1Content) ?? undefined;
 
   let pass2Content = '';
   let pass2Sections: Partial<Record<TojeongSectionKey, string>> = {};
-
   try {
-    // ── Pass 2: 재물 + 애정 + 건강 + 직장 + 개운 ──
     const pass2Prompt = generateTojeongPass2Prompt(tj, pass1Content);
     pass2Content = await callGPT(pass2Prompt, 5500, undefined, { allowTruncated: true });
     pass2Sections = parseTojeongSections(pass2Content);
-  } catch (error: any) {
-    console.warn('[tojeong] pass2 failed, returning pass1 only:', error.message);
+  } catch {
+    // pass2 실패해도 pass1 결과는 반환
   }
 
-  // ── 병합 — pass2 실패해도 pass1 결과는 반환 ──
   const sections: Partial<Record<TojeongSectionKey, string>> = { ...pass1Sections, ...pass2Sections };
   const content = pass2Content ? `${pass1Content}\n\n${pass2Content}` : pass1Content;
-
-  archiveSaju({ profileId, sourceBirth, category: 'tojeong', engineResult: tj as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
 
   if (Object.keys(sections).length === 0) {
     return { success: true, content, domainScores };
   }
   return { success: true, content, sections, domainScores };
-};
+}
 
 /**
  * 자미두수 (전체 무료) — 섹션 델리미터 파싱까지

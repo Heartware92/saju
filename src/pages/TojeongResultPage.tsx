@@ -252,7 +252,6 @@ export default function TojeongResultPage() {
     if (!tojeong || !cacheKey) return;
 
     let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     const isFresh = searchParams?.get('fresh') === '1';
 
@@ -301,18 +300,10 @@ export default function TojeongResultPage() {
       aiStartedRef.current = true;
 
       setAiLoading(true);
-      timeoutId = setTimeout(() => {
-        if (cancelled) return;
-        const timeoutMsg = '응답이 너무 오래 걸려요. 아래 괘 풀이는 정상이니 확인해주세요.';
-        setAiError(timeoutMsg);
-        setAiLoading(false);
-        useReportCacheStore.getState().setError('tojeong', cacheKey, timeoutMsg);
-      }, 90_000);
 
       getTojeongReading(tojeong, sourceBirth, targetProfile?.id)
         .then((r: TojeongAIResult) => {
           if (cancelled) return;
-          clearTimeout(timeoutId);
           const cache = useReportCacheStore.getState();
           if (!r.success || !r.content) {
             const msg = r.error || '심층 풀이를 가져오지 못했어요.';
@@ -332,7 +323,6 @@ export default function TojeongResultPage() {
         })
         .catch(err => {
           if (cancelled) return;
-          clearTimeout(timeoutId);
           const msg = err?.message || '오류가 발생했어요.';
           setAiError(msg);
           setAiLoading(false);
@@ -341,10 +331,7 @@ export default function TojeongResultPage() {
     };
 
     run();
-    return () => {
-      cancelled = true;
-      if (timeoutId) clearTimeout(timeoutId);
-    };
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tojeong, cacheKey, isArchiveMode, refetchNonce]);
 
