@@ -133,7 +133,7 @@ export const MORE_FORTUNE_CONFIGS: Record<MoreFortuneId, MoreFortuneConfig> = {
     title: '꿈 해몽',
     icon: '☾',
     shortDesc: '꿈의 현실 힌트',
-    longDesc: '간밤에 꾼 꿈을 적어주세요. 전통 꿈해몽 지식베이스와 당신의 사주 원국·올해 세운을 함께 해석해 꿈이 가리키는 현실의 힌트를 구체적으로 알려드려요.',
+    longDesc: '간밤에 꾼 꿈을 적어주세요. 주공해몽·한국 민속 해몽 전통과 현대 심리 해석을 결합한 지식베이스로, 꿈속 상징·맥락·감정을 함께 풀어 현실의 힌트를 구체적으로 짚어드려요. (꿈은 사주와 무관하게 꿈 자체로 해석합니다)',
     ctaButton: '내 꿈 풀이 보기',
     maxTokens: 2500,
     needsDreamInput: true,

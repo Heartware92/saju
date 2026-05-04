@@ -66,7 +66,7 @@ const LOADING_MESSAGES: Record<MoreFortuneId, string[]> = {
   children:    ['자녀성과 자녀궁을 확인 중입니다', '식상·관성 흐름 분석 중입니다', '출산 유리한 시기 짚는 중입니다'],
   personality: ['일주 60갑자 특성 확인 중입니다', '격국·신강신약 종합 중입니다', '간여지동과 신살 분석 중입니다'],
   name:        ['초성 오행을 계산 중입니다', '사주 용신과 이름 오행 비교 중입니다', '이름이 주는 기운을 분석 중입니다'],
-  dream:       ['전통 꿈해몽 사전을 찾는 중입니다', '꿈속 상징과 사주 오행을 맞춰보는 중입니다', '올해 세운과 꿈의 연결점을 짚는 중입니다'],
+  dream:       ['전통 해몽 사전을 펼치는 중입니다', '꿈속 상징의 길흉을 가늠하는 중입니다', '맥락과 감정으로 의미를 다듬는 중입니다'],
 };
 
 export default function MoreFortunePage({ category }: Props) {
@@ -489,7 +489,7 @@ export default function MoreFortunePage({ category }: Props) {
             <p className="text-base text-text-tertiary mt-1">
               보관함 · {new Date(archivedAt).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })}
             </p>
-          ) : category !== 'name' && targetProfile ? (
+          ) : category !== 'name' && category !== 'dream' && targetProfile ? (
             <p className="text-base text-text-tertiary mt-1">{targetProfile.name} · {targetProfile.birth_date}</p>
           ) : null}
         </div>
