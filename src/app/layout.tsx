@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     title: '이천점 — 우주의 기운을 당신께 드려요',
     description: '별빛이 읽어주는 사주·타로·자미두수',
     siteName: '이천점',
-    images: [{ url: `${BASE_URL}/favicon.png`, width: 192, height: 192 }],
+    images: [{ url: `${BASE_URL}/og-image.png`, width: 1200, height: 630 }],
     type: 'website',
   },
 };
