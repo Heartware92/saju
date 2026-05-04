@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
-import { findRecentArchive, findArchiveList, type ArchiveCategory } from '../services/archiveService';
+import { findRecentArchive, findArchiveList, type ArchiveCategory, type ArchiveListItem } from '../services/archiveService';
 
 export interface QuickFortuneGateProps {
   serviceName: string;
@@ -41,7 +41,7 @@ export function QuickFortuneGate({
   const [initialized, setInitialized] = useState(profiles.length > 0);
   const [checking, setChecking] = useState(true);
   const [archive, setArchive] = useState<{ id: string; created_at: string } | null>(null);
-  const [archiveList, setArchiveList] = useState<{ id: string; created_at: string; context_date?: string }[]>([]);
+  const [archiveList, setArchiveList] = useState<ArchiveListItem[]>([]);
   const [modalType, setModalType] = useState<'credit' | 'existing' | 'date-list' | 'insufficient' | null>(null);
 
   const balance = creditType === 'sun' ? sunBalance : moonBalance;
@@ -72,14 +72,14 @@ export function QuickFortuneGate({
     }
   }, [initialized, profiles, user, router, onClose]);
 
-  const isDateList = archiveCategory === 'period' && !archiveContext;
+  const isListMode = (archiveCategory === 'period' || archiveCategory === 'taekil') && !archiveContext;
 
   useEffect(() => {
     if (!initialized || !primaryProfile) return;
     let cancelled = false;
     setChecking(true);
 
-    if (isDateList) {
+    if (isListMode) {
       findArchiveList({
         category: archiveCategory,
         birth_date: primaryProfile.birth_date,
@@ -111,11 +111,11 @@ export function QuickFortuneGate({
     }
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialized, primaryProfile?.id, archiveCategory, contextKey, isDateList]);
+  }, [initialized, primaryProfile?.id, archiveCategory, contextKey, isListMode]);
 
   useEffect(() => {
     if (checking) return;
-    if (isDateList && archiveList.length > 0) {
+    if (isListMode && archiveList.length > 0) {
       setModalType('date-list');
     } else if (archive) {
       setModalType('existing');
@@ -124,7 +124,7 @@ export function QuickFortuneGate({
     } else {
       setModalType('credit');
     }
-  }, [checking, archive, archiveList, balance, creditCost, isDateList]);
+  }, [checking, archive, archiveList, balance, creditCost, isListMode]);
 
   const navigate = useCallback(
     (extra?: string) => {
@@ -241,31 +241,35 @@ export function QuickFortuneGate({
 
               {modalType === 'date-list' && (
                 <>
-                  <h3 className="text-[17px] font-bold text-text-primary mb-2">이전에 본 날짜가 있어요</h3>
+                  <h3 className="text-[17px] font-bold text-text-primary mb-2">이전 풀이 기록이 있어요</h3>
                   <p className="text-[14px] text-text-secondary leading-relaxed mb-3">
-                    다시 보고 싶은 날짜를 선택하세요.
+                    다시 보고 싶은 결과를 선택하세요.
                   </p>
                   <div className="max-h-[200px] overflow-y-auto space-y-1.5 mb-4 px-1">
                     {archiveList.map(item => {
                       const dateLabel = item.context_date
                         ? item.context_date.replace(/-/g, '.')
                         : new Date(item.created_at).toLocaleDateString('ko-KR');
+                      const catLabel = item.context_category_label;
                       return (
                         <button
                           key={item.id}
                           type="button"
                           onClick={() => navigate(`&recordId=${item.id}`)}
-                          className="w-full h-10 rounded-lg border border-[var(--border-subtle)] text-[14px] text-text-primary font-medium hover:bg-cta/10 hover:border-cta/40 transition-all flex items-center justify-center gap-2"
+                          className="w-full min-h-10 py-2 px-3 rounded-lg border border-[var(--border-subtle)] text-[14px] text-text-primary font-medium hover:bg-cta/10 hover:border-cta/40 transition-all flex items-center justify-between gap-2"
                         >
-                          <span>{dateLabel}</span>
-                          <span className="text-[12px] text-text-tertiary">결과 보기</span>
+                          <span className="flex items-center gap-2">
+                            {catLabel && <span className="text-[12px] font-bold text-cta bg-cta/10 px-2 py-0.5 rounded-md">{catLabel}</span>}
+                            <span>{dateLabel}</span>
+                          </span>
+                          <span className="text-[12px] text-text-tertiary flex-shrink-0">결과 보기</span>
                         </button>
                       );
                     })}
                   </div>
                   <div className="space-y-2.5">
                     <button type="button" onClick={handleNewReading} className="block w-full h-12 rounded-lg bg-gradient-to-r from-cta to-cta-active text-white font-bold text-[15px] hover:opacity-90 transition-all">
-                      새 날짜로 풀이 받기
+                      새로 풀이 받기
                       <span className="block text-[12px] font-normal text-white/70 mt-0.5">{creditLabel} {creditCost}개 소모</span>
                     </button>
                     <button type="button" onClick={handleClose} className="block w-full h-12 rounded-lg border border-[var(--border-subtle)] text-text-secondary font-medium text-[15px] hover:bg-white/5 transition-all">

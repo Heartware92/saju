@@ -221,13 +221,21 @@ export async function findRecentArchive(params: {
  * 지정일 운세 등 같은 카테고리의 모든 기록을 날짜별로 반환.
  * QuickFortuneGate에서 "기존 결과 보기" 날짜 목록 표시에 사용.
  */
+export interface ArchiveListItem {
+  id: string;
+  created_at: string;
+  context_date?: string;
+  context_category?: string;
+  context_category_label?: string;
+}
+
 export async function findArchiveList(params: {
   category: ArchiveCategory;
   birth_date: string;
   gender: 'male' | 'female';
   profile_id?: string;
   limit?: number;
-}): Promise<{ id: string; created_at: string; context_date?: string }[]> {
+}): Promise<ArchiveListItem[]> {
   try {
     const user = await auth.getCurrentUser();
     if (!user) return [];
@@ -253,6 +261,8 @@ export async function findArchiveList(params: {
       id: row.id,
       created_at: row.created_at,
       context_date: (row.engine_result?.isoDate as string) ?? undefined,
+      context_category: (row.engine_result?.category as string) ?? undefined,
+      context_category_label: (row.engine_result?.categoryLabel as string) ?? undefined,
     }));
   } catch (err) {
     console.error('[archive] findArchiveList failed', err);

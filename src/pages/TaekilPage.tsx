@@ -14,10 +14,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileStore } from '../store/useProfileStore';
 import { useUserStore } from '../store/useUserStore';
 import { useCreditStore } from '../store/useCreditStore';
-import { useReportCacheStore, sajuKey, type ReportKind } from '../store/useReportCacheStore';
-import { RestoreReportModal } from '../components/RestoreReportModal';
+import { useReportCacheStore, sajuKey } from '../store/useReportCacheStore';
 import { QuickFortuneGate } from '../components/QuickFortuneGate';
-import { findRecentArchive } from '../services/archiveService';
+import { findArchiveList, type ArchiveListItem } from '../services/archiveService';
 import { SUN_COST_BIG, CHARGE_REASONS } from '../constants/creditCosts';
 import { computeSajuFromProfile } from '../utils/profileSaju';
 import { BackButton } from '../components/ui/BackButton';
@@ -147,13 +146,9 @@ export default function TaekilPage() {
   }, [aiTimedOut, aiAdvice]);
 
   const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
-  const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
+  const [archiveItems, setArchiveItems] = useState<ArchiveListItem[]>([]);
+  const [showArchiveList, setShowArchiveList] = useState(false);
   const [refetchNonce, setRefetchNonce] = useState(0);
-  const handleUseCached = () => { cacheGate?.restore(); setCacheGate(null); };
-  const handleRefetch = () => {
-    setCacheGate(null);
-    setRefetchNonce(n => n + 1);
-  };
 
   // 캐시 키
   const taekilCacheKey = useMemo(() => {
@@ -161,37 +156,40 @@ export default function TaekilPage() {
     return `${sajuKey(saju)}:${category}:${[...pickedDates].sort().join(',')}`;
   }, [saju, category, pickedDates]);
 
-  // 카테고리/연월 변경시 엔진 재계산
+  // 카테고리/연월 변경시 엔진 재계산 (보관함 모드에서는 스킵)
   const compute = useCallback(() => {
+    if (isArchiveMode) return;
     if (!saju || !category) { setResult(null); return; }
     const start = `${viewYear}-${String(viewMonth).padStart(2, '0')}-01`;
     const lastDay = daysInMonth(viewYear, viewMonth);
     const end = `${viewYear}-${String(viewMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
     const r = calculateTaekil(saju, category, start, end);
     setResult(r);
-  }, [saju, viewYear, viewMonth, category]);
+  }, [saju, viewYear, viewMonth, category, isArchiveMode]);
 
   useEffect(() => {
     compute();
   }, [compute]);
 
-  // 카테고리 변경시 선택/결과 초기화
+  // 카테고리 변경시 선택/결과 초기화 (보관함 모드에서는 스킵)
   useEffect(() => {
+    if (isArchiveMode) return;
     setPickedDates([]);
     setAiAdvice(null);
     setParsedAdvice(null);
     setAiError(null);
     setShowResult(false);
-  }, [category]);
+  }, [category, isArchiveMode]);
 
-  // 연/월 변경시에도 선택 초기화
+  // 연/월 변경시에도 선택 초기화 (보관함 모드에서는 스킵)
   useEffect(() => {
+    if (isArchiveMode) return;
     setPickedDates([]);
     setAiAdvice(null);
     setParsedAdvice(null);
     setAiError(null);
     setShowResult(false);
-  }, [viewYear, viewMonth]);
+  }, [viewYear, viewMonth, isArchiveMode]);
 
   // ── 보관함 재생 모드 ──
   useEffect(() => {
@@ -200,6 +198,12 @@ export default function TaekilPage() {
     sajuDB.getRecordById(recordId)
       .then((record) => {
         if (cancelled || !record) return;
+        const engine = record.engine_result as unknown as TaekilResult | null;
+        if (engine) {
+          setCategory(engine.category);
+          setResult(engine);
+          setPickedDates(engine.days.map(d => d.date));
+        }
         const content = record.interpretation_detailed ?? record.interpretation_basic ?? '';
         if (content) {
           setAiAdvice(content);
@@ -211,32 +215,25 @@ export default function TaekilPage() {
     return () => { cancelled = true; };
   }, [recordId]);
 
-  // ── 보관함 DB 확인 ──
+  // ── 보관함 DB 확인 (리스트) ──
   useEffect(() => {
     if (isArchiveMode || !targetProfile) return;
     if (refetchNonce > 0) return;
     if (searchParams?.get('fresh') === '1') return;
     let cancelled = false;
-    findRecentArchive({
+    findArchiveList({
       category: 'taekil',
       birth_date: targetProfile.birth_date,
       gender: targetProfile.gender,
       profile_id: targetProfile.id,
-    }).then(found => {
-      if (cancelled || !found) return;
-      setSavedRecordId(found.id);
-      setCacheGate({
-        kind: 'taekil',
-        key: '',
-        restore: () => {
-          const params = new URLSearchParams(window.location.search);
-          params.set('recordId', found.id);
-          router.replace(`${window.location.pathname}?${params.toString()}`);
-        },
-      });
+    }).then(list => {
+      if (cancelled || list.length === 0) return;
+      setArchiveItems(list);
+      setSavedRecordId(list[0].id);
+      setShowArchiveList(true);
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [targetProfile, isArchiveMode, refetchNonce, router]);
+  }, [targetProfile, isArchiveMode, refetchNonce]);
 
   const prevYear = () => { if (viewYear > MIN_YEAR) setViewYear(y => y - 1); };
   const nextYear = () => { if (viewYear < MAX_YEAR) setViewYear(y => y + 1); };
@@ -375,7 +372,7 @@ export default function TaekilPage() {
     );
   }
 
-  if (!saju) return <div className={styles.loading}>로딩 중...</div>;
+  if (!saju && !isArchiveMode) return <div className={styles.loading}>로딩 중...</div>;
 
   const catLabel = TAEKIL_CATEGORIES.find(c => c.id === category)?.label ?? '';
 
@@ -387,7 +384,7 @@ export default function TaekilPage() {
         <div className="flex-1 text-center">
           <h1 className="text-2xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>택일 운세</h1>
           <p className="text-base text-text-tertiary mt-1">
-            {targetProfile.name} · 길일을 골라드려요
+            {targetProfile.name}{isArchiveMode && catLabel ? ` · ${catLabel}` : ' · 길일을 골라드려요'}
           </p>
         </div>
       </div>
@@ -396,7 +393,7 @@ export default function TaekilPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
 
           {/* ═══ STEP 1: 행사 카테고리 선택 ═══ */}
-          <div className={styles.section}>
+          {!isArchiveMode && <div className={styles.section}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <span style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -442,7 +439,7 @@ export default function TaekilPage() {
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
 
           {/* ═══ STEP 2: 캘린더에서 날짜 선택 (카테고리 선택 후 노출) ═══ */}
           <AnimatePresence>
@@ -453,6 +450,7 @@ export default function TaekilPage() {
                 exit={{ opacity: 0, height: 0 }}
                 style={{ overflow: 'hidden' }}
               >
+                {!isArchiveMode && (<>
                 <div className={styles.section}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                     <span style={{
@@ -584,7 +582,7 @@ export default function TaekilPage() {
                               : '1px solid transparent',
                             background: isPicked
                               ? 'rgba(124,92,252,0.22)'
-                              : d ? GRADE_BG[d.grade] : 'transparent',
+                              : 'var(--space-elevated)',
                             cursor: (!d || showResult || isFull) ? 'default' : 'pointer',
                             transition: 'all 0.15s',
                             padding: '2px',
@@ -744,6 +742,8 @@ export default function TaekilPage() {
                     </div>
                   </div>
                 )}
+
+                </>)}
 
                 {/* ═══ RESULT: 포디움 + 상세 카드 ═══ */}
                 {showResult && aiAdvice && (
@@ -1019,27 +1019,29 @@ export default function TaekilPage() {
                         )}
                       </div>
 
-                      {/* 다시하기 */}
-                      <button
-                        onClick={() => {
-                          setPickedDates([]);
-                          setAiAdvice(null);
-                          setParsedAdvice(null);
-                          setAiError(null);
-                          setShowResult(false);
-                        }}
-                        style={{
-                          width: '100%', marginTop: 16,
-                          padding: '14px', borderRadius: 12,
-                          background: 'transparent',
-                          border: '1px solid var(--border-subtle)',
-                          color: 'var(--text-secondary)',
-                          fontWeight: 600, fontSize: 14,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        다른 날짜로 다시 풀이받기
-                      </button>
+                      {/* 다시하기 (보관함 모드에서는 숨김) */}
+                      {!isArchiveMode && (
+                        <button
+                          onClick={() => {
+                            setPickedDates([]);
+                            setAiAdvice(null);
+                            setParsedAdvice(null);
+                            setAiError(null);
+                            setShowResult(false);
+                          }}
+                          style={{
+                            width: '100%', marginTop: 16,
+                            padding: '14px', borderRadius: 12,
+                            background: 'transparent',
+                            border: '1px solid var(--border-subtle)',
+                            color: 'var(--text-secondary)',
+                            fontWeight: 600, fontSize: 14,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          다른 날짜로 다시 풀이받기
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1056,13 +1058,86 @@ export default function TaekilPage() {
         </div>
       )}
 
-      <RestoreReportModal
-        open={!!cacheGate}
-        title="택일 운세"
-        onUseCached={handleUseCached}
-        onRefresh={handleRefetch}
-        onClose={() => setCacheGate(null)}
-      />
+      {/* 보관함 리스트 모달 */}
+      <AnimatePresence>
+        {showArchiveList && archiveItems.length > 0 && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowArchiveList(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="fixed inset-0 z-50 flex items-center justify-center px-5 pointer-events-none"
+            >
+              <div className="relative w-full max-w-[380px] rounded-2xl bg-[rgba(20,12,38,0.97)] border border-[var(--border-subtle)] p-6 text-center shadow-2xl pointer-events-auto">
+                <button
+                  type="button"
+                  onClick={() => setShowArchiveList(false)}
+                  className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full text-text-tertiary hover:text-text-primary hover:bg-white/10 transition-colors"
+                  aria-label="닫기"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+                <h3 className="text-[17px] font-bold text-text-primary mb-2">이전 택일 기록이 있어요</h3>
+                <p className="text-[14px] text-text-secondary leading-relaxed mb-3">
+                  다시 보고 싶은 결과를 선택하세요.
+                </p>
+                <div className="max-h-[200px] overflow-y-auto space-y-1.5 mb-4 px-1">
+                  {archiveItems.map(item => {
+                    const dateLabel = new Date(item.created_at).toLocaleDateString('ko-KR');
+                    const catLabel = item.context_category_label;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setShowArchiveList(false);
+                          const params = new URLSearchParams(window.location.search);
+                          params.set('recordId', item.id);
+                          router.replace(`${window.location.pathname}?${params.toString()}`);
+                        }}
+                        className="w-full min-h-10 py-2 px-3 rounded-lg border border-[var(--border-subtle)] text-[14px] text-text-primary font-medium hover:bg-cta/10 hover:border-cta/40 transition-all flex items-center justify-between gap-2"
+                      >
+                        <span className="flex items-center gap-2">
+                          {catLabel && <span className="text-[12px] font-bold text-cta bg-cta/10 px-2 py-0.5 rounded-md">{catLabel}</span>}
+                          <span>{dateLabel}</span>
+                        </span>
+                        <span className="text-[12px] text-text-tertiary flex-shrink-0">결과 보기</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={() => { setShowArchiveList(false); setRefetchNonce(n => n + 1); }}
+                    className="block w-full h-12 rounded-lg bg-gradient-to-r from-cta to-cta-active text-white font-bold text-[15px] hover:opacity-90 transition-all"
+                  >
+                    새로 풀이 받기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowArchiveList(false)}
+                    className="block w-full h-12 rounded-lg border border-[var(--border-subtle)] text-text-secondary font-medium text-[15px] hover:bg-white/5 transition-all"
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
