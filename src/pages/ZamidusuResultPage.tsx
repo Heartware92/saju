@@ -38,6 +38,15 @@ import { MAJOR_STARS_META, MINOR_STARS_META, MUTAGEN_META, PALACE_ROLE_META } fr
 import { AILoadingBar } from '../components/AILoadingBar';
 import { BackButton } from '../components/ui/BackButton';
 import { StarChart } from '../components/zamidusu/StarChart';
+import { CorePalaceScores } from '../components/zamidusu/CorePalaceScores';
+import { MutagenCards } from '../components/zamidusu/MutagenCards';
+import { DaehanTimeline } from '../components/zamidusu/DaehanTimeline';
+import {
+  calcCoreScores,
+  calcMutagenPlacements,
+  calcDaehanTimeline,
+  calcOverallScore,
+} from '../engine/zamidusu/visualization';
 import { useLoadingGuard } from '../hooks/useLoadingGuard';
 import { ShareBar } from '@/components/share/ShareBar';
 
@@ -422,6 +431,14 @@ export default function ZamidusuResultPage() {
 
   const sections = aiResult?.sections ?? {};
   const aiFailed = !!aiResult && !aiResult.success;
+
+  const currentAge = birthInput
+    ? Math.max(0, new Date().getFullYear() - birthInput.year + 1)
+    : 0;
+  const coreScores = useMemo(() => calcCoreScores(chart), [chart]);
+  const overallScore = useMemo(() => calcOverallScore(coreScores), [coreScores]);
+  const mutagenPlacements = useMemo(() => calcMutagenPlacements(chart), [chart]);
+  const daehanSegments = useMemo(() => calcDaehanTimeline(chart, currentAge), [chart, currentAge]);
 
   const retryAI = () => {
     aiStartedRef.current = false;
@@ -864,6 +881,21 @@ export default function ZamidusuResultPage() {
             );
           })()}
         </AnimatePresence>
+
+        {/* 시각화 — 6궁 레이더·사화·대한 (명반 데이터 기반, AI 무관) */}
+        <div className={styles.section}>
+          <CorePalaceScores cores={coreScores} overall={overallScore} />
+        </div>
+        {mutagenPlacements.length > 0 && (
+          <div className={styles.section}>
+            <MutagenCards placements={mutagenPlacements} />
+          </div>
+        )}
+        {daehanSegments.length > 0 && (
+          <div className={styles.section}>
+            <DaehanTimeline segments={daehanSegments} currentAge={currentAge} />
+          </div>
+        )}
 
         {/* AI 풀이 — 섹션별 은유 헤드라인으로 카드화 */}
         {ZAMIDUSU_SECTION_KEYS.map((key) => {
