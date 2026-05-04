@@ -203,10 +203,6 @@ export function QuickFortuneGate({
               animate={{ opacity: 1 }}
               transition={{ duration: 0.15 }}
             >
-              <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[rgba(124,92,252,0.18)] border border-cta/40 flex items-center justify-center text-2xl">
-                {modalType === 'date-list' ? '📅' : modalType === 'existing' ? '📜' : modalType === 'insufficient' ? '💳' : creditType === 'sun' ? '☀️' : '🌙'}
-              </div>
-
               {primaryProfile && (
                 <p className="text-[13px] text-text-tertiary mb-3">
                   {primaryProfile.name} · {primaryProfile.birth_date.replace(/-/g, '.')} · {primaryProfile.gender === 'male' ? '남' : '여'}

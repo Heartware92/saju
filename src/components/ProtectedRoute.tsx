@@ -49,9 +49,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, messag
         </div>
 
         <div className="rounded-2xl p-8 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)] backdrop-blur-sm text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[rgba(124,92,252,0.15)] border border-cta/30 flex items-center justify-center text-2xl" aria-hidden>
-            🔒
-          </div>
           <h2 className="text-[17px] font-bold text-text-primary mb-2">
             {message || '로그인이 필요한 서비스예요'}
           </h2>

@@ -254,9 +254,6 @@ export function FortuneProfileSelect({
 
             {modalType === 'existing' && (
               <>
-                <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[rgba(124,92,252,0.18)] border border-cta/40 flex items-center justify-center text-2xl">
-                  📜
-                </div>
                 <h3 className="text-[17px] font-bold text-text-primary mb-2">
                   이전 풀이가 있어요
                 </h3>
@@ -290,9 +287,6 @@ export function FortuneProfileSelect({
 
             {modalType === 'credit' && (
               <>
-                <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[rgba(124,92,252,0.18)] border border-cta/40 flex items-center justify-center text-2xl">
-                  {creditType === 'sun' ? '☀️' : '🌙'}
-                </div>
                 <h3 className="text-[17px] font-bold text-text-primary mb-2">크레딧 안내</h3>
                 <p className="text-[14px] text-text-secondary leading-relaxed mb-5">
                   <span className="font-semibold text-text-primary">
@@ -323,9 +317,6 @@ export function FortuneProfileSelect({
 
             {modalType === 'insufficient' && (
               <>
-                <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[rgba(248,113,113,0.15)] border border-red-500/30 flex items-center justify-center text-2xl">
-                  💳
-                </div>
                 <h3 className="text-[17px] font-bold text-text-primary mb-2">
                   크레딧이 부족해요
                 </h3>

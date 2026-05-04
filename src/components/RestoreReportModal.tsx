@@ -45,12 +45,6 @@ export const RestoreReportModal: React.FC<RestoreReportModalProps> = ({
             </svg>
           </button>
         )}
-        <div
-          className="w-14 h-14 mx-auto mb-4 rounded-full bg-[rgba(124,92,252,0.18)] border border-cta/40 flex items-center justify-center text-2xl"
-          aria-hidden
-        >
-          📜
-        </div>
         <h3 className="text-[17px] font-bold text-text-primary mb-2">
           이전 풀이가 있어요
         </h3>
