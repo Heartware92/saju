@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import type { DaehanSegment } from '../../engine/zamidusu/visualization';
+import { PalaceTermLabel } from './PalaceTermLabel';
 
 interface DaehanTimelineProps {
   segments: DaehanSegment[];
@@ -103,19 +104,19 @@ export function DaehanTimeline({ segments, currentAge }: DaehanTimelineProps) {
           display: 'grid',
           gridTemplateColumns: `repeat(${segments.length}, 1fr)`,
           gap: 4,
-          marginTop: 6,
+          marginTop: 8,
         }}
       >
         {segments.map((seg) => (
           <div
             key={`age-${seg.startAge}`}
             style={{
-              fontSize: 10,
+              fontSize: 12,
               textAlign: 'center',
               color: seg.isCurrent ? 'var(--text-primary)' : 'var(--text-tertiary)',
               fontWeight: seg.isCurrent ? 700 : 500,
               fontFamily: 'var(--font-serif)',
-              lineHeight: 1.1,
+              lineHeight: 1.2,
             }}
           >
             {seg.startAge}
@@ -128,26 +129,25 @@ export function DaehanTimeline({ segments, currentAge }: DaehanTimelineProps) {
           display: 'grid',
           gridTemplateColumns: `repeat(${segments.length}, 1fr)`,
           gap: 4,
-          marginTop: 2,
+          marginTop: 4,
         }}
       >
         {segments.map((seg) => (
           <div
             key={`label-${seg.startAge}`}
             style={{
-              fontSize: 9,
+              fontSize: 12,
               textAlign: 'center',
-              color: seg.isCurrent ? colorOfScore(seg.score) : 'var(--text-tertiary)',
+              color: seg.isCurrent ? colorOfScore(seg.score) : 'var(--text-secondary)',
               fontWeight: seg.isCurrent ? 700 : 500,
-              lineHeight: 1.1,
+              lineHeight: 1.2,
               fontFamily: 'var(--font-serif)',
               wordBreak: 'keep-all',
-              overflow: 'hidden',
-              textOverflow: 'clip',
+              overflow: 'visible',
               whiteSpace: 'nowrap',
             }}
           >
-            {seg.palaceName.replace('궁', '')}
+            <PalaceTermLabel palaceName={seg.palaceName} />
           </div>
         ))}
       </div>
