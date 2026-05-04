@@ -151,13 +151,8 @@ export default function MoreFortunePage({ category }: Props) {
     }
   }, [user, fetchProfiles, fetchBalance]);
 
-  // 이름 풀이: 프로필의 이름을 기본값으로 — 보관함 재생 모드에서는 저장된 값 사용
-  useEffect(() => {
-    if (isArchiveMode) return;
-    if (category === 'name' && targetProfile && !koreanName) {
-      setKoreanName(targetProfile.name);
-    }
-  }, [category, targetProfile, koreanName, isArchiveMode]);
+  // 이름 풀이: 사용자가 직접 입력 — 대표 프로필 이름을 자동 채우지 않는다.
+  // (자녀·부모·친구 등 프로필이 아닌 사람의 이름도 풀이 가능해야 함)
 
   // ── 보관함 재생 모드 — recordId 쿼리가 있으면 저장된 기록으로 state 복원 ──
   useEffect(() => {
@@ -599,87 +594,23 @@ export default function MoreFortunePage({ category }: Props) {
           </div>
         )}
 
-        {/* 결과 */}
+        {/* 결과 — 정통사주와 동일한 카드 패턴 (레이블 + 은유 제목 + 본문) */}
         <AnimatePresence>
           {result && (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={styles.section}
-            >
-              <h2 style={{ fontSize: 17, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ display: 'inline-block', width: 4, height: 20, borderRadius: 2, background: 'var(--cta-primary)' }} />
-                {cfg.title} 풀이
-              </h2>
-              <p
-                style={{
-                  fontSize: 14,
-                  color: 'var(--text-primary)',
-                  lineHeight: 1.85,
-                  whiteSpace: 'pre-line',
-                  margin: 0,
-                }}
-              >
-                {result}
-              </p>
-
-              <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-                {isArchiveMode ? (
-                  <Link
-                    href="/archive"
-                    style={{
-                      flex: 1,
-                      padding: '10px',
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: 10,
-                      color: 'var(--text-secondary)',
-                      fontSize: 12,
-                      textAlign: 'center',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    보관함으로
-                  </Link>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setResult(null);
-                      setError(null);
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: '10px',
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: 10,
-                      color: 'var(--text-secondary)',
-                      fontSize: 12,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    다시 풀이 받기
-                  </button>
-                )}
-                <Link
-                  href="/"
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    background: 'var(--cta-primary)',
-                    border: 'none',
-                    borderRadius: 10,
-                    color: 'white',
-                    fontSize: 12,
-                    textAlign: 'center',
-                    textDecoration: 'none',
-                    fontWeight: 600,
-                  }}
-                >
-                  홈으로
-                </Link>
-              </div>
-            </motion.div>
+            <MoreFortuneResultCard
+              title={`${cfg.title} 풀이`}
+              text={result}
+              isArchiveMode={isArchiveMode}
+              category={category}
+              onReset={() => {
+                setResult(null);
+                setError(null);
+                if (category === 'name') {
+                  setKoreanName('');
+                  setCharMeanings([]);
+                }
+              }}
+            />
           )}
         </AnimatePresence>
 
@@ -819,5 +750,161 @@ function NameInputPanel({
         )}
       </div>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 더많은운세 결과 카드
+//   정통사주(SajuResultPage)와 동일한 카드 패턴으로 통일.
+//   - 상단: 섹션 레이블 (cta 바 + 굵은 제목)
+//   - 그 아래: 은유 제목 (cta 색상, font-serif)
+//   - 한자 모드면 "자원오행 판정:" 라인을 별도 chip 으로 분리
+//   - 본문은 단락 단위로 나눠 렌더
+//   - 하단 액션: 보관함 모드면 "보관함으로", 아니면 "다른 풀이 받기"(리셋)만
+// ─────────────────────────────────────────────────────────────────────────────
+function MoreFortuneResultCard({
+  title,
+  text,
+  isArchiveMode,
+  category,
+  onReset,
+}: {
+  title: string;
+  text: string;
+  isArchiveMode: boolean;
+  category?: MoreFortuneId;
+  onReset: () => void;
+}) {
+  // 줄 단위 정리 — 빈 줄은 단락 구분으로만 사용
+  const rawLines = text.replace(/\r/g, '').split('\n');
+  // 첫 번째 의미 있는 줄 = 은유 제목
+  let metaphorIdx = rawLines.findIndex((l) => l.trim().length > 0);
+  const metaphor = metaphorIdx >= 0 ? rawLines[metaphorIdx].trim() : '';
+
+  // "자원오행 판정:" 라인은 별도 chip 으로 표시 (이름 풀이 한자 모드)
+  const restLines = metaphorIdx >= 0 ? rawLines.slice(metaphorIdx + 1) : [];
+  let jawonLine = '';
+  const bodyLines: string[] = [];
+  for (const ln of restLines) {
+    const t = ln.trim();
+    if (!jawonLine && t.startsWith('자원오행 판정')) {
+      jawonLine = t;
+    } else {
+      bodyLines.push(ln);
+    }
+  }
+  const body = bodyLines.join('\n').replace(/^\s*\n+/, '');
+
+  // 본문을 빈 줄 기준 단락 분할 — 빈 줄 없는 평문이면 마침표 묶음으로 자동 분할
+  const paragraphs = (() => {
+    const parts = body.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 1) return parts;
+    if (parts.length === 0) return [];
+    const flat = parts[0].replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+    const sents = flat.split(/([.!?])\s+/);
+    const sentences: string[] = [];
+    for (let i = 0; i < sents.length; i += 2) {
+      const s = (sents[i] || '').trim();
+      const punct = sents[i + 1] || '';
+      const combined = (s + punct).trim();
+      if (combined) sentences.push(combined);
+    }
+    if (sentences.length <= 3) return [flat];
+    const grouped: string[] = [];
+    for (let i = 0; i < sentences.length; i += 3) grouped.push(sentences.slice(i, i + 3).join(' '));
+    return grouped;
+  })();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <span className="inline-block w-1 h-5 rounded-full bg-cta" />
+        <div
+          className="text-[17px] font-bold text-text-primary tracking-tight"
+          style={{ fontFamily: 'var(--font-serif)' }}
+        >
+          {title}
+        </div>
+      </div>
+
+      {metaphor && (
+        <div
+          className="text-[17px] font-medium leading-snug text-cta/90 mb-4 pl-3"
+          style={{ fontFamily: 'var(--font-serif)' }}
+        >
+          {metaphor}
+        </div>
+      )}
+
+      {jawonLine && (
+        <div
+          style={{
+            margin: '0 0 14px',
+            padding: '10px 12px',
+            background: 'rgba(168, 132, 255, 0.08)',
+            border: '1px solid rgba(168, 132, 255, 0.25)',
+            borderRadius: 10,
+            fontSize: 12.5,
+            color: 'var(--text-secondary)',
+            lineHeight: 1.7,
+          }}
+        >
+          {jawonLine}
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {paragraphs.map((p, i) => (
+          <p
+            key={i}
+            className="text-[16px] text-text-secondary leading-[1.85] whitespace-pre-line tracking-[-0.005em]"
+          >
+            {p}
+          </p>
+        ))}
+      </div>
+
+      <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
+        {isArchiveMode ? (
+          <Link
+            href="/archive"
+            style={{
+              flex: 1,
+              padding: '12px',
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: 10,
+              color: 'var(--text-secondary)',
+              fontSize: 13,
+              textAlign: 'center',
+              textDecoration: 'none',
+            }}
+          >
+            보관함으로
+          </Link>
+        ) : (
+          <button
+            onClick={onReset}
+            style={{
+              flex: 1,
+              padding: '12px',
+              background: 'var(--cta-primary)',
+              border: 'none',
+              borderRadius: 10,
+              color: 'white',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            {category === 'name' ? '다른 이름 풀이받기' : '다시 풀이 받기'}
+          </button>
+        )}
+      </div>
+    </motion.div>
   );
 }
