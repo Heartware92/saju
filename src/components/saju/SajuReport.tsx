@@ -1097,8 +1097,8 @@ function DaeWoonSection({
     }
     return null;
   });
-  // 사용자가 선택한 세운(연도)
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  // 사용자가 선택한 세운(연도) — 진입 즉시 현재 년도 자동 선택 (월운 펼침)
+  const [selectedYear, setSelectedYear] = useState<number | null>(currentYear);
 
   // 선택된 대운의 [시작 연도, 끝 연도]
   const selectedDwRange = useMemo(() => {
@@ -1115,10 +1115,15 @@ function DaeWoonSection({
     return seWoon;
   }, [selectedDwRange, result.dayMaster, yearZhi, seWoon]);
 
-  // 대운 변경 시 세운 선택 초기화
+  // 대운 변경 시 세운 선택: 현재 년도가 범위 안이면 유지, 아니면 초기화
   useEffect(() => {
-    setSelectedYear(null);
-  }, [selectedDwAge]);
+    if (selectedDwRange) {
+      const inRange = currentYear >= selectedDwRange.startYear && currentYear <= selectedDwRange.endYear;
+      setSelectedYear(inRange ? currentYear : null);
+    } else {
+      setSelectedYear(null);
+    }
+  }, [selectedDwAge, selectedDwRange, currentYear]);
 
   // 선택된 연도의 월운 — 클릭 시점에만 계산
   const monthlyFlow = useMemo(() => {
@@ -1130,6 +1135,7 @@ function DaeWoonSection({
     }
   }, [selectedYear, result]);
 
+  // 대운 현재 카드 중앙 스크롤
   useEffect(() => {
     if (currentDwRef.current && dwScrollRef.current) {
       const container = dwScrollRef.current;
@@ -1138,6 +1144,18 @@ function DaeWoonSection({
       container.scrollLeft = Math.max(0, offset);
     }
   }, []);
+
+  // 세운 현재 년도 카드 중앙 스크롤
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      if (currentSwRef.current && swScrollRef.current) {
+        const container = swScrollRef.current;
+        const card = currentSwRef.current;
+        const offset = card.offsetLeft - container.offsetLeft - container.clientWidth / 2 + card.clientWidth / 2;
+        container.scrollLeft = Math.max(0, offset);
+      }
+    });
+  }, [displaySeWoon]);
 
   const monthlyGradeColor: Record<FortuneGrade, string> = {
     '대길': '#34D399', '길': '#86EFAC', '중길': '#FBBF24',
