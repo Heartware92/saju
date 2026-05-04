@@ -359,6 +359,7 @@ export default function ZamidusuResultPage() {
     return (
       <QuickFortuneGate
         serviceName="자미두수"
+        description="중국 송나라 진희이가 창시한 별자리 명리학이에요. 생년월일시를 기반으로 자미성을 비롯한 108개 성(星)의 배치를 분석하여 성격, 재물, 관계, 건강 등 삶의 큰 그림을 읽어냅니다."
         archiveCategory="zamidusu"
         creditType="sun"
         creditCost={SUN_COST_BIG}

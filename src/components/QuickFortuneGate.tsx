@@ -10,6 +10,8 @@ import { findRecentArchive, findArchiveList, type ArchiveCategory } from '../ser
 
 export interface QuickFortuneGateProps {
   serviceName: string;
+  /** 서비스 설명 — 모달 상단에 표시 */
+  description?: string;
   archiveCategory: ArchiveCategory;
   archiveContext?: { key: string; value: string };
   creditType: 'sun' | 'moon';
@@ -22,6 +24,7 @@ export interface QuickFortuneGateProps {
 
 export function QuickFortuneGate({
   serviceName,
+  description,
   archiveCategory,
   archiveContext,
   creditType,
@@ -207,6 +210,12 @@ export function QuickFortuneGate({
                 <p className="text-[13px] text-text-tertiary mb-3">
                   {primaryProfile.name} · {primaryProfile.birth_date.replace(/-/g, '.')} · {primaryProfile.gender === 'male' ? '남' : '여'}
                 </p>
+              )}
+
+              {description && (
+                <div className="rounded-xl bg-white/5 border border-white/10 p-3 mb-4 text-left">
+                  <p className="text-[13px] text-text-secondary leading-relaxed">{description}</p>
+                </div>
               )}
 
               {modalType === 'existing' && (

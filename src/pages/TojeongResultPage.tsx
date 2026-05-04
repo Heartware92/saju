@@ -388,6 +388,7 @@ export default function TojeongResultPage() {
     return (
       <QuickFortuneGate
         serviceName="토정비결"
+        description="조선 시대 토정 이지함 선생이 만든 연간 신수 풀이예요. 음력 생년월일과 세는 나이로 144괘 중 하나를 뽑아 올해의 총운, 12개월 흐름, 재물·애정·건강·직장운을 살펴봅니다."
         archiveCategory="tojeong"
         creditType="sun"
         creditCost={SUN_COST_BIG}
