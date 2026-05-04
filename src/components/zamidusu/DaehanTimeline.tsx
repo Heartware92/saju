@@ -58,10 +58,10 @@ export function DaehanTimeline({ segments, currentAge }: DaehanTimelineProps) {
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 120, paddingBottom: 28, position: 'relative' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 110, position: 'relative' }}>
         {segments.map((seg, i) => {
           const color = colorOfScore(seg.score);
-          const heightPct = Math.max(12, (seg.score / maxScore) * 100);
+          const heightPct = Math.max(14, (seg.score / maxScore) * 100);
           return (
             <motion.div
               key={`${seg.startAge}-${seg.palaceName}`}
@@ -70,11 +70,14 @@ export function DaehanTimeline({ segments, currentAge }: DaehanTimelineProps) {
               transition={{ duration: 0.5, delay: i * 0.04, ease: 'easeOut' }}
               style={{
                 flex: 1,
+                minWidth: 0,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
+                justifyContent: 'flex-end',
                 position: 'relative',
                 transformOrigin: 'bottom',
+                height: '100%',
               }}
             >
               <div
@@ -89,51 +92,59 @@ export function DaehanTimeline({ segments, currentAge }: DaehanTimelineProps) {
                   boxShadow: seg.isCurrent ? `0 0 12px ${color}66` : 'none',
                   position: 'relative',
                 }}
-              >
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 4,
-                    left: 0,
-                    right: 0,
-                    textAlign: 'center',
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: seg.isCurrent ? '#fff' : color,
-                    fontFamily: 'var(--font-serif)',
-                  }}
-                >
-                  {seg.score}
-                </div>
-              </div>
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: -24,
-                  fontSize: 10,
-                  color: seg.isCurrent ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                  fontWeight: seg.isCurrent ? 700 : 500,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {seg.startAge}
-              </div>
+              />
             </motion.div>
           );
         })}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${segments.length}, 1fr)`, gap: 6, marginTop: 8 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${segments.length}, 1fr)`,
+          gap: 4,
+          marginTop: 6,
+        }}
+      >
+        {segments.map((seg) => (
+          <div
+            key={`age-${seg.startAge}`}
+            style={{
+              fontSize: 10,
+              textAlign: 'center',
+              color: seg.isCurrent ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              fontWeight: seg.isCurrent ? 700 : 500,
+              fontFamily: 'var(--font-serif)',
+              lineHeight: 1.1,
+            }}
+          >
+            {seg.startAge}
+          </div>
+        ))}
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${segments.length}, 1fr)`,
+          gap: 4,
+          marginTop: 2,
+        }}
+      >
         {segments.map((seg) => (
           <div
             key={`label-${seg.startAge}`}
             style={{
               fontSize: 9,
               textAlign: 'center',
-              color: seg.isCurrent ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              color: seg.isCurrent ? colorOfScore(seg.score) : 'var(--text-tertiary)',
               fontWeight: seg.isCurrent ? 700 : 500,
-              lineHeight: 1.2,
+              lineHeight: 1.1,
               fontFamily: 'var(--font-serif)',
+              wordBreak: 'keep-all',
+              overflow: 'hidden',
+              textOverflow: 'clip',
+              whiteSpace: 'nowrap',
             }}
           >
             {seg.palaceName.replace('궁', '')}

@@ -1386,57 +1386,49 @@ export default function GunghapPage() {
               </div>
             </div>
 
-            {/* 두 사람 사주명식 표 (반려동물 제외) */}
+            {/* 두 사람 사주명식 표 — 홈화면 스타일 컬럼 카드 */}
             {!isPetCategory && !archiveMeta && mySajuResult && otherSajuResult && (
               <div className="space-y-3 mb-4">
                 {[
                   { label: selectedProfile?.name ?? '나', result: mySajuResult },
                   { label: otherDisplayName, result: otherSajuResult },
                 ].map((person, pi) => (
-                  <div key={pi} className="rounded-2xl overflow-hidden border border-[var(--border-subtle)]">
-                    <div className="bg-cta/10 py-1.5 px-3 text-[13px] font-bold text-cta">
-                      {person.label}
-                    </div>
-                    <div className="grid grid-cols-4 gap-[2px] text-center text-[11px] font-bold text-text-tertiary py-1.5 px-[1px]">
-                      <span>시주</span><span>일주</span><span>월주</span><span>연주</span>
-                    </div>
-                    <div className="grid grid-cols-4 gap-[2px] text-center px-[1px]">
+                  <div key={pi} className="rounded-2xl p-3 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
+                    <div className="text-[13px] font-bold text-cta mb-2 px-1">{person.label}</div>
+                    <div className="grid grid-cols-4 gap-1.5">
                       {(['hour', 'day', 'month', 'year'] as const).map(p => {
                         const gan = person.result.pillars[p]?.gan;
-                        const el = gan ? (STEM_TO_ELEMENT[gan] as Element) : undefined;
-                        const colors = el ? ELEMENT_CELL_COLORS[el] : undefined;
-                        const isUnknown = p === 'hour' && person.result.hourUnknown;
-                        return (
-                          <div
-                            key={`gan-${pi}-${p}`}
-                            className="py-2.5 flex flex-col items-center justify-center rounded-md"
-                            style={colors && !isUnknown ? { backgroundColor: colors.bg, color: colors.fg } : { backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-tertiary)' }}
-                          >
-                            <span className="text-[22px] font-bold" style={{ fontFamily: 'var(--font-serif)' }}>
-                              {isUnknown ? '?' : (gan ? STEM_TO_HANJA[gan] ?? gan : '?')}
-                            </span>
-                            <span className="text-[10px] mt-0.5 opacity-80">{isUnknown ? '' : (gan ?? '')}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="grid grid-cols-4 gap-[2px] text-center px-[1px] pb-[1px]">
-                      {(['hour', 'day', 'month', 'year'] as const).map(p => {
                         const zhi = person.result.pillars[p]?.zhi;
-                        const el = zhi ? (STEM_TO_ELEMENT[zhi] as Element | undefined) : undefined;
-                        const zhiEl = person.result.pillars[p]?.zhiElement as Element | undefined;
-                        const colors = (zhiEl ? ELEMENT_CELL_COLORS[zhiEl] : undefined) ?? (el ? ELEMENT_CELL_COLORS[el] : undefined);
+                        const ganEl = gan ? (STEM_TO_ELEMENT[gan] as Element) : undefined;
+                        const zhiEl = (person.result.pillars[p]?.zhiElement as Element | undefined)
+                          ?? (zhi ? (STEM_TO_ELEMENT[zhi] as Element | undefined) : undefined);
+                        const ganColors = ganEl ? ELEMENT_CELL_COLORS[ganEl] : undefined;
+                        const zhiColors = zhiEl ? ELEMENT_CELL_COLORS[zhiEl] : undefined;
                         const isUnknown = p === 'hour' && person.result.hourUnknown;
+                        const colLabel = p === 'hour' ? '시' : p === 'day' ? '일' : p === 'month' ? '월' : '년';
                         return (
-                          <div
-                            key={`zhi-${pi}-${p}`}
-                            className="py-2.5 flex flex-col items-center justify-center rounded-md"
-                            style={colors && !isUnknown ? { backgroundColor: colors.bg, color: colors.fg } : { backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-tertiary)' }}
-                          >
-                            <span className="text-[22px] font-bold" style={{ fontFamily: 'var(--font-serif)' }}>
-                              {isUnknown ? '?' : (zhi ? ZHI_TO_HANJA[zhi] ?? zhi : '?')}
-                            </span>
-                            <span className="text-[10px] mt-0.5 opacity-80">{isUnknown ? '' : (zhi ?? '')}</span>
+                          <div key={`col-${pi}-${p}`} className="rounded-xl overflow-hidden border border-[var(--border-subtle)]">
+                            <div className="text-[11px] font-bold text-text-tertiary text-center py-1 bg-white/[0.03]">
+                              {colLabel}
+                            </div>
+                            <div
+                              className="py-2 flex flex-col items-center justify-center"
+                              style={ganColors && !isUnknown ? { backgroundColor: ganColors.bg, color: ganColors.fg } : { backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-tertiary)' }}
+                            >
+                              <span className="text-[20px] font-bold leading-tight" style={{ fontFamily: 'var(--font-serif)' }}>
+                                {isUnknown ? '?' : (gan ? STEM_TO_HANJA[gan] ?? gan : '?')}
+                              </span>
+                              <span className="text-[10px] opacity-70">{isUnknown ? '' : (gan ?? '')}</span>
+                            </div>
+                            <div
+                              className="py-2 flex flex-col items-center justify-center"
+                              style={zhiColors && !isUnknown ? { backgroundColor: zhiColors.bg, color: zhiColors.fg } : { backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-tertiary)' }}
+                            >
+                              <span className="text-[20px] font-bold leading-tight" style={{ fontFamily: 'var(--font-serif)' }}>
+                                {isUnknown ? '?' : (zhi ? ZHI_TO_HANJA[zhi] ?? zhi : '?')}
+                              </span>
+                              <span className="text-[10px] opacity-70">{isUnknown ? '' : (zhi ?? '')}</span>
+                            </div>
                           </div>
                         );
                       })}
@@ -1453,12 +1445,84 @@ export default function GunghapPage() {
               </div>
             )}
 
-            {/* 결과 본문 */}
-            <div className="p-5 rounded-2xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-              <div className="text-[16px] text-text-primary leading-[1.85] whitespace-pre-wrap">
-                {result.replace(/\[\/?\s*gunghap[_\s]?(?:header|scores)\s*\]/gi, '').replace(/^\s*\n/, '')}
-              </div>
-            </div>
+            {/* 결과 본문 — ▶ 섹션별 카드 분리 렌더링 */}
+            {(() => {
+              const cleanedText = result.replace(/\[\/?\s*gunghap[_\s]?(?:header|scores)\s*\][^\n]*/gi, '').trim();
+              const sectionRegex = /▶\s*(.+)/g;
+              const parts: { title: string; body: string }[] = [];
+              let lastIdx = 0;
+              let preamble = '';
+              let match: RegExpExecArray | null;
+
+              while ((match = sectionRegex.exec(cleanedText)) !== null) {
+                if (parts.length === 0 && match.index > 0) {
+                  preamble = cleanedText.slice(0, match.index).trim();
+                } else if (parts.length > 0) {
+                  parts[parts.length - 1].body = cleanedText.slice(lastIdx, match.index).trim();
+                }
+                parts.push({ title: match[1].replace(/\(.+?\)\s*$/, '').trim(), body: '' });
+                lastIdx = match.index + match[0].length;
+              }
+              if (parts.length > 0) {
+                parts[parts.length - 1].body = cleanedText.slice(lastIdx).trim();
+              }
+
+              if (parts.length === 0) {
+                return (
+                  <div className="p-5 rounded-2xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
+                    <p className="text-[15px] text-text-secondary leading-[1.85] whitespace-pre-line">{cleanedText}</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-2">
+                  {preamble && (
+                    <div className="p-4 rounded-2xl bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
+                      <p className="text-[15px] text-text-secondary leading-[1.85] whitespace-pre-line">{preamble}</p>
+                    </div>
+                  )}
+                  {parts.map((sec, idx) => {
+                    const bodyLines = sec.body.split('\n');
+                    const firstLine = bodyLines[0]?.trim() ?? '';
+                    const hasMetaphor = bodyLines.length > 1
+                      && firstLine.length > 0
+                      && firstLine.length <= 60
+                      && !firstLine.startsWith('-')
+                      && !firstLine.endsWith('.')
+                      && !firstLine.startsWith('두 ')
+                      && !firstLine.includes('%');
+                    const metaphorTitle = hasMetaphor ? firstLine : '';
+                    const bodyText = hasMetaphor ? bodyLines.slice(1).join('\n').trim() : sec.body;
+
+                    return (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.06 * idx }}
+                        className="rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="inline-block w-1 h-5 rounded-full bg-cta" />
+                          <div className="text-[17px] font-bold text-text-primary tracking-tight" style={{ fontFamily: 'var(--font-serif)' }}>
+                            {sec.title}
+                          </div>
+                        </div>
+                        {metaphorTitle && (
+                          <div className="text-[15px] font-medium leading-snug text-cta/90 mb-4 pl-3" style={{ fontFamily: 'var(--font-serif)' }}>
+                            {metaphorTitle}
+                          </div>
+                        )}
+                        <p className="text-[15px] text-text-secondary leading-[1.85] whitespace-pre-line tracking-[-0.005em]">
+                          {bodyText}
+                        </p>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             {/* 액션 버튼 — 보관함 모드에서는 상단 뒤로가기로 충분하므로 숨김 */}
             {!isArchiveMode && (
