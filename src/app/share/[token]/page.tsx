@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       ? `${result.record.profile_name}님의 ${label} 결과`
       : `${label} 결과를 확인하세요`;
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://saju.heartware.co.kr';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.2000-saju.com';
 
   return {
     title: `${label} — 이천점`,

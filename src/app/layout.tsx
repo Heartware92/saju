@@ -17,7 +17,7 @@ const notoSansKR = Noto_Sans_KR({
   display: 'swap',
 });
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://saju.heartware.co.kr';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.2000-saju.com';
 
 export const metadata: Metadata = {
   title: "이천점 — 우주의 기운을 당신께 드려요",

@@ -110,7 +110,7 @@ async function processShare(table: string, recordId: string, userId: string) {
 
   // 2) 이미 토큰이 있으면 재사용
   if (record.share_token) {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://saju.heartware.co.kr';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.2000-saju.com';
     return NextResponse.json({
       success: true,
       token: record.share_token,
@@ -133,7 +133,7 @@ async function processShare(table: string, recordId: string, userId: string) {
     );
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://saju.heartware.co.kr';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.2000-saju.com';
   return NextResponse.json({
     success: true,
     token: newToken,

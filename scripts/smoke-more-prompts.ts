@@ -19,7 +19,7 @@ import {
 } from '../src/constants/prompts';
 import type { SajuResult } from '../src/utils/sajuCalculator';
 
-const PROD = 'https://saju-hazel.vercel.app';
+const PROD = 'https://www.2000-saju.com';
 
 const mockSaju: SajuResult = {
   solarDate: '1992-09-14',
