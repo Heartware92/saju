@@ -16,7 +16,7 @@ import { useCreditStore } from '../store/useCreditStore';
 import { useReportCacheStore, type ReportKind } from '../store/useReportCacheStore';
 import { RestoreReportModal } from '../components/RestoreReportModal';
 import { QuickFortuneGate } from '../components/QuickFortuneGate';
-import { getTojeongReading, type TojeongAIResult } from '../services/fortuneService';
+import { getTojeongReading, parseTojeongSections, parseTojeongScores, type TojeongAIResult } from '../services/fortuneService';
 import { sajuDB } from '../services/supabase';
 import { findRecentArchive } from '../services/archiveService';
 import { AILoadingBar } from '../components/AILoadingBar';
@@ -150,14 +150,11 @@ export default function TojeongResultPage() {
   const [aiLoading, setAiLoading] = useState(!isArchiveMode && !needsProfileSelect);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  // ── 로딩 안전장치: 70초 초과 시 강제 해제 ──
-  const [aiTimedOut] = useLoadingGuard(aiLoading, 120_000);
+  // ── 로딩 안전장치: 50초 초과 시 강제 해제 (에러 표시 없음) ──
+  const [aiTimedOut] = useLoadingGuard(aiLoading, 50_000);
   useEffect(() => {
-    if (aiTimedOut) {
-      setAiLoading(false);
-      if (!aiContent) setAiError('AI 응답이 너무 오래 걸려요. 새로고침 후 다시 시도해주세요.');
-    }
-  }, [aiTimedOut, aiContent]);
+    if (aiTimedOut) setAiLoading(false);
+  }, [aiTimedOut]);
 
   const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
   const [cacheGate, setCacheGate] = useState<{ kind: ReportKind; key: string; restore: () => void } | null>(null);
@@ -180,12 +177,16 @@ export default function TojeongResultPage() {
       .then((record) => {
         if (cancelled || !record) return;
         const content = record.interpretation_detailed ?? record.interpretation_basic ?? '';
-        if (content) setAiContent(content);
-        else setAiError('보관된 풀이 본문이 없어요.');
+        if (content) {
+          setAiContent(content);
+          const sections = parseTojeongSections(content);
+          if (Object.keys(sections).length > 0) setAiSections(sections);
+          const scores = parseTojeongScores(content);
+          if (scores) setAiDomainScores(scores);
+        }
       })
       .catch((e) => {
         console.error('[archive replay] tojeong load failed', e);
-        if (!cancelled) setAiError('보관된 풀이를 불러오지 못했어요.');
       })
       .finally(() => { if (!cancelled) setAiLoading(false); });
     return () => { cancelled = true; };
@@ -285,13 +286,13 @@ export default function TojeongResultPage() {
 
       if (!isFresh) {
         const cached = useReportCacheStore.getState().getReport<string>('tojeong', cacheKey);
-        if (cached?.error) {
-          setAiError(cached.error);
-          setAiLoading(false);
-          return;
-        }
+        // 캐시된 에러는 무시하고 새로 시도 (일시적 장애 후 복구 보장)
         if (cached?.data) {
           setAiContent(cached.data);
+          const sections = parseTojeongSections(cached.data);
+          if (Object.keys(sections).length > 0) setAiSections(sections);
+          const scores = parseTojeongScores(cached.data);
+          if (scores) setAiDomainScores(scores);
           setAiLoading(false);
           aiStartedRef.current = true;
           return;
@@ -308,29 +309,23 @@ export default function TojeongResultPage() {
       getTojeongReading(tojeong, sourceBirth, targetProfile?.id)
         .then((r: TojeongAIResult) => {
           if (cancelled) return;
-          const cache = useReportCacheStore.getState();
-          if (!r.success || !r.content) {
-            const msg = r.error || '심층 풀이를 가져오지 못했어요.';
-            setAiError(msg);
-            cache.setError('tojeong', cacheKey, msg);
-          } else {
+          if (r.content) {
             setAiContent(r.content);
             if (r.sections) setAiSections(r.sections);
             if (r.domainScores) setAiDomainScores(r.domainScores);
+            const cache = useReportCacheStore.getState();
             cache.setReport('tojeong', cacheKey, r.content);
             if (!cache.isCharged('tojeong', cacheKey)) {
               cache.markCharged('tojeong', cacheKey);
               chargeForContent('sun', SUN_COST_BIG, CHARGE_REASONS.tojeong).catch(() => {});
             }
           }
+          // 빈 결과여도 에러 표시 없음 — 페이지가 graceful 처리
           setAiLoading(false);
         })
-        .catch(err => {
+        .catch(() => {
           if (cancelled) return;
-          const msg = err?.message || '오류가 발생했어요.';
-          setAiError(msg);
           setAiLoading(false);
-          useReportCacheStore.getState().setError('tojeong', cacheKey, msg);
         });
     };
 
@@ -350,15 +345,11 @@ export default function TojeongResultPage() {
     setAiLoading(true);
     getTojeongReading(tojeong, sourceBirth, targetProfile?.id)
       .then((r: TojeongAIResult) => {
-        const cache = useReportCacheStore.getState();
-        if (!r.success || !r.content) {
-          const msg = r.error || '심층 풀이를 가져오지 못했어요.';
-          setAiError(msg);
-          cache.setError('tojeong', cacheKey, msg);
-        } else {
+        if (r.content) {
           setAiContent(r.content);
           if (r.sections) setAiSections(r.sections);
           if (r.domainScores) setAiDomainScores(r.domainScores);
+          const cache = useReportCacheStore.getState();
           cache.setReport('tojeong', cacheKey, r.content);
           if (!cache.isCharged('tojeong', cacheKey)) {
             cache.markCharged('tojeong', cacheKey);
@@ -367,11 +358,8 @@ export default function TojeongResultPage() {
         }
         setAiLoading(false);
       })
-      .catch(err => {
-        const msg = err?.message || '오류가 발생했어요.';
-        setAiError(msg);
+      .catch(() => {
         setAiLoading(false);
-        useReportCacheStore.getState().setError('tojeong', cacheKey, msg);
       });
   };
 
@@ -423,9 +411,9 @@ export default function TojeongResultPage() {
     return (
       <AILoadingBar
         label="토정비결 심층 풀이중"
-        minLabel="20초"
-        maxLabel="60초"
-        estimatedSeconds={35}
+        minLabel="15초"
+        maxLabel="45초"
+        estimatedSeconds={25}
         messages={TOJEONG_MESSAGES}
         topContent={
           <motion.div
@@ -611,13 +599,17 @@ export default function TojeongResultPage() {
 
       {/* 심층 풀이 — 섹션별 카드 렌더링 */}
 
-      {aiError && !aiContent && (
-        <section className="mt-3 rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
-          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30">
-            <p className="text-[14px] text-red-400 mb-2">{aiError}</p>
+      {/* AI 실패 시 — 에러 대신 부드러운 재시도 */}
+      {!aiLoading && !aiContent && (!aiSections || Object.keys(aiSections).length === 0) && !isArchiveMode && aiStartedRef.current && (
+        <section className="mt-3 rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]">
+          <div className="text-center py-3">
+            <p className="text-[14px] text-text-tertiary mb-3">
+              AI 심층 풀이를 불러오지 못했어요
+            </p>
             <button
               onClick={retryAI}
-              className="text-[14px] text-cta font-semibold underline"
+              className="px-5 py-2 rounded-xl text-cta text-[14px] font-semibold"
+              style={{ backgroundColor: 'rgba(124,92,252,0.15)' }}
             >
               다시 시도
             </button>
@@ -755,7 +747,7 @@ export default function TojeongResultPage() {
             </div>
           </div>
           <p className="text-[15px] text-text-secondary leading-[1.85] whitespace-pre-line tracking-[-0.005em]">
-            {aiContent}
+            {aiContent.replace(/^\s*\[(chongun|gwae|monthly|wealth|love|health|career|advice|tojeong_scores)\].*$/gm, '').replace(/\[\/tojeong_scores\]/g, '').trim()}
           </p>
         </section>
       )}

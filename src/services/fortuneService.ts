@@ -161,10 +161,11 @@ const callGPT = async (
   userPrompt: string,
   maxTokens: number = 1000,
   minContentLength?: number,
-  opts?: { allowTruncated?: boolean },
+  opts?: { allowTruncated?: boolean; timeoutMs?: number },
 ): Promise<string> => {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), AI_CLIENT_TIMEOUT_MS);
+  const timeout = opts?.timeoutMs ?? AI_CLIENT_TIMEOUT_MS;
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
     const response = await fetch('/api/ai', {
@@ -379,7 +380,7 @@ export interface TojeongAIResult {
 }
 
 /** [tojeong_scores] 재물:72 | 애정:65 | 건강:58 | 직장:80 [/tojeong_scores] 파싱 */
-function parseTojeongScores(raw: string): { wealth: number; love: number; health: number; career: number } | null {
+export function parseTojeongScores(raw: string): { wealth: number; love: number; health: number; career: number } | null {
   const m = raw.match(/\[tojeong_scores\]\s*(.+?)\s*\[\/tojeong_scores\]/);
   if (!m) return null;
   const inner = m[1];
@@ -397,7 +398,7 @@ function parseTojeongScores(raw: string): { wealth: number; love: number; health
 }
 
 /** [key] 델리미터로 토정비결 섹션 파싱 */
-function parseTojeongSections(raw: string): Partial<Record<TojeongSectionKey, string>> {
+export function parseTojeongSections(raw: string): Partial<Record<TojeongSectionKey, string>> {
   const out: Partial<Record<TojeongSectionKey, string>> = {};
   const re = /^\s*\[(chongun|gwae|monthly|wealth|love|health|career|advice)\]\s*$/m;
   const parts = raw.split(re);
@@ -428,38 +429,49 @@ export const getTojeongReading = async (
     archiveSaju({ profileId, sourceBirth, category: 'tojeong', engineResult: tj as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
   };
 
-  // ── 시도 1: 2-pass (풍부한 결과) ──
+  // 전체 45초 제한 — 어떤 상황에서도 45초 안에 결과 반환. 에러 절대 없음.
+  return Promise.race([
+    tojeongAllAttempts(tj, archive),
+    new Promise<TojeongAIResult>(resolve =>
+      setTimeout(() => {
+        console.warn('[tojeong] 45s overall deadline — returning empty');
+        resolve({ success: true, content: '' });
+      }, 45_000),
+    ),
+  ]);
+};
+
+async function tojeongAllAttempts(
+  tj: TojeongResult,
+  archive: (content: string) => void,
+): Promise<TojeongAIResult> {
+  // ── 시도 1: 2-pass (풍부한 결과, 개별 25s/20s 타임아웃) ──
   try {
     const result = await tojeong2Pass(tj);
-    archive(result.content ?? '');
-    return result;
+    if (result.content) {
+      archive(result.content);
+      return result;
+    }
   } catch (e: any) {
-    console.warn('[tojeong] 2-pass failed, trying single-pass fallback:', e.message);
+    console.warn('[tojeong] 2-pass failed, trying single-pass:', e.message);
   }
 
-  // ── 시도 2: 레거시 단일 호출 (빠르고 안정적) ──
+  // ── 시도 2: 레거시 단일 호출 (30s 타임아웃) ──
   try {
-    const content = await callGPT(generateTojeongPrompt(tj), 4000, undefined, { allowTruncated: true });
+    const content = await callGPT(generateTojeongPrompt(tj), 4000, undefined, { allowTruncated: true, timeoutMs: 30_000 });
     archive(content);
     return { success: true, content };
   } catch (e: any) {
-    console.warn('[tojeong] single-pass also failed, retrying once:', e.message);
+    console.warn('[tojeong] single-pass also failed:', e.message);
   }
 
-  // ── 시도 3: 단일 호출 1회 재시도 ──
-  try {
-    const content = await callGPT(generateTojeongPrompt(tj), 3500, undefined, { allowTruncated: true });
-    archive(content);
-    return { success: true, content };
-  } catch (error: any) {
-    console.error('[tojeong] all attempts failed:', error.message);
-    return { success: false, error: error.message };
-  }
-};
+  // 모든 시도 실패 — 에러 대신 빈 결과 (페이지가 graceful 처리)
+  return { success: true, content: '' };
+}
 
 async function tojeong2Pass(tj: TojeongResult): Promise<TojeongAIResult> {
   const pass1Prompt = generateTojeongPass1Prompt(tj);
-  const pass1Content = await callGPT(pass1Prompt, 6000, undefined, { allowTruncated: true });
+  const pass1Content = await callGPT(pass1Prompt, 6000, undefined, { allowTruncated: true, timeoutMs: 25_000 });
   const pass1Sections = parseTojeongSections(pass1Content);
   const domainScores = parseTojeongScores(pass1Content) ?? undefined;
 
@@ -467,7 +479,7 @@ async function tojeong2Pass(tj: TojeongResult): Promise<TojeongAIResult> {
   let pass2Sections: Partial<Record<TojeongSectionKey, string>> = {};
   try {
     const pass2Prompt = generateTojeongPass2Prompt(tj, pass1Content);
-    pass2Content = await callGPT(pass2Prompt, 5500, undefined, { allowTruncated: true });
+    pass2Content = await callGPT(pass2Prompt, 5500, undefined, { allowTruncated: true, timeoutMs: 20_000 });
     pass2Sections = parseTojeongSections(pass2Content);
   } catch {
     // pass2 실패해도 pass1 결과는 반환
