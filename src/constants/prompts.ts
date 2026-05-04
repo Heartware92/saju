@@ -2246,6 +2246,7 @@ ${monthlyList}
 ${METAPHOR_SHORT_GUIDE}
 
 반드시 전통 토정비결 어법(예: "용이 여의주를 얻은 격", "나무에 꽃이 피는 상")으로 시(詩)적인 개운 문구 1~2줄을 먼저 제시한 뒤, 현대인도 이해하기 쉽게 풀어 설명하세요.
+8) 모든 섹션의 첫 줄에 반드시 은유적 소제목 한 문장을 작성하세요. 이 소제목은 해당 영역의 핵심을 비유로 요약하는 짧은 문장입니다. 소제목 다음 줄부터 본문을 시작하세요.
 Markdown # 헤더는 절대 사용하지 마세요.`;
 }
 
@@ -2273,12 +2274,14 @@ export function generateTojeongPass1Prompt(tj: TojeongResult): string {
 
 [chongun]
 올해의 총운 (300~400자)
+- 첫 줄: 은유적 소제목 한 문장 (예: "봄바람 속에 씨앗을 뿌리는 한 해")
 - 상중하괘 조합의 상징을 엮어 한 해의 큰 흐름 (등급: ${entry.grade})
 - 핵심 메시지와 경계할 점, 이 한 해의 결이 어떤 감각인지
 - 괘사의 상징을 서두에 자연스럽게 녹일 것
 
 [gwae]
 괘의 의미 (250~320자)
+- 첫 줄: 은유적 소제목 한 문장 (예: "세 기운이 빚어낸 올해의 그릇")
 - 왜 이 괘가 나왔는지 상징 해석
 - 상괘(${upperGwae.name})·중괘(${middleGwae.position})·하괘(${lowerGwae.name})의 조화와 긴장
 - 세 괘의 오행·상징이 어떻게 맞물려 올해 운세의 뼈대를 이루는지
@@ -2312,6 +2315,7 @@ export function generateTojeongPass2Prompt(tj: TojeongResult, pass1Content: stri
 
 [wealth]
 재물운 (250~320자)
+- 첫 줄: 은유적 소제목 한 문장 (예: "씨앗을 심되, 큰 나무는 내년을 기약하라")
 - 들어오는 시기·새는 시기를 분기로 구분 (상반기/하반기 또는 봄·여름·가을·겨울)
 - 본업 수입 vs 부수입의 흐름
 - 재테크 방향 1개 (저축 강화·분산투자·신중 보류 등)
@@ -2320,6 +2324,7 @@ export function generateTojeongPass2Prompt(tj: TojeongResult, pass1Content: stri
 
 [love]
 애정·가정운 (250~320자)
+- 첫 줄: 은유적 소제목 한 문장 (예: "잔잔한 호수에 돌 하나가 파문을 만들다")
 - 미혼: 인연 들어오는 흐름과 이상형 단서
 - 기혼: 부부·자녀·부모 중 올해 테마와 주의 장면
 - 관계 회복·갈등 분기점 시기 1개
@@ -2328,6 +2333,7 @@ export function generateTojeongPass2Prompt(tj: TojeongResult, pass1Content: stri
 
 [health]
 건강운 (220~280자)
+- 첫 줄: 은유적 소제목 한 문장 (예: "뿌리가 마르면 잎이 먼저 시든다")
 - 취약 장부 또는 신체 부위 (오장육부·오행 기준)
 - 유의할 계절·환절기와 그 이유
 - 권장 운동·식습관 1가지
@@ -2336,6 +2342,7 @@ export function generateTojeongPass2Prompt(tj: TojeongResult, pass1Content: stri
 
 [career]
 직장·학업운 (250~320자)
+- 첫 줄: 은유적 소제목 한 문장 (예: "조용히 칼을 가는 자가 기회를 잡는다")
 - 직장: 승진·이직·평가·인간관계 중 유리한 흐름 1개와 시기
 - 학업·시험: 합격운·집중력·자격증 운
 - 조심할 덫 1개 (구설·실수·과로 등)
@@ -2344,6 +2351,7 @@ export function generateTojeongPass2Prompt(tj: TojeongResult, pass1Content: stri
 
 [advice]
 개운 조언 (400~550자) — 아래 항목을 모두 포함하여 풍부하게 작성
+- 첫 줄: 은유적 소제목 한 문장 (예: "작은 물줄기를 따라가면 큰 강을 만난다")
 - 올해의 길한 방위 1개 (동서남북 또는 세부 방위) + 왜 그 방위인지 한 줄 근거
 - 올해의 길한 색 2~3개 + 일상에서 활용법 (옷·소품·인테리어 등)
 - 행운 숫자 2개 + 행운 요일 1개 + 활용 팁
