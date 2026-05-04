@@ -642,9 +642,9 @@ export default function TojeongResultPage() {
           transition={{ delay: 0.1 }}
           className="mt-3 rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
         >
-          <div className="flex items-center gap-2 mb-4">
-            <span className="inline-block w-1 h-5 rounded-full bg-cta" />
-            <div className="text-[17px] font-bold text-text-primary tracking-tight" style={{ fontFamily: 'var(--font-serif)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <span style={{ display: 'inline-block', width: 4, height: 20, borderRadius: 2, background: 'var(--cta-primary)' }} />
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', letterSpacing: '-0.01em' }}>
               영역별 운세 점수
             </div>
           </div>
@@ -698,9 +698,9 @@ export default function TojeongResultPage() {
                     transition={{ delay: 0.15 + idx * 0.05 }}
                     className="rounded-2xl p-4 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
                   >
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="inline-block w-1 h-5 rounded-full bg-cta" />
-                      <div className="text-[16px] font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <span style={{ display: 'inline-block', width: 4, height: 20, borderRadius: 2, background: 'var(--cta-primary)' }} />
+                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', letterSpacing: '-0.01em' }}>
                         {TOJEONG_SECTION_LABELS[key]}
                       </div>
                     </div>
@@ -723,8 +723,9 @@ export default function TojeongResultPage() {
             }
 
             const lines = body.split('\n').filter(l => l.trim());
-            const metaphor = key !== 'monthly' && lines.length > 0 && lines[0].length < 40 ? lines[0] : null;
-            const bodyLines = metaphor ? lines.slice(1) : lines;
+            const headline = lines[0]?.trim() || '';
+            const hasHeadline = lines.length > 1 && headline.length > 0 && headline.length <= 80;
+            const bodyText = hasHeadline ? lines.slice(1).join('\n').trim() : body;
             return (
               <motion.section
                 key={key}
@@ -733,21 +734,20 @@ export default function TojeongResultPage() {
                 transition={{ delay: 0.15 + idx * 0.05 }}
                 className="rounded-2xl p-5 bg-[rgba(20,12,38,0.55)] border border-[var(--border-subtle)]"
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="inline-block w-1 h-5 rounded-full bg-cta" />
-                  <div className="text-[16px] font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ display: 'inline-block', width: 4, height: 20, borderRadius: 2, background: 'var(--cta-primary)' }} />
+                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', letterSpacing: '-0.01em' }}>
                     {TOJEONG_SECTION_LABELS[key]}
                   </div>
                 </div>
-                {metaphor && (
-                  <div className="text-[13px] text-text-tertiary font-medium mb-3 pl-3" style={{ fontFamily: 'var(--font-serif)' }}>
-                    — {metaphor}
+                {hasHeadline && (
+                  <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--cta-primary)', opacity: 0.9, lineHeight: 1.5, marginBottom: 14, paddingLeft: 12, fontFamily: 'var(--font-serif)' }}>
+                    {headline}
                   </div>
                 )}
-                {!metaphor && <div className="mb-2" />}
-                <div className="text-[15px] text-text-secondary leading-[1.85] whitespace-pre-line tracking-[-0.005em]">
-                  {bodyLines.join('\n')}
-                </div>
+                <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.85, letterSpacing: '-0.005em', whiteSpace: 'pre-line', margin: 0 }}>
+                  {bodyText}
+                </p>
               </motion.section>
             );
           })}

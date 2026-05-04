@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Vercel Serverless 기본 10초 → 60초로 확장 (자미두수·정통사주 등 장문 응답 대응)
-export const maxDuration = 60;
+// Vercel Serverless — 2-pass 호출(토정비결 등) 시 총 소요 시간 대응
+export const maxDuration = 120;
 
 interface AIResult {
   content: string;

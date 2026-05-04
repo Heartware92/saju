@@ -140,7 +140,7 @@ export const sanitizeAIOutput = (raw: string): string => {
  * GPT API 호출 헬퍼 (서버 API Route 경유)
  * - 응답을 sanitize 하여 마크다운·이모지 잔해 제거
  */
-// Vercel 서버 maxDuration=60초와 맞춤. 55초 지나면 클라이언트가 abort.
+// Vercel 서버 maxDuration=120초와 맞춤. 개별 API 호출 1회당 최대 대기 시간.
 const AI_CLIENT_TIMEOUT_MS = 55_000;
 
 /**
@@ -160,6 +160,7 @@ const callGPT = async (
   userPrompt: string,
   maxTokens: number = 1000,
   minContentLength?: number,
+  opts?: { allowTruncated?: boolean },
 ): Promise<string> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), AI_CLIENT_TIMEOUT_MS);
@@ -180,9 +181,10 @@ const callGPT = async (
       throw new Error('AI 응답이 비어 있습니다. 잠시 후 다시 시도해주세요.');
     }
     if (data.truncated === true) {
-      // 부분 응답이라도 디버깅용으로 콘솔에는 남긴다 — 운영에서 maxTokens 조정 근거 확보
       console.warn('[AI] truncated response — bump maxTokens', { len: data.content.length, maxTokens });
-      throw new Error(TRUNCATED_MESSAGE);
+      if (!opts?.allowTruncated) {
+        throw new Error(TRUNCATED_MESSAGE);
+      }
     }
     const sanitized = sanitizeAIOutput(data.content);
     const minLen = minContentLength ?? Math.max(80, Math.floor(maxTokens * 0.15));
@@ -421,32 +423,43 @@ export const getTojeongReading = async (
   sourceBirth?: { birth_date: string; gender: 'male' | 'female'; calendar_type?: 'solar' | 'lunar' },
   profileId?: string,
 ): Promise<TojeongAIResult> => {
+  let pass1Content = '';
+  let pass1Sections: Partial<Record<TojeongSectionKey, string>> = {};
+  let domainScores: TojeongAIResult['domainScores'];
+
   try {
     // ── Pass 1: 점수 + 총운 + 괘의미 + 월별운세 ──
     const pass1Prompt = generateTojeongPass1Prompt(tj);
-    const pass1Content = await callGPT(pass1Prompt, 6000);
-    const pass1Sections = parseTojeongSections(pass1Content);
-    const domainScores = parseTojeongScores(pass1Content) ?? undefined;
-
-    // ── Pass 2: 재물 + 애정 + 건강 + 직장 + 개운 ──
-    const pass2Prompt = generateTojeongPass2Prompt(tj, pass1Content);
-    const pass2Content = await callGPT(pass2Prompt, 5500);
-    const pass2Sections = parseTojeongSections(pass2Content);
-
-    // ── 병합 ──
-    const sections: Partial<Record<TojeongSectionKey, string>> = { ...pass1Sections, ...pass2Sections };
-    const content = `${pass1Content}\n\n${pass2Content}`;
-
-    archiveSaju({ profileId, sourceBirth, category: 'tojeong', engineResult: tj as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
-
-    if (Object.keys(sections).length === 0) {
-      // 파싱 실패 시 전체 원문 fallback
-      return { success: true, content, domainScores };
-    }
-    return { success: true, content, sections, domainScores };
+    pass1Content = await callGPT(pass1Prompt, 6000, undefined, { allowTruncated: true });
+    pass1Sections = parseTojeongSections(pass1Content);
+    domainScores = parseTojeongScores(pass1Content) ?? undefined;
   } catch (error: any) {
+    console.error('[tojeong] pass1 failed:', error.message);
     return { success: false, error: error.message };
   }
+
+  let pass2Content = '';
+  let pass2Sections: Partial<Record<TojeongSectionKey, string>> = {};
+
+  try {
+    // ── Pass 2: 재물 + 애정 + 건강 + 직장 + 개운 ──
+    const pass2Prompt = generateTojeongPass2Prompt(tj, pass1Content);
+    pass2Content = await callGPT(pass2Prompt, 5500, undefined, { allowTruncated: true });
+    pass2Sections = parseTojeongSections(pass2Content);
+  } catch (error: any) {
+    console.warn('[tojeong] pass2 failed, returning pass1 only:', error.message);
+  }
+
+  // ── 병합 — pass2 실패해도 pass1 결과는 반환 ──
+  const sections: Partial<Record<TojeongSectionKey, string>> = { ...pass1Sections, ...pass2Sections };
+  const content = pass2Content ? `${pass1Content}\n\n${pass2Content}` : pass1Content;
+
+  archiveSaju({ profileId, sourceBirth, category: 'tojeong', engineResult: tj as unknown as Record<string, unknown>, interpretation: content, isDetailed: true });
+
+  if (Object.keys(sections).length === 0) {
+    return { success: true, content, domainScores };
+  }
+  return { success: true, content, sections, domainScores };
 };
 
 /**
