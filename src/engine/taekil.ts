@@ -45,6 +45,13 @@ export const TAEKIL_CATEGORIES: { id: TaekilCategory; label: string; desc: strin
 
 export type TaekilGrade = '대길' | '길' | '평' | '흉';
 
+export interface TimeSlotEnergy {
+  zhi: string;
+  name: string;
+  hours: string;
+  energy: number; // 1-10
+}
+
 export interface TaekilDay {
   date: string;       // YYYY-MM-DD
   lunarLabel: string;  // "을사년 기묘월 갑자일"
@@ -56,6 +63,8 @@ export interface TaekilDay {
   grade: TaekilGrade;
   reasons: string[];   // 판정 사유
   luckyTime?: string;  // 길시 추천
+  elementEnergy: Record<string, number>; // { 목:1~10, 화:1~10, ... }
+  timeSlots: TimeSlotEnergy[];           // 12시진별 에너지
 }
 
 export interface TaekilResult {
@@ -174,6 +183,112 @@ function getKongmangZhis(dayGan: string, dayZhi: string): [string, string] | nul
   const k1 = (sunStart + 10) % 12;
   const k2 = (sunStart + 11) % 12;
   return [EARTHLY_BRANCHES[k1], EARTHLY_BRANCHES[k2]];
+}
+
+// ============================================
+// 시간대 에너지 계산용 상수
+// ============================================
+
+const SIGAN_DATA: { zhi: string; name: string; hours: string }[] = [
+  { zhi: '자', name: '자시', hours: '23:00~01:00' },
+  { zhi: '축', name: '축시', hours: '01:00~03:00' },
+  { zhi: '인', name: '인시', hours: '03:00~05:00' },
+  { zhi: '묘', name: '묘시', hours: '05:00~07:00' },
+  { zhi: '진', name: '진시', hours: '07:00~09:00' },
+  { zhi: '사', name: '사시', hours: '09:00~11:00' },
+  { zhi: '오', name: '오시', hours: '11:00~13:00' },
+  { zhi: '미', name: '미시', hours: '13:00~15:00' },
+  { zhi: '신', name: '신시', hours: '15:00~17:00' },
+  { zhi: '유', name: '유시', hours: '17:00~19:00' },
+  { zhi: '술', name: '술시', hours: '19:00~21:00' },
+  { zhi: '해', name: '해시', hours: '21:00~23:00' },
+];
+
+const OSEOJEONHWAN: Record<string, string> = {
+  '갑': '갑', '기': '갑',
+  '을': '병', '경': '병',
+  '병': '무', '신': '무',
+  '정': '경', '임': '경',
+  '무': '임', '계': '임',
+};
+
+function getHourGan(dayGan: string, hourZhi: string): string {
+  const startGan = OSEOJEONHWAN[dayGan] || '갑';
+  const ganIdx = HEAVENLY_STEMS.indexOf(startGan);
+  const zhiIdx = EARTHLY_BRANCHES.indexOf(hourZhi);
+  return HEAVENLY_STEMS[(ganIdx + zhiIdx) % 10];
+}
+
+function calcDayElementEnergy(
+  saju: SajuResult,
+  dayGan: string,
+  dayZhi: string,
+): Record<string, number> {
+  const e: Record<string, number> = { '목': 3, '화': 3, '토': 3, '금': 3, '수': 3 };
+
+  const dayEl = STEM_ELEMENT[dayGan];
+  if (dayEl) e[dayEl] += 4;
+
+  const hidden = (BRANCH_HIDDEN_STEMS as Record<string, string[]>)[dayZhi] || [];
+  hidden.forEach((stem, i) => {
+    const el = STEM_ELEMENT[stem];
+    if (el) e[el] += [3, 1.5, 0.5][i] ?? 0;
+  });
+
+  if (saju.yongSinElement && e[saju.yongSinElement] !== undefined) e[saju.yongSinElement] += 1.5;
+  if (saju.giSin && e[saju.giSin] !== undefined) e[saju.giSin] -= 1;
+
+  const vals = Object.values(e);
+  const max = Math.max(...vals);
+  const min = Math.min(...vals);
+  const range = max - min || 1;
+  for (const k of Object.keys(e)) {
+    e[k] = Math.max(1, Math.min(10, Math.round(((e[k] - min) / range) * 9 + 1)));
+  }
+  return e;
+}
+
+function calcTimeSlotEnergy(
+  saju: SajuResult,
+  dayGan: string,
+  dayZhi: string,
+  category: TaekilCategory,
+): TimeSlotEnergy[] {
+  const catBoost = CATEGORY_BOOST[category];
+  const dayMaster = saju.dayMaster;
+  const natalZhis = [saju.pillars.year.zhi, saju.pillars.month.zhi, saju.pillars.day.zhi];
+  if (!saju.hourUnknown) natalZhis.push(saju.pillars.hour.zhi);
+
+  return SIGAN_DATA.map(({ zhi, name, hours }) => {
+    let score = 5;
+
+    const hourGan = getHourGan(dayGan, zhi);
+    const tenGod = TEN_GODS_MAP[dayMaster]?.[hourGan] || '';
+    score += (TEN_GOD_SCORE[tenGod] ?? 0) * 0.25;
+    score += (catBoost[tenGod] ?? 0) * 0.15;
+
+    const zhiEl = BRANCH_ELEMENT[zhi];
+    if (zhiEl === saju.yongSinElement) score += 2;
+    if (zhiEl === saju.giSin) score -= 1.5;
+
+    for (const [a, b] of YUKHAP) {
+      if ((dayZhi === a && zhi === b) || (dayZhi === b && zhi === a)) score += 1.5;
+    }
+    for (const [a, b] of YUKCHUNG) {
+      if ((dayZhi === a && zhi === b) || (dayZhi === b && zhi === a)) score -= 2;
+    }
+
+    for (const nz of natalZhis) {
+      for (const [a, b] of YUKHAP) {
+        if ((nz === a && zhi === b) || (nz === b && zhi === a)) score += 0.5;
+      }
+      for (const [a, b] of YUKCHUNG) {
+        if ((nz === a && zhi === b) || (nz === b && zhi === a)) score -= 0.5;
+      }
+    }
+
+    return { zhi, name, hours, energy: Math.max(1, Math.min(10, Math.round(score))) };
+  });
 }
 
 // ============================================
@@ -359,6 +474,8 @@ function scoreOneDay(
     grade,
     reasons,
     luckyTime: grade === '대길' || grade === '길' ? luckyTime : undefined,
+    elementEnergy: calcDayElementEnergy(saju, dayGan, dayZhi),
+    timeSlots: calcTimeSlotEnergy(saju, dayGan, dayZhi, category),
   };
 }
 

@@ -99,8 +99,11 @@ export default function MoreFortunePage({ category }: Props) {
   }, [targetProfile]);
 
   // 이름 풀이 전용 state
+  // koreanName: 한글 이름 (성씨 포함, 4글자 이내 권장)
+  // charMeanings: 글자별 뜻 (한자 추정용). 인덱스가 한글 이름 글자 순서와 1:1 매칭.
+  //               비워두면 순우리말 또는 모름으로 처리되어 음령오행만 적용.
   const [koreanName, setKoreanName] = useState('');
-  const [hanjaName, setHanjaName] = useState('');
+  const [charMeanings, setCharMeanings] = useState<string[]>([]);
 
   // 꿈 해몽 전용 state — DreamInputPanel에서 onChange로 주입되는 합성 텍스트/유효성
   const [dreamText, setDreamText] = useState('');
@@ -171,11 +174,17 @@ export default function MoreFortunePage({ category }: Props) {
         const content = record.interpretation_detailed ?? record.interpretation_basic ?? '';
         setResult(content);
         setArchivedAt(record.created_at);
-        // 이름 풀이면 저장된 한글/한자 이름 복원 (읽기 전용으로 표시)
+        // 이름 풀이면 저장된 한글 이름 + 글자별 뜻 복원 (읽기 전용으로 표시)
         if (record.category === 'name' && record.engine_result) {
-          const eng = record.engine_result as { koreanName?: string; hanjaName?: string };
+          const eng = record.engine_result as {
+            koreanName?: string;
+            charMeanings?: { sound?: string; meaning?: string }[];
+            hanjaName?: string;
+          };
           if (typeof eng.koreanName === 'string') setKoreanName(eng.koreanName);
-          if (typeof eng.hanjaName === 'string') setHanjaName(eng.hanjaName);
+          if (Array.isArray(eng.charMeanings)) {
+            setCharMeanings(eng.charMeanings.map((c) => (typeof c?.meaning === 'string' ? c.meaning : '')));
+          }
         }
         // 꿈 해몽이면 저장된 꿈 텍스트 복원
         if (record.category === 'dream' && record.engine_result) {
@@ -287,7 +296,8 @@ export default function MoreFortunePage({ category }: Props) {
     if (!saju) return null;
     const sk = sajuKey(saju);
     if (category === 'name') {
-      return `${sk}:${koreanName.trim()}|${hanjaName.trim()}`;
+      const meaningsKey = charMeanings.map((m) => (m || '').trim()).join('|');
+      return `${sk}:${koreanName.trim()}|${meaningsKey}`;
     }
     return sk;
   };
@@ -307,7 +317,7 @@ export default function MoreFortunePage({ category }: Props) {
     }
     setResult(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, saju, koreanName, hanjaName, dreamText, isArchiveMode]);
+  }, [category, saju, koreanName, charMeanings, dreamText, isArchiveMode]);
 
   const handleRead = async () => {
     // 꿈 해몽은 saju 없이도 실행 가능
@@ -368,10 +378,14 @@ export default function MoreFortunePage({ category }: Props) {
           case 'personality': resp = await getPersonalityShort(s, targetProfile?.id); break;
           case 'name': {
             const kor = analyzeKoreanName(koreanName);
+            // 글자별 뜻+음 — kor.chars 와 charMeanings 를 1:1 매칭. 4글자까지.
+            const sounds = kor.chars.slice(0, 4);
+            const meanings = sounds.map((_, i) => (charMeanings[i] || '').trim());
+            const charPairs = sounds.map((sound, i) => ({ sound, meaning: meanings[i] }));
             resp = await getNameFortune(s, {
               koreanName: koreanName.trim(),
               koreanInitialsElements: kor.elements,
-              hanjaName: hanjaName.trim() || undefined,
+              charMeanings: charPairs,
             }, targetProfile?.id);
             break;
           }
@@ -534,63 +548,13 @@ export default function MoreFortunePage({ category }: Props) {
 
         {/* 이름 풀이 전용 입력 */}
         {category === 'name' && (
-          <div className={styles.section}>
-            <h2 style={{ fontSize: 14 }}>이름 입력</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
-              <div>
-                <label style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>
-                  한글 이름 {isArchiveMode ? '' : '(필수)'}
-                </label>
-                <input
-                  type="text"
-                  value={koreanName}
-                  onChange={(e) => setKoreanName(e.target.value)}
-                  placeholder="예: 홍길동"
-                  maxLength={10}
-                  readOnly={isArchiveMode}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: 10,
-                    color: 'var(--text-primary)',
-                    fontSize: 14,
-                    cursor: isArchiveMode ? 'default' : 'text',
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>
-                  한자 이름 {isArchiveMode ? '' : '(선택)'}
-                </label>
-                <input
-                  type="text"
-                  value={hanjaName}
-                  onChange={(e) => setHanjaName(e.target.value)}
-                  placeholder="예: 洪吉童 (몰라도 됩니다)"
-                  maxLength={10}
-                  readOnly={isArchiveMode}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: 10,
-                    color: 'var(--text-primary)',
-                    fontSize: 14,
-                    cursor: isArchiveMode ? 'default' : 'text',
-                  }}
-                />
-                {!isArchiveMode && (
-                  <p style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                    한자를 모르시면 비워두세요. 한글만 있어도 음령오행으로 완결 분석됩니다.
-                    한자를 입력하면 부수 기반 자원오행까지 교차 분석해 더 정밀한 풀이가 나옵니다.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
+          <NameInputPanel
+            koreanName={koreanName}
+            onKoreanNameChange={setKoreanName}
+            charMeanings={charMeanings}
+            onCharMeaningsChange={setCharMeanings}
+            readOnly={isArchiveMode}
+          />
         )}
 
         {/* 풀이 보기 버튼 — 보관함 재생 모드에서는 숨김 (이미 저장된 결과를 아래에 렌더) */}
@@ -733,6 +697,125 @@ export default function MoreFortunePage({ category }: Props) {
         onRefresh={handleRefetch}
         onClose={() => setCacheGate(null)}
       />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 이름 풀이 입력 패널
+//   한글 이름 (4글자 이내) + 글자별 뜻(한자 추정용)을 입력받는다.
+//   - 글자별 뜻이 1개 이상 채워지면 한자 추정 모드 (자원오행 분석 포함).
+//   - 모두 비어 있으면 순우리말/모름 모드 (음령오행만 분석).
+// ─────────────────────────────────────────────────────────────────────────────
+function NameInputPanel({
+  koreanName,
+  onKoreanNameChange,
+  charMeanings,
+  onCharMeaningsChange,
+  readOnly,
+}: {
+  koreanName: string;
+  onKoreanNameChange: (v: string) => void;
+  charMeanings: string[];
+  onCharMeaningsChange: (v: string[]) => void;
+  readOnly: boolean;
+}) {
+  // 한글 음절만 추출 (공백·한자·기호 제외) — 4글자까지
+  const chars = (() => {
+    const out: string[] = [];
+    for (const ch of koreanName.trim()) {
+      if (ch.charCodeAt(0) >= 0xac00 && ch.charCodeAt(0) <= 0xd7a3) {
+        out.push(ch);
+        if (out.length >= 4) break;
+      }
+    }
+    return out;
+  })();
+
+  const updateMeaning = (i: number, value: string) => {
+    const next = [...charMeanings];
+    while (next.length <= i) next.push('');
+    next[i] = value;
+    onCharMeaningsChange(next);
+  };
+
+  const inputBase: React.CSSProperties = {
+    width: '100%',
+    padding: '10px 12px',
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: 10,
+    color: 'var(--text-primary)',
+    fontSize: 14,
+    cursor: readOnly ? 'default' : 'text',
+  };
+
+  return (
+    <div className={styles.section}>
+      <h2 style={{ fontSize: 14 }}>이름 입력</h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 10 }}>
+        <div>
+          <label style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>
+            한글 이름 {readOnly ? '' : '(필수, 4글자까지)'}
+          </label>
+          <input
+            type="text"
+            value={koreanName}
+            onChange={(e) => onKoreanNameChange(e.target.value)}
+            placeholder="예: 허진우"
+            maxLength={6}
+            readOnly={readOnly}
+            style={inputBase}
+          />
+        </div>
+
+        {chars.length > 0 && (
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
+              글자별 뜻 {readOnly ? '' : '(한자 이름이면 입력 / 순우리말이면 비워두세요)'}
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {chars.map((ch, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div
+                    style={{
+                      flex: '0 0 44px',
+                      height: 40,
+                      borderRadius: 10,
+                      background: 'rgba(168, 132, 255, 0.12)',
+                      border: '1px solid rgba(168, 132, 255, 0.3)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 18,
+                      fontWeight: 600,
+                      color: 'var(--text-primary)',
+                      fontFamily: 'var(--font-serif)',
+                    }}
+                  >
+                    {ch}
+                  </div>
+                  <input
+                    type="text"
+                    value={charMeanings[i] ?? ''}
+                    onChange={(e) => updateMeaning(i, e.target.value)}
+                    placeholder={i === 0 ? '예: 허락할' : i === 1 ? '예: 보배' : '예: 집'}
+                    maxLength={12}
+                    readOnly={readOnly}
+                    style={{ ...inputBase, flex: 1 }}
+                  />
+                </div>
+              ))}
+            </div>
+            {!readOnly && (
+              <p style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 6, lineHeight: 1.55 }}>
+                한자를 모르거나 순우리말 이름이면 뜻 칸을 비워두셔도 됩니다. 비워두면 음령오행(초성 오행)만으로 풀이됩니다.
+                뜻을 적으시면 그 뜻과 음에 가장 맞는 한자를 추정해 부수 기반 자원오행까지 교차 분석합니다.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1275,16 +1275,22 @@ export const getNameFortune = async (
   profileId?: string,
 ): Promise<FortuneResponse> => {
   try {
-    // 명세: 한글만 380~500자 / 한자 포함 420~580자. 한자 포함 시 25% 가산.
+    // 한자 모드(글자별 뜻 ≥1 또는 레거시 hanjaName)면 출력 길이 25% 가산.
+    const hasMeaning = !!(nameInput.charMeanings ?? []).find((c) => c.meaning && c.meaning.trim().length > 0);
+    const isHanjaMode = hasMeaning || !!nameInput.hanjaName;
     const baseTokens = MORE_FORTUNE_CONFIGS.name.maxTokens;
-    const maxTokens = nameInput.hanjaName ? Math.round(baseTokens * 1.25) : baseTokens;
+    const maxTokens = isHanjaMode ? Math.round(baseTokens * 1.25) : baseTokens;
     const content = await callGPT(generateNameFortunePrompt(result, nameInput), maxTokens);
     archiveSaju({
       profileId,
       sourceBirth: sourceBirthFromSaju(result),
       category: 'name',
       resultData: result as unknown as Record<string, unknown>,
-      engineResult: { koreanName: nameInput.koreanName, hanjaName: nameInput.hanjaName } as Record<string, unknown>,
+      engineResult: {
+        koreanName: nameInput.koreanName,
+        charMeanings: nameInput.charMeanings,
+        hanjaName: nameInput.hanjaName,
+      } as Record<string, unknown>,
       interpretation: content,
       creditType: 'moon',
       creditUsed: 1,
